@@ -1,0 +1,11 @@
+main: () = {
+    greeting: std::string = "Hello, world!";
+    shout: std::string = greeting + "!!!";
+    std::cout << greeting << "\n";
+    std::cout << shout << "\n";
+}
+
+hello_user: (name: std::string_view) = {
+    message: std::string = std::string{"Hello, "} + std::string{name};
+    std::cout << message << "\n";
+}

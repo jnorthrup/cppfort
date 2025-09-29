@@ -1,0 +1,3268 @@
+{
+  "nodes": [
+    {
+      "test_file": "pure2-assert-expected-not-null.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-assert-optional-not-null.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-assert-shared-ptr-not-null.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-assert-unique-ptr-not-null.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bounds-safety-pointer-arithmetic-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bounds-safety-span.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-break-continue.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-assert-capture-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-assign-expression-list.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-capture-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-decltype-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-parameter-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-using-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-declaration-equal-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-discard-precedence.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-functions-before-superclasses-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-indexed-call.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-invalid-alias-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-late-comments.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-max-munch.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-memberwise-base-assignment.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-naked-unsigned-char-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-name-lookup-and-value-decoration.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-namespace-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-non-local-function-expression.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-non-local-initialization.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-optional-template-argument-list.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-out-this-nonconstructor-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-template-argument.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-arguments.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-name-lookup.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-noexcept.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-sfinae.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-unbraced-function-expression.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-bugfix-for-variable-template.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-chained-comparisons.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-concept-definition.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-contracts.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-cpp1-multitoken-fundamental-types-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-cpp1-prefix-expression-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-deducing-pointers-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-deduction-1-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-deduction-2-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-default-arguments.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-defaulted-comparisons-and-final-types.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-enum.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-expected-is-as.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-for-loop-range-with-lambda.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-forward-return-diagnostics-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-forward-return.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-function-body-reflection.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-function-multiple-forward-arguments.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-function-single-expression-body-default-return.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-function-typeids.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-hashable.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-hello.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-initialization-loop-2-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-initialization-loop-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-initialization-safety-with-else-if.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-inspect-expression-in-generic-function-multiple-types.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-inspect-expression-with-as-in-generic-function.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-inspect-fallback-with-variant-any-optional.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-interpolation.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-intro-example-hello-2022.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-intro-example-three-loops.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-is-with-free-functions-predicate.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-is-with-polymorphic-types.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-is-with-unnamed-predicates.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-is-with-variable-and-value.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-last-use.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-lifetime-safety-pointer-init-1-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-lifetime-safety-reject-null-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-look-up-parameter-across-unnamed-function.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-main-args.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-more-wildcards.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-print.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-range-operators.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-raw-string-literal-and-interpolation.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_01_char_matcher.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_02_ranges.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_03_wildcard.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_04_start_end.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_05_classes.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_06_boundaries.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_07_short_classes.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_08_alternatives.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_09_groups.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_10_escapes.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_11_group_references.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_12_case_insensitive.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_13_possessive_modifier.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_14_multiline_modifier.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_15_group_modifiers.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_16_perl_syntax_modifier.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_17_comments.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_18_branch_reset.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_19_lookahead.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex_21_atomic_patterns.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-regex-general.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-repeated-call.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-requires-clauses.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-return-tuple-no-identifier-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-return-tuple-no-type-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-return-tuple-operator.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-statement-parse-error.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-statement-scope-parameters.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-stdio-with-raii.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-stdio.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-synthesize-rightshift-and-rightshifteq.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-template-parameter-lists.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-trailing-comma-assert.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-trailing-commas.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-type-and-namespace-aliases.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-type-constraints.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-type-safety-1.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-type-safety-2-with-inspect-expression.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-basics.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-down-upcast.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-inheritance.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-order-independence-and-nesting.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-ordering-via-meta-functions.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-1-provide-everything.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-that-parameters.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-types-value-types-via-meta-functions.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-ufcs-member-access-and-chaining.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-union.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-unsafe.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-variadics.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    },
+    {
+      "test_file": "pure2-various-string-literals.cpp2",
+      "signals": {
+        "transpile_equiv": false,
+        "compile_equiv": false,
+        "run_equiv": false,
+        "output_equiv": false,
+        "semantic_equiv": false
+      },
+      "metrics": {
+        "stage0_binary_size": 0,
+        "stage1_binary_size": 0,
+        "binary_size_ratio": 0.0,
+        "stage0_disasm_lines": 0,
+        "stage1_disasm_lines": 0,
+        "disasm_ratio": 0.0
+      },
+      "features": {
+        "cpp_diff_type": null,
+        "output_diff_type": null,
+        "stage0_success": false,
+        "stage1_success": false
+      }
+    }
+  ]
+}

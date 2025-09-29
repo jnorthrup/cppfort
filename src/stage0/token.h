@@ -21,6 +21,7 @@ enum class TokenType {
     Identifier,
     Number,
     String,
+    Char,
     Colon,
     Semicolon,
     Comma,
@@ -46,6 +47,8 @@ enum class TokenType {
     Caret,
     Exclamation,
     Question,
+    Dollar,
+    At,
 
     // Cpp2 specific keywords
     KeywordReturn,
@@ -57,6 +60,7 @@ enum class TokenType {
     KeywordAssert,
     KeywordPre,
     KeywordPost,
+    KeywordAuto,
     KeywordUsing,
     KeywordNamespace,
     KeywordType,

@@ -1,7 +1,9 @@
 #include "emitter.h"
 
 #include <cctype>
+#include <iostream>
 #include <sstream>
+#include <typeinfo>
 #include <utility>
 
 namespace cppfort::stage0 {
@@ -37,6 +39,82 @@ std::string trim_copy(std::string text) {
         text.pop_back();
     }
     return text;
+}
+
+// Fix simple cpp2 type/expr idioms into valid C++ forms.
+// Examples:
+//  - type: "*std::string" -> "std::string*"
+//  - expr: "s&" -> "&s"
+//  - expr: "ps* = ..." -> "*ps = ..."
+//  - simple UFCS pattern: ":cout << ... std" -> "std::cout << ..."
+std::string fix_prefix_type(std::string type) {
+    // move leading '*' and '&' to the end
+    std::string prefix;
+    while (!type.empty() && (type.front() == '*' || type.front() == '&')) {
+        prefix.push_back(type.front());
+        type.erase(type.begin());
+    }
+    // append in reverse order for readability: '*' then '&'
+    for (char c : prefix) {
+        if (c == '*') type += '*';
+        else if (c == '&') type += '&';
+    }
+    return type;
+}
+
+std::string fix_expression_tokens(std::string expr) {
+    // Simple postfix deref: identifier* -> *identifier
+    // Use a manual scan to avoid regex dependency
+    for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
+        if (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_') {
+            // find end of ident
+            size_t start = pos;
+            while (pos < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_')) ++pos;
+            if (pos < expr.size() && expr[pos] == '*') {
+                std::string ident = expr.substr(start, pos - start);
+                // replace ident* with *ident
+                expr.replace(start, ident.size() + 1, std::string("*") + ident);
+                // continue after the inserted sequence
+                pos = start + 1 + ident.size();
+            }
+        }
+    }
+
+    // Simple address-of suffix: something& -> &something (only for simple tokens)
+    for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
+        if ((std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_') && expr[pos+1] == '&') {
+            // find start of ident
+            size_t end = pos;
+            size_t start = pos;
+            while (start > 0 && (std::isalnum(static_cast<unsigned char>(expr[start-1])) || expr[start-1] == '_')) --start;
+            std::string ident = expr.substr(start, end - start + 1);
+            // replace ident& with &ident
+            expr.replace(start, ident.size() + 1, std::string("&") + ident);
+            pos = start + 1 + ident.size();
+        }
+    }
+
+    // Simple UFCS pattern: find a ' std' token and a preceding ':id'
+    size_t std_pos = expr.find(" std");
+    if (std_pos != std::string::npos) {
+        // find last ':' before std_pos
+        size_t col_pos = expr.rfind(':', std_pos);
+        if (col_pos != std::string::npos && col_pos + 1 < expr.size()) {
+            // read identifier after ':'
+            size_t id_start = col_pos + 1;
+            size_t id_end = id_start;
+            while (id_end < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[id_end])) || expr[id_end] == '_')) ++id_end;
+            if (id_end > id_start) {
+                std::string id = expr.substr(id_start, id_end - id_start);
+                // remove the ':id' and the ' std' and replace with 'std.id'
+                expr.erase(std_pos, 4); // remove " std"
+                expr.erase(col_pos, id.size() + 1); // remove ":id"
+                expr.insert(col_pos, std::string("std.") + id);
+            }
+        }
+    }
+
+    return expr;
 }
 }
 
@@ -91,6 +169,31 @@ void Emitter::emit_function(const FunctionDecl& fn, std::string& out, int indent
         return_type = "int";
     }
 
+    auto emit_param_type = [this](const Parameter& param) {
+        auto type = normalize_space(param.type);
+        if (type.empty()) {
+            type = "auto";
+        }
+        // canonicalize prefix pointer styles like '*T'
+        type = fix_prefix_type(type);
+        switch (param.kind) {
+            case ParameterKind::In:
+                return std::string("cpp2::impl::in<") + type + ">";
+            case ParameterKind::InOut:
+            case ParameterKind::Out:
+                return type + "&";
+            case ParameterKind::Copy:
+                return std::string("cpp2::impl::copy<") + type + ">";
+            case ParameterKind::Move:
+                return std::string("cpp2::impl::move<") + type + ">";
+            case ParameterKind::Forward:
+                return type + "&&";
+            case ParameterKind::Default:
+            default:
+                return type;
+        }
+    };
+
     std::ostringstream signature;
     signature << "auto " << fn.name << "(";
     for (std::size_t i = 0; i < fn.parameters.size(); ++i) {
@@ -98,25 +201,39 @@ void Emitter::emit_function(const FunctionDecl& fn, std::string& out, int indent
             signature << ", ";
         }
         const auto& param = fn.parameters[i];
-        auto type = normalize_space(param.type);
-        if (type.empty()) {
-            type = "auto";
-        }
-        signature << type << ' ' << param.name;
+        auto ptype = emit_param_type(param);
+        signature << ptype << ' ' << param.name;
     }
     signature << ") -> " << return_type << ' ';
 
+    // Emit a debug comment with parameter kinds (helps validate parser wiring)
+    signature << "/*kinds:";
+    for (std::size_t i = 0; i < fn.parameters.size(); ++i) {
+        if (i) signature << ",";
+        switch (fn.parameters[i].kind) {
+            case ParameterKind::In: signature << "In"; break;
+            case ParameterKind::InOut: signature << "InOut"; break;
+            case ParameterKind::Out: signature << "Out"; break;
+            case ParameterKind::Copy: signature << "Copy"; break;
+            case ParameterKind::Move: signature << "Move"; break;
+            case ParameterKind::Forward: signature << "Forward"; break;
+            default: signature << "Default"; break;
+        }
+    }
+    signature << "*/";
+
     Emitter::append_line(out, signature.str() + "{", indent);
 
-    if (std::holds_alternative<Block>(fn.body)) {
+        if (std::holds_alternative<Block>(fn.body)) {
         emit_block(std::get<Block>(fn.body), out, indent + 1, is_main && return_type == "int");
     } else {
         const auto& expr = std::get<ExpressionBody>(fn.body);
         std::string line;
+        auto fixed = fix_expression_tokens(normalize_space(expr.expression));
         if (return_type == "void") {
-            line = normalize_space(expr.expression) + ';';
+            line = fixed + ';';
         } else {
-            line = "return " + normalize_space(expr.expression) + ';';
+            line = "return " + fixed + ';';
         }
         Emitter::append_line(out, line, indent + 1);
     }
@@ -161,12 +278,13 @@ void Emitter::emit_statement(const Statement& stmt, std::string& out, int indent
             }
             std::string line = type + ' ' + node.name;
             if (node.initializer.has_value() && !node.initializer->empty()) {
-                line += " = " + normalize_space(*node.initializer);
+                auto init = fix_expression_tokens(normalize_space(*node.initializer));
+                line += " = " + init;
             }
             line += ';';
             Emitter::append_line(out, line, indent);
         } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
-            Emitter::append_line(out, normalize_space(node.expression) + ';', indent);
+            Emitter::append_line(out, fix_expression_tokens(normalize_space(node.expression)) + ';', indent);
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             if (node.expression.has_value() && !node.expression->empty()) {
                 Emitter::append_line(out, "return " + normalize_space(*node.expression) + ';', indent);

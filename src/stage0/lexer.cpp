@@ -61,6 +61,12 @@ std::vector<Token> Lexer::tokenize() {
             case '.':
                 add_token(TokenType::Dot, token_start_offset, 1, token_line, token_column);
                 break;
+            case '$':
+                add_token(TokenType::Dollar, token_start_offset, 1, token_line, token_column);
+                break;
+            case '@':
+                add_token(TokenType::At, token_start_offset, 1, token_line, token_column);
+                break;
             case '<':
                 add_token(TokenType::Less, token_start_offset, 1, token_line, token_column);
                 break;
@@ -106,6 +112,9 @@ std::vector<Token> Lexer::tokenize() {
                 break;
             case '"':
                 lex_string();
+                break;
+            case '\'':
+                lex_char();
                 break;
             default:
                 if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
@@ -236,7 +245,7 @@ void Lexer::lex_identifier() {
 
     while (!is_at_end()) {
         char c = peek();
-        if (std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '$') {
+                if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
             advance();
         } else if (c == ':' && peek_next() == ':') {
             // allow identifiers to include :: for fully qualified names
@@ -308,6 +317,31 @@ void Lexer::lex_string() {
     add_token(TokenType::String, start_offset, length, start_line, start_column);
 }
 
+void Lexer::lex_char() {
+    auto start_offset = m_current - 1;
+    auto start_line = m_line;
+    auto start_column = m_column - 1;
+
+    bool terminated = false;
+    while (!is_at_end()) {
+        char c = advance();
+        if (c == '\'') {
+            terminated = true;
+            break;
+        }
+        if (c == '\\' && !is_at_end()) {
+            advance();
+        }
+    }
+
+    if (!terminated) {
+        throw LexError("Unterminated char literal");
+    }
+
+    auto length = m_current - start_offset;
+    add_token(TokenType::Char, start_offset, length, start_line, start_column);
+}
+
 TokenType Lexer::keyword_type(const std::string& identifier) const noexcept {
     // Basic Cpp2 keywords
     if (identifier == "return") {
@@ -336,6 +370,9 @@ TokenType Lexer::keyword_type(const std::string& identifier) const noexcept {
     }
     if (identifier == "post") {
         return TokenType::KeywordPost;
+    }
+    if (identifier == "auto") {
+        return TokenType::KeywordAuto;
     }
     if (identifier == "using") {
         return TokenType::KeywordUsing;

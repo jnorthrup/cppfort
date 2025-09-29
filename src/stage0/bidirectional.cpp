@@ -166,7 +166,16 @@ std::string BidirectionalTranspiler::Cpp2Emitter::emit(const TranslationUnit& un
                 for (const auto& stmt : block.statements) {
                     std::visit([&output](const auto& s) {
                         using T = std::decay_t<decltype(s)>;
-                        if constexpr (std::is_same_v<T, ExpressionStmt>) {
+                        if constexpr (std::is_same_v<T, VariableDecl>) {
+                            output += "    " + s.name;
+                            if (!s.type.empty()) {
+                                output += ": " + s.type;
+                            }
+                            if (s.initializer && !s.initializer->empty()) {
+                                output += " = " + *s.initializer;
+                            }
+                            output += "\n";
+                        } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                             output += "    " + s.expression + "\n";
                         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
                             output += "    return";
@@ -200,13 +209,49 @@ std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& uni
             ret = "void";
         }
         // Convert cpp2 name and parameters to C++ signature
+        auto emit_param_type = [&](const Parameter& p) {
+            std::string type = p.type;
+            if (type.empty()) type = "auto";
+            switch (p.kind) {
+                case ParameterKind::In:
+                    return std::string("cpp2::impl::in<") + type + ">";
+                case ParameterKind::InOut:
+                case ParameterKind::Out:
+                    return type + "&";
+                case ParameterKind::Copy:
+                    return std::string("cpp2::impl::copy<") + type + ">";
+                case ParameterKind::Move:
+                    return std::string("cpp2::impl::move<") + type + ">";
+                case ParameterKind::Forward:
+                    return type + "&&";
+                default:
+                    return type;
+            }
+        };
+
         std::string sig = ret + " " + fn.name + "(";
         for (size_t i = 0; i < fn.parameters.size(); ++i) {
             const auto& p = fn.parameters[i];
-            sig += p.type + " " + p.name;
+            sig += emit_param_type(p) + " " + p.name;
             if (i + 1 < fn.parameters.size()) sig += ", ";
         }
-        sig += ") {\n";
+        sig += ") ";
+        // debug: append kinds
+        sig += "/*kinds:";
+        for (size_t i = 0; i < fn.parameters.size(); ++i) {
+            if (i) sig += ",";
+            switch (fn.parameters[i].kind) {
+                case ParameterKind::In: sig += "In"; break;
+                case ParameterKind::InOut: sig += "InOut"; break;
+                case ParameterKind::Out: sig += "Out"; break;
+                case ParameterKind::Copy: sig += "Copy"; break;
+                case ParameterKind::Move: sig += "Move"; break;
+                case ParameterKind::Forward: sig += "Forward"; break;
+                default: sig += "Default"; break;
+            }
+        }
+        sig += "*/ ";
+        sig += "{\n";
 
         output += sig;
 
@@ -225,7 +270,15 @@ std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& uni
                         output += "    " + line + ";\n";
                     };
 
-                    if constexpr (std::is_same_v<T, ExpressionStmt>) {
+                    if constexpr (std::is_same_v<T, VariableDecl>) {
+                        std::string type = s.type;
+                        if (type.empty()) type = "auto";
+                        std::string line = type + " " + s.name;
+                        if (s.initializer && !s.initializer->empty()) {
+                            line += " = " + *s.initializer;
+                        }
+                        emit_line(line);
+                    } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                         std::string expr = s.expression;
                         // Trim and strip semicolons
                         while (!expr.empty() && std::isspace(static_cast<unsigned char>(expr.front()))) expr.erase(expr.begin());

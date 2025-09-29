@@ -9,9 +9,20 @@
 
 namespace cppfort::stage0 {
 
+enum class ParameterKind {
+    Default,
+    In,
+    InOut,
+    Out,
+    Copy,
+    Move,
+    Forward,
+};
+
 struct Parameter {
     std::string name;
     std::string type;
+    ParameterKind kind {ParameterKind::Default};
     SourceLocation location;
 };
 

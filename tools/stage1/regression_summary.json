@@ -1,0 +1,2234 @@
+{
+  "entries": [
+    {
+      "test_file": "mixed-allcpp1-hello.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-as-for-variant-20-types.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bounds-check.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bounds-safety-with-assert-2.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bounds-safety-with-assert.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bugfix-for-double-pound-else-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bugfix-for-literal-as-nttp.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-bugfix-for-ufcs-non-local.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-captures-in-expressions-and-postconditions.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-default-arguments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-fixed-type-aliases.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-float-literals.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-forwarding.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-function-expression-and-std-for-each.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-function-expression-and-std-ranges-for-each.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-function-expression-with-pointer-capture.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-function-expression-with-repeated-capture.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-hello.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-increment-decrement.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-initialization-safety-1-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-initialization-safety-2-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-initialization-safety-3-contract-violation.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-initialization-safety-3.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-inspect-templates.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-inspect-values-2.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-inspect-values.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-inspect-with-typeof-of-template-arg-list.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-intro-example-three-loops.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-intro-for-with-counter-include-last.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-is-as-value-with-variant.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-is-as-variant.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-lifetime-safety-and-null-contracts.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-lifetime-safety-pointer-init-1-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-lifetime-safety-pointer-init-2-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-lifetime-safety-pointer-init-3-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-lifetime-safety-pointer-init-4.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-multiple-return-values.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-out-destruction.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-parameter-passing-generic-out.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-parameter-passing-with-forward.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-parameter-passing.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-postexpression-with-capture.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-postfix-expression-custom-formatting.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-string-interpolation.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-test-parens.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-type-safety-1.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "mixed-ufcs-multiple-template-arguments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-assert-expected-not-null.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-assert-optional-not-null.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-assert-shared-ptr-not-null.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-assert-unique-ptr-not-null.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bounds-safety-pointer-arithmetic-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bounds-safety-span.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-break-continue.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-assert-capture-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-assign-expression-list.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-capture-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-decltype-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-parameter-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-bad-using-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-declaration-equal-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-discard-precedence.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-functions-before-superclasses-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-indexed-call.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-invalid-alias-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-late-comments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-max-munch.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-memberwise-base-assignment.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-naked-unsigned-char-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-name-lookup-and-value-decoration.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-namespace-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-non-local-function-expression.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-non-local-initialization.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-optional-template-argument-list.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-out-this-nonconstructor-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-template-argument.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-arguments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-name-lookup.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-noexcept.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-ufcs-sfinae.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-unbraced-function-expression.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-bugfix-for-variable-template.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-chained-comparisons.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-concept-definition.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-contracts.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-cpp1-multitoken-fundamental-types-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-cpp1-prefix-expression-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-deducing-pointers-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-deduction-1-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-deduction-2-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-default-arguments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-defaulted-comparisons-and-final-types.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-enum.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-expected-is-as.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-for-loop-range-with-lambda.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-forward-return-diagnostics-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-forward-return.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-function-body-reflection.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-function-multiple-forward-arguments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-function-single-expression-body-default-return.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-function-typeids.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-hashable.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-hello.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-initialization-loop-2-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-initialization-loop-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-initialization-safety-with-else-if.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-inspect-expression-in-generic-function-multiple-types.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-inspect-expression-with-as-in-generic-function.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-inspect-fallback-with-variant-any-optional.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-interpolation.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-intro-example-hello-2022.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-intro-example-three-loops.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-is-with-free-functions-predicate.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-is-with-polymorphic-types.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-is-with-unnamed-predicates.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-is-with-variable-and-value.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-last-use.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-lifetime-safety-pointer-init-1-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-lifetime-safety-reject-null-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-look-up-parameter-across-unnamed-function.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-main-args.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-more-wildcards.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-print.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-range-operators.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-raw-string-literal-and-interpolation.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_01_char_matcher.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_02_ranges.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_03_wildcard.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_04_start_end.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_05_classes.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_06_boundaries.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_07_short_classes.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_08_alternatives.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_09_groups.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_10_escapes.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_11_group_references.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_12_case_insensitive.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_13_possessive_modifier.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_14_multiline_modifier.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_15_group_modifiers.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_16_perl_syntax_modifier.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_17_comments.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_18_branch_reset.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_19_lookahead.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex_21_atomic_patterns.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-regex-general.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-repeated-call.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-requires-clauses.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-return-tuple-no-identifier-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-return-tuple-no-type-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-return-tuple-operator.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-statement-parse-error.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-statement-scope-parameters.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-stdio-with-raii.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-stdio.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-synthesize-rightshift-and-rightshifteq.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-template-parameter-lists.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-trailing-comma-assert.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-trailing-commas.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-type-and-namespace-aliases.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-type-constraints.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-type-safety-1.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-type-safety-2-with-inspect-expression.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-basics.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-down-upcast.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-inheritance.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-order-independence-and-nesting.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-ordering-via-meta-functions.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-1-provide-everything.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-that-parameters.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-types-value-types-via-meta-functions.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-ufcs-member-access-and-chaining.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-union.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-unsafe.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-variadics.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        ""
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    },
+    {
+      "test_file": "pure2-various-string-literals.cpp2",
+      "raw": [
+        "./regression-tests/run_regression.sh: line 16: ../../stage0_clean/cppfront: No such file or directory",
+        "  Transpile FAILED",
+        "",
+        "Total tests: 185",
+        "Failures: 185",
+        "Post-processing regression results..."
+      ],
+      "transpile": "FAILED",
+      "compile": null,
+      "run": null,
+      "errors": []
+    }
+  ],
+  "summary": {
+    "total_tests": 185,
+    "total_failures_reported": 185,
+    "transpile_failed": 185,
+    "compile_failed": 0,
+    "run_failed": 0
+  }
+}

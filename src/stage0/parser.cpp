@@ -33,8 +33,19 @@ TranslationUnit Parser::parse_translation_unit() {
 }
 
 std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
-    const Token& name = consume(TokenType::Identifier, "Expected identifier at start of declaration");
-    static_cast<void>(consume(TokenType::Colon, "Expected ':' after identifier"));
+    // Support two styles:
+    //  1) traditional: name: () -> type = { ... }
+    //  2) auto-style: auto name() -> type { ... }
+    const Token* name_tok = nullptr;
+    if (check(TokenType::KeywordAuto)) {
+        // consume 'auto' and then expect an identifier
+        advance();
+        name_tok = &consume(TokenType::Identifier, "Expected identifier after 'auto'");
+    } else {
+        name_tok = &consume(TokenType::Identifier, "Expected identifier at start of declaration");
+        static_cast<void>(consume(TokenType::Colon, "Expected ':' after identifier"));
+    }
+    const Token& name = *name_tok;
 
     // Check if it's a type declaration
     if (check(TokenType::KeywordType)) {
@@ -51,9 +62,15 @@ std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
 }
 
 FunctionDecl Parser::parse_function() {
-    const Token& name = consume(TokenType::Identifier, "Expected identifier at start of declaration");
-    static_cast<void>(consume(TokenType::Colon, "Expected ':' after identifier"));
-    return parse_function_after_name(name);
+    const Token* name_tok = nullptr;
+    if (check(TokenType::KeywordAuto)) {
+        advance();
+        name_tok = &consume(TokenType::Identifier, "Expected identifier after 'auto'");
+    } else {
+        name_tok = &consume(TokenType::Identifier, "Expected identifier at start of declaration");
+        static_cast<void>(consume(TokenType::Colon, "Expected ':' after identifier"));
+    }
+    return parse_function_after_name(*name_tok);
 }
 
 FunctionDecl Parser::parse_function_after_name(const Token& name) {
@@ -63,22 +80,31 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
     std::optional<std::string> return_type;
     if (match(TokenType::Arrow)) {
         SourceLocation span_location;
-        auto text = collect_text_until({TokenType::Equals}, &span_location);
+        // Stop collecting return-type text if we hit either '=' (traditional
+        // colon-style function body) or '{' (auto-style function body).
+        auto text = collect_text_until({TokenType::Equals, TokenType::LBrace}, &span_location);
         return_type = trim_copy(text);
         if (return_type->empty()) {
             throw ParseError("Return type body may not be empty");
         }
     }
 
-    static_cast<void>(consume(TokenType::Equals, "Expected '=' before function body"));
-
+    // Accept either an '=' before the function body (traditional syntax)
+    // or a '{' directly (auto-style syntax). If '=' is present then the
+    // body may be a block or an expression; if '{' is present it's a block.
     FunctionBody body;
-    if (match(TokenType::LBrace)) {
+    if (match(TokenType::Equals)) {
+        if (match(TokenType::LBrace)) {
+            body = parse_block();
+        } else {
+            auto expression_text = collect_text_until_semicolon();
+            SourceLocation location = previous().location;
+            body = ExpressionBody {trim_copy(expression_text), location};
+        }
+    } else if (match(TokenType::LBrace)) {
         body = parse_block();
     } else {
-        auto expression_text = collect_text_until_semicolon();
-        SourceLocation location = previous().location;
-        body = ExpressionBody {trim_copy(expression_text), location};
+        throw ParseError("Expected '=' or '{' before function body");
     }
 
     FunctionDecl decl;
@@ -101,39 +127,46 @@ std::vector<Parameter> Parser::parse_parameter_list() {
 
     while (true) {
         // Check for optional parameter kind
-        std::string kind;
+        cppfort::stage0::ParameterKind pkind = cppfort::stage0::ParameterKind::Default;
         if (check(TokenType::KeywordIn)) {
             advance();
-            kind = "in";
+            pkind = cppfort::stage0::ParameterKind::In;
         } else if (check(TokenType::KeywordInout)) {
             advance();
-            kind = "inout";
+            pkind = cppfort::stage0::ParameterKind::InOut;
         } else if (check(TokenType::KeywordOut)) {
             advance();
-            kind = "out";
+            pkind = cppfort::stage0::ParameterKind::Out;
         } else if (check(TokenType::KeywordCopy)) {
             advance();
-            kind = "copy";
+            pkind = cppfort::stage0::ParameterKind::Copy;
         } else if (check(TokenType::KeywordMove)) {
             advance();
-            kind = "move";
+            pkind = cppfort::stage0::ParameterKind::Move;
         } else if (check(TokenType::KeywordForward)) {
             advance();
-            kind = "forward";
+            pkind = cppfort::stage0::ParameterKind::Forward;
         }
 
         const Token& param_name = consume(TokenType::Identifier, "Expected parameter name");
-        static_cast<void>(consume(TokenType::Colon, "Expected ':' between parameter name and type"));
 
         SourceLocation span_location;
-        std::string type_text = collect_text_until({TokenType::Comma, TokenType::RParen}, &span_location);
-        type_text = trim_copy(type_text);
-        // Allow empty type for type deduction
+        std::string type_text;
+        // Allow omitted ':' for type deduction (e.g., unnamed/auto-typed params)
+        if (check(TokenType::Colon)) {
+            static_cast<void>(advance());
+            type_text = collect_text_until({TokenType::Comma, TokenType::RParen}, &span_location);
+            type_text = trim_copy(type_text);
+        } else {
+            // empty type -> deduction
+            type_text = std::string();
+        }
 
-        Parameter param;
-        param.name = param_name.lexeme;
-        param.type = std::move(type_text);
-        param.location = param_name.location;
+    Parameter param;
+    param.name = param_name.lexeme;
+    param.type = std::move(type_text);
+    param.location = param_name.location;
+    param.kind = pkind;
         parameters.push_back(std::move(param));
 
         if (match(TokenType::Comma)) {
