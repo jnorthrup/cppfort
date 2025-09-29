@@ -65,3 +65,10 @@ npm-debug.log*
 # Regression test artifacts
 memvid_temp/
 tools/stage1/tools/
+
+# Build artifacts that may escape build directory
+*.dSYM/
+*stage*_*.cpp
+comprehensive_test_*
+Testing/
+bounds_binary*
