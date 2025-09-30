@@ -737,22 +737,59 @@ public:
 /**
  * NewNode - Allocates memory for a new struct instance.
  * Following Simple compiler Chapter 10.
+ * Extended in Chapter 16 for constructor support.
  *
  * Takes control as input to ensure proper scheduling.
  * Returns a pointer to the newly allocated struct.
  */
 class NewNode : public Node {
     std::string _structType;  // Name of struct type being allocated
+    TypeStruct* _type;        // Chapter 16: Struct type metadata
+    std::unordered_map<std::string, Node*> _fieldInits;  // Chapter 16: Field initializers
 
 public:
-    NewNode(Node* ctrl, const std::string& structType)
-        : Node(), _structType(structType) { setInput(0, ctrl); }
+    NewNode(Node* ctrl, const std::string& structType, TypeStruct* type = nullptr)
+        : Node(), _structType(structType), _type(type) { setInput(0, ctrl); }
 
     std::string label() const override { return "New[" + _structType + "]"; }
     bool hasSideEffects() const override { return true; }
     NodeKind getKind() const override { return NodeKind::ALLOC; }
 
     const std::string& structType() const { return _structType; }
+
+    /**
+     * Chapter 16: Add a field initializer.
+     * Used during constructor parsing: new Point { x=3; y=4; }
+     */
+    void setFieldInit(const std::string& fieldName, Node* value) {
+        _fieldInits[fieldName] = value;
+    }
+
+    /**
+     * Chapter 16: Get field initializer (if any).
+     */
+    Node* getFieldInit(const std::string& fieldName) const {
+        auto it = _fieldInits.find(fieldName);
+        return it != _fieldInits.end() ? it->second : nullptr;
+    }
+
+    /**
+     * Chapter 16: Get all field initializers.
+     */
+    const std::unordered_map<std::string, Node*>& fieldInits() const {
+        return _fieldInits;
+    }
+
+    /**
+     * Chapter 16: Validate that all required fields are initialized.
+     * Returns true if valid, false otherwise.
+     */
+    bool validateInitialization() const;
+
+    /**
+     * Chapter 16: Get the TypeStruct metadata.
+     */
+    TypeStruct* getStructType() const { return _type; }
 };
 
 /**

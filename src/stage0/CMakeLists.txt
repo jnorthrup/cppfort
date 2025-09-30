@@ -11,6 +11,7 @@ set(STAGE0_SOURCES
     son_parser.cpp
     iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
     gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
+    pattern_matcher.cpp  # Band 5: N-way pattern-based lowering
     # mlir_emitter.cpp  # Uncomment when MLIR headers available
 )
 
@@ -50,6 +51,10 @@ target_link_libraries(test_band3 PRIVATE stage0)
 # Band 5 bitwise operations tests (Chapter 16)
 add_executable(test_band5 ../../tests/test_band5.cpp)
 target_link_libraries(test_band5 PRIVATE stage0)
+
+# Chapter 16 constructors and final fields test
+add_executable(test_chapter16 test_chapter16.cpp)
+target_link_libraries(test_chapter16 PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES

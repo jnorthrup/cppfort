@@ -1031,4 +1031,41 @@ Node* ArrayLengthNode::peephole() {
     return this;
 }
 
+// ============================================================================
+// Chapter 16: Constructor Validation
+// ============================================================================
+
+bool NewNode::validateInitialization() const {
+    if (!_type) {
+        // No type metadata - cannot validate
+        return true;
+    }
+
+    // Check each field in the struct
+    for (const Field& field : _type->fields()) {
+        // Check if field has an initializer in the allocation site
+        Node* init = getFieldInit(field.name);
+
+        // If no initializer at allocation site, check if field has default value
+        if (!init) {
+            init = field.initialValue;
+        }
+
+        // Final fields MUST be initialized
+        if (field.isFinal && !init) {
+            // TODO: Report error with field name
+            return false;
+        }
+
+        // Non-nullable pointer types MUST be initialized
+        TypePointer* ptrType = dynamic_cast<TypePointer*>(field.type);
+        if (ptrType && !ptrType->isNullable() && !init) {
+            // TODO: Report error with field name
+            return false;
+        }
+    }
+
+    return true;
+}
+
 } // namespace cppfort::ir

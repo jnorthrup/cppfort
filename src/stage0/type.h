@@ -4,8 +4,13 @@
 #include <memory>
 #include <string>
 #include <limits>
+#include <vector>
+#include <unordered_map>
 
 namespace cppfort::ir {
+
+// Forward declarations
+class Node;
 
 /**
  * Base class for types in the Sea of Nodes type system.
@@ -348,6 +353,111 @@ public:
             result += "[" + std::to_string(_length) + "]";
         }
         return result;
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 16: Field Metadata
+ *
+ * Represents a field within a struct, tracking:
+ * - Field name
+ * - Field type
+ * - Whether the field is final (immutable after initialization)
+ * - Initial value expression (if any)
+ * - Offset within struct layout
+ */
+struct Field {
+    std::string name;       // Field name
+    Type* type;             // Field type
+    bool isFinal;           // Is this field final (immutable)?
+    Node* initialValue;     // Initial value expression (may be null)
+    int offset;             // Byte offset in struct layout
+
+    Field(const std::string& n, Type* t, bool final = false, Node* init = nullptr, int off = 0)
+        : name(n), type(t), isFinal(final), initialValue(init), offset(off) {}
+};
+
+/**
+ * Chapter 16: Struct Types
+ *
+ * Represents a struct type with named fields.
+ * Tracks field metadata including finality, initial values, and layout.
+ */
+class TypeStruct : public Type {
+private:
+    std::string _name;                  // Struct name
+    std::vector<Field> _fields;         // Ordered list of fields
+    std::unordered_map<std::string, int> _fieldMap;  // Name -> index mapping
+    bool _nullable;                     // Can struct reference be null?
+    int _totalSize;                     // Total size in bytes
+
+    TypeStruct(const std::string& name, bool nullable = false)
+        : _name(name), _nullable(nullable), _totalSize(0) {}
+
+public:
+    /**
+     * Create a new struct type.
+     */
+    static TypeStruct* create(const std::string& name, bool nullable = false);
+
+    /**
+     * Add a field to this struct.
+     * Returns the field's index.
+     */
+    int addField(const std::string& name, Type* type, bool isFinal = false, Node* initVal = nullptr);
+
+    /**
+     * Lookup a field by name.
+     * Returns nullptr if not found.
+     */
+    const Field* getField(const std::string& name) const;
+
+    /**
+     * Get field by index.
+     */
+    const Field& getField(int index) const { return _fields[index]; }
+
+    /**
+     * Get all fields.
+     */
+    const std::vector<Field>& fields() const { return _fields; }
+
+    /**
+     * Check if a field exists.
+     */
+    bool hasField(const std::string& name) const {
+        return _fieldMap.find(name) != _fieldMap.end();
+    }
+
+    /**
+     * Get the number of fields.
+     */
+    int fieldCount() const { return _fields.size(); }
+
+    /**
+     * Check if all required fields (final and non-nullable) have initial values.
+     */
+    bool isFullyInitialized() const;
+
+    /**
+     * Get struct name.
+     */
+    const std::string& name() const { return _name; }
+
+    /**
+     * Check if nullable.
+     */
+    bool isNullable() const { return _nullable; }
+
+    /**
+     * Get total size.
+     */
+    int totalSize() const { return _totalSize; }
+
+    std::string toString() const override {
+        return _name + (_nullable ? "?" : "");
     }
 
     Type* meet(Type* t) override;

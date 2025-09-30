@@ -344,4 +344,89 @@ Type* TypeArray::meet(Type* t) {
     return new TypeArray(elem_meet, length, nullable);
 }
 
+// ============================================================================
+// Chapter 16: Struct Types
+// ============================================================================
+
+// Struct type cache - indexed by name
+static std::unordered_map<std::string, TypeStruct*> struct_type_cache;
+
+TypeStruct* TypeStruct::create(const std::string& name, bool nullable) {
+    // Check cache for non-nullable version
+    std::string cache_key = name + (nullable ? "?" : "");
+    auto it = struct_type_cache.find(cache_key);
+    if (it != struct_type_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeStruct(name, nullable);
+    struct_type_cache[cache_key] = type;
+    return type;
+}
+
+int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node* initVal) {
+    // Check for duplicate field names
+    if (_fieldMap.find(name) != _fieldMap.end()) {
+        // Field already exists - error
+        return -1;
+    }
+
+    int offset = _totalSize;
+    int index = _fields.size();
+
+    // Estimate field size (simplified - in real compiler would use proper layout)
+    // For now, just use 8 bytes per field
+    _totalSize += 8;
+
+    _fields.emplace_back(name, type, isFinal, initVal, offset);
+    _fieldMap[name] = index;
+
+    return index;
+}
+
+const Field* TypeStruct::getField(const std::string& name) const {
+    auto it = _fieldMap.find(name);
+    if (it == _fieldMap.end()) {
+        return nullptr;
+    }
+    return &_fields[it->second];
+}
+
+bool TypeStruct::isFullyInitialized() const {
+    for (const Field& field : _fields) {
+        // Final fields must have an initial value
+        if (field.isFinal && field.initialValue == nullptr) {
+            return false;
+        }
+
+        // Non-nullable pointer types must have an initial value
+        // (simplified - would check TypePointer->isNullable())
+        if (field.initialValue == nullptr) {
+            // Check if type requires initialization
+            TypePointer* ptrType = dynamic_cast<TypePointer*>(field.type);
+            if (ptrType && !ptrType->isNullable()) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+Type* TypeStruct::meet(Type* t) {
+    if (!t) return Type::BOTTOM;
+    if (t->isTop()) return this;
+    if (t->isBottom()) return t;
+
+    TypeStruct* other = dynamic_cast<TypeStruct*>(t);
+    if (!other) return Type::BOTTOM;
+
+    // Struct types must have the same name to meet
+    if (_name != other->_name) return Type::BOTTOM;
+
+    // Meet of nullable and non-nullable is nullable
+    bool nullable = _nullable || other->_nullable;
+
+    return create(_name, nullable);
+}
+
 } // namespace cppfort::ir
