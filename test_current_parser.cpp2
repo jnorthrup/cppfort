@@ -1,0 +1,32 @@
+// Test file to verify current parser capabilities
+// This demonstrates what the parser currently supports
+
+// Basic type declaration (supported)
+mytype: type = {
+    x: std::string;
+    y: int;
+    
+    // Function with parameter kinds (supported)
+    get: (this) -> std::string = {
+        return this.x;
+    }
+    
+    set: (inout this, new_val: std::string) = {
+        this.x = new_val;
+    }
+}
+
+// Function with parameter kinds (supported)
+process_data: (in data: std::vector<int>, out result: int) = {
+    result = 0;
+    for data do (in value) {
+        result += value;
+    }
+}
+
+// Namespace (supported)
+utils: namespace = {
+    helper: (in x: int) -> int = {
+        return x * 2;
+    }
+}

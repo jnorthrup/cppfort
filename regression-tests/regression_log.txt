@@ -1,1564 +1,760 @@
-Regression test log - Mon Sep 29 15:14:20 CDT 2025
+Regression test log - Tue Sep 30 05:11:53 CDT 2025
 Using cppfront: ../build/stage0_cli transpile
-Testing mixed-allcpp1-hello.cpp2
-Wrote "mixed-allcpp1-hello.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing mixed-as-for-variant-20-types.cpp2
-Error: Expected ':' after identifier at 1:9
-  Transpile FAILED
-
-Testing mixed-bounds-check.cpp2
-Wrote "mixed-bounds-check.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing mixed-bounds-safety-with-assert-2.cpp2
-Error: Expected '(' after assert at 12:11
-  Transpile FAILED
-
-Testing mixed-bounds-safety-with-assert.cpp2
-Error: Expected ':' after identifier at 16:14
-  Transpile FAILED
-
-Testing mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
-Error: Expected '(' to start parameter list at 1:4
-  Transpile FAILED
-
-Testing mixed-bugfix-for-double-pound-else-error.cpp2
-Wrote "mixed-bugfix-for-double-pound-else-error.cpp"
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
-
-Testing mixed-bugfix-for-literal-as-nttp.cpp2
-Wrote "mixed-bugfix-for-literal-as-nttp.cpp"
-  Transpile OK
-mixed-bugfix-for-literal-as-nttp.cpp:19:33: error: no member named '_' in namespace 'std::chrono_literals'
-   19 |     using std::chrono_literals::_;
-      |           ~~~~~~~~~~~~~~~~~~~~~~^
-mixed-bugfix-for-literal-as-nttp.cpp:20:15: error: expected ')'
-   20 |     assert(10 as i32 == 10);
-      |               ^
-mixed-bugfix-for-literal-as-nttp.cpp:20:11: note: to match this '('
-   20 |     assert(10 as i32 == 10);
-      |           ^
-mixed-bugfix-for-literal-as-nttp.cpp:21:17: error: expected ')'
-   21 |     assert(10LL as i32 == 10);
-      |                 ^
-mixed-bugfix-for-literal-as-nttp.cpp:21:11: note: to match this '('
-   21 |     assert(10LL as i32 == 10);
-      |           ^
-mixed-bugfix-for-literal-as-nttp.cpp:22:14: error: no matching literal operator for call to 'operator""s' with argument of type 'unsigned long long' or 'const char *', and no matching literal operator template
-   22 |     assert(10s as std::chrono::seconds == 10s);
-      |              ^
-4 errors generated.
-  Compile FAILED
-
-Testing mixed-bugfix-for-ufcs-non-local.cpp2
-Error: Expected identifier at start of declaration at 1:1
-  Transpile FAILED
-
-Testing mixed-captures-in-expressions-and-postconditions.cpp2
-Error: Expected '(' to start parameter list at 17:6
-  Transpile FAILED
-
-Testing mixed-default-arguments.cpp2
-Error: Expected ')' after parameter list at 1:14
-  Transpile FAILED
-
-Testing mixed-fixed-type-aliases.cpp2
-Error: Expected identifier at start of declaration at 5:1
-  Transpile FAILED
-
-Testing mixed-float-literals.cpp2
-Error: Expected ':' after identifier at 1:6
-  Transpile FAILED
-
-Testing mixed-forwarding.cpp2
-Error: Expected ':' after identifier at 4:8
-  Transpile FAILED
-
-Testing mixed-function-expression-and-std-for-each.cpp2
-Error: Expected identifier at start of declaration at 27:1
-  Transpile FAILED
-
-Testing mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2
-Wrote "mixed-function-expression-and-std-ranges-for-each-with-capture.cpp"
-  Transpile OK
-mixed-function-expression-and-std-ranges-for-each-with-capture.cpp:19:30: error: no viable conversion from 'const char[5]' to 'std::vector<std::string>' (aka 'vector<basic_string<char>>')
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                              ^     ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:261:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'const vector<string> &' for 1st argument
-  261 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(const vector& __x)
-      |                                                       ^      ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:273:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'initializer_list<value_type>' (aka 'initializer_list<std::string>') for 1st argument
-  273 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(initializer_list<value_type> __il) {
-      |                                                       ^      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:289:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'vector<string> &&' for 1st argument
-  289 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(vector&& __x)
-      |                                                       ^      ~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:135:64: note: explicit constructor is not a candidate
-  135 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(const allocator_type& __a)
-      |                                                                ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:144:64: note: explicit constructor is not a candidate
-  144 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(size_type __n) {
-      |                                                                ^
-mixed-function-expression-and-std-ranges-for-each-with-capture.cpp:21:34: error: expected expression
-   21 |     std::ranges::for_each ( vec, :(x) = std::cout << x << y$ );
-      |                                  ^
-mixed-function-expression-and-std-ranges-for-each-with-capture.cpp:22:21: error: expected expression
-   22 |     auto callback = :(inout x) = x += "-ish";
-      |                     ^
-mixed-function-expression-and-std-ranges-for-each-with-capture.cpp:24:9: error: expected '(' after 'for'
-   24 |     for vec do (str) std::cout << str << "\n";
-      |         ^
-mixed-function-expression-and-std-ranges-for-each-with-capture.cpp:19:37: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                                     ^~~~~~~
-1 warning and 4 errors generated.
-  Compile FAILED
-
-Testing mixed-function-expression-and-std-ranges-for-each.cpp2
-Wrote "mixed-function-expression-and-std-ranges-for-each.cpp"
-  Transpile OK
-mixed-function-expression-and-std-ranges-for-each.cpp:19:30: error: no viable conversion from 'const char[5]' to 'std::vector<std::string>' (aka 'vector<basic_string<char>>')
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                              ^     ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:261:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'const vector<string> &' for 1st argument
-  261 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(const vector& __x)
-      |                                                       ^      ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:273:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'initializer_list<value_type>' (aka 'initializer_list<std::string>') for 1st argument
-  273 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(initializer_list<value_type> __il) {
-      |                                                       ^      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:289:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'vector<string> &&' for 1st argument
-  289 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(vector&& __x)
-      |                                                       ^      ~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:135:64: note: explicit constructor is not a candidate
-  135 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(const allocator_type& __a)
-      |                                                                ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:144:64: note: explicit constructor is not a candidate
-  144 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(size_type __n) {
-      |                                                                ^
-mixed-function-expression-and-std-ranges-for-each.cpp:20:34: error: expected expression
-   20 |     std::ranges::for_each ( vec, :(x) = std::cout << x << "\n" );
-      |                                  ^
-mixed-function-expression-and-std-ranges-for-each.cpp:21:21: error: expected expression
-   21 |     auto callback = :(inout x) = x += "-ish";
-      |                     ^
-mixed-function-expression-and-std-ranges-for-each.cpp:23:9: error: expected '(' after 'for'
-   23 |     for vec do (str) std::cout << str << "\n";
-      |         ^
-mixed-function-expression-and-std-ranges-for-each.cpp:19:37: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                                     ^~~~~~~
-1 warning and 4 errors generated.
-  Compile FAILED
-
-Testing mixed-function-expression-with-pointer-capture.cpp2
-Wrote "mixed-function-expression-with-pointer-capture.cpp"
-  Transpile OK
-mixed-function-expression-with-pointer-capture.cpp:19:30: error: no viable conversion from 'const char[5]' to 'std::vector<std::string>' (aka 'vector<basic_string<char>>')
-   19 |     std::vector<std::string> vec = ("hello", "2023");
-      |                              ^     ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:261:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'const vector<string> &' for 1st argument
-  261 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(const vector& __x)
-      |                                                       ^      ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:273:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'initializer_list<value_type>' (aka 'initializer_list<std::string>') for 1st argument
-  273 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(initializer_list<value_type> __il) {
-      |                                                       ^      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:289:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'vector<string> &&' for 1st argument
-  289 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(vector&& __x)
-      |                                                       ^      ~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:135:64: note: explicit constructor is not a candidate
-  135 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(const allocator_type& __a)
-      |                                                                ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:144:64: note: explicit constructor is not a candidate
-  144 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(size_type __n) {
-      |                                                                ^
-mixed-function-expression-with-pointer-capture.cpp:21:33: error: expected expression
-   21 |     std::ranges::for_each( vec, :(x) = std::cout << &y$*.c_str() << x << &y$* );
-      |                                 ^
-mixed-function-expression-with-pointer-capture.cpp:22:21: error: expected expression
-   22 |     auto callback = :(inout x) = x += "-ish";
-      |                     ^
-mixed-function-expression-with-pointer-capture.cpp:24:9: error: expected '(' after 'for'
-   24 |     for vec do (str) std::cout << str << "\n";
-      |         ^
-mixed-function-expression-with-pointer-capture.cpp:19:37: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> vec = ("hello", "2023");
-      |                                     ^~~~~~~
-1 warning and 4 errors generated.
-  Compile FAILED
-
-Testing mixed-function-expression-with-repeated-capture.cpp2
-Wrote "mixed-function-expression-with-repeated-capture.cpp"
-  Transpile OK
-mixed-function-expression-with-repeated-capture.cpp:19:30: error: no viable conversion from 'const char[5]' to 'std::vector<std::string>' (aka 'vector<basic_string<char>>')
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                              ^     ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:261:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'const vector<string> &' for 1st argument
-  261 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(const vector& __x)
-      |                                                       ^      ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:273:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'initializer_list<value_type>' (aka 'initializer_list<std::string>') for 1st argument
-  273 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(initializer_list<value_type> __il) {
-      |                                                       ^      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:289:55: note: candidate constructor not viable: no known conversion from 'const char[5]' to 'vector<string> &&' for 1st argument
-  289 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(vector&& __x)
-      |                                                       ^      ~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:135:64: note: explicit constructor is not a candidate
-  135 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(const allocator_type& __a)
-      |                                                                ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:144:64: note: explicit constructor is not a candidate
-  144 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(size_type __n) {
-      |                                                                ^
-mixed-function-expression-with-repeated-capture.cpp:21:34: error: expected expression
-   21 |     std::ranges::for_each ( vec, :(x) = std::cout << y$ << x << y$ );
-      |                                  ^
-mixed-function-expression-with-repeated-capture.cpp:22:21: error: expected expression
-   22 |     auto callback = :(inout x) = x += "-ish";
-      |                     ^
-mixed-function-expression-with-repeated-capture.cpp:24:9: error: expected '(' after 'for'
-   24 |     for vec do (str) std::cout << str << "\n";
-      |         ^
-mixed-function-expression-with-repeated-capture.cpp:19:37: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> vec = ("hello", "2022");
-      |                                     ^~~~~~~
-1 warning and 4 errors generated.
-  Compile FAILED
-
-Testing mixed-hello.cpp2
-Wrote "mixed-hello.cpp"
-  Transpile OK
-mixed-hello.cpp:20:5: error: use of undeclared identifier 'decorate'
-   20 |     decorate(s);
-      |     ^
-1 error generated.
-  Compile FAILED
-
-Testing mixed-increment-decrement.cpp2
-Error: Expected '(' to start parameter list at 2:11
-  Transpile FAILED
-
-Testing mixed-initialization-safety-1-error.cpp2
-Error: Expected '=' or '{' before function body
-  Transpile FAILED
-
-Testing mixed-initialization-safety-2-error.cpp2
-Error: Expected '=' or '{' before function body
-  Transpile FAILED
-
-Testing mixed-initialization-safety-3-contract-violation.cpp2
-Error: Expected identifier at start of declaration at 12:7
-  Transpile FAILED
-
-Testing mixed-initialization-safety-3.cpp2
-Error: Expected identifier at start of declaration at 10:7
-  Transpile FAILED
-
-Testing mixed-inspect-templates.cpp2
-Error: Expected ':' after identifier at 5:10
-  Transpile FAILED
-
-Testing mixed-inspect-values-2.cpp2
-Error: Expected ':' after identifier at 5:11
-  Transpile FAILED
-
-Testing mixed-inspect-values.cpp2
-Error: Expected identifier after 'auto' at 1:6
-  Transpile FAILED
-
-Testing mixed-inspect-with-typeof-of-template-arg-list.cpp2
-Error: Expected ':' after identifier at 2:10
-  Transpile FAILED
-
-Testing mixed-intro-example-three-loops.cpp2
-Error: Expected parameter name at 8:12
-  Transpile FAILED
-
-Testing mixed-intro-for-with-counter-include-last.cpp2
-Error: Expected identifier at start of declaration at 9:1
-  Transpile FAILED
-
-Testing mixed-is-as-value-with-variant.cpp2
-Error: Expected identifier after 'auto' at 1:6
-  Transpile FAILED
-
-Testing mixed-is-as-variant.cpp2
-Error: Expected ':' after identifier at 54:9
-  Transpile FAILED
-
-Testing mixed-lifetime-safety-and-null-contracts.cpp2
-Error: Expected ')' after parameter list at 21:30
-  Transpile FAILED
-
-Testing mixed-lifetime-safety-pointer-init-1-error.cpp2
-Wrote "mixed-lifetime-safety-pointer-init-1-error.cpp"
-  Transpile OK
-mixed-lifetime-safety-pointer-init-1-error.cpp:20:10: error: expected '(' for function-style cast or type construction
-   20 |     *int p;
-      |      ~~~ ^
-mixed-lifetime-safety-pointer-init-1-error.cpp:21:8: error: expected '(' after 'if'
-   21 |     if std::rand()%2 { // p = nullptr; } else { // p = &x; } print_and_decorate( *p );
-      |        ^
-mixed-lifetime-safety-pointer-init-1-error.cpp:28:2: error: expected '}'
-   28 | }
-      |  ^
-mixed-lifetime-safety-pointer-init-1-error.cpp:18:30: note: to match this '{'
-   18 | auto main() -> int /*kinds:*/{
-      |                              ^
-3 errors generated.
-  Compile FAILED
-
-Testing mixed-lifetime-safety-pointer-init-2-error.cpp2
-Error: Expected ':' after identifier at 17:23
-  Transpile FAILED
-
-Testing mixed-lifetime-safety-pointer-init-3-error.cpp2
-Error: Expected identifier at start of declaration at 13:5
-  Transpile FAILED
-
-Testing mixed-lifetime-safety-pointer-init-4.cpp2
-Error: Expected identifier at start of declaration at 14:5
-  Transpile FAILED
-
-Testing mixed-multiple-return-values.cpp2
-Error: Expected identifier at start of declaration at 15:5
-  Transpile FAILED
-
-Testing mixed-out-destruction.cpp2
-Error: Unexpected character '~' at 7:5
-  Transpile FAILED
-
-Testing mixed-parameter-passing-generic-out.cpp2
-Error: Expected ':' after identifier at 3:8
-  Transpile FAILED
-
-Testing mixed-parameter-passing-with-forward.cpp2
-Error: Expected identifier at start of declaration at 25:5
-  Transpile FAILED
-
-Testing mixed-parameter-passing.cpp2
-Error: Expected identifier at start of declaration at 24:5
-  Transpile FAILED
-
-Testing mixed-postexpression-with-capture.cpp2
-Error: Expected '(' to start parameter list at 14:6
-  Transpile FAILED
-
-Testing mixed-postfix-expression-custom-formatting.cpp2
-Wrote "mixed-postfix-expression-custom-formatting.cpp"
-  Transpile OK
-mixed-postfix-expression-custom-formatting.cpp:18:24: error: redefinition of parameter '_'
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                        ^
-mixed-postfix-expression-custom-formatting.cpp:18:16: note: previous declaration is here
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                ^
-mixed-postfix-expression-custom-formatting.cpp:18:32: error: redefinition of parameter '_'
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                                ^
-mixed-postfix-expression-custom-formatting.cpp:18:16: note: previous declaration is here
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                ^
-mixed-postfix-expression-custom-formatting.cpp:18:40: error: redefinition of parameter '_'
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                                        ^
-mixed-postfix-expression-custom-formatting.cpp:18:16: note: previous declaration is here
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                ^
-mixed-postfix-expression-custom-formatting.cpp:18:48: error: redefinition of parameter '_'
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                                                ^
-mixed-postfix-expression-custom-formatting.cpp:18:16: note: previous declaration is here
-   18 | auto call(auto _, auto _, auto _, auto _, auto _) -> void /*kinds:Default,Default,Default,Default,Default*/{
-      |                ^
-mixed-postfix-expression-custom-formatting.cpp:22:30: error: expected expression
-   22 |     return call( a, a.b(a.c)*++, "hello", /* polite greeting goes here */ " there", a.d.e( a.f*.g()++, // because f is foobar a.h.i(), a.j(a.k,a.l) ) );
-      |                              ^
-mixed-postfix-expression-custom-formatting.cpp:22:96: error: expected expression
-   22 |     return call( a, a.b(a.c)*++, "hello", /* polite greeting goes here */ " there", a.d.e( a.f*.g()++, // because f is foobar a.h.i(), a.j(a.k,a.l) ) );
-      |                                                                                                ^
-mixed-postfix-expression-custom-formatting.cpp:23:1: error: expected expression
-   23 | }
-      | ^
-mixed-postfix-expression-custom-formatting.cpp:27:2: error: expected '}'
-   27 | }
-      |  ^
-mixed-postfix-expression-custom-formatting.cpp:21:51: note: to match this '{'
-   21 | auto test(auto a) -> std::string /*kinds:Default*/{
-      |                                                   ^
-8 errors generated.
-  Compile FAILED
-
-Testing mixed-string-interpolation.cpp2
-Error: Expected ':' after identifier at 6:8
-  Transpile FAILED
-
-Testing mixed-test-parens.cpp2
-Error: Expected ':' after identifier at 3:9
-  Transpile FAILED
-
-Testing mixed-type-safety-1.cpp2
-Error: Unexpected character '~' at 7:31
-  Transpile FAILED
-
-Testing mixed-ufcs-multiple-template-arguments.cpp2
-Error: Expected ':' after identifier at 4:10
-  Transpile FAILED
-
-Testing pure2-assert-expected-not-null.cpp2
-Wrote "pure2-assert-expected-not-null.cpp"
-  Transpile OK
-pure2-assert-expected-not-null.cpp:19:22: error: expected unqualified-id
-   19 |     auto up = unique.new<int>(1);
-      |                      ^
-pure2-assert-expected-not-null.cpp:19:15: error: use of undeclared identifier 'unique'; did you mean 'std::ranges::unique'?
-   19 |     auto up = unique.new<int>(1);
-      |               ^~~~~~
-      |               std::ranges::unique
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/ranges_unique.h:68:23: note: 'std::ranges::unique' declared here
-   68 | inline constexpr auto unique = __unique{};
-      |                       ^
-pure2-assert-expected-not-null.cpp:20:22: error: expected unqualified-id
-   20 |     auto sp = shared.new<int>(2);
-      |                      ^
-pure2-assert-expected-not-null.cpp:20:15: error: use of undeclared identifier 'shared'
-   20 |     auto sp = shared.new<int>(2);
-      |               ^
-pure2-assert-expected-not-null.cpp:22:10: error: no member named 'expected' in namespace 'std'
-   22 |     std::expected<int, bool> ex = (4);
-      |     ~~~~~^
-pure2-assert-expected-not-null.cpp:22:22: error: expected '(' for function-style cast or type construction
-   22 |     std::expected<int, bool> ex = (4);
-      |                   ~~~^
-pure2-assert-expected-not-null.cpp:23:22: error: invalid argument type 'std::optional<int>' to unary expression
-   23 |     return up* + sp* + op* + ex*;
-      |                      ^ ~~
-pure2-assert-expected-not-null.cpp:23:33: error: expected expression
-   23 |     return up* + sp* + op* + ex*;
-      |                                 ^
-pure2-assert-expected-not-null.cpp:23:30: error: use of undeclared identifier 'ex'
-   23 |     return up* + sp* + op* + ex*;
-      |                              ^
-pure2-assert-expected-not-null.cpp:27:10: error: no member named 'expected' in namespace 'std'
-   27 |     std::expected<int, bool> ex = std::unexpected(false);
-      |     ~~~~~^
-pure2-assert-expected-not-null.cpp:27:22: error: expected '(' for function-style cast or type construction
-   27 |     std::expected<int, bool> ex = std::unexpected(false);
-      |                   ~~~^
-pure2-assert-expected-not-null.cpp:28:15: error: expected expression
-   28 |     return ex*;
-      |               ^
-pure2-assert-expected-not-null.cpp:28:12: error: use of undeclared identifier 'ex'
-   28 |     return ex*;
-      |            ^
-13 errors generated.
-  Compile FAILED
-
-Testing pure2-assert-optional-not-null.cpp2
-Wrote "pure2-assert-optional-not-null.cpp"
-  Transpile OK
-pure2-assert-optional-not-null.cpp:19:22: error: expected unqualified-id
-   19 |     auto up = unique.new<int>(1);
-      |                      ^
-pure2-assert-optional-not-null.cpp:19:15: error: use of undeclared identifier 'unique'; did you mean 'std::ranges::unique'?
-   19 |     auto up = unique.new<int>(1);
-      |               ^~~~~~
-      |               std::ranges::unique
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/ranges_unique.h:68:23: note: 'std::ranges::unique' declared here
-   68 | inline constexpr auto unique = __unique{};
-      |                       ^
-pure2-assert-optional-not-null.cpp:20:22: error: expected unqualified-id
-   20 |     auto sp = shared.new<int>(2);
-      |                      ^
-pure2-assert-optional-not-null.cpp:20:15: error: use of undeclared identifier 'shared'
-   20 |     auto sp = shared.new<int>(2);
-      |               ^
-pure2-assert-optional-not-null.cpp:22:22: error: invalid argument type 'std::optional<int>' to unary expression
-   22 |     return up* + sp* + op*;
-      |                      ^ ~~
-pure2-assert-optional-not-null.cpp:22:27: error: expected expression
-   22 |     return up* + sp* + op*;
-      |                           ^
-pure2-assert-optional-not-null.cpp:27:15: error: expected expression
-   27 |     return op*;
-      |               ^
-7 errors generated.
-  Compile FAILED
-
-Testing pure2-assert-shared-ptr-not-null.cpp2
-Wrote "pure2-assert-shared-ptr-not-null.cpp"
-  Transpile OK
-pure2-assert-shared-ptr-not-null.cpp:19:22: error: expected unqualified-id
-   19 |     auto up = unique.new<int>(1);
-      |                      ^
-pure2-assert-shared-ptr-not-null.cpp:19:15: error: use of undeclared identifier 'unique'; did you mean 'std::ranges::unique'?
-   19 |     auto up = unique.new<int>(1);
-      |               ^~~~~~
-      |               std::ranges::unique
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/ranges_unique.h:68:23: note: 'std::ranges::unique' declared here
-   68 | inline constexpr auto unique = __unique{};
-      |                       ^
-pure2-assert-shared-ptr-not-null.cpp:20:22: error: expected unqualified-id
-   20 |     auto sp = shared.new<int>(2);
-      |                      ^
-pure2-assert-shared-ptr-not-null.cpp:20:15: error: use of undeclared identifier 'shared'
-   20 |     auto sp = shared.new<int>(2);
-      |               ^
-pure2-assert-shared-ptr-not-null.cpp:22:22: error: invalid argument type 'std::optional<int>' to unary expression
-   22 |     return up* + sp* + op*;
-      |                      ^ ~~
-pure2-assert-shared-ptr-not-null.cpp:22:27: error: expected expression
-   22 |     return up* + sp* + op*;
-      |                           ^
-pure2-assert-shared-ptr-not-null.cpp:28:15: error: expected expression
-   28 |     return sp*;
-      |               ^
-7 errors generated.
-  Compile FAILED
-
-Testing pure2-assert-unique-ptr-not-null.cpp2
-Wrote "pure2-assert-unique-ptr-not-null.cpp"
-  Transpile OK
-pure2-assert-unique-ptr-not-null.cpp:19:22: error: expected unqualified-id
-   19 |     auto up = unique.new<int>(1);
-      |                      ^
-pure2-assert-unique-ptr-not-null.cpp:19:15: error: use of undeclared identifier 'unique'; did you mean 'std::ranges::unique'?
-   19 |     auto up = unique.new<int>(1);
-      |               ^~~~~~
-      |               std::ranges::unique
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/ranges_unique.h:68:23: note: 'std::ranges::unique' declared here
-   68 | inline constexpr auto unique = __unique{};
-      |                       ^
-pure2-assert-unique-ptr-not-null.cpp:20:22: error: expected unqualified-id
-   20 |     auto sp = shared.new<int>(2);
-      |                      ^
-pure2-assert-unique-ptr-not-null.cpp:20:15: error: use of undeclared identifier 'shared'
-   20 |     auto sp = shared.new<int>(2);
-      |               ^
-pure2-assert-unique-ptr-not-null.cpp:22:22: error: invalid argument type 'std::optional<int>' to unary expression
-   22 |     return up* + sp* + op*;
-      |                      ^ ~~
-pure2-assert-unique-ptr-not-null.cpp:22:27: error: expected expression
-   22 |     return up* + sp* + op*;
-      |                           ^
-pure2-assert-unique-ptr-not-null.cpp:28:15: error: expected expression
-   28 |     return up*;
-      |               ^
-7 errors generated.
-  Compile FAILED
-
-Testing pure2-bounds-safety-pointer-arithmetic-error.cpp2
-Error: Unexpected character '~' at 14:14
-  Transpile FAILED
-
-Testing pure2-bounds-safety-span.cpp2
-Error: Expected identifier at start of declaration at 13:1
-  Transpile FAILED
-
-Testing pure2-break-continue.cpp2
-Error: Expected ':' after identifier at 30:23
-  Transpile FAILED
-
-Testing pure2-bugfix-for-assert-capture-error.cpp2
-Wrote "pure2-bugfix-for-assert-capture-error.cpp"
-  Transpile OK
-pure2-bugfix-for-assert-capture-error.cpp:19:17: error: expected ')'
-   19 |     assert(10LL as i32 == foo$);
-      |                 ^
-pure2-bugfix-for-assert-capture-error.cpp:19:11: note: to match this '('
-   19 |     assert(10LL as i32 == foo$);
-      |           ^
-1 error generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-assign-expression-list.cpp2
-Error: Expected ';' after assert at 5:26
-  Transpile FAILED
-
-Testing pure2-bugfix-for-bad-capture-error.cpp2
-Wrote "pure2-bugfix-for-bad-capture-error.cpp"
-  Transpile OK
-pure2-bugfix-for-bad-capture-error.cpp:19:17: error: expected ')'
-   19 |     assert(10LL as i32 == foo$);
-      |                 ^
-pure2-bugfix-for-bad-capture-error.cpp:19:11: note: to match this '('
-   19 |     assert(10LL as i32 == foo$);
-      |           ^
-1 error generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-bad-decltype-error.cpp2
-Wrote "pure2-bugfix-for-bad-decltype-error.cpp"
-  Transpile OK
-pure2-bugfix-for-bad-decltype-error.cpp:19:17: error: expected a type
-   19 |     auto f = new<int>(0);
-      |                 ^
-pure2-bugfix-for-bad-decltype-error.cpp:20:12: error: unknown type name 'f'
-   20 |     (void)(f is decltype.f));
-      |            ^
-pure2-bugfix-for-bad-decltype-error.cpp:20:14: error: expected ')'
-   20 |     (void)(f is decltype.f));
-      |              ^
-pure2-bugfix-for-bad-decltype-error.cpp:20:11: note: to match this '('
-   20 |     (void)(f is decltype.f));
-      |           ^
-3 errors generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-bad-parameter-error.cpp2
-Error: Expected '(' to start parameter list at 1:8
-  Transpile FAILED
-
-Testing pure2-bugfix-for-bad-using-error.cpp2
-Error: Expected ';' after expression at 4:1
-  Transpile FAILED
-
-Testing pure2-bugfix-for-declaration-equal-error.cpp2
-Wrote "pure2-bugfix-for-declaration-equal-error.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing pure2-bugfix-for-discard-precedence.cpp2
-Wrote "pure2-bugfix-for-discard-precedence.cpp"
-  Transpile OK
-pure2-bugfix-for-discard-precedence.cpp:19:5: error: unknown type name 'number'
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |     ^
-pure2-bugfix-for-discard-precedence.cpp:19:13: error: unexpected type name 'i32': expected expression
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |             ^
-pure2-bugfix-for-discard-precedence.cpp:19:30: error: use of undeclared identifier 'out'
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |                              ^
-pure2-bugfix-for-discard-precedence.cpp:19:18: error: 'operator=' cannot be the name of a variable or data member
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |                  ^
-pure2-bugfix-for-discard-precedence.cpp:19:74: error: use of undeclared identifier 'inout'
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |                                                                          ^
-pure2-bugfix-for-discard-precedence.cpp:19:62: error: 'operator+' cannot be the name of a variable or data member
-   19 |     number: i32; operator=: (out this, x: i32) = number = x; operator+: (inout this, that) -> quantity = quantity(number + that.number);
-      |                                                              ^
-pure2-bugfix-for-discard-precedence.cpp:22:6: error: first parameter of 'main' (argument count) must be of type 'int'
-   22 | auto main(auto args) -> int /*kinds:Default*/{
-      |      ^
-pure2-bugfix-for-discard-precedence.cpp:23:14: error: no viable conversion from 'int' to 'quantity'
-   23 |     quantity x = (1729);
-      |              ^   ~~~~~~
-pure2-bugfix-for-discard-precedence.cpp:18:7: note: candidate constructor (the implicit copy constructor) not viable: no known conversion from 'int' to 'const quantity &' for 1st argument
-   18 | class quantity {
-      |       ^~~~~~~~
-pure2-bugfix-for-discard-precedence.cpp:18:7: note: candidate constructor (the implicit move constructor) not viable: no known conversion from 'int' to 'quantity &&' for 1st argument
-   18 | class quantity {
-      |       ^~~~~~~~
-pure2-bugfix-for-discard-precedence.cpp:24:14: error: invalid operands to binary expression ('quantity' and 'quantity')
-   24 |     (void)(x + x);
-      |            ~ ^ ~
-9 errors generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-functions-before-superclasses-error.cpp2
-Error: Expected '(' to start parameter list at 7:9
-  Transpile FAILED
-
-Testing pure2-bugfix-for-indexed-call.cpp2
-Wrote "pure2-bugfix-for-indexed-call.cpp"
-  Transpile OK
-pure2-bugfix-for-indexed-call.cpp:22:16: error: no viable conversion from 'auto (i32) -> void' (aka 'auto (int) -> void') to 'std::array<void (*)(int), 1 + sizeof...(_Args)>' (aka 'array<void (*)(int), 1 + sizeof...(_Args)>')
-   22 |     std::array array_of_functions = (f, f);
-      |                ^                    ~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/array:175:29: note: candidate constructor (the implicit copy constructor) not viable: no known conversion from 'auto (i32) -> void' (aka 'auto (int) -> void') to 'const array<void (*)(int), 1> &' for 1st argument
-  175 | struct _LIBCPP_TEMPLATE_VIS array {
-      |                             ^~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/array:175:29: note: candidate constructor (the implicit move constructor) not viable: no known conversion from 'auto (i32) -> void' (aka 'auto (int) -> void') to 'array<void (*)(int), 1> &&' for 1st argument
-  175 | struct _LIBCPP_TEMPLATE_VIS array {
-      |                             ^~~~~
-pure2-bugfix-for-indexed-call.cpp:22:38: warning: left operand of comma operator has no effect [-Wunused-value]
-   22 |     std::array array_of_functions = (f, f);
-      |                                      ^
-1 warning and 1 error generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-invalid-alias-error.cpp2
-Wrote "pure2-bugfix-for-invalid-alias-error.cpp"
-  Transpile OK
-pure2-bugfix-for-invalid-alias-error.cpp:19:5: error: unknown type name 'x'
-   19 |     x: requires true == 42;
-      |     ^
-pure2-bugfix-for-invalid-alias-error.cpp:19:16: error: expected '{'
-   19 |     x: requires true == 42;
-      |                ^
-      |                {
-2 errors generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-late-comments.cpp2
-Wrote "pure2-bugfix-for-late-comments.cpp"
-  Transpile OK
-pure2-bugfix-for-late-comments.cpp:19:17: error: invalid use of 'this' outside of a non-static member function
-   19 |     operator-: (this, _) -> int = 0;
-      |                 ^
-pure2-bugfix-for-late-comments.cpp:19:23: error: use of undeclared identifier '_'
-   19 |     operator-: (this, _) -> int = 0;
-      |                       ^
-pure2-bugfix-for-late-comments.cpp:19:29: error: expected unqualified-id
-   19 |     operator-: (this, _) -> int = 0;
-      |                             ^
-pure2-bugfix-for-late-comments.cpp:19:5: error: 'operator-' cannot be the name of a variable or data member
-   19 |     operator-: (this, _) -> int = 0;
-      |     ^
-4 errors generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-max-munch.cpp2
-Error: Expected '(' to start parameter list at 1:4
-  Transpile FAILED
-
-Testing pure2-bugfix-for-memberwise-base-assignment.cpp2
-Error: Expected ':' after identifier at 3:11
-  Transpile FAILED
-
-Testing pure2-bugfix-for-naked-unsigned-char-error.cpp2
-Error: Expected ';' after declaration at 4:1
-  Transpile FAILED
-
-Testing pure2-bugfix-for-name-lookup-and-value-decoration.cpp2
-Wrote "pure2-bugfix-for-name-lookup-and-value-decoration.cpp"
-  Transpile OK
-pure2-bugfix-for-name-lookup-and-value-decoration.cpp:18:16: error: expected a type
-   18 | auto vals() -> (i : int) /*kinds:*/{
-      |                ^
-pure2-bugfix-for-name-lookup-and-value-decoration.cpp:18:17: error: use of undeclared identifier 'i'
-   18 | auto vals() -> (i : int) /*kinds:*/{
-      |                 ^
-pure2-bugfix-for-name-lookup-and-value-decoration.cpp:18:25: error: expected ';' after top level declarator
-   18 | auto vals() -> (i : int) /*kinds:*/{
-      |                         ^
-      |                         ;
-3 errors generated.
-  Compile FAILED
-
-Testing pure2-bugfix-for-namespace-error.cpp2
-Error: Expected '(' to start parameter list at 1:11
-  Transpile FAILED
-
-Testing pure2-bugfix-for-non-local-function-expression.cpp2
-Error: Expected '(' to start parameter list at 5:4
-  Transpile FAILED
-
-Testing pure2-bugfix-for-non-local-initialization.cpp2
-Error: Expected '{' to start type body at 1:10
-  Transpile FAILED
-
-Testing pure2-bugfix-for-optional-template-argument-list.cpp2
-Error: Expected '(' to start parameter list at 1:7
-  Transpile FAILED
-
-Testing pure2-bugfix-for-out-this-nonconstructor-error.cpp2
-Error: Expected '(' to start parameter list at 2:10
-  Transpile FAILED
-
-Testing pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2
-Error: Expected identifier at start of declaration at 4:1
-  Transpile FAILED
-
-Testing pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2
-Error: Expected '(' to start parameter list at 1:4
-  Transpile FAILED
-
-Testing pure2-bugfix-for-template-argument.cpp2
-Error: Expected identifier at start of declaration at 2:75
-  Transpile FAILED
-
 Testing pure2-bugfix-for-ufcs-arguments.cpp2
-Error: Expected identifier at start of declaration at 4:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
-
-Testing pure2-bugfix-for-ufcs-name-lookup.cpp2
-Error: Expected '(' to start parameter list at 1:11
-  Transpile FAILED
-
-Testing pure2-bugfix-for-ufcs-noexcept.cpp2
-Error: Expected identifier at start of declaration at 3:1
-  Transpile FAILED
-
-Testing pure2-bugfix-for-ufcs-sfinae.cpp2
-Error: Expected '(' to start parameter list at 1:4
-  Transpile FAILED
-
-Testing pure2-bugfix-for-unbraced-function-expression.cpp2
-Error: Expected identifier at start of declaration at 3:1
-  Transpile FAILED
-
-Testing pure2-bugfix-for-variable-template.cpp2
-Error: Expected '(' to start parameter list at 1:5
-  Transpile FAILED
-
-Testing pure2-chained-comparisons.cpp2
-Error: Expected identifier at start of declaration at 13:9
-  Transpile FAILED
-
-Testing pure2-concept-definition.cpp2
-Error: Expected '(' to start parameter list at 1:13
-  Transpile FAILED
-
-Testing pure2-contracts.cpp2
-Error: Expected '(' to start parameter list at 3:8
-  Transpile FAILED
-
-Testing pure2-cpp1-multitoken-fundamental-types-error.cpp2
-Wrote "pure2-cpp1-multitoken-fundamental-types-error.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing pure2-cpp1-prefix-expression-error.cpp2
-Wrote "pure2-cpp1-prefix-expression-error.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing pure2-deducing-pointers-error.cpp2
-Wrote "pure2-deducing-pointers-error.cpp"
-  Transpile OK
-pure2-deducing-pointers-error.cpp:18:21: error: expected a type
-   18 | auto fun(int& i) -> *int /*kinds:InOut*/{
-      |                     ^
-pure2-deducing-pointers-error.cpp:18:22: error: expected ';' after top level declarator
-   18 | auto fun(int& i) -> *int /*kinds:InOut*/{
-      |                      ^
-      |                      ;
-pure2-deducing-pointers-error.cpp:18:41: error: expected unqualified-id
-   18 | auto fun(int& i) -> *int /*kinds:InOut*/{
-      |                                         ^
-pure2-deducing-pointers-error.cpp:22:22: error: expected a type
-   22 | auto fun2(int& i) -> (result : *int) /*kinds:InOut*/{
-      |                      ^
-pure2-deducing-pointers-error.cpp:22:23: error: use of undeclared identifier 'result'
-   22 | auto fun2(int& i) -> (result : *int) /*kinds:InOut*/{
-      |                       ^
-pure2-deducing-pointers-error.cpp:22:37: error: expected ';' after top level declarator
-   22 | auto fun2(int& i) -> (result : *int) /*kinds:InOut*/{
-      |                                     ^
-      |                                     ;
-pure2-deducing-pointers-error.cpp:28:10: error: expected '(' for function-style cast or type construction
-   28 |     *int pa = &a;
-      |      ~~~ ^
-pure2-deducing-pointers-error.cpp:29:11: error: expected '(' for function-style cast or type construction
-   29 |     **int ppa = &pa;
-      |       ~~~ ^
-pure2-deducing-pointers-error.cpp:30:5: error: use of undeclared identifier 'pa'
-   30 |     pa = 0;
-      |     ^
-pure2-deducing-pointers-error.cpp:31:17: error: use of undeclared identifier 'ppa'
-   31 |     auto pa2 = *ppa;
-      |                 ^
-pure2-deducing-pointers-error.cpp:39:18: error: use of undeclared identifier 'ppa'
-   39 |     auto pppa = &ppa;
-      |                  ^
-pure2-deducing-pointers-error.cpp:40:22: error: expected expression
-   40 |     auto pa5 = *pppa*;
-      |                      ^
-pure2-deducing-pointers-error.cpp:42:11: error: expression is not assignable
-   42 |     fun(a)++;
-      |     ~~~~~~^
-pure2-deducing-pointers-error.cpp:45:21: error: expected expression
-   45 |     auto f = fun(a)*;
-      |                     ^
-pure2-deducing-pointers-error.cpp:49:27: error: expected expression
-   49 |     return a * pa* * ppa**;
-      |                           ^
-pure2-deducing-pointers-error.cpp:49:16: error: use of undeclared identifier 'pa'
-   49 |     return a * pa* * ppa**;
-      |                ^
-pure2-deducing-pointers-error.cpp:49:22: error: use of undeclared identifier 'ppa'
-   49 |     return a * pa* * ppa**;
-      |                      ^
-17 errors generated.
-  Compile FAILED
-
-Testing pure2-deduction-1-error.cpp2
-Error: Expected identifier at start of declaration at 1:28
-  Transpile FAILED
-
-Testing pure2-deduction-2-error.cpp2
-Error: Expected '(' to start parameter list at 1:4
-  Transpile FAILED
-
-Testing pure2-default-arguments.cpp2
-Error: Expected '=' or '{' before function body
-  Transpile FAILED
-
-Testing pure2-defaulted-comparisons-and-final-types.cpp2
-Error: Expected '(' to start parameter list at 2:9
-  Transpile FAILED
-
-Testing pure2-enum.cpp2
-Error: Expected '(' to start parameter list at 2:12
-  Transpile FAILED
-
-Testing pure2-expected-is-as.cpp2
-Error: Expected identifier at start of declaration at 15:5
-  Transpile FAILED
-
-Testing pure2-for-loop-range-with-lambda.cpp2
-Error: Expected ')' after parameter list at 1:29
-  Transpile FAILED
-
-Testing pure2-forward-return-diagnostics-error.cpp2
-Error: Expected '(' to start parameter list at 54:9
-  Transpile FAILED
-
-Testing pure2-forward-return.cpp2
-Error: Expected identifier at start of declaration at 5:21
-  Transpile FAILED
-
-Testing pure2-function-body-reflection.cpp2
-Error: Expected '(' to start parameter list at 2:5
-  Transpile FAILED
-
-Testing pure2-function-multiple-forward-arguments.cpp2
-Wrote "pure2-function-multiple-forward-arguments.cpp"
-  Transpile OK
-pure2-function-multiple-forward-arguments.cpp:19:39: error: no member named 'endl' in the global namespace; did you mean 'std::endl'?
-   19 |     std:std::cout << s1 << s2 << s3 <<::endl;
-      |                                       ^~~~~~
-      |                                       std::endl
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__ostream/basic_ostream.h:539:62: note: 'std::endl' declared here
-  539 | _LIBCPP_HIDE_FROM_ABI inline basic_ostream<_CharT, _Traits>& endl(basic_ostream<_CharT, _Traits>& __os) {
-      |                                                              ^
-pure2-function-multiple-forward-arguments.cpp:25:5: error: no matching function for call to 'fun'
-   25 |     fun(std::string("a"), b, c);
-      |     ^~~
-pure2-function-multiple-forward-arguments.cpp:18:6: note: candidate function not viable: expects an rvalue for 2nd argument
-   18 | auto fun(std::string&& s1, std::string&& s2, std::string&& s3) -> void /*kinds:Forward,Forward,Forward*/{
-      |      ^                     ~~~~~~~~~~~~~~~~
-2 errors generated.
-  Compile FAILED
-
-Testing pure2-function-single-expression-body-default-return.cpp2
-Error: Expected identifier at start of declaration at 2:26
-  Transpile FAILED
-
-Testing pure2-function-typeids.cpp2
-Error: Expected identifier at start of declaration at 14:55
-  Transpile FAILED
-
-Testing pure2-hashable.cpp2
-Error: Expected '(' to start parameter list at 1:7
-  Transpile FAILED
-
-Testing pure2-hello.cpp2
-Wrote "pure2-hello.cpp"
-  Transpile OK
-pure2-hello.cpp:19:30: error: use of undeclared identifier 'name'
-   19 |     std::cout << "Hello " << name() << "\n";
-      |                              ^
-pure2-hello.cpp:25:5: error: use of undeclared identifier 'decorate'
-   25 |     decorate(s);
-      |     ^
-2 errors generated.
-  Compile FAILED
-
-Testing pure2-initialization-loop-2-error.cpp2
-Error: Expected ':' after identifier at 8:11
-  Transpile FAILED
-
-Testing pure2-initialization-loop-error.cpp2
-Error: Expected ':' after identifier at 7:7
-  Transpile FAILED
-
-Testing pure2-initialization-safety-with-else-if.cpp2
-Error: Expected identifier at start of declaration at 11:7
-  Transpile FAILED
-
-Testing pure2-inspect-expression-in-generic-function-multiple-types.cpp2
-Error: Expected identifier at start of declaration at 29:9
-  Transpile FAILED
-
-Testing pure2-inspect-expression-with-as-in-generic-function.cpp2
-Error: Expected identifier at start of declaration at 15:9
-  Transpile FAILED
-
-Testing pure2-inspect-fallback-with-variant-any-optional.cpp2
-Error: Expected identifier at start of declaration at 24:9
-  Transpile FAILED
-
-Testing pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2
-Error: Expected identifier at start of declaration at 25:9
-  Transpile FAILED
-
-Testing pure2-interpolation.cpp2
-Error: Expected '(' to start parameter list at 2:7
-  Transpile FAILED
-
-Testing pure2-intro-example-hello-2022.cpp2
-Error: Expected identifier at start of declaration at 9:1
-  Transpile FAILED
-
-Testing pure2-intro-example-three-loops.cpp2
-Error: Expected identifier at start of declaration at 21:5
-  Transpile FAILED
-
-Testing pure2-is-with-free-functions-predicate.cpp2
-Error: Expected identifier at start of declaration at 6:5
-  Transpile FAILED
-
-Testing pure2-is-with-polymorphic-types.cpp2
-Error: Expected '(' to start parameter list at 3:5
-  Transpile FAILED
-
-Testing pure2-is-with-unnamed-predicates.cpp2
-Error: Expected identifier at start of declaration at 6:5
-  Transpile FAILED
-
-Testing pure2-is-with-variable-and-value.cpp2
-Error: Expected identifier at start of declaration at 11:15
-  Transpile FAILED
-
-Testing pure2-last-use.cpp2
-Error: Expected ')' after parameter list at 2:19
-  Transpile FAILED
-
-Testing pure2-lifetime-safety-pointer-init-1-error.cpp2
-Wrote "pure2-lifetime-safety-pointer-init-1-error.cpp"
-  Transpile OK
-pure2-lifetime-safety-pointer-init-1-error.cpp:20:10: error: expected '(' for function-style cast or type construction
-   20 |     *int p;
-      |      ~~~ ^
-pure2-lifetime-safety-pointer-init-1-error.cpp:21:8: error: expected '(' after 'if'
-   21 |     if std::rand()%2 { // p = nullptr; } else { // p = &x; } print_and_decorate( *p );
-      |        ^
-pure2-lifetime-safety-pointer-init-1-error.cpp:28:2: error: expected '}'
-   28 | }
-      |  ^
-pure2-lifetime-safety-pointer-init-1-error.cpp:18:30: note: to match this '{'
-   18 | auto main() -> int /*kinds:*/{
-      |                              ^
-3 errors generated.
-  Compile FAILED
-
-Testing pure2-lifetime-safety-reject-null-error.cpp2
-Wrote "pure2-lifetime-safety-reject-null-error.cpp"
-  Transpile OK
-pure2-lifetime-safety-reject-null-error.cpp:19:30: error: no viable conversion from 'const char[6]' to 'std::vector<std::string>' (aka 'vector<basic_string<char>>')
-   19 |     std::vector<std::string> words = ( "decorated", "hello", "world" );
-      |                              ^       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:261:55: note: candidate constructor not viable: no known conversion from 'const char[6]' to 'const vector<string> &' for 1st argument
-  261 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(const vector& __x)
-      |                                                       ^      ~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:273:55: note: candidate constructor not viable: no known conversion from 'const char[6]' to 'initializer_list<value_type>' (aka 'initializer_list<std::string>') for 1st argument
-  273 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(initializer_list<value_type> __il) {
-      |                                                       ^      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:289:55: note: candidate constructor not viable: no known conversion from 'const char[6]' to 'vector<string> &&' for 1st argument
-  289 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI vector(vector&& __x)
-      |                                                       ^      ~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:135:64: note: explicit constructor is not a candidate
-  135 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(const allocator_type& __a)
-      |                                                                ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__vector/vector.h:144:64: note: explicit constructor is not a candidate
-  144 |   _LIBCPP_CONSTEXPR_SINCE_CXX20 _LIBCPP_HIDE_FROM_ABI explicit vector(size_type __n) {
-      |                                                                ^
-pure2-lifetime-safety-reject-null-error.cpp:20:10: error: expected '(' for function-style cast or type construction
-   20 |     *int p = nullptr;
-      |      ~~~ ^
-pure2-lifetime-safety-reject-null-error.cpp:21:26: error: use of undeclared identifier 'p'
-   21 |     print_and_decorate( *p );
-      |                          ^
-pure2-lifetime-safety-reject-null-error.cpp:19:40: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> words = ( "decorated", "hello", "world" );
-      |                                        ^~~~~~~~~~~
-pure2-lifetime-safety-reject-null-error.cpp:19:53: warning: left operand of comma operator has no effect [-Wunused-value]
-   19 |     std::vector<std::string> words = ( "decorated", "hello", "world" );
-      |                                                     ^~~~~~~
-2 warnings and 3 errors generated.
-  Compile FAILED
-
-Testing pure2-look-up-parameter-across-unnamed-function.cpp2
-Error: Expected identifier at start of declaration at 3:26
-  Transpile FAILED
-
-Testing pure2-main-args.cpp2
-Wrote "pure2-main-args.cpp"
-  Transpile OK
-pure2-main-args.cpp:18:6: error: first parameter of 'main' (argument count) must be of type 'int'
-   18 | auto main(auto args) -> int /*kinds:Default*/{
-      |      ^
-pure2-main-args.cpp:19:5: error: unknown type name '_'
-   19 |     _ exe = std::filesystem::path(args.argv[0]).filename().string();
-      |     ^
-pure2-main-args.cpp:19:18: error: no member named 'filesystem' in namespace 'std'
-   19 |     _ exe = std::filesystem::path(args.argv[0]).filename().string();
-      |             ~~~~~^
-3 errors generated.
-  Compile FAILED
-
-Testing pure2-more-wildcards.cpp2
-Error: Expected identifier at start of declaration at 2:39
-  Transpile FAILED
-
-Testing pure2-print.cpp2
-Error: Expected '(' to start parameter list at 4:18
-  Transpile FAILED
-
-Testing pure2-range-operators.cpp2
-Error: Expected ':' after identifier at 11:15
-  Transpile FAILED
-
-Testing pure2-raw-string-literal-and-interpolation.cpp2
-Wrote "pure2-raw-string-literal-and-interpolation.cpp"
-  Transpile OK
-pure2-raw-string-literal-and-interpolation.cpp:20:10: error: no template named 'map' in namespace 'std'; did you mean 'max'?
-   20 |     std::map<std::string, int> m = ();
-      |     ~~~~~^~~
-      |          max
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:29:1: note: 'max' declared here
-   29 | max(_LIBCPP_LIFETIMEBOUND const _Tp& __a, _LIBCPP_LIFETIMEBOUND const _Tp& __b, _Compare __comp) {
-      | ^
-pure2-raw-string-literal-and-interpolation.cpp:20:31: error: expected ';' after expression
-   20 |     std::map<std::string, int> m = ();
-      |                               ^
-      |                               ;
-In file included from pure2-raw-string-literal-and-interpolation.cpp:3:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/iostream:45:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/ios:223:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__locale:27:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/string:592:
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:30:10: error: called object type 'int' is not a function or function pointer
-   30 |   return __comp(__a, __b) ? __b : __a;
-      |          ^~~~~~
-pure2-raw-string-literal-and-interpolation.cpp:20:10: note: in instantiation of function template specialization 'std::max<std::string, int>' requested here
-   20 |     std::map<std::string, int> m = ();
-      |          ^
-In file included from pure2-raw-string-literal-and-interpolation.cpp:3:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/iostream:45:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/ios:223:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__locale:27:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/string:592:
-In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:14:
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max_element.h:32:11: error: called object type 'int' is not a function or function pointer
-   32 |       if (__comp(*__first, *__i))
-      |           ^~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:44:16: note: in instantiation of function template specialization 'std::__max_element<int &, const std::string *>' requested here
-   44 |   return *std::__max_element<__comp_ref_type<_Compare> >(__t.begin(), __t.end(), __comp);
-      |                ^
-pure2-raw-string-literal-and-interpolation.cpp:20:10: note: in instantiation of function template specialization 'std::max<std::string, int>' requested here
-   20 |     std::map<std::string, int> m = ();
-      |          ^
-pure2-raw-string-literal-and-interpolation.cpp:20:5: error: reference to overloaded function could not be resolved; did you mean to call it?
-   20 |     std::map<std::string, int> m = ();
-      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:29:1: note: possible target for call
-   29 | max(_LIBCPP_LIFETIMEBOUND const _Tp& __a, _LIBCPP_LIFETIMEBOUND const _Tp& __b, _Compare __comp) {
-      | ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:35:1: note: possible target for call
-   35 | max(_LIBCPP_LIFETIMEBOUND const _Tp& __a, _LIBCPP_LIFETIMEBOUND const _Tp& __b) {
-      | ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:43:1: note: possible target for call
-   43 | max(initializer_list<_Tp> __t, _Compare __comp) {
-      | ^
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__algorithm/max.h:48:82: note: possible target for call
-   48 | [[__nodiscard__]] inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 _Tp max(initializer_list<_Tp> __t) {
-      |                                                                                  ^
-pure2-raw-string-literal-and-interpolation.cpp:20:32: error: use of undeclared identifier 'm'
-   20 |     std::map<std::string, int> m = ();
-      |                                ^
-pure2-raw-string-literal-and-interpolation.cpp:20:37: error: expected expression
-   20 |     std::map<std::string, int> m = ();
-      |                                     ^
-pure2-raw-string-literal-and-interpolation.cpp:21:5: error: use of undeclared identifier 'm'
-   21 |     m["one"] = 1;
-      |     ^
-pure2-raw-string-literal-and-interpolation.cpp:22:5: error: use of undeclared identifier 'm'
-   22 |     m["two"] = 2;
-      |     ^
-pure2-raw-string-literal-and-interpolation.cpp:26:33: error: use of undeclared identifier '$R'
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                 ^
-pure2-raw-string-literal-and-interpolation.cpp:26:35: error: expected ';' at end of declaration
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                   ^
-      |                                   ;
-pure2-raw-string-literal-and-interpolation.cpp:26:154: error: invalid suffix on literal; C++11 requires a space between literal and identifier [-Wreserved-user-defined-literal]
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                                                                                                                                          ^
-      |                                                                                                                                                           
-pure2-raw-string-literal-and-interpolation.cpp:26:165: error: invalid suffix on literal; C++11 requires a space between literal and identifier [-Wreserved-user-defined-literal]
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                                                                                                                                                     ^
-      |                                                                                                                                                                      
-pure2-raw-string-literal-and-interpolation.cpp:26:177: error: invalid suffix on literal; C++11 requires a space between literal and identifier [-Wreserved-user-defined-literal]
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                                                                                                                                                                 ^
-      |                                                                                                                                                                                  
-pure2-raw-string-literal-and-interpolation.cpp:26:188: error: invalid suffix on literal; C++11 requires a space between literal and identifier [-Wreserved-user-defined-literal]
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                                                                                                                                                                            ^
-      |                                                                                                                                                                                             
-pure2-raw-string-literal-and-interpolation.cpp:26:209: error: invalid suffix on literal; C++11 requires a space between literal and identifier [-Wreserved-user-defined-literal]
-   26 |     std::string raw_str_inter = $R"test(this is raw string literal that can last for multiple lines (i)$ R"(this can be added too)" calculations like m["one"] + m["two"] = (m["one"] + m["two"])$ also works ("at the beginning of the line")$!!!)test";
-      |                                                                                                                                                                                                                 ^
-      |                                                                                                                                                                                                                  
-pure2-raw-string-literal-and-interpolation.cpp:27:39: error: use of undeclared identifier '$R'
-   27 |     std::string raw_str_inter_multi = $R"( )" + $R"((i)$)" + $R"((i)$)";
-      |                                       ^
-pure2-raw-string-literal-and-interpolation.cpp:27:41: error: expected ';' at end of declaration
-   27 |     std::string raw_str_inter_multi = $R"( )" + $R"((i)$)" + $R"((i)$)";
-      |                                         ^
-      |                                         ;
-pure2-raw-string-literal-and-interpolation.cpp:28:28: error: no member named 'endl' in the global namespace; did you mean 'std::endl'?
-   28 |     std:std::cout << str <<::endl;
-      |                            ^~~~~~
-      |                            std::endl
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__ostream/basic_ostream.h:539:62: note: 'std::endl' declared here
-  539 | _LIBCPP_HIDE_FROM_ABI inline basic_ostream<_CharT, _Traits>& endl(basic_ostream<_CharT, _Traits>& __os) {
-      |                                                              ^
-fatal error: too many errors emitted, stopping now [-ferror-limit=]
-20 errors generated.
-  Compile FAILED
 
 Testing pure2-regex_01_char_matcher.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_02_ranges.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_03_wildcard.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_04_start_end.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_05_classes.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_06_boundaries.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_07_short_classes.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_08_alternatives.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_09_groups.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_10_escapes.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_11_group_references.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_12_case_insensitive.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_13_possessive_modifier.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_14_multiline_modifier.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_15_group_modifiers.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_16_perl_syntax_modifier.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_17_comments.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_18_branch_reset.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_19_lookahead.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-regex_21_atomic_patterns.cpp2
-Error: Expected identifier at start of declaration at 13:3
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-regex-general.cpp2
-Error: Expected '(' to start parameter list at 1:21
+Testing mixed-initialization-safety-1-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-repeated-call.cpp2
-Wrote "pure2-repeated-call.cpp"
-  Transpile OK
-pure2-repeated-call.cpp:18:14: error: unknown type name '_'
-   18 | auto f0() -> _ /*kinds:*/{
-      |              ^
-pure2-repeated-call.cpp:22:14: error: unknown type name '_'
-   22 | auto f1() -> _ /*kinds:*/{
-      |              ^
-pure2-repeated-call.cpp:26:14: error: unknown type name '_'
-   26 | auto f2() -> _ /*kinds:*/{
-      |              ^
-pure2-repeated-call.cpp:30:14: error: unknown type name '_'
-   30 | auto f3() -> _ /*kinds:*/{
-      |              ^
-pure2-repeated-call.cpp:34:14: error: unknown type name '_'
-   34 | auto f4() -> _ /*kinds:*/{
-      |              ^
-pure2-repeated-call.cpp:39:37: error: no member named 'endl' in the global namespace; did you mean 'std::endl'?
-   39 |     std:std::cout << f4()()()()() <<::endl;
-      |                                     ^~~~~~
-      |                                     std::endl
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/__ostream/basic_ostream.h:539:62: note: 'std::endl' declared here
-  539 | _LIBCPP_HIDE_FROM_ABI inline basic_ostream<_CharT, _Traits>& endl(basic_ostream<_CharT, _Traits>& __os) {
-      |                                                              ^
-6 errors generated.
-  Compile FAILED
+Testing mixed-initialization-safety-2-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-lifetime-safety-pointer-init-3-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-lifetime-safety-pointer-init-4.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-multiple-return-values.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-out-destruction.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-parameter-passing-with-forward.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-parameter-passing.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-variable-template.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-expected-is-as.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-function-body-reflection.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-intro-example-three-loops.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-is-with-free-functions-predicate.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-is-with-polymorphic-types.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-is-with-unnamed-predicates.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
 
 Testing pure2-requires-clauses.cpp2
-Error: Expected '(' to start parameter list at 2:5
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
-
-Testing pure2-return-tuple-no-identifier-error.cpp2
-Error: Expected identifier at start of declaration at 1:28
-  Transpile FAILED
-
-Testing pure2-return-tuple-no-type-error.cpp2
-Error: Expected identifier at start of declaration at 1:24
-  Transpile FAILED
-
-Testing pure2-return-tuple-operator.cpp2
-Error: Expected ':' after identifier at 8:13
-  Transpile FAILED
-
-Testing pure2-statement-parse-error.cpp2
-Wrote "pure2-statement-parse-error.cpp"
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
 
 Testing pure2-statement-scope-parameters.cpp2
-Error: Expected identifier at start of declaration at 11:5
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
-
-Testing pure2-stdio-with-raii.cpp2
-Wrote "pure2-stdio-with-raii.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing pure2-stdio.cpp2
-Wrote "pure2-stdio.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing pure2-synthesize-rightshift-and-rightshifteq.cpp2
-Wrote "pure2-synthesize-rightshift-and-rightshifteq.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
 
 Testing pure2-template-parameter-lists.cpp2
-Error: Expected '(' to start parameter list at 2:5
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
-
-Testing pure2-trailing-comma-assert.cpp2
-Wrote "pure2-trailing-comma-assert.cpp"
-  Transpile OK
-pure2-trailing-comma-assert.cpp:19:49: error: expected expression
-   19 |     assert(true, "some_potentially_long_string",);
-      |                                                 ^
-1 error generated.
-  Compile FAILED
-
-Testing pure2-trailing-commas.cpp2
-Error: Expected parameter name at 1:11
-  Transpile FAILED
-
-Testing pure2-type-and-namespace-aliases.cpp2
-Error: Expected '(' to start parameter list at 2:4
-  Transpile FAILED
-
-Testing pure2-type-constraints.cpp2
-Wrote "pure2-type-constraints.cpp"
-  Transpile OK
-pure2-type-constraints.cpp:21:12: error: unknown type name '_'
-   21 | auto print(_ is std::regular r) -> void /*kinds:Default*/{
-      |            ^
-pure2-type-constraints.cpp:21:17: error: expected ')'
-   21 | auto print(_ is std::regular r) -> void /*kinds:Default*/{
-      |                 ^
-pure2-type-constraints.cpp:21:11: note: to match this '('
-   21 | auto print(_ is std::regular r) -> void /*kinds:Default*/{
-      |           ^
-pure2-type-constraints.cpp:32:5: error: unknown type name '_'
-   32 |     _ is std::regular ok = 42;
-      |     ^
-pure2-type-constraints.cpp:32:9: error: expected ';' at end of declaration
-   32 |     _ is std::regular ok = 42;
-      |         ^
-      |         ;
-4 errors generated.
-  Compile FAILED
 
 Testing pure2-type-safety-1.cpp2
-Error: Expected identifier at start of declaration at 46:5
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-as-for-variant-20-types.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-is-as-variant.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-test-parens.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-functions-before-superclasses-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-chained-comparisons.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-defaulted-comparisons-and-final-types.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-forward-return-diagnostics-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-inspect-expression-in-generic-function-multiple-types.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-inspect-expression-with-as-in-generic-function.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-inspect-fallback-with-variant-any-optional.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-type-safety-2-with-inspect-expression.cpp2
-Error: Expected identifier at start of declaration at 28:9
-  Transpile FAILED
-
-Testing pure2-types-basics.cpp2
-Error: Expected '(' to start parameter list at 2:4
-  Transpile FAILED
-
-Testing pure2-types-down-upcast.cpp2
-Error: Expected identifier at start of declaration at 6:1
-  Transpile FAILED
-
-Testing pure2-types-inheritance.cpp2
-Error: Expected '(' to start parameter list at 2:8
-  Transpile FAILED
-
-Testing pure2-types-order-independence-and-nesting.cpp2
-Error: Expected '(' to start parameter list at 2:4
-  Transpile FAILED
-
-Testing pure2-types-ordering-via-meta-functions.cpp2
-Error: Expected '(' to start parameter list at 2:13
-  Transpile FAILED
-
-Testing pure2-types-smf-and-that-1-provide-everything.cpp2
-Error: Expected ':' after identifier at 8:13
-  Transpile FAILED
-
-Testing pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2
-Error: Expected ':' after identifier at 8:13
-  Transpile FAILED
-
-Testing pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2
-Error: Expected ':' after identifier at 8:13
-  Transpile FAILED
-
-Testing pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2
-Error: Expected ':' after identifier at 13:13
-  Transpile FAILED
-
-Testing pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2
-Error: Expected ':' after identifier at 22:13
-  Transpile FAILED
-
-Testing pure2-types-that-parameters.cpp2
-Error: Expected ':' after identifier at 6:13
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing pure2-types-value-types-via-meta-functions.cpp2
-Error: Expected '(' to start parameter list at 2:9
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-ufcs-member-access-and-chaining.cpp2
-Error: Expected identifier at start of declaration at 45:16
+Testing mixed-allcpp1-hello.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-union.cpp2
-Error: Expected '(' to start parameter list at 2:17
+Testing mixed-bugfix-for-ufcs-non-local.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-unsafe.cpp2
-Wrote "pure2-unsafe.cpp"
-  Transpile OK
-pure2-unsafe.cpp:19:14: error: use of undeclared identifier 'unchecked_narrow'; did you mean 'cpp2::impl::unchecked_narrow'?
-   19 |     auto j = unchecked_narrow<i16>(i);
-      |              ^~~~~~~~~~~~~~~~
-      |              cpp2::impl::unchecked_narrow
-../include/cpp2.h:48:22: note: 'cpp2::impl::unchecked_narrow' declared here
-   48 |         constexpr To unchecked_narrow(From v) {
-      |                      ^
-pure2-unsafe.cpp:20:11: error: expected '(' for function-style cast or type construction
-   20 |     *void pv = &s;
-      |      ~~~~ ^
-pure2-unsafe.cpp:21:42: error: expected '(' for function-style cast or type construction
-   21 |     auto ps = unchecked_cast<*std::string>(pv);
-      |                               ~~~~~~~~~~~^
-pure2-unsafe.cpp:21:44: error: use of undeclared identifier 'pv'
-   21 |     auto ps = unchecked_cast<*std::string>(pv);
-      |                                            ^
-4 errors generated.
-  Compile FAILED
-
-Testing pure2-variadics.cpp2
-Error: Expected '(' to start parameter list at 3:4
+Testing mixed-captures-in-expressions-and-postconditions.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
-Testing pure2-various-string-literals.cpp2
-Error: Unterminated string literal
+Testing mixed-default-arguments.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-fixed-type-aliases.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-float-literals.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-function-expression-and-std-for-each.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-inspect-values.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-intro-example-three-loops.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-intro-for-with-counter-include-last.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-is-as-value-with-variant.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-lifetime-safety-and-null-contracts.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-postexpression-with-capture.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bounds-safety-span.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-bad-using-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-naked-unsigned-char-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-ufcs-noexcept.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-unbraced-function-expression.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-intro-example-hello-2022.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-down-upcast.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
   Transpile FAILED
 
 Testing simple_main_auto.cpp2
-Wrote "simple_main_auto.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
-
-Testing simple_main_colon.cpp2
-Wrote "simple_main_colon.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
 
 Testing simple_mixed.cpp2
-Wrote "simple_mixed.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
 
 Testing test_broken_syntax.cpp2
-Wrote "test_broken_syntax.cpp"
-  Transpile OK
-  Compile OK
-  Run OK
-  No expected output to compare
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-max-munch.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-non-local-function-expression.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-ufcs-sfinae.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-deduction-2-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-type-and-namespace-aliases.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-basics.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-order-independence-and-nesting.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-variadics.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bounds-safety-with-assert-2.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bounds-safety-with-assert.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-increment-decrement.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-inspect-values-2.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-memberwise-base-assignment.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-namespace-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-ufcs-name-lookup.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-concept-definition.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-initialization-loop-2-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-return-tuple-operator.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-trailing-commas.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-ordering-via-meta-functions.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-smf-and-that-1-provide-everything.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-that-parameters.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bounds-check.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bugfix-for-literal-as-nttp.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-initialization-safety-3-contract-violation.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-initialization-safety-3.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-optional-template-argument-list.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-cpp1-multitoken-fundamental-types-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-function-multiple-forward-arguments.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-hashable.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-hello.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-initialization-loop-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-initialization-safety-with-else-if.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-interpolation.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-synthesize-rightshift-and-rightshifteq.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing simple_main_colon.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-forwarding.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-inspect-templates.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-inspect-with-typeof-of-template-arg-list.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-parameter-passing-generic-out.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-string-interpolation.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-ufcs-multiple-template-arguments.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-bad-parameter-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-declaration-equal-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-non-local-initialization.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-out-this-nonconstructor-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-contracts.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-types-inheritance.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-assert-expected-not-null.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-assert-optional-not-null.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-assert-shared-ptr-not-null.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-assert-unique-ptr-not-null.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-deducing-pointers-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-function-expression-and-std-ranges-for-each.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-function-expression-with-pointer-capture.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-function-expression-with-repeated-capture.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-assert-capture-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-bad-capture-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-indexed-call.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-unsafe.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-bugfix-for-double-pound-else-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-assign-expression-list.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-invalid-alias-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-function-single-expression-body-default-return.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-look-up-parameter-across-unnamed-function.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-statement-parse-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-lifetime-safety-pointer-init-1-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-lifetime-safety-pointer-init-2-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-break-continue.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-discard-precedence.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-deduction-1-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-forward-return.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-is-with-variable-and-value.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-lifetime-safety-pointer-init-1-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-main-args.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-range-operators.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-regex-general.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-repeated-call.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-return-tuple-no-identifier-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-type-constraints.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-hello.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-postfix-expression-custom-formatting.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing mixed-type-safety-1.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bounds-safety-pointer-arithmetic-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-bad-decltype-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-late-comments.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-name-lookup-and-value-decoration.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-bugfix-for-template-argument.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-default-arguments.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-enum.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-for-loop-range-with-lambda.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-function-typeids.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-last-use.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-lifetime-safety-reject-null-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-more-wildcards.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-print.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-raw-string-literal-and-interpolation.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-return-tuple-no-type-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-stdio-with-raii.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-stdio.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-ufcs-member-access-and-chaining.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-union.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-various-string-literals.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-cpp1-prefix-expression-error.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Testing pure2-trailing-comma-assert.cpp2
+./run_regression.sh: line 33: ../build/stage0_cli: No such file or directory
+  Transpile FAILED
 
 Total tests: 189
-Failures: 177
+Failures: 189
