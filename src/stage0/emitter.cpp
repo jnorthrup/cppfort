@@ -1,9 +1,11 @@
 #include "emitter.h"
 
 #include <cctype>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <typeinfo>
+#include <unordered_set>
 #include <utility>
 
 namespace cppfort::stage0 {
@@ -62,6 +64,31 @@ std::string fix_prefix_type(std::string type) {
     return type;
 }
 
+bool looks_like_initializer_list(const std::string& expr) {
+    if (expr.size() < 2 || expr.front() != '(' || expr.back() != ')') {
+        return false;
+    }
+
+    std::size_t depth = 0;
+    bool has_top_level_comma = false;
+    for (std::size_t i = 1; i + 1 < expr.size(); ++i) {
+        char c = expr[i];
+        if (c == '(') {
+            ++depth;
+        } else if (c == ')') {
+            if (depth == 0) {
+                // closing parenthesis before the end means grouped expression
+                return false;
+            }
+            --depth;
+        } else if (c == ',' && depth == 0) {
+            has_top_level_comma = true;
+        }
+    }
+
+    return depth == 0 && has_top_level_comma;
+}
+
 std::string fix_expression_tokens(std::string expr) {
     // Simple postfix deref: identifier* -> *identifier
     // Use a manual scan to avoid regex dependency
@@ -109,9 +136,81 @@ std::string fix_expression_tokens(std::string expr) {
                 // remove the ':id' and the ' std' and replace with 'std.id'
                 expr.erase(std_pos, 4); // remove " std"
                 expr.erase(col_pos, id.size() + 1); // remove ":id"
-                expr.insert(col_pos, std::string("std.") + id);
+                expr.insert(col_pos, std::string("std::") + id);
             }
         }
+    }
+
+    // UFCS for selected C stdio-like functions: obj.fprintf(args) -> fprintf(obj, args)
+    static const std::unordered_set<std::string> k_c_ufcs_names {
+        "fprintf", "fclose", "fflush", "fread", "fwrite", "fgets", "fputs",
+        "fscanf", "fgetc", "fputc", "fopen", "freopen"
+    };
+
+    for (size_t pos = 0; pos + 2 < expr.size(); ++pos) {
+        if (!std::isalnum(static_cast<unsigned char>(expr[pos])) && expr[pos] != '_') {
+            continue;
+        }
+
+        size_t obj_start = pos;
+        while (pos < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_')) {
+            ++pos;
+        }
+
+        if (pos + 1 >= expr.size() || expr[pos] != '.') {
+            continue;
+        }
+
+        if (!std::isalnum(static_cast<unsigned char>(expr[pos + 1])) && expr[pos + 1] != '_') {
+            continue;
+        }
+
+        size_t method_start = pos + 1;
+        size_t method_end = method_start;
+        while (method_end < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[method_end])) || expr[method_end] == '_')) {
+            ++method_end;
+        }
+
+        if (method_end >= expr.size() || expr[method_end] != '(') {
+            continue;
+        }
+
+        std::string method = expr.substr(method_start, method_end - method_start);
+        if (!k_c_ufcs_names.contains(method)) {
+            continue;
+        }
+
+        // find the end of the argument list
+        size_t paren_count = 1;
+        size_t args_end = method_end + 1;
+        while (args_end < expr.size() && paren_count > 0) {
+            if (expr[args_end] == '(') {
+                ++paren_count;
+            } else if (expr[args_end] == ')') {
+                --paren_count;
+            }
+            ++args_end;
+        }
+
+        if (args_end > expr.size()) {
+            break;
+        }
+
+        std::string obj = expr.substr(obj_start, pos - obj_start);
+        std::string args = expr.substr(method_end + 1, args_end - method_end - 2);
+        std::string replacement = method + "(" + obj;
+        if (!args.empty()) {
+            replacement += ", " + args;
+        }
+        replacement += ")";
+
+        expr.replace(obj_start, args_end - obj_start, replacement);
+        pos = obj_start + replacement.size();
+    }
+
+    // Handle discard pattern: _ = expr -> (void)expr
+    if (expr.size() >= 4 && expr.substr(0, 4) == "_ = ") {
+        expr = "(void)(" + expr.substr(4) + ")";
     }
 
     return expr;
@@ -120,13 +219,78 @@ std::string fix_expression_tokens(std::string expr) {
 
 std::string Emitter::emit(const TranslationUnit& unit, const EmitOptions& options) const {
     std::string output;
+    
+    // Detect required headers by scanning the code
+    bool needs_cstdio = false;
+    
+    // Scan all expressions for C stdio functions
+    auto scan_for_stdio = [&](const std::string& expr) {
+        if (expr.find("fopen") != std::string::npos ||
+            expr.find("fprintf") != std::string::npos ||
+            expr.find("fclose") != std::string::npos ||
+            expr.find("fread") != std::string::npos ||
+            expr.find("fwrite") != std::string::npos) {
+            needs_cstdio = true;
+        }
+    };
+    
+    std::function<void(const Statement&)> scan_statement;
+    scan_statement = [&](const Statement& stmt) {
+        std::visit([&](const auto& node) {
+            using T = std::decay_t<decltype(node)>;
+            if constexpr (std::is_same_v<T, VariableDecl>) {
+                if (node.initializer) {
+                    scan_for_stdio(*node.initializer);
+                }
+            } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
+                scan_for_stdio(node.expression);
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+                if (node.expression) {
+                    scan_for_stdio(*node.expression);
+                }
+            } else if constexpr (std::is_same_v<T, ForChainStmt>) {
+                scan_for_stdio(node.range_expression);
+                if (node.next_expression) {
+                    scan_for_stdio(*node.next_expression);
+                }
+                for (const auto& inner : node.body.statements) {
+                    scan_statement(inner);
+                }
+            } else if constexpr (std::is_same_v<T, AssertStmt>) {
+                scan_for_stdio(node.condition);
+                if (node.category) {
+                    scan_for_stdio(*node.category);
+                }
+            } else if constexpr (std::is_same_v<T, RawStmt>) {
+                scan_for_stdio(node.text);
+            }
+        }, stmt);
+    };
+
+    // Scan function bodies
+    for (const auto& fn : unit.functions) {
+        if (std::holds_alternative<Block>(fn.body)) {
+            const auto& block = std::get<Block>(fn.body);
+            for (const auto& stmt : block.statements) {
+                scan_statement(stmt);
+            }
+        } else if (std::holds_alternative<ExpressionBody>(fn.body)) {
+            const auto& expr_body = std::get<ExpressionBody>(fn.body);
+            scan_for_stdio(expr_body.expression);
+        }
+    }
+    
     if (options.include_preamble) {
         output += "// Generated by cppfort stage0 transpiler\n";
         output += "#include <cstdint>\n";
         output += "#include <iostream>\n";
         output += "#include <string>\n";
         output += "#include <string_view>\n";
-        output += "#include <vector>\n\n";
+        output += "#include <vector>\n";
+        if (needs_cstdio) {
+            output += "#include <cstdio>\n";
+        }
+        output += "\n";
         // Cpp2 type aliases
         output += "using i8 = std::int8_t;\n";
         output += "using i16 = std::int16_t;\n";
@@ -268,7 +432,8 @@ void Emitter::emit_block(const Block& block, std::string& out, int indent, bool 
 void Emitter::emit_statement(const Statement& stmt, std::string& out, int indent) const {
     std::visit([
         &out,
-        indent
+        indent,
+        this
     ](const auto& node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, VariableDecl>) {
@@ -279,6 +444,10 @@ void Emitter::emit_statement(const Statement& stmt, std::string& out, int indent
             std::string line = type + ' ' + node.name;
             if (node.initializer.has_value() && !node.initializer->empty()) {
                 auto init = fix_expression_tokens(normalize_space(*node.initializer));
+                if (looks_like_initializer_list(init)) {
+                    init.front() = '{';
+                    init.back() = '}';
+                }
                 line += " = " + init;
             }
             line += ';';
@@ -292,7 +461,48 @@ void Emitter::emit_statement(const Statement& stmt, std::string& out, int indent
                 Emitter::append_line(out, "return;", indent);
             }
         } else if constexpr (std::is_same_v<T, AssertStmt>) {
-            Emitter::append_line(out, "assert(" + normalize_space(node.condition) + ");", indent);
+            std::string line = "assert(" + normalize_space(node.condition) + ");";
+            if (node.category && !node.category->empty()) {
+                line += " // " + *node.category;
+            }
+            Emitter::append_line(out, line, indent);
+        } else if constexpr (std::is_same_v<T, ForChainStmt>) {
+            auto param_type = node.loop_parameter.type;
+            const auto kind = node.loop_parameter.kind;
+
+            auto resolve_type = [&]() {
+                if (!param_type.empty()) {
+                    return normalize_space(param_type);
+                }
+                switch (kind) {
+                    case ParameterKind::In:
+                        return std::string("const auto&");
+                    case ParameterKind::InOut:
+                    case ParameterKind::Out:
+                        return std::string("auto&");
+                    case ParameterKind::Move:
+                    case ParameterKind::Forward:
+                        return std::string("auto&&");
+                    default:
+                        return std::string("auto");
+                }
+            };
+
+            const auto loop_type = resolve_type();
+            const auto loop_var = node.loop_parameter.name.empty() ? std::string("item") : node.loop_parameter.name;
+            const auto range = fix_expression_tokens(normalize_space(node.range_expression));
+
+            Emitter::append_line(out,
+                "for (" + loop_type + " " + loop_var + " : " + range + ") {", indent);
+            for (const auto& inner : node.body.statements) {
+                emit_statement(inner, out, indent + 1);
+            }
+            if (node.next_expression) {
+                Emitter::append_line(out, fix_expression_tokens(normalize_space(*node.next_expression)) + ";", indent + 1);
+            }
+            Emitter::append_line(out, "}", indent);
+        } else if constexpr (std::is_same_v<T, RawStmt>) {
+            Emitter::append_line(out, node.text, indent);
         }
     }, stmt);
 }
