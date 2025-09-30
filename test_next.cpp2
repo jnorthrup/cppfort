@@ -1,0 +1,1 @@
+main: () -> int = { for 0..10 next _ = 5 do (i) { return 0; } }

@@ -49,6 +49,7 @@ enum class TokenType {
     Question,
     Dollar,
     At,
+    Preprocessor,
 
     // Cpp2 specific keywords
     KeywordReturn,
@@ -57,6 +58,7 @@ enum class TokenType {
     KeywordFor,
     KeywordWhile,
     KeywordDo,
+    KeywordNext,
     KeywordAssert,
     KeywordPre,
     KeywordPost,

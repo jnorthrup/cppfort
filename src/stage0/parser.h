@@ -36,8 +36,13 @@ class Parser {
     [[nodiscard]] FunctionDecl parse_function();
     [[nodiscard]] FunctionDecl parse_function_after_name(const Token& name);
     [[nodiscard]] std::vector<Parameter> parse_parameter_list();
+    [[nodiscard]] Parameter parse_loop_parameter();
+    [[nodiscard]] IncludeDecl parse_include_directive(const Token& directive);
+    [[nodiscard]] RawDecl parse_raw_declaration();
+    [[nodiscard]] bool is_cpp_raw_declaration() const;
     [[nodiscard]] Block parse_block();
     [[nodiscard]] Statement parse_statement();
+    [[nodiscard]] ForChainStmt parse_for_chain_statement(const Token& keyword);
     [[nodiscard]] VariableDecl parse_variable_decl(const Token& name);
     [[nodiscard]] ReturnStmt parse_return_statement(const Token& keyword);
     [[nodiscard]] AssertStmt parse_assert_statement(const Token& keyword);
@@ -45,6 +50,7 @@ class Parser {
 
     [[nodiscard]] std::string collect_text_until(const std::vector<TokenType>& end_types, SourceLocation* span_location = nullptr);
     [[nodiscard]] std::string collect_text_until_semicolon();
+  [[nodiscard]] std::string collect_raw_statement_text();
     [[nodiscard]] std::string slice(const Token& first, const Token& last) const;
 
     static std::string trim_copy(std::string_view text);

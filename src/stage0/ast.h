@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <variant>
@@ -45,13 +46,31 @@ struct ReturnStmt {
 
 struct AssertStmt {
     std::string condition;
+    std::optional<std::string> category;
     SourceLocation location;
 };
 
-using Statement = std::variant<VariableDecl, ExpressionStmt, ReturnStmt, AssertStmt>;
+struct Block;
+
+struct ForChainStmt;
+
+struct RawStmt {
+    std::string text;
+    SourceLocation location;
+};
+
+using Statement = std::variant<VariableDecl, ExpressionStmt, ReturnStmt, AssertStmt, ForChainStmt, RawStmt>;
 
 struct Block {
     std::vector<Statement> statements;
+    SourceLocation location;
+};
+
+struct ForChainStmt {
+    std::string range_expression;
+    std::optional<std::string> next_expression;
+    Parameter loop_parameter;
+    Block body;
     SourceLocation location;
 };
 
@@ -82,10 +101,16 @@ struct IncludeDecl {
     SourceLocation location;
 };
 
+struct RawDecl {
+    std::string text;
+    SourceLocation location;
+};
+
 struct TranslationUnit {
     std::vector<IncludeDecl> includes;
-    std::vector<TypeDecl> types;
     std::vector<FunctionDecl> functions;
+    std::vector<TypeDecl> types;
+    std::vector<RawDecl> raw_declarations;
 };
 
 } // namespace cppfort::stage0

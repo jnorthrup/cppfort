@@ -37,7 +37,8 @@ class Lexer {
     void lex_identifier();
     void lex_number();
     void lex_string();
-  void lex_char();
+    void lex_char();
+    void lex_preprocessor();
 
     [[nodiscard]] bool match(char expected) noexcept;
 

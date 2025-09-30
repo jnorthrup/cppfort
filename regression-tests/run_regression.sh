@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$(dirname "$0")"
-CPPFRONT="../../stage0_clean/cppfront"
+CPPFRONT="../build/stage0_cli transpile"
 LOG="regression_log.txt"
 rm -f "$LOG"
 echo "Regression test log - $(date)" > "$LOG"
@@ -13,10 +13,10 @@ for file in *.cpp2; do
     base="${file%.cpp2}"
     echo "Testing $file" >> "$LOG"
     # Transpile
-    if $CPPFRONT "$file" -o "${base}.cpp" >> "$LOG" 2>&1; then
+    if $CPPFRONT "$file" "${base}.cpp" >> "$LOG" 2>&1; then
       echo "  Transpile OK" >> "$LOG"
       # Compile
-      if g++ -std=c++20 -O0 -g -I../../stage0_clean/include -o "$base" "${base}.cpp" >> "$LOG" 2>&1; then
+      if g++ -std=c++20 -O0 -g -I../include -o "$base" "${base}.cpp" >> "$LOG" 2>&1; then
         echo "  Compile OK" >> "$LOG"
         # Run
         output_file="output_${base}.txt"
@@ -55,8 +55,8 @@ echo "Failures: $num_fail" >> "$LOG"
 echo "Log saved to $LOG"
 
 # Post-process: parse the regression log into structured JSON/CSV and link errors
-echo "Post-processing regression results..." >> "$LOG"
-TOOLS_DIR="../tools/stage1"
-python3 "$TOOLS_DIR/parse_regression.py" "$LOG" >> "$LOG" 2>&1 || echo "Parser failed" >> "$LOG"
-python3 "$TOOLS_DIR/link_errors_to_context.py" "$TOOLS_DIR/regression_summary.json" >> "$LOG" 2>&1 || echo "Linker failed" >> "$LOG"
-echo "Post-processing complete. Outputs in $TOOLS_DIR" >> "$LOG"
+# echo "Post-processing regression results..." >> "$LOG"
+# TOOLS_DIR="../tools/stage1"
+# python3 "$TOOLS_DIR/parse_regression.py" "$LOG" >> "$LOG" 2>&1 || echo "Parser failed" >> "$LOG"
+# python3 "$TOOLS_DIR/link_errors_to_context.py" "$TOOLS_DIR/regression_summary.json" >> "$LOG" 2>&1 || echo "Linker failed" >> "$LOG"
+# echo "Post-processing complete. Outputs in $TOOLS_DIR" >> "$LOG"

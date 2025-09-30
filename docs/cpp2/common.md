@@ -10,11 +10,11 @@ As always, `main` is the entry point of the program. For example:
 
 - One parameter of implicit type named `args`: &emsp; **`#!cpp main: (args) /*etc.*/`**
 
-    - The type of `args` cannot be explicitly specified. It is always `cpp2::args_t`, which behaves similarly to a `#!cpp const std::array<std::string_view>`.
+  - The type of `args` cannot be explicitly specified. It is always `cpp2::args_t`, which behaves similarly to a `#!cpp const std::array<std::string_view>`.
 
-    - Using `args` performs zero heap allocations. Every `string_view` is directly bound to the string storage provided by host environment.
+  - Using `args` performs zero heap allocations. Every `string_view` is directly bound to the string storage provided by host environment.
 
-    - `args.argc` and `args.argv` additionally provide access to the raw C/C++ `main` parameters.
+  - `args.argc` and `args.argv` additionally provide access to the raw C/C++ `main` parameters.
 
 ``` cpp title="main with (args)" hl_lines="5 9"
 //  Print out command line arguments, then invoke
@@ -38,7 +38,6 @@ main: (args) -> int
 
 - Some other type that your Cpp1 compiler(s) supports as a nonstandard extension.
 
-
 ## <a id="comments"></a> Comments
 
 The usual `#!cpp // line comments` and `#!cpp /* stream comments */` are supported. For example:
@@ -53,7 +52,6 @@ The usual `#!cpp // line comments` and `#!cpp /* stream comments */` are support
     comment. Note that stream comments do not nest.
  */
 ```
-
 
 ## <a id="lists"></a> Lists and commas
 
@@ -83,7 +81,6 @@ main: () = {
 }
 ```
 
-
 An extra comma at the end of the list, before the closing `)` or `>`, is always allowed but ignored if present (for details, see [Design note: Commas](https://github.com/hsutter/cppfront/wiki/Design-note%3A-Commas)).
 
 For example:
@@ -104,7 +101,6 @@ main: () = {
 }
 ```
 
-
 ## <a id="keywords"></a> Contextual keywords
 
 Cpp2 has very few globally reserved keywords; nearly all keywords are contextual, where they have their special meaning when they appear in a particular place in the grammar. For example:
@@ -118,7 +114,6 @@ Cpp2 has very few globally reserved keywords; nearly all keywords are contextual
 - Unqualified `type_of(x)` is a synonym for Cpp1 `std::remove_cvref_t<decltype(x)>`.
 
 In rare cases, usually when consuming code written in other languages, you may need to write a name that is a reserved keyword. The way to do that is to prefix it with `__identifer__`, which treats it as an ordinary identifier (without the prefix).
-
 
 ## <a id="fundamental-types"></a> Fundamental data types
 
@@ -169,7 +164,6 @@ Cpp2 supports using Cpp1 user-defined literals for compatibility, to support sea
 - You can write a 'constexpr' function like `#!cpp nm: (value: i64) -> my_nanometer_type == { /*...*/ }` that takes an integer and returns a value of a strongly typed "nanometer" type, and then create a `nm` value by writing either `nm(123)` or **`123.nm()`**.
 
 Both **`123.nm()`** and **`123.u8()`** are very similar to user-defined literal syntax, and more general.
-
 
 ## <a id="operators"></a> Operators
 
@@ -226,7 +220,6 @@ Postfix notation lets the code read fluidly left-to-right, in the same order in 
 
 > Note: Because `++` and `--` always have in-place update semantics, we never need to remember "use prefix `++`/`--` unless you need a copy of the old value." If you do need a copy of the old value, just take the copy before calling `++`/`--`. When you write a copyable type that overloads `operator++` or `operator--`, cppfront generates also the copy-old-value overload of that function to support natural use of the type from Cpp1 code.
 
-
 ### <a id="binary-operators"></a> Binary operators
 
 Binary operators are the same as in Cpp1. From highest to lowest precedence:
@@ -245,6 +238,5 @@ Binary operators are the same as in Cpp1. From highest to lowest precedence:
 | `&&` |
 | `||` |
 | `=` and compound assignment |
-
 
 [^u8using]: Or `123.cpp2::u8()` if you aren't `using` the namespace or that specific name.

@@ -1,13 +1,161 @@
 #include "bidirectional.h"
 
+#include <cctype>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 #include "lexer.h"
 #include "parser.h"
 
 namespace cppfort::stage0 {
+
+namespace {
+
+bool looks_like_initializer_list(const std::string& expr) {
+    if (expr.size() < 2 || expr.front() != '(' || expr.back() != ')') {
+        return false;
+    }
+
+    std::size_t depth = 0;
+    bool has_top_level_comma = false;
+    for (std::size_t i = 1; i + 1 < expr.size(); ++i) {
+        char c = expr[i];
+        if (c == '(') {
+            ++depth;
+        } else if (c == ')') {
+            if (depth == 0) {
+                return false;
+            }
+            --depth;
+        } else if (c == ',' && depth == 0) {
+            has_top_level_comma = true;
+        }
+    }
+
+    return depth == 0 && has_top_level_comma;
+}
+
+std::string fix_expression_tokens(std::string expr) {
+    for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
+        if (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_') {
+            size_t start = pos;
+            while (pos < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_')) {
+                ++pos;
+            }
+            if (pos < expr.size() && expr[pos] == '*') {
+                std::string ident = expr.substr(start, pos - start);
+                expr.replace(start, ident.size() + 1, std::string("*") + ident);
+                pos = start + 1 + ident.size();
+            }
+        }
+    }
+
+    for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
+        if ((std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_') && expr[pos + 1] == '&') {
+            size_t end = pos;
+            size_t start = pos;
+            while (start > 0 && (std::isalnum(static_cast<unsigned char>(expr[start - 1])) || expr[start - 1] == '_')) {
+                --start;
+            }
+            std::string ident = expr.substr(start, end - start + 1);
+            expr.replace(start, ident.size() + 1, std::string("&") + ident);
+            pos = start + 1 + ident.size();
+        }
+    }
+
+    static const std::unordered_set<std::string> k_c_ufcs_names {
+        "fprintf", "fclose", "fflush", "fread", "fwrite", "fgets", "fputs",
+        "fscanf", "fgetc", "fputc", "fopen", "freopen"
+    };
+
+    for (size_t pos = 0; pos + 2 < expr.size(); ++pos) {
+        if (!std::isalnum(static_cast<unsigned char>(expr[pos])) && expr[pos] != '_') {
+            continue;
+        }
+
+        size_t obj_start = pos;
+        while (pos < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_')) {
+            ++pos;
+        }
+
+        if (pos + 1 >= expr.size() || expr[pos] != '.') {
+            continue;
+        }
+
+        if (!std::isalnum(static_cast<unsigned char>(expr[pos + 1])) && expr[pos + 1] != '_') {
+            continue;
+        }
+
+        size_t method_start = pos + 1;
+        size_t method_end = method_start;
+        while (method_end < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[method_end])) || expr[method_end] == '_')) {
+            ++method_end;
+        }
+
+        if (method_end >= expr.size() || expr[method_end] != '(') {
+            continue;
+        }
+
+        std::string method = expr.substr(method_start, method_end - method_start);
+        if (!k_c_ufcs_names.contains(method)) {
+            continue;
+        }
+
+        size_t paren_count = 1;
+        size_t args_end = method_end + 1;
+        while (args_end < expr.size() && paren_count > 0) {
+            if (expr[args_end] == '(') {
+                ++paren_count;
+            } else if (expr[args_end] == ')') {
+                --paren_count;
+            }
+            ++args_end;
+        }
+
+        if (args_end > expr.size()) {
+            break;
+        }
+
+        std::string obj = expr.substr(obj_start, pos - obj_start);
+        std::string args = expr.substr(method_end + 1, args_end - method_end - 2);
+        std::string replacement = method + "(" + obj;
+        if (!args.empty()) {
+            replacement += ", " + args;
+        }
+        replacement += ")";
+
+        expr.replace(obj_start, args_end - obj_start, replacement);
+        pos = obj_start + replacement.size();
+    }
+
+    if (expr.size() >= 4 && expr.substr(0, 4) == "_ = ") {
+        expr = "(void)(" + expr.substr(4) + ")";
+    }
+
+    return expr;
+}
+
+std::string normalize_space(std::string text) {
+    std::string result;
+    bool in_space = false;
+    for (char c : text) {
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            if (!in_space) {
+                result.push_back(' ');
+                in_space = true;
+            }
+        } else {
+            result.push_back(c);
+            in_space = false;
+        }
+    }
+    return result;
+}
+
+} // namespace
 
 // Forward declarations for internal classes
 class BidirectionalTranspiler::Cpp2Parser {
@@ -108,35 +256,91 @@ TranslationUnit BidirectionalTranspiler::CppParser::parse(const std::string& sou
                 std::string body_content = source.substr(brace_start + 1, brace_end - brace_start - 1);
                 Block block;
 
-                // Very basic statement parsing by lines
-                std::istringstream iss(body_content);
-                std::string line;
-                while (std::getline(iss, line)) {
-                    line.erase(line.begin(), std::find_if(line.begin(), line.end(),
-                        [](unsigned char ch) { return !std::isspace(ch); }));
-                    line.erase(std::find_if(line.rbegin(), line.rend(),
-                        [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
+                // More robust statement parsing: scan the function body and
+                // collect top-level statements while tracking nested
+                // parentheses/braces/brackets/angles and string/char literals.
+                auto trim = [](std::string& s) {
+                    // trim in place
+                    auto not_ws = [](unsigned char ch){ return !std::isspace(ch); };
+                    while (!s.empty() && !not_ws(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+                    while (!s.empty() && !not_ws(static_cast<unsigned char>(s.back()))) s.pop_back();
+                };
 
-                    if (line.find("return") == 0) {
-                        ReturnStmt ret;
-                        auto ret_pos = line.find("return");
-                        if (ret_pos != std::string::npos) {
-                            std::string expr = line.substr(ret_pos + 6);
-                            expr.erase(expr.begin(), std::find_if(expr.begin(), expr.end(),
-                                [](unsigned char ch) { return !std::isspace(ch); }));
-                            expr.erase(std::find_if(expr.rbegin(), expr.rend(),
-                                [](unsigned char ch) { return !std::isspace(ch); }).base(), expr.end());
-                            if (!expr.empty() && expr.back() == ';') {
-                                expr.pop_back();
+                const std::string& src = body_content;
+                size_t n = src.size();
+                size_t i = 0;
+                while (i < n) {
+                    // skip leading whitespace and newlines
+                    while (i < n && std::isspace(static_cast<unsigned char>(src[i]))) ++i;
+                    if (i >= n) break;
+
+                    size_t start = i;
+                    int paren = 0, brace = 0, bracket = 0, angle = 0;
+                    bool in_string = false;
+                    char string_delim = '\0';
+                    bool saw_open_brace = false;
+
+                    for (; i < n; ++i) {
+                        char c = src[i];
+
+                        if (in_string) {
+                            if (c == '\\') {
+                                // skip escaped char
+                                ++i;
+                                continue;
                             }
-                            if (!expr.empty()) {
-                                ret.expression = expr;
+                            if (c == string_delim) {
+                                in_string = false;
+                                string_delim = '\0';
                             }
+                            continue;
                         }
+
+                        if (c == '"' || c == '\'') {
+                            in_string = true;
+                            string_delim = c;
+                            continue;
+                        }
+
+                        if (c == '(') { ++paren; continue; }
+                        if (c == ')') { if (paren > 0) --paren; continue; }
+                        if (c == '{') { ++brace; saw_open_brace = true; continue; }
+                        if (c == '}') { if (brace > 0) --brace; if (brace == 0 && saw_open_brace) { ++i; break; } continue; }
+                        if (c == '[') { ++bracket; continue; }
+                        if (c == ']') { if (bracket > 0) --bracket; continue; }
+                        if (c == '<') { ++angle; continue; }
+                        if (c == '>') { if (angle > 0) --angle; continue; }
+
+                        // semicolon ends a top-level statement when depths are zero
+                        if (c == ';' && paren == 0 && brace == 0 && bracket == 0 && angle == 0) {
+                            ++i; // include semicolon
+                            break;
+                        }
+                    }
+
+                    std::string stmt = src.substr(start, i - start);
+                    trim(stmt);
+                    if (stmt.empty()) continue;
+
+                    // Handle 'return' specially
+                    auto starts_with = [](const std::string& s, const std::string& pref){
+                        if (s.size() < pref.size()) return false;
+                        return s.compare(0, pref.size(), pref) == 0;
+                    };
+
+                    if (starts_with(stmt, "return") && (stmt.size() == 6 || std::isspace(static_cast<unsigned char>(stmt[6])) || stmt[6] == ';')) {
+                        // strip leading 'return'
+                        std::string rest = stmt.substr(6);
+                        trim(rest);
+                        if (!rest.empty() && rest.back() == ';') rest.pop_back();
+                        ReturnStmt ret;
+                        if (!rest.empty()) ret.expression = rest;
                         block.statements.push_back(std::move(ret));
-                    } else if (!line.empty() && line.back() == ';') {
+                    } else {
+                        // Push everything else as an ExpressionStmt; remove trailing ';' if present
+                        if (!stmt.empty() && stmt.back() == ';') stmt.pop_back();
                         ExpressionStmt expr;
-                        expr.expression = line.substr(0, line.size() - 1);
+                        expr.expression = stmt;
                         block.statements.push_back(std::move(expr));
                     }
                 }
@@ -181,12 +385,23 @@ std::string BidirectionalTranspiler::Cpp2Emitter::emit(const TranslationUnit& un
                             output += "    return";
                             if (s.expression) {
                                 output += " " + *s.expression;
-                            }
-                            output += "\n";
-                        }
-                    }, stmt);
+                    }
+                    output += "\n";
                 }
-            }
+                else if constexpr (std::is_same_v<T, AssertStmt>) {
+                    output += "    assert " + s.condition;
+                    if (s.category && !s.category->empty()) {
+                        output += " // " + *s.category;
+                    }
+                    output += "\n";
+                } else if constexpr (std::is_same_v<T, ForChainStmt>) {
+                    output += "    // for-chain loop not yet supported in cpp2 emitter\n";
+                } else if constexpr (std::is_same_v<T, RawStmt>) {
+                    output += "    " + s.text + "\n";
+                }
+            }, stmt);
+        }
+    }
             output += "}\n";
         }
     }
@@ -196,7 +411,179 @@ std::string BidirectionalTranspiler::Cpp2Emitter::emit(const TranslationUnit& un
 
 // CppEmitter implementation - simplified version
 std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& unit, const TransformOptions& options) {
-    std::string output = "#include <iostream>\n\n";
+    std::string output;
+
+    auto needs_cstdio = false;
+
+    auto scan_for_stdio = [&](const std::string& text) {
+        if (text.find("fopen") != std::string::npos ||
+            text.find("fprintf") != std::string::npos ||
+            text.find("fclose") != std::string::npos ||
+            text.find("fread") != std::string::npos ||
+            text.find("fwrite") != std::string::npos) {
+            needs_cstdio = true;
+        }
+    };
+
+    std::function<void(const Statement&)> scan_statement;
+    scan_statement = [&](const Statement& stmt) {
+        std::visit([&](const auto& node) {
+            using T = std::decay_t<decltype(node)>;
+            if constexpr (std::is_same_v<T, VariableDecl>) {
+                if (node.initializer) {
+                    scan_for_stdio(*node.initializer);
+                }
+            } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
+                scan_for_stdio(node.expression);
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+                if (node.expression) {
+                    scan_for_stdio(*node.expression);
+                }
+            } else if constexpr (std::is_same_v<T, AssertStmt>) {
+                scan_for_stdio(node.condition);
+                if (node.category) {
+                    scan_for_stdio(*node.category);
+                }
+            } else if constexpr (std::is_same_v<T, ForChainStmt>) {
+                scan_for_stdio(node.range_expression);
+                if (node.next_expression) {
+                    scan_for_stdio(*node.next_expression);
+                }
+                for (const auto& inner : node.body.statements) {
+                    scan_statement(inner);
+                }
+            } else if constexpr (std::is_same_v<T, RawStmt>) {
+                scan_for_stdio(node.text);
+            }
+        }, stmt);
+    };
+
+    for (const auto& fn : unit.functions) {
+        if (std::holds_alternative<Block>(fn.body)) {
+            const auto& block = std::get<Block>(fn.body);
+            for (const auto& stmt : block.statements) {
+                scan_statement(stmt);
+            }
+        } else if (std::holds_alternative<ExpressionBody>(fn.body)) {
+            const auto& expr_body = std::get<ExpressionBody>(fn.body);
+            scan_for_stdio(expr_body.expression);
+        }
+    }
+
+    auto append_line = [&](int indent, const std::string& text) {
+        constexpr int spaces_per_indent = 4;
+        output.append(static_cast<std::size_t>(indent * spaces_per_indent), ' ');
+        output.append(text);
+        output.push_back('\n');
+    };
+
+    std::function<void(const Statement&, int)> emit_statement_cpp;
+    emit_statement_cpp = [&](const Statement& stmt, int indent) {
+        std::visit([&](const auto& s) {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, VariableDecl>) {
+                std::string type = normalize_space(s.type);
+                if (type.empty()) type = "auto";
+                std::string line = type + " " + s.name;
+                if (s.initializer && !s.initializer->empty()) {
+                    auto init = fix_expression_tokens(normalize_space(*s.initializer));
+                    if (looks_like_initializer_list(init)) {
+                        init.front() = '{';
+                        init.back() = '}';
+                    }
+                    line += " = " + init;
+                }
+                append_line(indent, line + ';');
+            } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
+                append_line(indent, fix_expression_tokens(normalize_space(s.expression)) + ';');
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+                if (s.expression && !s.expression->empty()) {
+                    append_line(indent, "return " + fix_expression_tokens(normalize_space(*s.expression)) + ';');
+                } else {
+                    append_line(indent, "return;");
+                }
+            } else if constexpr (std::is_same_v<T, AssertStmt>) {
+                std::string line = "assert(" + normalize_space(s.condition) + ");";
+                if (s.category && !s.category->empty()) {
+                    line += " // " + *s.category;
+                }
+                append_line(indent, line);
+            } else if constexpr (std::is_same_v<T, ForChainStmt>) {
+                auto resolve_type = [&]() {
+                    if (!s.loop_parameter.type.empty()) {
+                        return normalize_space(s.loop_parameter.type);
+                    }
+                    switch (s.loop_parameter.kind) {
+                        case ParameterKind::In:
+                            return std::string("const auto&");
+                        case ParameterKind::InOut:
+                        case ParameterKind::Out:
+                            return std::string("auto&");
+                        case ParameterKind::Move:
+                        case ParameterKind::Forward:
+                            return std::string("auto&&");
+                        default:
+                            return std::string("auto");
+                    }
+                };
+
+                const auto loop_type = resolve_type();
+                const auto loop_var = s.loop_parameter.name.empty() ? std::string("item") : s.loop_parameter.name;
+                const auto range = fix_expression_tokens(normalize_space(s.range_expression));
+
+                append_line(indent, "for (" + loop_type + " " + loop_var + " : " + range + ") {");
+                for (const auto& inner : s.body.statements) {
+                    emit_statement_cpp(inner, indent + 1);
+                }
+                if (s.next_expression) {
+                    append_line(indent + 1, fix_expression_tokens(normalize_space(*s.next_expression)) + ";");
+                }
+                append_line(indent, "}");
+            } else if constexpr (std::is_same_v<T, RawStmt>) {
+                append_line(indent, s.text);
+            }
+        }, stmt);
+    };
+
+    if (options.include_preamble) {
+        output += "// Generated by cppfort stage0 transpiler\n";
+        output += "#include <cstdint>\n";
+        output += "#include <iostream>\n";
+        output += "#include <string>\n";
+        output += "#include <string_view>\n";
+        output += "#include <vector>\n";
+        if (needs_cstdio) {
+            output += "#include <cstdio>\n";
+        }
+        output.push_back('\n');
+    }
+
+    for (const auto& inc : unit.includes) {
+        std::string line = "#include ";
+        if (inc.is_system) {
+            line += std::string("<") + inc.path + ">";
+        } else {
+            line += std::string("\"") + inc.path + "\"";
+        }
+        append_line(0, line);
+    }
+
+    if (!unit.includes.empty()) {
+        output.push_back('\n');
+    }
+
+    for (const auto& raw : unit.raw_declarations) {
+        if (!raw.text.empty()) {
+            if (!output.empty() && output.back() != '\n') {
+                output.push_back('\n');
+            }
+            output += raw.text;
+            if (output.back() != '\n') {
+                output.push_back('\n');
+            }
+            output.push_back('\n');
+        }
+    }
 
     for (const auto& fn : unit.functions) {
         // Emit function signature
@@ -235,96 +622,19 @@ std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& uni
             sig += emit_param_type(p) + " " + p.name;
             if (i + 1 < fn.parameters.size()) sig += ", ";
         }
-        sig += ") ";
-        // debug: append kinds
-        sig += "/*kinds:";
-        for (size_t i = 0; i < fn.parameters.size(); ++i) {
-            if (i) sig += ",";
-            switch (fn.parameters[i].kind) {
-                case ParameterKind::In: sig += "In"; break;
-                case ParameterKind::InOut: sig += "InOut"; break;
-                case ParameterKind::Out: sig += "Out"; break;
-                case ParameterKind::Copy: sig += "Copy"; break;
-                case ParameterKind::Move: sig += "Move"; break;
-                case ParameterKind::Forward: sig += "Forward"; break;
-                default: sig += "Default"; break;
-            }
-        }
-        sig += "*/ ";
-        sig += "{\n";
+        sig += ") {";
 
-        output += sig;
+        append_line(0, sig);
 
         if (std::holds_alternative<Block>(fn.body)) {
             const auto& block = std::get<Block>(fn.body);
             for (const auto& stmt : block.statements) {
-                std::visit([&output](const auto& s) {
-                    using T = std::decay_t<decltype(s)>;
-
-                    auto emit_line = [&](std::string line) {
-                        // Trim whitespace
-                        while (!line.empty() && std::isspace(static_cast<unsigned char>(line.front()))) line.erase(line.begin());
-                        while (!line.empty() && std::isspace(static_cast<unsigned char>(line.back()))) line.pop_back();
-                        // Remove trailing semicolons to avoid double-';'
-                        if (!line.empty() && line.back() == ';') line.pop_back();
-                        output += "    " + line + ";\n";
-                    };
-
-                    if constexpr (std::is_same_v<T, VariableDecl>) {
-                        std::string type = s.type;
-                        if (type.empty()) type = "auto";
-                        std::string line = type + " " + s.name;
-                        if (s.initializer && !s.initializer->empty()) {
-                            line += " = " + *s.initializer;
-                        }
-                        emit_line(line);
-                    } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
-                        std::string expr = s.expression;
-                        // Trim and strip semicolons
-                        while (!expr.empty() && std::isspace(static_cast<unsigned char>(expr.front()))) expr.erase(expr.begin());
-                        while (!expr.empty() && std::isspace(static_cast<unsigned char>(expr.back()))) expr.pop_back();
-                        while (!expr.empty() && expr.back() == ';') expr.pop_back();
-
-                        // Detect cpp2 var decl (basic check for ':')
-                        auto colon_pos = expr.find(':');
-                        if (colon_pos != std::string::npos) {
-                            std::string name = expr.substr(0, colon_pos);
-                            std::string rest = expr.substr(colon_pos + 1);
-                            auto equals_pos = rest.find('=');
-                            std::string type;
-                            std::string init;
-                            if (equals_pos != std::string::npos) {
-                                type = rest.substr(0, equals_pos);
-                                init = rest.substr(equals_pos + 1);
-                            } else {
-                                type = rest;
-                            }
-                            // trim
-                            while (!name.empty() && std::isspace(static_cast<unsigned char>(name.front()))) name.erase(name.begin());
-                            while (!name.empty() && std::isspace(static_cast<unsigned char>(name.back()))) name.pop_back();
-                            while (!type.empty() && std::isspace(static_cast<unsigned char>(type.front()))) type.erase(type.begin());
-                            while (!type.empty() && std::isspace(static_cast<unsigned char>(type.back()))) type.pop_back();
-                            while (!init.empty() && std::isspace(static_cast<unsigned char>(init.front()))) init.erase(init.begin());
-                            while (!init.empty() && std::isspace(static_cast<unsigned char>(init.back()))) init.pop_back();
-                            if (type.empty()) type = "auto";
-                            std::string out_line = type + " " + name;
-                            if (!init.empty()) out_line += " = " + init;
-                            emit_line(std::move(out_line));
-                        } else {
-                            emit_line(expr);
-                        }
-                    } else if constexpr (std::is_same_v<T, ReturnStmt>) {
-                        std::string line = "return";
-                        if (s.expression) {
-                            line += " " + *s.expression;
-                        }
-                        emit_line(line);
-                    }
-                }, stmt);
+                emit_statement_cpp(stmt, 1);
             }
         }
 
-        output += "}\n";
+        append_line(0, "}");
+        output.push_back('\n');
     }
 
     return output;

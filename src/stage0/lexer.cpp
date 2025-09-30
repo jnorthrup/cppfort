@@ -110,6 +110,9 @@ std::vector<Token> Lexer::tokenize() {
             case '=':
                 add_token(TokenType::Equals, token_start_offset, 1, token_line, token_column);
                 break;
+            case '#':
+                lex_preprocessor();
+                break;
             case '"':
                 lex_string();
                 break;
@@ -204,12 +207,6 @@ void Lexer::skip_whitespace() {
                     skip_multi_line_comment();
                 } else {
                     return;
-                }
-                break;
-            case '#':
-                // Skip preprocessor directives (for bidirectional compatibility)
-                while (!is_at_end() && peek() != '\n') {
-                    advance();
                 }
                 break;
             default:
@@ -342,6 +339,30 @@ void Lexer::lex_char() {
     add_token(TokenType::Char, start_offset, length, start_line, start_column);
 }
 
+void Lexer::lex_preprocessor() {
+    auto start_offset = m_current - 1;
+    auto start_line = m_line;
+    auto start_column = m_column - 1;
+
+    while (!is_at_end()) {
+        char c = peek();
+        if (c == '\\') {
+            advance();
+            if (!is_at_end() && peek() == '\n') {
+                advance();
+            }
+            continue;
+        }
+        if (c == '\n') {
+            break;
+        }
+        advance();
+    }
+
+    auto length = m_current - start_offset;
+    add_token(TokenType::Preprocessor, start_offset, length, start_line, start_column);
+}
+
 TokenType Lexer::keyword_type(const std::string& identifier) const noexcept {
     // Basic Cpp2 keywords
     if (identifier == "return") {
@@ -361,6 +382,9 @@ TokenType Lexer::keyword_type(const std::string& identifier) const noexcept {
     }
     if (identifier == "do") {
         return TokenType::KeywordDo;
+    }
+    if (identifier == "next") {
+        return TokenType::KeywordNext;
     }
     if (identifier == "assert") {
         return TokenType::KeywordAssert;

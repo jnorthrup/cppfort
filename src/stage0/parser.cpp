@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 #include <utility>
 
@@ -22,6 +23,26 @@ TranslationUnit Parser::parse() {
 TranslationUnit Parser::parse_translation_unit() {
     TranslationUnit unit;
     while (!is_at_end()) {
+        if (check(TokenType::EndOfFile)) {
+            break;
+        }
+
+        if (check(TokenType::Preprocessor)) {
+            const Token& directive = advance();
+            auto text = trim_copy(directive.lexeme);
+            if (text.rfind("#include", 0) == 0) {
+                unit.includes.push_back(parse_include_directive(directive));
+            } else {
+                unit.raw_declarations.push_back({std::move(text), directive.location});
+            }
+            continue;
+        }
+
+        if (is_cpp_raw_declaration()) {
+            unit.raw_declarations.push_back(parse_raw_declaration());
+            continue;
+        }
+
         auto decl = parse_declaration();
         if (std::holds_alternative<FunctionDecl>(decl)) {
             unit.functions.push_back(std::move(std::get<FunctionDecl>(decl)));
@@ -39,7 +60,7 @@ std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
     const Token* name_tok = nullptr;
     if (check(TokenType::KeywordAuto)) {
         // consume 'auto' and then expect an identifier
-        advance();
+        static_cast<void>(advance());
         name_tok = &consume(TokenType::Identifier, "Expected identifier after 'auto'");
     } else {
         name_tok = &consume(TokenType::Identifier, "Expected identifier at start of declaration");
@@ -49,7 +70,7 @@ std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
 
     // Check if it's a type declaration
     if (check(TokenType::KeywordType)) {
-        advance(); // consume 'type'
+        static_cast<void>(advance()); // consume 'type'
         static_cast<void>(consume(TokenType::Equals, "Expected '=' after 'type'"));
         static_cast<void>(consume(TokenType::LBrace, "Expected '{' to start type body"));
         auto body = collect_text_until({TokenType::RBrace});
@@ -64,7 +85,7 @@ std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
 FunctionDecl Parser::parse_function() {
     const Token* name_tok = nullptr;
     if (check(TokenType::KeywordAuto)) {
-        advance();
+        static_cast<void>(advance());
         name_tok = &consume(TokenType::Identifier, "Expected identifier after 'auto'");
     } else {
         name_tok = &consume(TokenType::Identifier, "Expected identifier at start of declaration");
@@ -95,14 +116,14 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
     FunctionBody body;
     if (match(TokenType::Equals)) {
         if (match(TokenType::LBrace)) {
-            body = parse_block();
+            body.emplace<Block>(parse_block());
         } else {
             auto expression_text = collect_text_until_semicolon();
             SourceLocation location = previous().location;
             body = ExpressionBody {trim_copy(expression_text), location};
         }
     } else if (match(TokenType::LBrace)) {
-        body = parse_block();
+        body.emplace<Block>(parse_block());
     } else {
         throw ParseError("Expected '=' or '{' before function body");
     }
@@ -129,22 +150,22 @@ std::vector<Parameter> Parser::parse_parameter_list() {
         // Check for optional parameter kind
         cppfort::stage0::ParameterKind pkind = cppfort::stage0::ParameterKind::Default;
         if (check(TokenType::KeywordIn)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::In;
         } else if (check(TokenType::KeywordInout)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::InOut;
         } else if (check(TokenType::KeywordOut)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::Out;
         } else if (check(TokenType::KeywordCopy)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::Copy;
         } else if (check(TokenType::KeywordMove)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::Move;
         } else if (check(TokenType::KeywordForward)) {
-            advance();
+            static_cast<void>(advance());
             pkind = cppfort::stage0::ParameterKind::Forward;
         }
 
@@ -192,6 +213,44 @@ Block Parser::parse_block() {
     return block;
 }
 
+Parameter Parser::parse_loop_parameter() {
+    Parameter param;
+    param.kind = ParameterKind::Default;
+
+    if (check(TokenType::KeywordIn)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::In;
+    } else if (check(TokenType::KeywordInout)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::InOut;
+    } else if (check(TokenType::KeywordOut)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::Out;
+    } else if (check(TokenType::KeywordCopy)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::Copy;
+    } else if (check(TokenType::KeywordMove)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::Move;
+    } else if (check(TokenType::KeywordForward)) {
+        static_cast<void>(advance());
+        param.kind = ParameterKind::Forward;
+    }
+
+    const Token& name = consume(TokenType::Identifier, "Expected loop variable name");
+    param.name = name.lexeme;
+    param.location = name.location;
+
+    if (match(TokenType::Colon)) {
+        auto type_text = collect_text_until({TokenType::RParen});
+        param.type = trim_copy(type_text);
+    }
+
+    static_cast<void>(consume(TokenType::RParen, "Expected ')' after loop variable"));
+
+    return param;
+}
+
 Statement Parser::parse_statement() {
     if (check(TokenType::KeywordReturn)) {
         const Token& keyword = advance();
@@ -201,6 +260,11 @@ Statement Parser::parse_statement() {
     if (check(TokenType::KeywordAssert)) {
         const Token& keyword = advance();
         return parse_assert_statement(keyword);
+    }
+
+    if (check(TokenType::KeywordFor)) {
+        const Token& keyword = advance();
+        return parse_for_chain_statement(keyword);
     }
 
     if (check(TokenType::Identifier) && peek_next().type == TokenType::Colon) {
@@ -247,11 +311,78 @@ ReturnStmt Parser::parse_return_statement(const Token& keyword) {
 }
 
 AssertStmt Parser::parse_assert_statement(const Token& keyword) {
+    std::optional<std::string> category;
+
+    if (match(TokenType::Less)) {
+        const Token& less_token = previous();
+        std::size_t content_start = less_token.end_offset();
+        std::size_t content_end = content_start;
+        std::size_t depth = 1;
+        while (!is_at_end() && depth > 0) {
+            const Token& tok = advance();
+            if (tok.type == TokenType::Less) {
+                ++depth;
+            } else if (tok.type == TokenType::Greater) {
+                --depth;
+                if (depth == 0) {
+                    content_end = tok.offset;
+                    break;
+                }
+            }
+        }
+        if (depth != 0) {
+            throw ParseError("Unterminated assert annotation");
+        }
+        if (content_end > content_start) {
+            category = trim_copy(std::string_view(m_source).substr(content_start, content_end - content_start));
+        } else {
+            category = std::string{};
+        }
+    }
+
     static_cast<void>(consume(TokenType::LParen, "Expected '(' after assert"));
     auto condition = collect_text_until({TokenType::RParen});
     static_cast<void>(consume(TokenType::RParen, "Expected ')' after assert condition"));
     static_cast<void>(consume(TokenType::Semicolon, "Expected ';' after assert"));
-    return AssertStmt {trim_copy(condition), keyword.location};
+    return AssertStmt {trim_copy(condition), std::move(category), keyword.location};
+}
+
+ForChainStmt Parser::parse_for_chain_statement(const Token& keyword) {
+    ForChainStmt stmt;
+    stmt.location = keyword.location;
+
+    auto collect_until = [&](const std::vector<TokenType>& terms) {
+        return trim_copy(collect_text_until(terms));
+    };
+
+    stmt.range_expression = collect_until({TokenType::KeywordNext, TokenType::KeywordDo});
+    if (stmt.range_expression.empty()) {
+        throw ParseError("Expected range expression after 'for'");
+    }
+
+    if (check(TokenType::KeywordNext)) {
+        static_cast<void>(advance());
+        auto expr = collect_until({TokenType::KeywordDo});
+        if (expr.empty()) {
+            throw ParseError("Expected expression after 'next'");
+        }
+        stmt.next_expression = std::move(expr);
+    }
+
+    static_cast<void>(consume(TokenType::KeywordDo, "Expected 'do' in for-chain"));
+    static_cast<void>(consume(TokenType::LParen, "Expected '(' after 'do'"));
+    stmt.loop_parameter = parse_loop_parameter();
+
+    if (match(TokenType::LBrace)) {
+        auto block = parse_block();
+        stmt.body = std::move(block);
+    } else {
+        auto block = std::make_unique<Block>();
+        block->location = stmt.loop_parameter.location;
+        block->statements.push_back(parse_statement());
+        stmt.body = std::move(*block);
+    }
+    return stmt;
 }
 
 ExpressionStmt Parser::parse_expression_statement(const Token& start_token) {
@@ -264,19 +395,56 @@ ExpressionStmt Parser::parse_expression_statement(const Token& start_token) {
 }
 
 std::string Parser::collect_text_until(const std::vector<TokenType>& end_types, SourceLocation* span_location) {
-    if (std::find(end_types.begin(), end_types.end(), peek().type) != end_types.end()) {
+    auto is_end_type = [&](TokenType t) {
+        return std::find(end_types.begin(), end_types.end(), t) != end_types.end();
+    };
+
+    if (is_end_type(peek().type)) {
         return {};
     }
 
     const Token& first = peek();
     const Token* last = nullptr;
 
-    auto is_end_type = [&](TokenType t) {
-        return std::find(end_types.begin(), end_types.end(), t) != end_types.end();
-    };
+    std::size_t paren_depth = 0;
+    std::size_t brace_depth = 0;
+    std::size_t bracket_depth = 0;
+    std::size_t angle_depth = 0;
 
-    while (!is_at_end() && !is_end_type(peek().type)) {
+    while (!is_at_end()) {
+        if (is_end_type(peek().type) && paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 && angle_depth == 0) {
+            break;
+        }
+
         last = &advance();
+        switch (last->type) {
+            case TokenType::LParen: ++paren_depth; break;
+            case TokenType::RParen:
+                if (paren_depth > 0) {
+                    --paren_depth;
+                }
+                break;
+            case TokenType::LBrace: ++brace_depth; break;
+            case TokenType::RBrace:
+                if (brace_depth > 0) {
+                    --brace_depth;
+                }
+                break;
+            case TokenType::LBracket: ++bracket_depth; break;
+            case TokenType::RBracket:
+                if (bracket_depth > 0) {
+                    --bracket_depth;
+                }
+                break;
+            case TokenType::Less: ++angle_depth; break;
+            case TokenType::Greater:
+                if (angle_depth > 0) {
+                    --angle_depth;
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     if (!last) {
@@ -292,6 +460,97 @@ std::string Parser::collect_text_until(const std::vector<TokenType>& end_types, 
 
 std::string Parser::collect_text_until_semicolon() {
     return collect_text_until({TokenType::Semicolon});
+}
+
+IncludeDecl Parser::parse_include_directive(const Token& directive) {
+    auto text = trim_copy(directive.lexeme);
+    IncludeDecl include;
+    include.location = directive.location;
+
+    auto remainder = trim_copy(text.substr(std::string("#include").size()));
+    if (!remainder.empty() && remainder.front() == '<' && remainder.back() == '>') {
+        include.is_system = true;
+        include.path = remainder.substr(1, remainder.size() - 2);
+    } else if (!remainder.empty() && remainder.front() == '"' && remainder.back() == '"') {
+        include.path = remainder.substr(1, remainder.size() - 2);
+    } else {
+        include.path = std::move(remainder);
+    }
+    return include;
+}
+
+bool Parser::is_cpp_raw_declaration() const {
+    if (check(TokenType::KeywordNamespace) || check(TokenType::KeywordUsing)) {
+        return true;
+    }
+    if (!check(TokenType::Identifier)) {
+        return false;
+    }
+
+    const std::string& lex = peek().lexeme;
+    return lex == "template" || lex == "struct" || lex == "class" || lex == "enum" || lex == "extern";
+}
+
+RawDecl Parser::parse_raw_declaration() {
+    const Token& first = advance();
+    const Token* last = &first;
+
+    std::size_t brace_depth = 0;
+    std::size_t paren_depth = 0;
+    std::size_t bracket_depth = 0;
+    std::size_t angle_depth = 0;
+
+    auto update_depth = [&](const Token& token) {
+        switch (token.type) {
+            case TokenType::LBrace: ++brace_depth; break;
+            case TokenType::RBrace:
+                if (brace_depth > 0) {
+                    --brace_depth;
+                }
+                break;
+            case TokenType::LParen: ++paren_depth; break;
+            case TokenType::RParen:
+                if (paren_depth > 0) {
+                    --paren_depth;
+                }
+                break;
+            case TokenType::LBracket: ++bracket_depth; break;
+            case TokenType::RBracket:
+                if (bracket_depth > 0) {
+                    --bracket_depth;
+                }
+                break;
+            case TokenType::Less:
+                ++angle_depth;
+                break;
+            case TokenType::Greater:
+                if (angle_depth > 0) {
+                    --angle_depth;
+                }
+                break;
+            default:
+                break;
+        }
+    };
+
+    while (!is_at_end()) {
+        if (check(TokenType::Semicolon) && brace_depth == 0 && paren_depth == 0 && bracket_depth == 0 && angle_depth == 0) {
+            last = &advance();
+            break;
+        }
+
+        if (check(TokenType::EndOfFile)) {
+            break;
+        }
+
+        update_depth(peek());
+        last = &advance();
+    }
+
+    RawDecl raw;
+    raw.location = first.location;
+    raw.text = slice(first, *last);
+    return raw;
 }
 
 std::string Parser::slice(const Token& first, const Token& last) const {
