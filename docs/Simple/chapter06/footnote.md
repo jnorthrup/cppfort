@@ -150,8 +150,9 @@
 ⏺ ACTUAL IMPLEMENTATION (Band 1 - Premature but Done)
 
   Created files:
-  - src/stage0/mlir_emitter.h - MLIR emission interface
-  - src/stage0/mlir_emitter.cpp - Scheduling and emission logic
+
+- src/stage0/mlir_emitter.h - MLIR emission interface
+- src/stage0/mlir_emitter.cpp - Scheduling and emission logic
 
   Key Implementation Details:
 
@@ -170,12 +171,12 @@
   };
 
   2. Region+Phi → Block Arguments Transformation:
-  mlir::Block* emitRegionWithPhis(RegionNode* region) {
+  mlir::Block*emitRegionWithPhis(RegionNode* region) {
       // Collect Phis controlled by this region
       std::vector<PhiNode*> phis = region->getPhis();
 
       // Create MLIR block with arguments for each Phi
-      auto* block = new mlir::Block();
+      auto*block = new mlir::Block();
       for (PhiNode* phi : phis) {
           block->addArgument(getMLIRType(phi));
           valueMap[phi] = block->getArgument(idx);
@@ -199,17 +200,20 @@
   virtual std::string getMLIRType() const { return "i32"; }
 
   Cost Analysis (Actual):
-  - 300 lines of emission code
-  - Scheduler complexity: O(n²) worst case with cycles
-  - Lost optimizations: Peephole happens before scheduling
-  - Can't round-trip: MLIR → SoN not implemented
+
+- 300 lines of emission code
+- Scheduler complexity: O(n²) worst case with cycles
+- Lost optimizations: Peephole happens before scheduling
+- Can't round-trip: MLIR → SoN not implemented
 
   Problems Encountered:
+
   1. Scheduling cycles in Phi-Region relationships
   2. Control/data separation makes block boundaries unclear
   3. ScopeNode doesn't map to MLIR (purely SoN construct)
 
   Benefits Realized:
+
   1. Forces explicit scheduling algorithm (needed anyway)
   2. Reveals impedance mismatches early
   3. Prepares for future lowering paths
