@@ -72,16 +72,97 @@ Node* SoNParser::parseReturn() {
 }
 
 Node* SoNParser::parseExpression() {
+    // Chapter 2: delegate to parseAddition for proper precedence
+    return parseAddition();
+}
+
+Node* SoNParser::parseAddition() {
+    Node* lhs = parseMultiplication();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek() == '+') {
+            advance();
+            Node* rhs = parseMultiplication();
+            // Create AddNode and apply peephole optimization
+            lhs = (new AddNode(lhs, rhs))->peephole();
+        } else if (peek() == '-') {
+            // This is subtraction (unary minus is handled in parseUnary)
+            advance();
+            Node* rhs = parseMultiplication();
+            // Create SubNode and apply peephole optimization
+            lhs = (new SubNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+Node* SoNParser::parseMultiplication() {
+    Node* lhs = parseUnary();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek() == '*') {
+            advance();
+            Node* rhs = parseUnary();
+            // Create MulNode and apply peephole optimization
+            lhs = (new MulNode(lhs, rhs))->peephole();
+        } else if (peek() == '/') {
+            advance();
+            Node* rhs = parseUnary();
+            // Create DivNode and apply peephole optimization
+            lhs = (new DivNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+Node* SoNParser::parseUnary() {
     skipWhitespace();
 
-    // Chapter 1: Only integer literals
-    if (std::isdigit(peek()) || peek() == '-') {
+    if (peek() == '-') {
+        // This is unary minus
+        advance();
+        // Recursively parse unary to handle multiple minuses like --5
+        Node* value = parseUnary();
+        // Create MinusNode and apply peephole optimization
+        return (new MinusNode(value))->peephole();
+    }
+
+    return parsePrimary();
+}
+
+Node* SoNParser::parsePrimary() {
+    skipWhitespace();
+
+    // Handle parentheses
+    if (peek() == '(') {
+        advance();
+        Node* expr = parseExpression();
+        skipWhitespace();
+        if (peek() != ')') {
+            throw std::runtime_error("Expected ')'");
+        }
+        advance();
+        return expr;
+    }
+
+    // Handle integer literals
+    if (std::isdigit(peek())) {
         int value = parseInteger();
         // Create ConstantNode with START as input for graph walking
         return new ConstantNode(value, START);
     }
 
-    throw std::runtime_error("Expected integer literal");
+    throw std::runtime_error("Expected integer literal or '('");
 }
 
 void SoNParser::skipWhitespace() {

@@ -55,9 +55,33 @@ public:
 
     /**
      * Parse an expression.
-     * Chapter 1: only integer literals.
+     * Chapter 2: full arithmetic expressions with precedence.
      */
     Node* parseExpression();
+
+    /**
+     * Parse additive expression (+ and -).
+     * Chapter 2: handles left-to-right associativity.
+     */
+    Node* parseAddition();
+
+    /**
+     * Parse multiplicative expression (* and /).
+     * Chapter 2: higher precedence than addition.
+     */
+    Node* parseMultiplication();
+
+    /**
+     * Parse unary expression (unary minus).
+     * Chapter 2: highest precedence.
+     */
+    Node* parseUnary();
+
+    /**
+     * Parse primary expression (literals and parentheses).
+     * Chapter 2: base case for recursion.
+     */
+    Node* parsePrimary();
 
     /**
      * Get the START node of the graph.

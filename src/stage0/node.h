@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include "type.h"
 
 namespace cppfort::ir {
 
@@ -42,6 +43,12 @@ public:
      */
     const int _nid;
 
+    /**
+     * Type of this node - represents the set of values it can take.
+     * Following Simple compiler Chapter 2.
+     */
+    Type* _type;
+
     // Constructor
     Node();
     virtual ~Node() = default;
@@ -76,6 +83,46 @@ public:
      * Get the label for graph visualization.
      */
     virtual std::string label() const = 0;
+
+    /**
+     * Compute the type for this node based on its inputs.
+     * This is the core of type inference and constant folding.
+     */
+    virtual Type* compute();
+
+    /**
+     * Peephole optimization - called after node creation.
+     * Returns potentially different node if optimization occurred.
+     * Following Simple compiler Chapter 2.
+     */
+    virtual Node* peephole();
+
+    /**
+     * Kill this node if it's unused, recursively killing unused inputs.
+     */
+    void kill();
+
+    /**
+     * Check if this node has no outputs (is unused).
+     */
+    bool isUnused() const { return _outputs.empty(); }
+
+    /**
+     * Check if this node is dead (has been killed).
+     */
+    bool isDead() const { return _type == nullptr; }
+
+    /**
+     * Helper to get input at index, or nullptr if out of bounds.
+     */
+    Node* in(int idx) const {
+        return idx < _inputs.size() ? _inputs[idx] : nullptr;
+    }
+
+    /**
+     * Number of inputs.
+     */
+    int nIns() const { return _inputs.size(); }
 };
 
 /**
@@ -122,6 +169,66 @@ public:
     Node* value() const {
         return _inputs.size() > 1 ? _inputs[1] : nullptr;
     }
+};
+
+/**
+ * Add node - adds two values.
+ * Following Simple compiler Chapter 2.
+ */
+class AddNode : public Node {
+public:
+    AddNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "+"; }
+    Type* compute() override;
+};
+
+/**
+ * Subtract node - subtracts rhs from lhs.
+ * Following Simple compiler Chapter 2.
+ */
+class SubNode : public Node {
+public:
+    SubNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "-"; }
+    Type* compute() override;
+};
+
+/**
+ * Multiply node - multiplies two values.
+ * Following Simple compiler Chapter 2.
+ */
+class MulNode : public Node {
+public:
+    MulNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "*"; }
+    Type* compute() override;
+};
+
+/**
+ * Divide node - divides lhs by rhs.
+ * Following Simple compiler Chapter 2.
+ */
+class DivNode : public Node {
+public:
+    DivNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "/"; }
+    Type* compute() override;
+};
+
+/**
+ * Unary minus node - negates a value.
+ * Following Simple compiler Chapter 2.
+ */
+class MinusNode : public Node {
+public:
+    MinusNode(Node* value);
+
+    std::string label() const override { return "-"; }
+    Type* compute() override;
 };
 
 } // namespace cppfort::ir
