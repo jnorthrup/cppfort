@@ -585,6 +585,55 @@ std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& uni
         }
     }
 
+    // Helper function to convert parameter types
+    auto emit_param_type = [&](const Parameter& p) {
+        std::string type = p.type;
+        if (type.empty()) type = "auto";
+        switch (p.kind) {
+            case ParameterKind::In:
+                return std::string("cpp2::impl::in<") + type + ">";
+            case ParameterKind::InOut:
+            case ParameterKind::Out:
+                return type + "&";
+            case ParameterKind::Copy:
+                return std::string("cpp2::impl::copy<") + type + ">";
+            case ParameterKind::Move:
+                return std::string("cpp2::impl::move<") + type + ">";
+            case ParameterKind::Forward:
+                return type + "&&";
+            default:
+                return type;
+        }
+    };
+
+    // Emit forward declarations for all functions
+    for (const auto& fn : unit.functions) {
+        std::string ret;
+        if (fn.return_type) {
+            ret = *fn.return_type;
+        } else if (fn.name == "main") {
+            ret = "int";
+        } else {
+            ret = "void";
+        }
+
+        std::string decl = ret + " " + fn.name + "(";
+        for (size_t i = 0; i < fn.parameters.size(); ++i) {
+            const auto& p = fn.parameters[i];
+            decl += emit_param_type(p);
+            if (!p.name.empty() && p.name != "_") {
+                decl += " " + p.name;
+            }
+            if (i + 1 < fn.parameters.size()) decl += ", ";
+        }
+        decl += ");";
+        append_line(0, decl);
+    }
+    if (!unit.functions.empty()) {
+        output.push_back('\n');
+    }
+
+    // Emit function definitions
     for (const auto& fn : unit.functions) {
         // Emit function signature
         std::string ret;
@@ -595,26 +644,6 @@ std::string BidirectionalTranspiler::CppEmitter::emit(const TranslationUnit& uni
         } else {
             ret = "void";
         }
-        // Convert cpp2 name and parameters to C++ signature
-        auto emit_param_type = [&](const Parameter& p) {
-            std::string type = p.type;
-            if (type.empty()) type = "auto";
-            switch (p.kind) {
-                case ParameterKind::In:
-                    return std::string("cpp2::impl::in<") + type + ">";
-                case ParameterKind::InOut:
-                case ParameterKind::Out:
-                    return type + "&";
-                case ParameterKind::Copy:
-                    return std::string("cpp2::impl::copy<") + type + ">";
-                case ParameterKind::Move:
-                    return std::string("cpp2::impl::move<") + type + ">";
-                case ParameterKind::Forward:
-                    return type + "&&";
-                default:
-                    return type;
-            }
-        };
 
         std::string sig = ret + " " + fn.name + "(";
         for (size_t i = 0; i < fn.parameters.size(); ++i) {

@@ -37,6 +37,8 @@ enum class TokenType {
     Dot,
     Less,
     Greater,
+    LShift,
+    RShift,
     Ampersand,
     Star,
     Plus,

@@ -68,10 +68,20 @@ std::vector<Token> Lexer::tokenize() {
                 add_token(TokenType::At, token_start_offset, 1, token_line, token_column);
                 break;
             case '<':
-                add_token(TokenType::Less, token_start_offset, 1, token_line, token_column);
+                if (peek() == '<') {
+                    advance();
+                    add_token(TokenType::LShift, token_start_offset, 2, token_line, token_column);
+                } else {
+                    add_token(TokenType::Less, token_start_offset, 1, token_line, token_column);
+                }
                 break;
             case '>':
-                add_token(TokenType::Greater, token_start_offset, 1, token_line, token_column);
+                if (peek() == '>') {
+                    advance();
+                    add_token(TokenType::RShift, token_start_offset, 2, token_line, token_column);
+                } else {
+                    add_token(TokenType::Greater, token_start_offset, 1, token_line, token_column);
+                }
                 break;
             case '&':
                 add_token(TokenType::Ampersand, token_start_offset, 1, token_line, token_column);
