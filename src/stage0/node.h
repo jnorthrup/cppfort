@@ -124,6 +124,17 @@ public:
      * Number of inputs.
      */
     int nIns() const { return _inputs.size(); }
+
+    // MLIR integration hooks (Band 1 premature integration)
+    virtual bool hasSideEffects() const { return false; }
+    virtual bool isMemoryOp() const { return false; }
+    virtual int schedulePriority() const { return 0; }
+
+    // MLIR type for this node (preparation for emission)
+    virtual std::string getMLIRType() const {
+        if (_type) return "i32";  // Default to 32-bit integer
+        return "unknown";
+    }
 };
 
 /**

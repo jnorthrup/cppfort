@@ -9,6 +9,7 @@ set(STAGE0_SOURCES
     node.cpp
     type.cpp
     son_parser.cpp
+    # mlir_emitter.cpp  # Uncomment when MLIR headers available
 )
 
 add_library(stage0 STATIC ${STAGE0_SOURCES})
