@@ -11,6 +11,7 @@
 #include <stack>
 
 #include "node.h"
+#include "../utils/multi_index.h"
 
 namespace cppfort::ir {
 
@@ -27,70 +28,8 @@ namespace cppfort::ir {
 // Forward declarations
 class CFGNode;
 class LoopNode;
-class NeverNode;
 
 // Use existing node definitions from node.h - no GCM-specific versions needed
-
-/**
- * CProj - Control Projection node.
- * Used for If true/false branches and Start control projection.
- */
-class CProjNode : public CFGNode {
-    int _idx;  // 0 for true/ctrl, 1 for false
-    ::std::string _label;
-
-public:
-    CProjNode(Node* ctrl, int idx, const ::std::string& label = "")
-        : CFGNode(), _idx(idx), _label(label) {
-        setInput(0, ctrl);
-    }
-
-    bool isCFG() const override { return true; }
-
-    bool blockHead() const {
-        // Only starts a BB if projecting from If
-        return dynamic_cast<IfNode*>(in(0)) != nullptr;
-    }
-
-    ::std::string label() const override {
-        if (!_label.empty()) return _label;
-        return ::std::string("CProj[") + (_idx ? "F" : "T") + "]";
-    }
-
-    CFGNode* idom() override { return dynamic_cast<CFGNode*>(in(0)); }
-
-    int idepth() override {
-        if (_idepth != 0) return _idepth;
-        CFGNode* dom = idom();
-        if (!dom) return _idepth = 1;
-        return _idepth = dom->idepth() + 1;
-    }
-
-    int loopDepth() override {
-        if (_loopDepth != 0) return _loopDepth;
-        CFGNode* cfg = dynamic_cast<CFGNode*>(in(0));
-        if (!cfg) return _loopDepth = 1;
-        return _loopDepth = cfg->loopDepth();
-    }
-
-    int idx() const { return _idx; }
-};
-
-/**
- * NeverNode - Special If node that never executes.
- * Used to handle infinite loops by creating dummy edges to Stop.
- */
-class NeverNode : public IfNode {
-    int _idepth = 0;
-    int _loopDepth = 0;
-public:
-    NeverNode(Node* ctrl) : IfNode(ctrl, nullptr) {}
-
-    ::std::string label() const override { return "Never"; }
-
-    // Never executes, so predicate is always false
-    Type* compute() override;
-};
 
 /**
  * XCtrlNode - Dead control node.
@@ -103,6 +42,7 @@ public:
     CFGNode* idom() override { return nullptr; }
     int idepth() override { return 1; }
     int loopDepth() override { return 1; }
+    NodeKind getKind() const override { return NodeKind::REGION; }  // Dead control region
 };
 
 /**

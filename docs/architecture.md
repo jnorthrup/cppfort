@@ -4,6 +4,25 @@
 
 Cppfort implements a self-hosting Cpp2 compiler with three stages and anticheat attestation through inductive regression testing. The system transpiles Cpp2 source to canonical C++, validates semantic equivalence through side-by-side execution, and extracts graph-node signals for model priming.
 
+### Implementation Strategy: Bands
+
+The Sea of Nodes implementation is organized into **Bands** - coherent implementation phases that align with proven frontend IR concepts from LLVM, MLIR, and production compilers.
+
+**Critical Divergence:** Cppfort diverges from Simple compiler's single-target approach. Cppfort uses Sea of Nodes as **source IR** for **n-way conversion** to multiple targets via TableGen pattern matching.
+
+**Current Status:**
+- ✅ **Band 1** (Chapters 1-6): Foundation - SSA form, basic nodes
+- ✅ **Band 2** (Chapters 7-10): Loops + Memory - CFG, memory model
+- ⚠️ **Band 3** (Chapter 11): Scheduling - GCM implementation (partial)
+- ✅ **Band 4** (Chapters 12-15): Type System - Full type lattice
+- ❌ **Band 5+** (Chapters 16-24): Advanced optimizations (not started)
+- ❌ **N-Way Lowering** (Post-optimization): Pattern-based conversion to MLIR/C/C++/Rust/WASM
+
+**See:**
+- [Band Structure](architecture/band-structure.md) - Implementation milestones
+- [Band-IR Alignment](architecture/band-ir-alignment.md) - Dovetailing with real-world IR concepts
+- **[Divergence: Simple vs N-Way](architecture/divergence-son-simple-n-way.md)** - Why cppfort needs pattern matching
+
 ## Stage0: C++ Emitter
 
 **Purpose**: Emit canonical C++ from internal AST representation.
@@ -73,6 +92,8 @@ Compiled Binaries → Disassembler → Feature Extractor → Attestation Engine 
 - Symbol table features
 
 **Integration**: Runs after successful compilation in regression harness.
+
+**Late Stage2 Goal:** Disasm → TableGen pattern extraction with differential tracking. See [Stage2 Disasm→TableGen Differential](architecture/stage2-disasm-tblgen-differential.md) for stochastic pattern tracking and [Idempotent Pattern Optimization](architecture/idempotent-pattern-optimization.md) for recompute-vs-store tradeoffs.
 
 ## Graph-Node Model for Inductive Learning
 
@@ -177,3 +198,51 @@ Prime Inductive Model
 - Graph nodes capture meaningful equivalence signals
 - Anticheat features provide useful binary analysis
 - Inductive model can detect compilation anomalies
+
+## Multi-Index Subsumption Engine
+
+**Status:** Design Phase | **ADR:** [ADR-001](architecture/decisions/ADR-001-multi-index-subsumption-engine.md)
+
+The subsumption engine provides unified query and projection capabilities for:
+- **MLIR integration** - Pattern matching and dialect conversions
+- **Sea of Nodes optimization** - Multi-criteria graph queries (type + CFG + data flow)
+- **N-way projections** - Graph transformations via hierarchical subsumption rules
+- **Node feature extraction** - Project node properties for analysis/codegen
+
+### Core Requirements
+
+1. **Hash-based primary index** - O(1) lookup by node ID
+2. **Type hierarchy queries** - Subsumption lattice for type matching
+3. **CFG topology queries** - Domination, loop depth, control flow
+4. **Data flow projections** - Def-use chains, memory dependencies
+5. **MLIR pattern matching** - TableGen-style rule application
+
+### Integration Points
+
+- **Band 3 GCM:** Loop-invariant code motion, dominator queries, anti-dependency detection
+- **Band 4 Types:** Type lattice navigation, subtype queries, unification
+- **Future MLIR:** Dialect lowering, operation legality, multi-level optimization
+
+### API Preview
+```cpp
+// Loop-invariant code motion query
+auto hoistCandidates = engine.query()
+    .whereLoopDepth(lessThan(currentLoop->depth()))
+    .whereDataFlow(allInputsAvailable(currentLoop->preheader()))
+    .projectToSchedule();
+
+// MLIR pattern matching
+Pattern addPattern = engine.createPattern()
+    .match<AddNode>()
+    .whereType(isIntegral())
+    .rewrite([](AddNode* n) {
+        return mlir::arith::AddIOp(n->lhs(), n->rhs());
+    });
+```
+
+**See:**
+- [Subsumption Engine Architecture](architecture/subsumption-engine.md) for full details
+- [Subsumption-Based Densification Gains](architecture/subsumption-densification-gains.md) for optimization analysis
+- [Borrow Checking & Arena Allocators](architecture/borrow-checking-arenas.md) for memory safety and one-way drone allocation
+- **[Subsumption Boundaries vs Bands](architecture/subsumption-boundaries-vs-bands.md)** - Critical: Band implementation phases ≠ Subsumption query partitions
+- **[TableGen Optimization Rainbow Table](architecture/tblgen-optimization-rainbow-table.md)** - Optimization-level-aware lowering via differential equations

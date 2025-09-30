@@ -1291,6 +1291,41 @@ int main(int argc, char** argv) {
 - [ ] Add tests for n-way lowering
 - [ ] All tests pass
 
+**Regression Testing Requirements:**
+
+Band 5 requires -Og baseline capture for differential pattern tracking (Stage2 goal). See [Stage2 Disasm→TableGen Differential](architecture/stage2-disasm-tblgen-differential.md).
+
+**Add to regression harness:**
+```bash
+# regression-tests/run_with_baseline.sh
+for test in regression-tests/*.cpp2; do
+    base=$(basename $test .cpp2)
+
+    # Capture -Og baseline (preserves SON IR structure in assembly)
+    ./build/stage1_cli -Og $test -o build/${base}_Og.out
+
+    # Extract CFG with Ghidra (better basic blocks than objdump)
+    analyzeHeadless /tmp ghidra_${base}_Og \
+        -import build/${base}_Og.out \
+        -postScript extract_cfg.py \
+        -scriptPath ./scripts/ghidra
+
+    # Fallback: objdump for raw disassembly
+    objdump -d build/${base}_Og.out > build/${base}_Og.asm
+
+    # Dump IR for pattern baseline
+    ./build/stage1_cli -Og --dump-ir $test > build/${base}.ir
+done
+```
+
+**Rationale:** Stochastic patterns (those SON optimizes to nothing at -O2+) require -Og baseline to capture. Differential tracking measures cost reduction: `dC/dO = -α*C`.
+
+**Implementation checklist (regression):**
+- [ ] Add -Og baseline capture to regression harness
+- [ ] Generate .asm dumps with objdump
+- [ ] Dump IR at -Og for pattern extraction
+- [ ] Validate baseline patterns captured
+
 ### Task 10: Integration and Documentation (2 days)
 
 **Create integration documentation:**

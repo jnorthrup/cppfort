@@ -47,6 +47,10 @@ target_link_libraries(test_band2 PRIVATE stage0)
 add_executable(test_band3 ../../tests/test_band3.cpp)
 target_link_libraries(test_band3 PRIVATE stage0)
 
+# Band 5 bitwise operations tests (Chapter 16)
+add_executable(test_band5 ../../tests/test_band5.cpp)
+target_link_libraries(test_band5 PRIVATE stage0)
+
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"

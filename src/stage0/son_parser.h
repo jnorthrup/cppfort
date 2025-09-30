@@ -100,6 +100,30 @@ public:
     Node* parseMultiplication();
 
     /**
+     * Parse shift expressions (<<, >>, >>>).
+     * Chapter 16: higher precedence than addition, lower than multiplication.
+     */
+    Node* parseShifts();
+
+    /**
+     * Parse bitwise AND expression (&).
+     * Chapter 16: higher precedence than shifts, lower than comparisons.
+     */
+    Node* parseBitwiseAnd();
+
+    /**
+     * Parse bitwise XOR expression (^).
+     * Chapter 16: higher precedence than bitwise AND, lower than bitwise OR.
+     */
+    Node* parseBitwiseXor();
+
+    /**
+     * Parse bitwise OR expression (|).
+     * Chapter 16: higher precedence than bitwise XOR, lower than comparisons.
+     */
+    Node* parseBitwiseOr();
+
+    /**
      * Parse unary expression (unary minus).
      * Chapter 2: highest precedence.
      */

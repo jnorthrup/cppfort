@@ -2,6 +2,7 @@
 
 ## THE Critical Convergence Point
 
+// TODO: The documentation currently overstates test coverage. Implement missing features (e.g., fixInfiniteLoops) and add accurate coverage statements.
 This implementation represents the most critical transformation in the entire Sea of Nodes compiler architecture: **the scheduling of an unordered graph into executable code**.
 
 ## Overview
@@ -43,10 +44,10 @@ Memory operations require special handling:
 
 ### 4. Infinite Loop Handling
 
-The implementation detects and handles infinite loops:
-- Loops without exits are identified
-- `NeverNode` instances create dummy edges to Stop
-- This ensures all code is reachable for scheduling
+TODO (UNIMPLEMENTED): The implementation currently does NOT detect and handle infinite loops.
+- fixInfiniteLoops() in [`src/stage0/gcm.cpp:42`](src/stage0/gcm.cpp:42) is a stub and is not executed by the scheduler.
+- Loops without exits are not guaranteed to be identified; `NeverNode` insertion is not implemented.
+- This section is aspirational — implement loop exit detection and NeverNode insertion before claiming this feature.
 
 ## TableGen Patterns (`gcm_patterns.td`)
 
@@ -76,12 +77,15 @@ def LoadStoreOrder : AntiDepPattern<"LoadStoreOrder"> {
 
 ## Test Coverage (`test_band3.cpp`)
 
-Comprehensive tests verify:
+NOTE: The original `tests/test_band3.cpp` was a design sketch and is not compilable.
+The following test items are aspirational and must be validated by real, runnable tests
+before asserting coverage.
 
+Aspirational test scenarios (update with real tests):
 1. **Basic Scheduling**: Constants and arithmetic operations
 2. **Memory Ordering**: Load/Store anti-dependencies
 3. **Loop Optimization**: Loop-invariant code motion
-4. **Infinite Loops**: Never node insertion
+4. **Infinite Loops**: Never node insertion (UNIMPLEMENTED)
 5. **Control Dependence**: Conditional placement
 6. **Complex Graphs**: Real-world scheduling scenarios
 

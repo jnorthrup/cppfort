@@ -295,6 +295,157 @@ Type* DivNode::compute() {
     return TypeInteger::bottom();
 }
 
+// ============================================================================
+// Chapter 16: Bitwise Operation Implementations
+// ============================================================================
+
+// AndNode implementation
+AndNode::AndNode(Node* lhs, Node* rhs) : Node() {
+    setInput(0, lhs);
+    setInput(1, rhs);
+}
+
+Type* AndNode::compute() {
+    Node* lhs = in(0);
+    Node* rhs = in(1);
+
+    if (lhs && rhs && lhs->_type && rhs->_type) {
+        TypeInteger* i0 = dynamic_cast<TypeInteger*>(lhs->_type);
+        TypeInteger* i1 = dynamic_cast<TypeInteger*>(rhs->_type);
+
+        if (i0 && i1) {
+            if (i0->isConstant() && i1->isConstant()) {
+                return TypeInteger::constant(i0->value() & i1->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
+// OrNode implementation
+OrNode::OrNode(Node* lhs, Node* rhs) : Node() {
+    setInput(0, lhs);
+    setInput(1, rhs);
+}
+
+Type* OrNode::compute() {
+    Node* lhs = in(0);
+    Node* rhs = in(1);
+
+    if (lhs && rhs && lhs->_type && rhs->_type) {
+        TypeInteger* i0 = dynamic_cast<TypeInteger*>(lhs->_type);
+        TypeInteger* i1 = dynamic_cast<TypeInteger*>(rhs->_type);
+
+        if (i0 && i1) {
+            if (i0->isConstant() && i1->isConstant()) {
+                return TypeInteger::constant(i0->value() | i1->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
+// XorNode implementation
+XorNode::XorNode(Node* lhs, Node* rhs) : Node() {
+    setInput(0, lhs);
+    setInput(1, rhs);
+}
+
+Type* XorNode::compute() {
+    Node* lhs = in(0);
+    Node* rhs = in(1);
+
+    if (lhs && rhs && lhs->_type && rhs->_type) {
+        TypeInteger* i0 = dynamic_cast<TypeInteger*>(lhs->_type);
+        TypeInteger* i1 = dynamic_cast<TypeInteger*>(rhs->_type);
+
+        if (i0 && i1) {
+            if (i0->isConstant() && i1->isConstant()) {
+                return TypeInteger::constant(i0->value() ^ i1->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
+// ShlNode implementation (shift left)
+ShlNode::ShlNode(Node* value, Node* shift) : Node() {
+    setInput(0, value);
+    setInput(1, shift);
+}
+
+Type* ShlNode::compute() {
+    Node* value = in(0);
+    Node* shift = in(1);
+
+    if (value && shift && value->_type && shift->_type) {
+        TypeInteger* v = dynamic_cast<TypeInteger*>(value->_type);
+        TypeInteger* s = dynamic_cast<TypeInteger*>(shift->_type);
+
+        if (v && s) {
+            if (v->isConstant() && s->isConstant()) {
+                return TypeInteger::constant(v->value() << s->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
+// AShrNode implementation (arithmetic shift right)
+AShrNode::AShrNode(Node* value, Node* shift) : Node() {
+    setInput(0, value);
+    setInput(1, shift);
+}
+
+Type* AShrNode::compute() {
+    Node* value = in(0);
+    Node* shift = in(1);
+
+    if (value && shift && value->_type && shift->_type) {
+        TypeInteger* v = dynamic_cast<TypeInteger*>(value->_type);
+        TypeInteger* s = dynamic_cast<TypeInteger*>(shift->_type);
+
+        if (v && s) {
+            if (v->isConstant() && s->isConstant()) {
+                // Arithmetic shift right (sign extension)
+                return TypeInteger::constant(v->value() >> s->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
+// LShrNode implementation (logical shift right)
+LShrNode::LShrNode(Node* value, Node* shift) : Node() {
+    setInput(0, value);
+    setInput(1, shift);
+}
+
+Type* LShrNode::compute() {
+    Node* value = in(0);
+    Node* shift = in(1);
+
+    if (value && shift && value->_type && shift->_type) {
+        TypeInteger* v = dynamic_cast<TypeInteger*>(value->_type);
+        TypeInteger* s = dynamic_cast<TypeInteger*>(shift->_type);
+
+        if (v && s) {
+            if (v->isConstant() && s->isConstant()) {
+                // Logical shift right (zero extension)
+                unsigned int val = static_cast<unsigned int>(v->value());
+                return TypeInteger::constant(val >> s->value());
+            }
+        }
+    }
+
+    return TypeInteger::bottom();
+}
+
 // MinusNode implementation (unary minus)
 MinusNode::MinusNode(Node* value) : Node() {
     setInput(0, value);
@@ -589,6 +740,29 @@ Node* LoopNode::peephole() {
 
     // Once complete, behave like normal region
     return RegionNode::peephole();
+}
+
+void LoopNode::forceExit(CFGNode* stop) {
+    // Create a NeverNode controlled by the loop header (this)
+    NeverNode* never = new NeverNode(this);
+
+    // Create true/false control projections from the NeverNode
+    CProjNode* trueProj = new CProjNode(never, 0, "Never.T");
+    CProjNode* falseProj = new CProjNode(never, 1, "Never.F");
+
+    // Create a Return node on the true projection so Stop can collect it
+    ReturnNode* ret = new ReturnNode(trueProj, nullptr);
+
+    // Attach the return to the Stop node if possible
+    if (StopNode* s = dynamic_cast<StopNode*>(stop)) {
+        s->addReturn(ret);
+    }
+
+    // Use the false projection as the loop backedge so the loop can continue
+    setBackedge(falseProj);
+
+    // Invalidate cached loop depth so it will be recomputed later
+    setLoopDepth(0);
 }
 
 

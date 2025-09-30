@@ -125,17 +125,18 @@ Node* SoNParser::parseReturn() {
 }
 
 Node* SoNParser::parseExpression() {
-    // Chapter 2+: comparisons bind looser than addition
-    Node* lhs = parseAddition();
+    // Chapter 2+: comparisons bind looser than bitwise OR
+    // Chapter 16: bitwise operations with proper precedence
+    Node* lhs = parseBitwiseOr();
     while (true) {
         skipWhitespace();
         if (peek("==")) {
             consume("==");
-            Node* rhs = parseAddition();
+            Node* rhs = parseBitwiseOr();
             lhs = (new EQNode(lhs, rhs))->peephole();
         } else if (peek("<")) {
             consume("<");
-            Node* rhs = parseAddition();
+            Node* rhs = parseBitwiseOr();
             lhs = (new LTNode(lhs, rhs))->peephole();
         } else {
             break;
@@ -145,20 +146,20 @@ Node* SoNParser::parseExpression() {
 }
 
 Node* SoNParser::parseAddition() {
-    Node* lhs = parseMultiplication();
+    Node* lhs = parseShifts();
 
     while (true) {
         skipWhitespace();
 
         if (peek() == '+') {
             advance();
-            Node* rhs = parseMultiplication();
+            Node* rhs = parseShifts();
             // Create AddNode and apply peephole optimization
             lhs = (new AddNode(lhs, rhs))->peephole();
         } else if (peek() == '-') {
             // This is subtraction (unary minus is handled in parseUnary)
             advance();
-            Node* rhs = parseMultiplication();
+            Node* rhs = parseShifts();
             // Create SubNode and apply peephole optimization
             lhs = (new SubNode(lhs, rhs))->peephole();
         } else {
@@ -185,6 +186,90 @@ Node* SoNParser::parseMultiplication() {
             Node* rhs = parseUnary();
             // Create DivNode and apply peephole optimization
             lhs = (new DivNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+// ============================================================================
+// Chapter 16: Bitwise Operation Parsing
+// ============================================================================
+
+Node* SoNParser::parseBitwiseOr() {
+    Node* lhs = parseBitwiseXor();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek() == '|') {
+            advance();
+            Node* rhs = parseBitwiseXor();
+            lhs = (new OrNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+Node* SoNParser::parseBitwiseXor() {
+    Node* lhs = parseBitwiseAnd();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek() == '^') {
+            advance();
+            Node* rhs = parseBitwiseAnd();
+            lhs = (new XorNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+Node* SoNParser::parseBitwiseAnd() {
+    Node* lhs = parseShifts();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek() == '&') {
+            advance();
+            Node* rhs = parseShifts();
+            lhs = (new AndNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+
+    return lhs;
+}
+
+Node* SoNParser::parseShifts() {
+    Node* lhs = parseAddition();
+
+    while (true) {
+        skipWhitespace();
+
+        if (peek("<<")) {
+            consume("<<");
+            Node* rhs = parseAddition();
+            lhs = (new ShlNode(lhs, rhs))->peephole();
+        } else if (peek(">>>")) {
+            consume(">>>");
+            Node* rhs = parseAddition();
+            lhs = (new AShrNode(lhs, rhs))->peephole();
+        } else if (peek(">>")) {
+            consume(">>");
+            Node* rhs = parseAddition();
+            lhs = (new LShrNode(lhs, rhs))->peephole();
         } else {
             break;
         }

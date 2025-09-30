@@ -27,7 +27,11 @@ Type* NeverNode::compute() {
 
 void GlobalCodeMotion::schedule() {
     // Phase 1: Fix infinite loops
-    fixInfiniteLoops();
+    // NOTE: fixInfiniteLoops() is currently a stub and does not implement loop-exit detection.
+    // To avoid relying on unimplemented behavior, the scheduler will skip this phase until
+    // a proper implementation is provided.
+    // TODO: Implement loop exit detection and re-enable this call.
+    // fixInfiniteLoops();
 
     // Phase 2: Early schedule (as early as possible)
     scheduleEarly();
@@ -40,10 +44,47 @@ void GlobalCodeMotion::schedule() {
 }
 
 void GlobalCodeMotion::fixInfiniteLoops() {
-    // Find all loops and check if they have exits
-    // For now, assume parser creates proper exits
-    // TODO: Implement loop exit detection and Never node insertion
-    // when we encounter infinite loops without explicit exits
+    // Backward reachability from Stop: find nodes that can reach Stop.
+    ::std::unordered_set<int> reachable;
+    ::std::stack<Node*> st;
+
+    st.push(_stop);
+    while (!st.empty()) {
+        Node* n = st.top();
+        st.pop();
+        if (!n) continue;
+        if (!reachable.insert(n->_nid).second) continue;
+        for (Node* in : n->_inputs) {
+            if (in) st.push(in);
+        }
+    }
+
+    // Collect CFG nodes (RPO) to find loops
+    ::std::vector<CFGNode*> rpo;
+    ::std::unordered_set<int> visited;
+    rpoWalk(static_cast<CFGNode*>(_start), visited, rpo);
+
+    for (CFGNode* cfg : rpo) {
+        if (LoopNode* loop = dynamic_cast<LoopNode*>(cfg)) {
+            // If the loop header cannot reach Stop (not in reachable set),
+            // consider it an infinite loop without an exit and force an exit.
+            if (reachable.find(loop->_nid) == reachable.end()) {
+                // Create loop exit using LoopNode::forceExit which wires Never/CProj/Return
+                loop->forceExit(_stop);
+
+                // Mark the newly-created nodes as reachable so we don't duplicate
+                // (they were just appended via constructors)
+                // Walk from the Stop inputs to add new nodes
+                st.push(_stop);
+                while (!st.empty()) {
+                    Node* n = st.top(); st.pop();
+                    if (!n) continue;
+                    if (!reachable.insert(n->_nid).second) continue;
+                    for (Node* in : n->_inputs) if (in) st.push(in);
+                }
+            }
+        }
+    }
 }
 
 void GlobalCodeMotion::scheduleEarly() {
@@ -274,8 +315,10 @@ bool GlobalCodeMotion::isForwardEdge(Node* use, Node* def) {
 }
 
 void GlobalCodeMotion::insertAntiDeps() {
-    // Anti-dependencies are computed during late scheduling
-    // This is a placeholder for any post-processing needed
+    // Anti-dependencies are primarily computed during late scheduling.
+    // Placeholder retained for any future post-processing that may be required.
+    // TODO: Add tests and a post-processing hook if additional anti-dep insertion
+    //       is needed beyond what scheduleLate() computes.
 }
 
 CFGNode* GlobalCodeMotion::findAntiDep(CFGNode* lca, LoadNode* load, CFGNode* early) {

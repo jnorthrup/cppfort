@@ -1,45 +1,36 @@
-# Ignore everything by default
-/*
+# C++ build artifacts (turds)
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+*.app
+*.dSYM/
 
-# Keep the .gitignore itself
-!.gitignore
 
-# Keep documentation
-!/docs/
-!/docs/**
+docs/**/*.java
+pom.xml
+target/
 
-# Allow src/ directory
-!/src/
+# Build directories
+/build/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
 
-# Re-ignore everything under src by default
-/src/**
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Whitelist stage folders
-!/src/stage0/
-!/src/stage0/**
-
-!/src/stage1/
-!/src/stage1/**
-
-!/src/stage2/
-!/src/stage2/**
-
-!/src/stage3/
-!/src/stage3/**
-
-# Preserve top-level and important CMake files
-!/CMakeLists.txt
-!/src/CMakeLists.txt
-!/src/stage0/CMakeLists.txt
-!/src/stage1/CMakeLists.txt
-!/src/stage2/CMakeLists.txt
-!/src/stage3/CMakeLists.txt
-
-# Preserve Ninja build files (root and under allowed src paths)
-!/build.ninja
-!/*.ninja
-!/src/**/build.ninja
-!/src/**/*.ninja
-
-# Safety note: Everything else remains ignored (dotfiles, .bmad-*, .github/, tools/, examples/, etc.)
-# Existing tracked files will remain tracked until you run `git rm --cached` if you choose to untrack them.
+# Temporary and backup files
+*.tmp
+*.bak
+*.log
+.bmad-*

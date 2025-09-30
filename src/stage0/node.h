@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "type.h"
+#include "../utils/multi_index.h"
 
 namespace cppfort::ir {
 
@@ -25,7 +26,14 @@ struct NodeEqual {
 };
 
 /**
- * Base class for all nodes in the Sea of Nodes intermediate representation.
+ * Base class for all nodes in the Sea of Nodes class MinusNode : public Node {
+public:
+    MinusNode(Node* val);
+
+    std::string label() const override { return "-"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::NEG; }
+};diate representation.
  *
  * Each Node represents an "instruction" and is linked to other Nodes by def-use dependencies.
  * Following Simple compiler Chapter 1 design.
@@ -93,6 +101,11 @@ public:
      * Check if this is a Control Flow Graph node.
      */
     virtual bool isCFG() const { return false; }
+
+    /**
+     * Get the NodeKind for this node - Band 5 pattern matching support.
+     */
+    virtual NodeKind getKind() const = 0;
 
     /**
      * Add an input at the specified index.
@@ -297,6 +310,7 @@ public:
     CFGNode* idom() override { return nullptr; }
     int idepth() override { return 0; }
     int loopDepth() override { return 1; }
+    NodeKind getKind() const override { return NodeKind::START; }
 };
 
 /**
@@ -312,6 +326,7 @@ public:
     std::string label() const override {
         return std::to_string(_value);
     }
+    NodeKind getKind() const override { return NodeKind::CONSTANT; }
 };
 
 /**
@@ -324,6 +339,7 @@ public:
 
     bool isCFG() const override { return true; }
     std::string label() const override { return "Return"; }
+    NodeKind getKind() const override { return NodeKind::RETURN; }
 
     /**
      * Get the return value node (second input).
@@ -365,6 +381,7 @@ public:
     int idepth() override;
     int loopDepth() override;
     Node* peephole() override;
+    NodeKind getKind() const override { return NodeKind::REGION; }
 
     // Check if this region has all inputs (for loops)
     virtual bool hasAllInputs() const { return in(1) != nullptr; }
@@ -386,6 +403,7 @@ public:
     CFGNode* idom() override;
     int idepth() override;
     int loopDepth() override;
+    NodeKind getKind() const override { return NodeKind::LOOP; }
 
     // Loops are incomplete until backedge is set
     bool hasAllInputs() const override { return in(1) != nullptr; }
@@ -395,6 +413,13 @@ public:
 
     // Set the backedge after parsing loop body
     void setBackedge(Node* backedge) { setInput(1, backedge); }
+
+    /**
+     * Force an exit from this loop by creating a NeverNode and wiring
+     * a true-projection to Stop and a false-projection as the backedge.
+     * This follows the Chapter-11 pattern for making infinite loops reachable.
+     */
+    void forceExit(CFGNode* stop) override;
 };
 
 class PhiNode : public Node {
@@ -410,6 +435,7 @@ public:
     // CRITICAL: compute() must handle cycles
     Type* compute() override;
     std::string label() const override { return "Phi[" + _label + "]"; }
+    NodeKind getKind() const override { return NodeKind::PHI; }
 };
 
 class IfNode : public CFGNode {
@@ -418,6 +444,7 @@ public:
     bool blockTail() const override { return true; }
     std::string label() const override { return "If"; }
     CFGNode* idom() override;
+    NodeKind getKind() const override { return NodeKind::IF; }
 };
 
 class ProjNode : public Node {
@@ -428,6 +455,70 @@ public:
     std::string label() const override {
         return std::string("Proj[") + (_idx ? "F" : "T") + "]";
     }
+    NodeKind getKind() const override { return NodeKind::PROJ; }
+};
+
+/**
+ * CProjNode - Control Projection node.
+ * Used for If true/false branches and Start control projection.
+ */
+class CProjNode : public CFGNode {
+    int _idx;  // 0 for true/ctrl, 1 for false
+    std::string _label;
+
+public:
+    CProjNode(Node* ctrl, int idx, const std::string& label = "")
+        : CFGNode(), _idx(idx), _label(label) {
+        setInput(0, ctrl);
+    }
+
+    bool isCFG() const override { return true; }
+
+    bool blockHead() const override {
+        // Only starts a BB if projecting from If
+        return dynamic_cast<IfNode*>(in(0)) != nullptr;
+    }
+
+    std::string label() const override {
+        if (!_label.empty()) return _label;
+        return std::string("CProj[") + (_idx ? "F" : "T") + "]";
+    }
+
+    CFGNode* idom() override { return dynamic_cast<CFGNode*>(in(0)); }
+
+    int idepth() override {
+        if (_idepth != 0) return _idepth;
+        CFGNode* dom = idom();
+        if (!dom) return _idepth = 1;
+        return _idepth = dom->idepth() + 1;
+    }
+
+    int loopDepth() override {
+        if (_loopDepth != 0) return _loopDepth;
+        CFGNode* cfg = dynamic_cast<CFGNode*>(in(0));
+        if (!cfg) return _loopDepth = 1;
+        return _loopDepth = cfg->loopDepth();
+    }
+
+    int idx() const { return _idx; }
+    NodeKind getKind() const override { return NodeKind::PROJ; }  // Control projection
+};
+
+/**
+ * NeverNode - Special If node that never executes.
+ * Used to handle infinite loops by creating dummy edges to Stop.
+ */
+class NeverNode : public IfNode {
+    int _idepth = 0;
+    int _loopDepth = 0;
+public:
+    NeverNode(Node* ctrl) : IfNode(ctrl, nullptr) {}
+
+    std::string label() const override { return "Never"; }
+
+    // Never executes, so predicate is always false
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::IF; }  // Special If node
 };
 
 // Comparison nodes
@@ -443,6 +534,7 @@ public:
     EQNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
     Node* peephole() override; // fold if both constant
     std::string label() const override { return "=="; }
+    NodeKind getKind() const override { return NodeKind::EQ; }
 };
 
 class LTNode : public BoolNode {
@@ -450,6 +542,7 @@ public:
     LTNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
     Node* peephole() override; // fold if both constant
     std::string label() const override { return "<"; }
+    NodeKind getKind() const override { return NodeKind::LT; }
 };
 
 /**
@@ -462,6 +555,7 @@ public:
 
     std::string label() const override { return "+"; }
     Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::ADD; }
 };
 
 /**
@@ -474,6 +568,7 @@ public:
 
     std::string label() const override { return "-"; }
     Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::SUB; }
 };
 
 /**
@@ -486,6 +581,7 @@ public:
 
     std::string label() const override { return "*"; }
     Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::MUL; }
 };
 
 /**
@@ -498,6 +594,84 @@ public:
 
     std::string label() const override { return "/"; }
     Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::DIV; }
+};
+
+/**
+ * Chapter 16: Bitwise Operation Nodes
+ * Following Simple compiler Chapter 16.
+ */
+
+/**
+ * Bitwise AND node - performs bitwise AND operation.
+ */
+class AndNode : public Node {
+public:
+    AndNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "&"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::AND; }
+};
+
+/**
+ * Bitwise OR node - performs bitwise OR operation.
+ */
+class OrNode : public Node {
+public:
+    OrNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "|"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::OR; }
+};
+
+/**
+ * Bitwise XOR node - performs bitwise XOR operation.
+ */
+class XorNode : public Node {
+public:
+    XorNode(Node* lhs, Node* rhs);
+
+    std::string label() const override { return "^"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::XOR; }
+};
+
+/**
+ * Shift left node - performs left shift operation.
+ */
+class ShlNode : public Node {
+public:
+    ShlNode(Node* value, Node* shift);
+
+    std::string label() const override { return "<<"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::SHL; }
+};
+
+/**
+ * Arithmetic shift right node - performs arithmetic right shift.
+ */
+class AShrNode : public Node {
+public:
+    AShrNode(Node* value, Node* shift);
+
+    std::string label() const override { return ">>>"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::ASHR; }
+};
+
+/**
+ * Logical shift right node - performs logical right shift.
+ */
+class LShrNode : public Node {
+public:
+    LShrNode(Node* value, Node* shift);
+
+    std::string label() const override { return ">>"; }
+    Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::LSHR; }
 };
 
 /**
@@ -510,6 +684,7 @@ public:
 
     std::string label() const override { return "-"; }
     Type* compute() override;
+    NodeKind getKind() const override { return NodeKind::NEG; }
 };
 
 /**
@@ -524,6 +699,7 @@ public:
 
     bool isCFG() const override { return true; }
     std::string label() const override { return "Break"; }
+    NodeKind getKind() const override { return NodeKind::BREAK; }
 };
 
 /**
@@ -538,6 +714,7 @@ public:
 
     bool isCFG() const override { return true; }
     std::string label() const override { return "Continue"; }
+    NodeKind getKind() const override { return NodeKind::CONTINUE; }
 };
 
 /**
@@ -573,6 +750,7 @@ public:
 
     std::string label() const override { return "New[" + _structType + "]"; }
     bool hasSideEffects() const override { return true; }
+    NodeKind getKind() const override { return NodeKind::ALLOC; }
 
     const std::string& structType() const { return _structType; }
 };
@@ -598,6 +776,8 @@ public:
     }
 
     std::string label() const override { return "Load[" + _fieldName + "]"; }
+
+    NodeKind getKind() const override { return NodeKind::LOAD; }
 
     Node* mem() const { return in(0); }
     Node* ptr() const { return in(1); }
@@ -631,6 +811,8 @@ public:
     std::string label() const override { return "Store[" + _fieldName + "]"; }
     bool hasSideEffects() const override { return true; }
 
+    NodeKind getKind() const override { return NodeKind::STORE; }
+
     Node* mem() const { return in(0); }
     Node* ptr() const { return in(1); }
     Node* offset() const { return in(2); }
@@ -651,6 +833,8 @@ public:
 
     std::string label() const override { return "MemProj[" + std::to_string(_alias) + "]"; }
     int alias() const { return _alias; }
+
+    NodeKind getKind() const override { return NodeKind::PROJ; }
 };
 
 /**
@@ -670,6 +854,8 @@ public:
     }
 
     std::string label() const override { return "Cast"; }
+
+    NodeKind getKind() const override { return NodeKind::CAST; }
     Type* toType() const { return _toType; }
     Type* compute() override { return _toType; }
 };
@@ -699,6 +885,7 @@ public:
     ScopeNode();
 
     std::string label() const override { return "Scope"; }
+    NodeKind getKind() const override { return NodeKind::CONSTANT; }  // Symbol table scope
 
     // Duplicate current scope bindings into a new ScopeNode
     // If forLoop is true, sets up lazy phi sentinels (Chapter 8)
