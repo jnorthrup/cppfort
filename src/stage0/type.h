@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <limits>
 
 namespace cppfort::ir {
 
@@ -16,6 +17,9 @@ namespace cppfort::ir {
  * - BOTTOM (⊥): value is NOT a compile time constant
  */
 class Type {
+protected:
+    Type() : _gen(0), _meet_cache(nullptr) {}
+
 public:
     virtual ~Type() = default;
 
@@ -39,11 +43,23 @@ public:
      */
     virtual bool isTop() const { return false; }
 
+    /**
+     * Compute the meet (greatest lower bound) against another type.
+     */
+    virtual Type* meet(Type* t) = 0;
+
     // Singleton BOTTOM instance
     static Type* BOTTOM;
 
     // Singleton TOP instance
     static Type* TOP;
+
+    // Generation counter used for cycle detection during meet
+    static int GENERATION;
+
+protected:
+    mutable int _gen;
+    mutable Type* _meet_cache;
 };
 
 /**
@@ -53,6 +69,7 @@ class TypeBottom : public Type {
 public:
     bool isBottom() const override { return true; }
     std::string toString() const override { return "⊥"; }
+    Type* meet(Type* t) override { (void)t; return this; }
 };
 
 /**
@@ -62,6 +79,7 @@ class TypeTop : public Type {
 public:
     bool isTop() const override { return true; }
     std::string toString() const override { return "⊤"; }
+    Type* meet(Type* t) override { return t ? t : this; }
 };
 
 /**
@@ -70,11 +88,11 @@ public:
  */
 class TypeInteger : public Type {
 private:
-    const bool _is_constant;
-    const long _value;  // Only valid if _is_constant is true
+    long _lo;
+    long _hi;
 
-    TypeInteger(bool is_constant, long value)
-        : _is_constant(is_constant), _value(value) {}
+    TypeInteger(long lo, long hi)
+        : _lo(lo), _hi(hi) {}
 
 public:
     /**
@@ -87,23 +105,45 @@ public:
      */
     static TypeInteger* bottom();
 
-    bool isConstant() const override { return _is_constant; }
-    bool isBottom() const override { return !_is_constant; }
+    /**
+     * Create a boolean range type (0-1 values).
+     */
+    static TypeInteger* boolean();
+
+    // Convenience: boolean constants 0/1 use same integer domain
+    static TypeInteger* boolTrue() { return constant(1); }
+    static TypeInteger* boolFalse() { return constant(0); }
+
+    bool isConstant() const override { return _lo == _hi; }
+    bool isBottom() const override {
+        return _lo == std::numeric_limits<long>::min() &&
+               _hi == std::numeric_limits<long>::max();
+    }
 
     /**
      * Get the constant value. Only valid if isConstant() is true.
      */
     long value() const {
-        return _value;
+        return _lo;
     }
 
     std::string toString() const override {
-        if (_is_constant) {
-            return std::to_string(_value);
-        } else {
+        if (isConstant()) {
+            return std::to_string(_lo);
+        }
+        if (isBottom()) {
             return "int⊥";
         }
+        if (_lo == 0 && _hi == 1) {
+            return "bool";
+        }
+        return "[" + std::to_string(_lo) + "," + std::to_string(_hi) + "]";
     }
+
+    long lo() const { return _lo; }
+    long hi() const { return _hi; }
+
+    Type* meet(Type* t) override;
 };
 
 } // namespace cppfort::ir

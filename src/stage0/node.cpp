@@ -134,6 +134,55 @@ ReturnNode::ReturnNode(Node* ctrl, Node* value) : Node() {
     _type = Type::TOP;  // Return node type
 }
 
+// BoolNode compute: result is boolean domain (0/1) unknown unless constants folded
+Type* BoolNode::compute() {
+    // Return boolean range type to preserve 0/1 information
+    return TypeInteger::boolean();
+}
+
+// EQNode peephole: constant fold
+Node* EQNode::peephole() {
+    Node* lhs = in(0);
+    Node* rhs = in(1);
+    if (lhs && rhs && lhs->_type && rhs->_type) {
+        auto i0 = dynamic_cast<TypeInteger*>(lhs->_type);
+        auto i1 = dynamic_cast<TypeInteger*>(rhs->_type);
+        if (i0 && i1 && i0->isConstant() && i1->isConstant()) {
+            Node* start = nullptr;
+            // try to discover a Start for anchoring
+            for (Node* n : {lhs, rhs}) {
+                if (auto c = dynamic_cast<ConstantNode*>(n)) start = c->in(0);
+            }
+            int v = (i0->value() == i1->value()) ? 1 : 0;
+            kill();
+            return new ConstantNode(v, start);
+        }
+    }
+    _type = compute();
+    return this;
+}
+
+// LTNode peephole: constant fold
+Node* LTNode::peephole() {
+    Node* lhs = in(0);
+    Node* rhs = in(1);
+    if (lhs && rhs && lhs->_type && rhs->_type) {
+        auto i0 = dynamic_cast<TypeInteger*>(lhs->_type);
+        auto i1 = dynamic_cast<TypeInteger*>(rhs->_type);
+        if (i0 && i1 && i0->isConstant() && i1->isConstant()) {
+            Node* start = nullptr;
+            for (Node* n : {lhs, rhs}) {
+                if (auto c = dynamic_cast<ConstantNode*>(n)) start = c->in(0);
+            }
+            int v = (i0->value() < i1->value()) ? 1 : 0;
+            kill();
+            return new ConstantNode(v, start);
+        }
+    }
+    _type = compute();
+    return this;
+}
+
 // AddNode implementation
 AddNode::AddNode(Node* lhs, Node* rhs) : Node() {
     setInput(0, lhs);
@@ -261,6 +310,33 @@ ScopeNode::ScopeNode() : _nextInputIdx(0) {
     push();
 }
 
+ScopeNode* ScopeNode::duplicate() const {
+    auto* dup = new ScopeNode();
+    dup->_scopes = _scopes;          // copy scope structure and indices
+    dup->_nextInputIdx = _nextInputIdx;
+    // mirror inputs vector size and set same node pointers
+    dup->_inputs.resize(_inputs.size(), nullptr);
+    for (size_t i = 0; i < _inputs.size(); ++i) {
+        if (_inputs[i]) {
+            dup->setInput(static_cast<int>(i), _inputs[i]);
+        }
+    }
+    return dup;
+}
+
+std::unordered_map<std::string, Node*> ScopeNode::currentBindings() const {
+    std::unordered_map<std::string, Node*> out;
+    // fold from inner to outer; inner overrides
+    for (auto it = _scopes.rbegin(); it != _scopes.rend(); ++it) {
+        const auto& scope = *it;
+        for (const auto& [name, idx] : scope) {
+            Node* n = (idx < _inputs.size()) ? _inputs[idx] : nullptr;
+            if (n) out[name] = n;  // Allow inner definitions to overwrite
+        }
+    }
+    return out;
+}
+
 void ScopeNode::push() {
     _scopes.push_back(std::unordered_map<std::string, int>());
 }
@@ -362,6 +438,29 @@ bool ScopeNode::contains(const std::string& name) const {
         }
     }
     return false;
+}
+
+// Region/Phi minimal behavior
+void RegionNode::addPhi(PhiNode* phi) {
+    if (!phi) return;
+    _phis.push_back(phi);
+    phi->setRegion(this);
+}
+
+Type* PhiNode::compute() {
+    Node* v1 = in(1);
+    Node* v2 = in(2);
+    if (!v1 || !v2 || !v1->_type || !v2->_type) {
+        return TypeInteger::bottom();
+    }
+
+    // Use type meet with cycle detection (generation counter).
+    Type::GENERATION++;
+    Type* meet = v1->_type->meet(v2->_type);
+    if (meet == nullptr) {
+        return Type::BOTTOM;
+    }
+    return meet;
 }
 
 } // namespace cppfort::ir
