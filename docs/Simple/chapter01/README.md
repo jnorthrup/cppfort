@@ -2,22 +2,20 @@
 
 # Table of Contents
 
-1.  [Implementation Language](#implementation-language)
-2.  [Assumptions](#assumptions)
-3.  [Architecture](#architecture)
-4.  [Data Structures](#data-structures)
-5.  [Intermediate Representation as a Graph of Nodes](#intermediate-representation-as-a-graph-of-nodes)
-6.  [Nodes are in a Graph](#nodes-are-in-a-graph)
-7.  [Types of Nodes](#types-of-nodes)
-8.  [Unique Node ID](#unique-node-id)
-9.  [Start Node](#start-node)
+1. [Implementation Language](#implementation-language)
+2. [Assumptions](#assumptions)
+3. [Architecture](#architecture)
+4. [Data Structures](#data-structures)
+5. [Intermediate Representation as a Graph of Nodes](#intermediate-representation-as-a-graph-of-nodes)
+6. [Nodes are in a Graph](#nodes-are-in-a-graph)
+7. [Types of Nodes](#types-of-nodes)
+8. [Unique Node ID](#unique-node-id)
+9. [Start Node](#start-node)
 10. [Constant Node](#constant-node)
 11. [Return Node](#return-node)
 12. [Representation](#representation)
 
-
 You can also read [this chapter](https://github.com/SeaOfNodes/Simple/tree/linear-chapter01) in a linear Git revision history on the [linear](https://github.com/SeaOfNodes/Simple/tree/linear) branch.
-
 
 In this chapter we aim to compile simple scripts such as:
 
@@ -32,7 +30,6 @@ The only `expression` type is an integer literal, as shown in the example above.
 To implement this simple language, we introduce a few key components and data structures.
 
 Here is the [complete language grammar](docs/01-grammar.md) for this chapter.
-
 
 ## Implementation Language
 
