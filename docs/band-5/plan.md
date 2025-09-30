@@ -8,7 +8,7 @@ Target branch: feature/band-5
 High-level tasks:
 
 - Finalize new parser enhancements (if applicable) and ensure tests pass
-- Add documentation for new behaviours
+- Add documentation for new behaviors
 - Add CI-friendly checks and a reproducible local smoke test
 - Prepare PR with checklist for reviewers
 
