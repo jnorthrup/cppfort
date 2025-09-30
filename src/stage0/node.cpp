@@ -8,10 +8,16 @@ namespace cppfort::ir {
 // Initialize static ID counter
 int Node::UNIQUE_ID = 1;
 
+// Initialize GVN table - Chapter 9
+std::unordered_set<Node*, NodeHash, NodeEqual> Node::GVN;
+
 Node::Node() : _nid(UNIQUE_ID++), _type(nullptr) {
 }
 
 void Node::setInput(int idx, Node* n) {
+    // Unlock from GVN before modifying edges - Chapter 9
+    unlock();
+
     // Ensure inputs vector is large enough
     if (idx >= static_cast<int>(_inputs.size())) {
         _inputs.resize(idx + 1, nullptr);
@@ -87,6 +93,12 @@ Node* Node::peephole() {
         // Create the new ConstantNode - it will have its type set in constructor
         // No need to call peephole again on a constant
         return new ConstantNode(static_cast<TypeInteger*>(type)->value(), start);
+    }
+
+    // Try Global Value Numbering - Chapter 9
+    Node* gvn_result = gvn();
+    if (gvn_result != this) {
+        return gvn_result;
     }
 
     return this;
@@ -310,17 +322,38 @@ ScopeNode::ScopeNode() : _nextInputIdx(0) {
     push();
 }
 
-ScopeNode* ScopeNode::duplicate() const {
+// Chapter 8: Support for lazy phi creation in loops
+ScopeNode* ScopeNode::duplicate(bool forLoop) const {
     auto* dup = new ScopeNode();
-    dup->_scopes = _scopes;          // copy scope structure and indices
+    dup->_scopes = _scopes;
     dup->_nextInputIdx = _nextInputIdx;
-    // mirror inputs vector size and set same node pointers
     dup->_inputs.resize(_inputs.size(), nullptr);
-    for (size_t i = 0; i < _inputs.size(); ++i) {
-        if (_inputs[i]) {
-            dup->setInput(static_cast<int>(i), _inputs[i]);
+
+    if (!forLoop) {
+        // Normal duplication - copy all inputs
+        for (size_t i = 0; i < _inputs.size(); ++i) {
+            if (_inputs[i]) {
+                dup->setInput(static_cast<int>(i), _inputs[i]);
+            }
+        }
+    } else {
+        // Loop duplication - set up lazy phi sentinels
+        // First input is always control
+        if (!_inputs.empty() && _inputs[0]) {
+            dup->setInput(0, _inputs[0]);
+        }
+
+        // For other inputs, use this scope as sentinel for lazy phi creation
+        for (size_t i = 1; i < _inputs.size(); ++i) {
+            if (_inputs[i]) {
+                // Use this scope as sentinel
+                dup->setInput(static_cast<int>(i), const_cast<ScopeNode*>(this));
+                // Also update our own input to prepare for phi
+                const_cast<ScopeNode*>(this)->setInput(static_cast<int>(i), const_cast<ScopeNode*>(this));
+            }
         }
     }
+
     return dup;
 }
 
@@ -447,6 +480,11 @@ void RegionNode::addPhi(PhiNode* phi) {
     phi->setRegion(this);
 }
 
+Node* RegionNode::peephole() {
+    _type = Type::TOP;  // Control nodes have TOP type
+    return this;
+}
+
 Type* PhiNode::compute() {
     Node* v1 = in(1);
     Node* v2 = in(2);
@@ -461,6 +499,155 @@ Type* PhiNode::compute() {
         return Type::BOTTOM;
     }
     return meet;
+}
+
+// Chapter 9: GVN implementations
+std::size_t Node::hashCode() const {
+    if (_hash != 0) return _hash;  // Use cached hash
+
+    // Compute hash based on node type (label) and inputs
+    std::size_t h = std::hash<std::string>{}(label());
+    for (int i = 0; i < nIns(); i++) {
+        Node* input = in(i);
+        // Mix in input pointer hash
+        h = h * 31 + std::hash<Node*>{}(input);
+    }
+
+    // Avoid zero hash (reserved for unlocked)
+    if (h == 0) h = 1;
+
+    return h;
+}
+
+bool Node::equals(const Node* other) const {
+    if (this == other) return true;
+    if (!other) return false;
+
+    // Same opcode (label) and same inputs
+    if (label() != other->label()) return false;
+    if (nIns() != other->nIns()) return false;
+
+    for (int i = 0; i < nIns(); i++) {
+        if (in(i) != other->in(i)) return false;
+    }
+
+    return true;
+}
+
+void Node::unlock() {
+    if (_hash != 0) {
+        GVN.erase(this);
+        _hash = 0;
+    }
+}
+
+Node* Node::gvn() {
+    if (_hash != 0) return this;  // Already in GVN
+
+    // Try to find existing node
+    auto it = GVN.find(this);
+    if (it != GVN.end()) {
+        // Found existing node - use it instead
+        Node* existing = *it;
+
+        // Join types (monotonic increase)
+        if (existing->_type && _type) {
+            Type::GENERATION++;
+            Type* joined = existing->_type->meet(_type);
+            if (joined) existing->_type = joined;
+        }
+
+        // Kill this node and return existing
+        kill();
+        return existing;
+    }
+
+    // Insert this node as canonical
+    _hash = hashCode();
+    GVN.insert(this);
+    return this;
+}
+
+// NodeHash and NodeEqual implementations for GVN table
+std::size_t NodeHash::operator()(const Node* n) const {
+    return n ? n->hashCode() : 0;
+}
+
+bool NodeEqual::operator()(const Node* a, const Node* b) const {
+    if (a == b) return true;
+    if (!a || !b) return false;
+    return a->equals(b);
+}
+
+// Chapter 7: LoopNode implementation
+Node* LoopNode::peephole() {
+    // Disable peepholes until loop is complete
+    if (!hasAllInputs()) {
+        _type = Type::TOP;
+        return this;
+    }
+
+    // Once complete, behave like normal region
+    return RegionNode::peephole();
+}
+
+
+void ScopeNode::mergeScopes(ScopeNode* that) {
+    if (!that) return;
+
+    // Get the region node (assumed to be control input)
+    Node* region = in(0);
+
+    // Create phis for differing values
+    for (int i = 1; i < nIns() && i < that->nIns(); i++) {
+        if (in(i) != that->in(i)) {
+            // Need a phi - but check for lazy phi sentinels first
+            Node* thisVal = in(i);
+            Node* thatVal = that->in(i);
+
+            // Handle lazy phi sentinels
+            if (thisVal == this) {
+                // Create actual phi
+                auto* phi = new PhiNode("var", region, in(i), nullptr);
+                setInput(i, phi->peephole());
+            } else if (thisVal && thatVal) {
+                // Normal merge - create phi
+                auto* phi = new PhiNode("var", region, thisVal, thatVal);
+                setInput(i, phi->peephole());
+            }
+        }
+    }
+}
+
+void ScopeNode::endLoop(ScopeNode* back, ScopeNode* exit) {
+    if (!back || !exit) return;
+
+    Node* loopRegion = in(0);
+
+    // Connect backedge phis
+    for (int i = 1; i < nIns(); i++) {
+        if (back->in(i) != this) {
+            // Actual phi exists
+            if (auto* phi = dynamic_cast<PhiNode*>(in(i))) {
+                if (phi->region() == loopRegion && phi->in(2) == nullptr) {
+                    phi->setInput(2, back->in(i));
+
+                    // Eagerly remove useless phis
+                    Node* simplified = phi->peephole();
+                    if (simplified != phi) {
+                        // subsume would be: replace all uses of phi with simplified
+                        setInput(i, simplified);
+                        phi->kill();
+                    }
+                }
+            }
+        }
+
+        // Replace lazy phi sentinels on exit path
+        if (exit->in(i) == this) {
+            exit->setInput(i, in(i));
+        }
+    }
 }
 
 } // namespace cppfort::ir

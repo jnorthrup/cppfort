@@ -9,6 +9,7 @@ set(STAGE0_SOURCES
     node.cpp
     type.cpp
     son_parser.cpp
+    iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
     # mlir_emitter.cpp  # Uncomment when MLIR headers available
 )
 
@@ -36,6 +37,10 @@ target_link_libraries(test_chapter3 PRIVATE stage0)
 # Band 1 control flow tests
 add_executable(test_band1 test_band1.cpp)
 target_link_libraries(test_band1 PRIVATE stage0)
+
+# Band 2 loop and memory tests (Chapters 7-10)
+add_executable(test_band2 ../../tests/test_band2.cpp)
+target_link_libraries(test_band2 PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES

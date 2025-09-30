@@ -5,9 +5,24 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include "type.h"
 
 namespace cppfort::ir {
+
+// Forward declaration for GVN
+class Node;
+
+/**
+ * Global Value Numbering support - Following Simple compiler Chapter 9
+ */
+struct NodeHash {
+    std::size_t operator()(const Node* n) const;
+};
+
+struct NodeEqual {
+    bool operator()(const Node* a, const Node* b) const;
+};
 
 /**
  * Base class for all nodes in the Sea of Nodes intermediate representation.
@@ -18,6 +33,21 @@ namespace cppfort::ir {
 class Node {
 protected:
     static int UNIQUE_ID;  // Global counter for unique node IDs
+
+    // Global Value Numbering table - Chapter 9
+    static std::unordered_set<Node*, NodeHash, NodeEqual> GVN;
+
+    /**
+     * Cached hash code and edge lock for GVN.
+     * If 0, node is unlocked and NOT in GVN.
+     * If non-zero, node is edge-locked and IS in GVN.
+     */
+    mutable std::size_t _hash = 0;
+
+    /**
+     * Dependencies for distant neighbor peepholes - Chapter 9
+     */
+    std::vector<Node*> _deps;
 
 public:
     /**
@@ -125,6 +155,28 @@ public:
      */
     int nIns() const { return _inputs.size(); }
 
+    /**
+     * GVN support - Following Simple compiler Chapter 9
+     */
+
+    // Compute hash code for this node
+    virtual std::size_t hashCode() const;
+
+    // Check value equality for GVN
+    virtual bool equals(const Node* other) const;
+
+    // Unlock node from GVN table before modifying edges
+    void unlock();
+
+    // Try to find or insert in GVN table
+    Node* gvn();
+
+    // Add a dependency for distant neighbor peepholes
+    void addDep(Node* dep) { _deps.push_back(dep); }
+
+    // Get dependencies
+    const std::vector<Node*>& deps() const { return _deps; }
+
     // MLIR integration hooks (Band 1 premature integration)
     virtual bool hasSideEffects() const { return false; }
     virtual bool isMemoryOp() const { return false; }
@@ -200,12 +252,41 @@ public:
 class PhiNode;
 
 class RegionNode : public Node {
+protected:
     std::vector<PhiNode*> _phis;  // Phis controlled by this region
 public:
     RegionNode(Node* ctrl1, Node* ctrl2) : Node() { setInput(0, ctrl1); setInput(1, ctrl2); }
     void addPhi(PhiNode* phi);  // CRITICAL: Must set phi->_inputs[0] = this
     bool isCFG() const override { return true; }
     std::string label() const override { return "Region"; }
+    Node* peephole() override;
+
+    // Check if this region has all inputs (for loops)
+    virtual bool hasAllInputs() const { return in(1) != nullptr; }
+};
+
+/**
+ * LoopNode - extends RegionNode for loop headers.
+ * Following Simple compiler Chapter 7.
+ *
+ * A loop initially has only one input (entry) with the backedge
+ * set to null until the loop body is parsed. This allows us to
+ * disable peepholes until the loop is complete.
+ */
+class LoopNode : public RegionNode {
+public:
+    LoopNode(Node* entry) : RegionNode(entry, nullptr) {}
+
+    std::string label() const override { return "Loop"; }
+
+    // Loops are incomplete until backedge is set
+    bool hasAllInputs() const override { return in(1) != nullptr; }
+
+    // Override peephole to disable until loop is complete
+    Node* peephole() override;
+
+    // Set the backedge after parsing loop body
+    void setBackedge(Node* backedge) { setInput(1, backedge); }
 };
 
 class PhiNode : public Node {
@@ -323,6 +404,168 @@ public:
 };
 
 /**
+ * BreakNode - represents a break statement in a loop.
+ * Following Simple compiler Chapter 8.
+ *
+ * Conceptually represents a control flow edge that exits the loop.
+ */
+class BreakNode : public Node {
+public:
+    BreakNode(Node* ctrl) : Node() { setInput(0, ctrl); }
+
+    bool isCFG() const override { return true; }
+    std::string label() const override { return "Break"; }
+};
+
+/**
+ * ContinueNode - represents a continue statement in a loop.
+ * Following Simple compiler Chapter 8.
+ *
+ * Conceptually represents a control flow edge back to loop header.
+ */
+class ContinueNode : public Node {
+public:
+    ContinueNode(Node* ctrl) : Node() { setInput(0, ctrl); }
+
+    bool isCFG() const override { return true; }
+    std::string label() const override { return "Continue"; }
+};
+
+/**
+ * Base class for memory operations - Following Simple compiler Chapter 10
+ *
+ * Memory operations are serialized through memory slices determined
+ * by alias classes (struct+field combinations).
+ */
+class MemOpNode : public Node {
+protected:
+    int _alias;  // Alias class for this memory operation
+
+public:
+    MemOpNode(int alias) : Node(), _alias(alias) {}
+
+    bool isMemoryOp() const override { return true; }
+    int alias() const { return _alias; }
+};
+
+/**
+ * NewNode - Allocates memory for a new struct instance.
+ * Following Simple compiler Chapter 10.
+ *
+ * Takes control as input to ensure proper scheduling.
+ * Returns a pointer to the newly allocated struct.
+ */
+class NewNode : public Node {
+    std::string _structType;  // Name of struct type being allocated
+
+public:
+    NewNode(Node* ctrl, const std::string& structType)
+        : Node(), _structType(structType) { setInput(0, ctrl); }
+
+    std::string label() const override { return "New[" + _structType + "]"; }
+    bool hasSideEffects() const override { return true; }
+
+    const std::string& structType() const { return _structType; }
+};
+
+/**
+ * LoadNode - Loads a value from a struct field.
+ * Following Simple compiler Chapter 10.
+ *
+ * Inputs:
+ * 0: Memory slice (for this alias class)
+ * 1: Pointer to struct
+ * 2: Field offset (constant)
+ */
+class LoadNode : public MemOpNode {
+    std::string _fieldName;  // For debugging
+
+public:
+    LoadNode(int alias, Node* mem, Node* ptr, Node* offset, const std::string& field)
+        : MemOpNode(alias), _fieldName(field) {
+        setInput(0, mem);
+        setInput(1, ptr);
+        setInput(2, offset);
+    }
+
+    std::string label() const override { return "Load[" + _fieldName + "]"; }
+
+    Node* mem() const { return in(0); }
+    Node* ptr() const { return in(1); }
+    Node* offset() const { return in(2); }
+};
+
+/**
+ * StoreNode - Stores a value to a struct field.
+ * Following Simple compiler Chapter 10.
+ *
+ * Inputs:
+ * 0: Memory slice (for this alias class)
+ * 1: Pointer to struct
+ * 2: Field offset (constant)
+ * 3: Value to store
+ *
+ * Returns: Updated memory slice
+ */
+class StoreNode : public MemOpNode {
+    std::string _fieldName;  // For debugging
+
+public:
+    StoreNode(int alias, Node* mem, Node* ptr, Node* offset, Node* value, const std::string& field)
+        : MemOpNode(alias), _fieldName(field) {
+        setInput(0, mem);
+        setInput(1, ptr);
+        setInput(2, offset);
+        setInput(3, value);
+    }
+
+    std::string label() const override { return "Store[" + _fieldName + "]"; }
+    bool hasSideEffects() const override { return true; }
+
+    Node* mem() const { return in(0); }
+    Node* ptr() const { return in(1); }
+    Node* offset() const { return in(2); }
+    Node* value() const { return in(3); }
+};
+
+/**
+ * MemProjNode - Projects memory slices from Start or merges them at Return.
+ * Following Simple compiler Chapter 10.
+ *
+ * Each alias class gets its own memory projection.
+ */
+class MemProjNode : public Node {
+    int _alias;  // Alias class for this memory projection
+
+public:
+    MemProjNode(Node* ctrl, int alias) : Node(), _alias(alias) { setInput(0, ctrl); }
+
+    std::string label() const override { return "MemProj[" + std::to_string(_alias) + "]"; }
+    int alias() const { return _alias; }
+};
+
+/**
+ * CastNode - Type cast operation for struct pointers.
+ * Following Simple compiler Chapter 10.
+ *
+ * Performs upcasting in the type hierarchy.
+ */
+class CastNode : public Node {
+    Type* _toType;  // Target type
+
+public:
+    CastNode(Node* ctrl, Node* value, Type* toType)
+        : Node(), _toType(toType) {
+        setInput(0, ctrl);
+        setInput(1, value);
+    }
+
+    std::string label() const override { return "Cast"; }
+    Type* toType() const { return _toType; }
+    Type* compute() override { return _toType; }
+};
+
+/**
  * ScopeNode - manages lexical scopes and symbol tables.
  * Following Simple compiler Chapter 3.
  *
@@ -349,10 +592,17 @@ public:
     std::string label() const override { return "Scope"; }
 
     // Duplicate current scope bindings into a new ScopeNode
-    ScopeNode* duplicate() const;
+    // If forLoop is true, sets up lazy phi sentinels (Chapter 8)
+    ScopeNode* duplicate(bool forLoop = false) const;
 
     // Expose a snapshot of current visible variables -> Nodes
     std::unordered_map<std::string, Node*> currentBindings() const;
+
+    // Merge two scopes at a region (for if/while)
+    void mergeScopes(ScopeNode* that);
+
+    // End a loop by connecting backedge phis
+    void endLoop(ScopeNode* back, ScopeNode* exit);
 
     /**
      * Enter a new lexical scope by pushing a new symbol table.
