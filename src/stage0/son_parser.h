@@ -74,6 +74,7 @@ public:
      * Parse an assignment: "<identifier> = <expression>;"
      */
     Node* parseAssignment();
+    Node* parseIf();
 
     /**
      * Parse a return statement: "return <integer>;"

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <set>
 
 namespace cppfort::ir {
 
@@ -54,6 +55,12 @@ Node* SoNParser::parseProgram() {
             ret = stmt;
             break;
         }
+
+        // For Band 1: Accept any statement as valid result
+        // (returns may be inside if branches)
+        if (stmt) {
+            ret = stmt;
+        }
     }
 
     return ret;
@@ -67,6 +74,12 @@ Node* SoNParser::parseStatement() {
     // Block statement
     if (peek() == '{') {
         return parseBlock();
+    }
+
+    // If statement
+    if (peek("if")) {
+        // parseIf handles control and scope merging
+        return parseIf();
     }
 
     // Declaration statement
@@ -112,8 +125,23 @@ Node* SoNParser::parseReturn() {
 }
 
 Node* SoNParser::parseExpression() {
-    // Chapter 2: delegate to parseAddition for proper precedence
-    return parseAddition();
+    // Chapter 2+: comparisons bind looser than addition
+    Node* lhs = parseAddition();
+    while (true) {
+        skipWhitespace();
+        if (peek("==")) {
+            consume("==");
+            Node* rhs = parseAddition();
+            lhs = (new EQNode(lhs, rhs))->peephole();
+        } else if (peek("<")) {
+            consume("<");
+            Node* rhs = parseAddition();
+            lhs = (new LTNode(lhs, rhs))->peephole();
+        } else {
+            break;
+        }
+    }
+    return lhs;
 }
 
 Node* SoNParser::parseAddition() {
@@ -213,6 +241,79 @@ Node* SoNParser::parsePrimary() {
     }
 
     throw std::runtime_error("Expected integer literal, identifier, or '('");
+}
+
+// INSTRUCTION: If statement parsing pattern
+Node* SoNParser::parseIf() {
+    consume("if");
+    consume("(");
+    Node* pred = parseExpression();  // Comparison expression
+    consume(")");
+
+    // Create If node with current control and predicate
+    IfNode* ifNode = new IfNode(_ctrl, pred);
+
+    // Create projections for true/false branches
+    ProjNode* ifTrue = new ProjNode(ifNode, 0);
+    ProjNode* ifFalse = new ProjNode(ifNode, 1);
+
+    // Duplicate scope for both branches
+    ScopeNode* thenScope = _scope->duplicate();
+    ScopeNode* elseScope = _scope->duplicate();
+
+    // Parse then branch
+    _ctrl = ifTrue;
+    _scope = thenScope;
+    Node* thenBody = parseStatement();
+    (void)thenBody; // control comes from _ctrl
+    Node* thenCtrl = _ctrl;  // Save control after then
+
+    // Parse else branch (if present)
+    _ctrl = ifFalse;
+    _scope = elseScope;
+    Node* elseCtrl = _ctrl;
+    skipWhitespace();
+    if (peek("else")) { consume("else"); parseStatement(); elseCtrl = _ctrl; }
+
+    // Merge control and scopes
+    RegionNode* region = new RegionNode(thenCtrl, elseCtrl);
+    _ctrl = region;
+
+    // Merge scopes with phi creation
+    // Build union of variable names across both scopes
+    auto s1 = thenScope->currentBindings();
+    auto s2 = elseScope->currentBindings();
+    // Start from pre-if scope to maintain stack depth
+    ScopeNode* merged = _scope->duplicate();
+    // Start with pre-if bindings
+    for (const auto& [name, node] : _scope->currentBindings()) {
+        (void)name; (void)node;
+    }
+    // Union
+    std::set<std::string> all;
+    for (const auto& [k,_] : s1) all.insert(k);
+    for (const auto& [k,_] : s2) all.insert(k);
+    for (const auto& name : all) {
+        Node* v1 = s1.count(name) ? s1[name] : nullptr;
+        Node* v2 = s2.count(name) ? s2[name] : nullptr;
+        if (v1 && v2) {
+            if (v1 == v2) {
+                merged->define(name, v1);
+            } else {
+                // Two-phase Phi: region may be set now
+                auto phi = new PhiNode(name, region, v1, v2);
+                region->addPhi(phi);
+                merged->define(name, phi);
+            }
+        } else if (v1) {
+            merged->define(name, v1);
+        } else if (v2) {
+            merged->define(name, v2);
+        }
+    }
+    _scope = merged;
+
+    return region;
 }
 
 Node* SoNParser::parseDeclaration() {

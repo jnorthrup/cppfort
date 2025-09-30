@@ -172,6 +172,85 @@ public:
     }
 };
 
+// INSTRUCTION: Add after ReturnNode
+class StopNode : public Node {
+    // Collects all Returns - has variable number of inputs
+    std::vector<ReturnNode*> _returns;
+public:
+    void addReturn(ReturnNode* ret) {
+        _inputs.push_back(ret);
+        if (ret) ret->_outputs.push_back(this);
+        _returns.push_back(ret);
+    }
+    bool isCFG() const override { return true; }
+    std::string label() const override { return "Stop"; }
+};
+
+class PhiNode;
+
+class RegionNode : public Node {
+    std::vector<PhiNode*> _phis;  // Phis controlled by this region
+public:
+    RegionNode(Node* ctrl1, Node* ctrl2) : Node() { setInput(0, ctrl1); setInput(1, ctrl2); }
+    void addPhi(PhiNode* phi);  // CRITICAL: Must set phi->_inputs[0] = this
+    bool isCFG() const override { return true; }
+    std::string label() const override { return "Region"; }
+};
+
+class PhiNode : public Node {
+    std::string _label;  // Variable name for debugging
+public:
+    // CRITICAL: Region can be nullptr at construction
+    PhiNode(const std::string& label, Node* region, Node* val1, Node* val2)
+        : Node(), _label(label) { setInput(0, region); setInput(1, val1); setInput(2, val2); }
+
+    Node* region() const { return in(0); }
+    void setRegion(RegionNode* r) { setInput(0, r); }
+
+    // CRITICAL: compute() must handle cycles
+    Type* compute() override;
+    std::string label() const override { return "Phi[" + _label + "]"; }
+};
+
+class IfNode : public Node {
+public:
+    IfNode(Node* ctrl, Node* pred) : Node() { setInput(0, ctrl); setInput(1, pred); }
+    bool isCFG() const override { return true; }
+    std::string label() const override { return "If"; }
+};
+
+class ProjNode : public Node {
+    int _idx;  // 0 for true, 1 for false projection
+public:
+    ProjNode(Node* ctrl, int idx) : Node(), _idx(idx) { setInput(0, ctrl); }
+    bool isCFG() const override { return in(0) && in(0)->isCFG(); }
+    std::string label() const override {
+        return std::string("Proj[") + (_idx ? "F" : "T") + "]";
+    }
+};
+
+// Comparison nodes
+class BoolNode : public Node {
+protected:
+    BoolNode(Node* lhs, Node* rhs) : Node() { setInput(0, lhs); setInput(1, rhs); }
+public:
+    Type* compute() override; // Return boolean type (0/1)
+};
+
+class EQNode : public BoolNode {
+public:
+    EQNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
+    Node* peephole() override; // fold if both constant
+    std::string label() const override { return "=="; }
+};
+
+class LTNode : public BoolNode {
+public:
+    LTNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
+    Node* peephole() override; // fold if both constant
+    std::string label() const override { return "<"; }
+};
+
 /**
  * Add node - adds two values.
  * Following Simple compiler Chapter 2.
@@ -257,6 +336,12 @@ public:
     ScopeNode();
 
     std::string label() const override { return "Scope"; }
+
+    // Duplicate current scope bindings into a new ScopeNode
+    ScopeNode* duplicate() const;
+
+    // Expose a snapshot of current visible variables -> Nodes
+    std::unordered_map<std::string, Node*> currentBindings() const;
 
     /**
      * Enter a new lexical scope by pushing a new symbol table.
