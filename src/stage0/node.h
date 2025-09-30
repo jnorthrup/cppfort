@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "type.h"
 
 namespace cppfort::ir {
@@ -229,6 +230,72 @@ public:
 
     std::string label() const override { return "-"; }
     Type* compute() override;
+};
+
+/**
+ * ScopeNode - manages lexical scopes and symbol tables.
+ * Following Simple compiler Chapter 3.
+ *
+ * This node is neither a Data nor Control node, but a utility for maintaining
+ * symbol tables, name lookups, and determining where Phi nodes are required.
+ * It leverages the Sea of Nodes def-use architecture to maintain liveness of
+ * values in scope.
+ */
+class ScopeNode : public Node {
+public:
+    /**
+     * Stack of symbol tables. Each symbol table is a map from variable name
+     * to an index into this ScopeNode's inputs.
+     */
+    std::vector<std::unordered_map<std::string, int>> _scopes;
+
+    /**
+     * Track the next available input index for new variables.
+     */
+    int _nextInputIdx;
+
+    ScopeNode();
+
+    std::string label() const override { return "Scope"; }
+
+    /**
+     * Enter a new lexical scope by pushing a new symbol table.
+     */
+    void push();
+
+    /**
+     * Exit the current lexical scope by popping the top symbol table.
+     * Also removes the corresponding input nodes.
+     */
+    void pop();
+
+    /**
+     * Define a variable in the current scope.
+     * Returns the input index where the value is stored.
+     */
+    int define(const std::string& name, Node* value);
+
+    /**
+     * Update a variable's value.
+     * Looks up the variable in the scope stack and updates its value.
+     */
+    void update(const std::string& name, Node* value);
+
+    /**
+     * Lookup a variable in the scope stack.
+     * Returns nullptr if not found.
+     */
+    Node* lookup(const std::string& name) const;
+
+    /**
+     * Check if a variable exists in any scope.
+     */
+    bool contains(const std::string& name) const;
+
+    /**
+     * Get the current scope level (depth of scope stack).
+     */
+    int scopeLevel() const { return _scopes.size(); }
 };
 
 } // namespace cppfort::ir

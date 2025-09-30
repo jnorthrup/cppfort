@@ -6,7 +6,7 @@
 
 namespace cppfort::ir {
 
-SoNParser::SoNParser() : _position(0), START(nullptr), _ctrl(nullptr) {
+SoNParser::SoNParser() : _position(0), START(nullptr), _ctrl(nullptr), _scope(nullptr) {
 }
 
 SoNParser::~SoNParser() {
@@ -22,8 +22,11 @@ Node* SoNParser::parse(const std::string& source) {
     START = new StartNode();
     _ctrl = START;  // Current control is at start
 
-    // Parse the program (for Chapter 1: just one return statement)
-    Node* ret = parseStatement();
+    // Create the ScopeNode for managing variables (Chapter 3)
+    _scope = new ScopeNode();
+
+    // Parse the program (Chapter 3: multiple statements)
+    Node* ret = parseProgram();
 
     // Skip trailing whitespace
     skipWhitespace();
@@ -36,15 +39,52 @@ Node* SoNParser::parse(const std::string& source) {
     return ret;
 }
 
+Node* SoNParser::parseProgram() {
+    Node* ret = nullptr;
+
+    // Parse statements until we hit EOF or return
+    while (!isEOF()) {
+        skipWhitespace();
+        if (isEOF()) break;
+
+        Node* stmt = parseStatement();
+
+        // If it's a return node, we're done
+        if (dynamic_cast<ReturnNode*>(stmt)) {
+            ret = stmt;
+            break;
+        }
+    }
+
+    return ret;
+}
+
 Node* SoNParser::parseStatement() {
     skipWhitespace();
 
-    // Chapter 1: Only return statements
+    // Chapter 3: Support various statement types
+
+    // Block statement
+    if (peek() == '{') {
+        return parseBlock();
+    }
+
+    // Declaration statement
+    if (peek("int")) {
+        return parseDeclaration();
+    }
+
+    // Return statement
     if (peek("return")) {
         return parseReturn();
     }
 
-    throw std::runtime_error("Expected 'return' statement");
+    // Assignment or expression statement
+    if (isAlpha(peek())) {
+        return parseAssignment();
+    }
+
+    throw std::runtime_error("Expected statement (declaration, block, assignment, or return)");
 }
 
 Node* SoNParser::parseReturn() {
@@ -156,13 +196,125 @@ Node* SoNParser::parsePrimary() {
     }
 
     // Handle integer literals
-    if (std::isdigit(peek())) {
+    if (std::isdigit(peek()) || (peek() == '0')) {
         int value = parseInteger();
         // Create ConstantNode with START as input for graph walking
         return new ConstantNode(value, START);
     }
 
-    throw std::runtime_error("Expected integer literal or '('");
+    // Handle identifiers (Chapter 3)
+    if (isAlpha(peek())) {
+        std::string name = parseIdentifier();
+        Node* value = _scope->lookup(name);
+        if (value == nullptr) {
+            throw std::runtime_error("Undefined variable: " + name);
+        }
+        return value;
+    }
+
+    throw std::runtime_error("Expected integer literal, identifier, or '('");
+}
+
+Node* SoNParser::parseDeclaration() {
+    // Consume "int"
+    if (!consume("int")) {
+        throw std::runtime_error("Expected 'int' keyword");
+    }
+
+    skipWhitespace();
+
+    // Parse identifier
+    std::string name = parseIdentifier();
+
+    skipWhitespace();
+
+    // Consume "="
+    if (!consume("=")) {
+        throw std::runtime_error("Expected '=' in declaration");
+    }
+
+    skipWhitespace();
+
+    // Parse expression
+    Node* value = parseExpression();
+
+    skipWhitespace();
+
+    // Consume ";"
+    if (!consume(";")) {
+        throw std::runtime_error("Expected ';' after declaration");
+    }
+
+    // Define the variable in the current scope
+    _scope->define(name, value);
+
+    return nullptr;  // Declarations don't produce a value
+}
+
+Node* SoNParser::parseBlock() {
+    // Consume "{"
+    if (!consume("{")) {
+        throw std::runtime_error("Expected '{'");
+    }
+
+    // Push a new scope
+    _scope->push();
+
+    // Parse statements inside the block
+    Node* ret = nullptr;
+    while (!peek("}") && !isEOF()) {
+        skipWhitespace();
+        if (peek("}")) break;
+
+        Node* stmt = parseStatement();
+
+        // If it's a return, save it
+        if (dynamic_cast<ReturnNode*>(stmt)) {
+            ret = stmt;
+            break;
+        }
+    }
+
+    skipWhitespace();
+
+    // Consume "}"
+    if (!consume("}")) {
+        throw std::runtime_error("Expected '}'");
+    }
+
+    // Pop the scope
+    _scope->pop();
+
+    return ret;
+}
+
+Node* SoNParser::parseAssignment() {
+    // Parse identifier
+    std::string name = parseIdentifier();
+
+    skipWhitespace();
+
+    // Consume "="
+    if (!consume("=")) {
+        throw std::runtime_error("Expected '=' in assignment");
+    }
+
+    skipWhitespace();
+
+    // Parse expression
+    Node* value = parseExpression();
+
+    skipWhitespace();
+
+    // Consume ";"
+    if (!consume(";")) {
+        throw std::runtime_error("Expected ';' after assignment");
+    }
+
+    // Update the variable
+    _scope->update(name, value);
+
+    return nullptr;  // Assignments don't produce a value
 }
 
 void SoNParser::skipWhitespace() {
@@ -179,8 +331,8 @@ bool SoNParser::peek(const std::string& expected) {
         }
         pos++;
     }
-    // Make sure it's not part of a larger identifier
-    if (pos < _source.length() && std::isalnum(_source[pos])) {
+    // Make sure it's not part of a larger identifier (only for alphabetic keywords)
+    if (std::isalpha(expected[0]) && pos < _source.length() && isAlphaNum(_source[pos])) {
         return false;
     }
     return true;
@@ -231,6 +383,36 @@ char SoNParser::advance() {
 
 bool SoNParser::isEOF() const {
     return _position >= _source.length();
+}
+
+std::string SoNParser::parseIdentifier() {
+    std::string id;
+
+    if (!isAlpha(peek())) {
+        throw std::runtime_error("Expected identifier");
+    }
+
+    // First character must be alphabetic or underscore
+    id += advance();
+
+    // Subsequent characters can be alphanumeric or underscore
+    while (!isEOF() && isAlphaNum(peek())) {
+        id += advance();
+    }
+
+    return id;
+}
+
+bool SoNParser::isAlpha(char c) const {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
+bool SoNParser::isDigit(char c) const {
+    return c >= '0' && c <= '9';
+}
+
+bool SoNParser::isAlphaNum(char c) const {
+    return isAlpha(c) || isDigit(c);
 }
 
 std::string SoNParser::visualize() const {

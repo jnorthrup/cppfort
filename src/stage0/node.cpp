@@ -255,4 +255,113 @@ Type* MinusNode::compute() {
     return TypeInteger::bottom();
 }
 
+// ScopeNode implementation
+ScopeNode::ScopeNode() : _nextInputIdx(0) {
+    // Start with one global scope
+    push();
+}
+
+void ScopeNode::push() {
+    _scopes.push_back(std::unordered_map<std::string, int>());
+}
+
+void ScopeNode::pop() {
+    if (_scopes.empty()) return;
+
+    // Get the variables defined in this scope
+    const auto& currentScope = _scopes.back();
+
+    // Remove the inputs for variables in this scope
+    // This allows them to be garbage collected if no longer referenced
+    std::vector<int> indicesToRemove;
+    for (const auto& [name, idx] : currentScope) {
+        indicesToRemove.push_back(idx);
+    }
+
+    // Sort indices in descending order to safely remove from _inputs
+    std::sort(indicesToRemove.rbegin(), indicesToRemove.rend());
+
+    // Remove the inputs (note: this may leave gaps in the input array)
+    // In a production system, we might want to compact the array
+    for (int idx : indicesToRemove) {
+        if (idx < _inputs.size()) {
+            Node* oldNode = _inputs[idx];
+            _inputs[idx] = nullptr;  // Mark as removed
+            if (oldNode) {
+                oldNode->removeOutput(this);
+                // Kill the node if it's no longer used
+                if (oldNode->isUnused()) {
+                    oldNode->kill();
+                }
+            }
+        }
+    }
+
+    _scopes.pop_back();
+}
+
+int ScopeNode::define(const std::string& name, Node* value) {
+    if (_scopes.empty()) {
+        push();  // Ensure we have at least one scope
+    }
+
+    // Check if already defined in current scope
+    if (_scopes.back().count(name) > 0) {
+        // Update existing definition
+        int idx = _scopes.back()[name];
+        setInput(idx, value);
+        return idx;
+    }
+
+    // Add new definition
+    int idx = _nextInputIdx++;
+    _scopes.back()[name] = idx;
+
+    // Ensure _inputs is large enough
+    while (_inputs.size() <= idx) {
+        _inputs.push_back(nullptr);
+    }
+
+    setInput(idx, value);
+    return idx;
+}
+
+void ScopeNode::update(const std::string& name, Node* value) {
+    // Search for the variable from innermost to outermost scope
+    for (int i = _scopes.size() - 1; i >= 0; --i) {
+        auto& scope = _scopes[i];
+        auto it = scope.find(name);
+        if (it != scope.end()) {
+            int idx = it->second;
+            setInput(idx, value);
+            return;
+        }
+    }
+
+    // If not found, define it in current scope
+    define(name, value);
+}
+
+Node* ScopeNode::lookup(const std::string& name) const {
+    // Search from innermost to outermost scope
+    for (int i = _scopes.size() - 1; i >= 0; --i) {
+        const auto& scope = _scopes[i];
+        auto it = scope.find(name);
+        if (it != scope.end()) {
+            int idx = it->second;
+            return idx < _inputs.size() ? _inputs[idx] : nullptr;
+        }
+    }
+    return nullptr;
+}
+
+bool ScopeNode::contains(const std::string& name) const {
+    for (int i = _scopes.size() - 1; i >= 0; --i) {
+        if (_scopes[i].count(name) > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace cppfort::ir

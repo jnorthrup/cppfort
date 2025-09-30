@@ -28,6 +28,10 @@ target_link_libraries(test_chapter1 PRIVATE stage0)
 add_executable(test_chapter2 test_chapter2.cpp)
 target_link_libraries(test_chapter2 PRIVATE stage0)
 
+# Test executable for Chapter 3 Sea of Nodes
+add_executable(test_chapter3 test_chapter3.cpp)
+target_link_libraries(test_chapter3 PRIVATE stage0)
+
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"

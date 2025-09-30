@@ -9,7 +9,7 @@ namespace cppfort::ir {
 
 /**
  * Sea of Nodes Parser - builds graph directly during parsing.
- * Following Simple compiler Chapter 1 approach.
+ * Following Simple compiler Chapter 1-3 approach.
  * No AST - direct graph construction.
  */
 class SoNParser {
@@ -23,14 +23,21 @@ private:
     // Current control node for tracking control flow
     Node* _ctrl;
 
+    // Scope node for managing lexical scopes (Chapter 3)
+    ScopeNode* _scope;
+
     // Simple lexer functionality
     void skipWhitespace();
     bool peek(const std::string& expected);
     bool consume(const std::string& expected);
     int parseInteger();
+    std::string parseIdentifier();
     char peek();
     char advance();
     bool isEOF() const;
+    bool isAlpha(char c) const;
+    bool isDigit(char c) const;
+    bool isAlphaNum(char c) const;
 
 public:
     SoNParser();
@@ -38,15 +45,35 @@ public:
 
     /**
      * Parse a program and return the graph's terminal node.
-     * For Chapter 1, we only handle "return <integer>;"
+     * Chapter 3: supports declarations, blocks, assignments, returns.
      */
     Node* parse(const std::string& source);
 
     /**
+     * Parse a program: a sequence of statements.
+     */
+    Node* parseProgram();
+
+    /**
      * Parse a statement.
-     * Chapter 1: only return statements.
+     * Chapter 3: declarations, blocks, assignments, returns.
      */
     Node* parseStatement();
+
+    /**
+     * Parse a declaration: "int <identifier> = <expression>;"
+     */
+    Node* parseDeclaration();
+
+    /**
+     * Parse a block: "{" statements "}"
+     */
+    Node* parseBlock();
+
+    /**
+     * Parse an assignment: "<identifier> = <expression>;"
+     */
+    Node* parseAssignment();
 
     /**
      * Parse a return statement: "return <integer>;"
@@ -78,8 +105,8 @@ public:
     Node* parseUnary();
 
     /**
-     * Parse primary expression (literals and parentheses).
-     * Chapter 2: base case for recursion.
+     * Parse primary expression (literals, identifiers, and parentheses).
+     * Chapter 3: adds identifier lookup.
      */
     Node* parsePrimary();
 
