@@ -10,6 +10,7 @@ set(STAGE0_SOURCES
     type.cpp
     son_parser.cpp
     iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
+    gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
     # mlir_emitter.cpp  # Uncomment when MLIR headers available
 )
 
@@ -41,6 +42,10 @@ target_link_libraries(test_band1 PRIVATE stage0)
 # Band 2 loop and memory tests (Chapters 7-10)
 add_executable(test_band2 ../../tests/test_band2.cpp)
 target_link_libraries(test_band2 PRIVATE stage0)
+
+# Band 3 GCM tests (Chapter 11 - THE critical scheduling phase)
+add_executable(test_band3 ../../tests/test_band3.cpp)
+target_link_libraries(test_band3 PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES

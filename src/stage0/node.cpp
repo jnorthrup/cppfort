@@ -5,7 +5,7 @@
 
 namespace cppfort::ir {
 
-// Initialize static ID counter
+// Initialize static members
 int Node::UNIQUE_ID = 1;
 
 // Initialize GVN table - Chapter 9
@@ -120,7 +120,7 @@ void Node::kill() {
 }
 
 // StartNode implementation
-StartNode::StartNode() : Node() {
+StartNode::StartNode() : CFGNode() {
     // Start has no inputs
     _type = Type::TOP;  // Start node has TOP type
 }
@@ -648,6 +648,149 @@ void ScopeNode::endLoop(ScopeNode* back, ScopeNode* exit) {
             exit->setInput(i, in(i));
         }
     }
+}
+
+// cfg0 implementation - find first CFG node reachable from this node
+Node* Node::cfg0() const {
+    // If this is already a CFG node, return it
+    if (isCFG()) return const_cast<Node*>(this);
+
+    // For non-CFG nodes, look at control input
+    if (in(0) && in(0)->isCFG()) {
+        return in(0);
+    }
+
+    // For floating nodes, return nullptr (caller handles)
+    return nullptr;
+}
+
+// ============================================================================
+// CFGNode implementations
+// ============================================================================
+
+CFGNode* CFGNode::idom() {
+    // Default implementation: immediate dominator is control input
+    return dynamic_cast<CFGNode*>(in(0));
+}
+
+CFGNode* CFGNode::cfg0() {
+    // CFG nodes are their own cfg0
+    return this;
+}
+
+int CFGNode::idepth() {
+    if (_idepth != 0) return _idepth;
+
+    CFGNode* dom = idom();
+    if (!dom) return _idepth = 1;
+
+    return _idepth = dom->idepth() + 1;
+}
+
+CFGNode* CFGNode::idom(CFGNode* rhs) {
+    // Compute LCA of two nodes in dominator tree
+    if (!rhs) return this;
+
+    CFGNode* lhs = this;
+    while (lhs != rhs) {
+        int comp = lhs->idepth() - rhs->idepth();
+        if (comp >= 0) lhs = lhs->idom();
+        if (comp <= 0) rhs = rhs->idom();
+        if (!lhs || !rhs) break;  // Safety check
+    }
+    return lhs;
+}
+
+int CFGNode::loopDepth() {
+    if (_loopDepth != 0) return _loopDepth;
+
+    CFGNode* cfg = dynamic_cast<CFGNode*>(in(0));
+    if (!cfg) return _loopDepth = 1;
+
+    return _loopDepth = cfg->loopDepth();
+}
+
+CFGNode* RegionNode::idom() {
+    // LCA of all control inputs
+    CFGNode* lca = nullptr;
+    for (int i = 1; i < nIns(); i++) {
+        if (Node* n = in(i)) {
+            if (CFGNode* cfg = dynamic_cast<CFGNode*>(n)) {
+                lca = cfg->idom(lca);
+            }
+        }
+    }
+    return lca;
+}
+
+int RegionNode::idepth() {
+    if (_idepth != 0) return _idepth;
+
+    // Maximum depth of all inputs plus one
+    int d = 0;
+    for (Node* n : _inputs) {
+        if (n && n->isCFG()) {
+            CFGNode* cfg = dynamic_cast<CFGNode*>(n);
+            if (cfg) d = std::max(d, cfg->idepth() + 1);
+        }
+    }
+    return _idepth = d;
+}
+
+int RegionNode::loopDepth() {
+    if (_loopDepth != 0) return _loopDepth;
+
+    // Use first non-null input
+    for (int i = 1; i < nIns(); i++) {
+        if (Node* n = in(i)) {
+            if (CFGNode* cfg = dynamic_cast<CFGNode*>(n)) {
+                return _loopDepth = cfg->loopDepth();
+            }
+        }
+    }
+    return _loopDepth = 1;
+}
+
+CFGNode* LoopNode::idom() {
+    // Loop's idom is its entry, not LCA of entry and backedge
+    return dynamic_cast<CFGNode*>(in(0));
+}
+
+int LoopNode::idepth() {
+    if (_idepth != 0) return _idepth;
+
+    CFGNode* dom = idom();
+    if (!dom) return _idepth = 1;
+
+    return _idepth = dom->idepth() + 1;
+}
+
+int LoopNode::loopDepth() {
+    if (_loopDepth != 0) return _loopDepth;
+
+    // Entry depth plus one for the loop
+    CFGNode* entry = dynamic_cast<CFGNode*>(in(0));
+    _loopDepth = entry ? entry->loopDepth() + 1 : 2;
+
+    return _loopDepth;
+}
+
+CFGNode* IfNode::idom() {
+    return dynamic_cast<CFGNode*>(in(0));
+}
+
+int StopNode::idepth() {
+    if (_idepth != 0) return _idepth;
+
+    // Maximum depth of all return inputs
+    int d = 0;
+    for (Node* n : _inputs) {
+        if (n && n->isCFG()) {
+            CFGNode* cfg = dynamic_cast<CFGNode*>(n);
+            if (cfg) d = std::max(d, cfg->idepth() + 1);
+        }
+    }
+    return _idepth = d;
 }
 
 } // namespace cppfort::ir

@@ -85,6 +85,11 @@ public:
     virtual ~Node() = default;
 
     /**
+     * Get the next unique ID for node creation.
+     */
+    static int nextUniqueId() { return UNIQUE_ID++; }
+
+    /**
      * Check if this is a Control Flow Graph node.
      */
     virtual bool isCFG() const { return false; }
@@ -187,18 +192,111 @@ public:
         if (_type) return "i32";  // Default to 32-bit integer
         return "unknown";
     }
+
+    /**
+     * Get the first CFG node reachable from this node.
+     * Used for scheduling floating nodes.
+     */
+    Node* cfg0() const;
+};
+
+/**
+ * CFGNode - Base class for all Control Flow Graph nodes.
+ *
+ * CFG nodes are immovable anchors in the scheduling algorithm.
+ * They maintain dominator information and loop nesting depth.
+ */
+class CFGNode : public Node {
+protected:
+    /**
+     * Cached immediate dominator depth.
+     * 0 means not computed yet.
+     * Increases monotonically down the dominator tree.
+     */
+    int _idepth = 0;
+
+    /**
+     * Loop nesting depth.
+     * 0 means not computed yet.
+     * Increases with each nested loop level.
+     */
+    int _loopDepth = 0;
+
+    /**
+     * Anti-dependency tracking for memory operations.
+     * Set to the node ID of the Load that requires ordering.
+     */
+    int _anti = 0;
+
+public:
+    CFGNode() : Node() {}
+
+    bool isCFG() const override { return true; }
+
+    /**
+     * Check if this CFG node starts a basic block.
+     */
+    virtual bool blockHead() const { return false; }
+
+    /**
+     * Check if this CFG node ends a basic block.
+     */
+    virtual bool blockTail() const { return false; }
+
+    /**
+     * Get the immediate dominator of this node.
+     * Returns nullptr for Start/Stop nodes.
+     */
+    virtual CFGNode* idom();
+
+    /**
+     * Get the immediate dominator depth.
+     * Cached on first computation.
+     */
+    virtual int idepth();
+
+    /**
+     * Compute the LCA (Lowest Common Ancestor) of two dominators.
+     */
+    CFGNode* idom(CFGNode* rhs);
+
+    /**
+     * Get the loop nesting depth.
+     * Cached on first computation.
+     */
+    virtual int loopDepth();
+
+    /**
+     * Get the first CFG node reachable from this node.
+     * Used for scheduling floating nodes.
+     */
+    CFGNode* cfg0();
+
+    /**
+     * Force an exit from an infinite loop to make it reachable.
+     */
+    virtual void forceExit(CFGNode* stop) {}
+
+    // Public accessors for GCM algorithm
+    int getLoopDepth() const { return _loopDepth; }
+    void setLoopDepth(int depth) { _loopDepth = depth; }
+    int getAnti() const { return _anti; }
+    void setAnti(int anti) { _anti = anti; }
 };
 
 /**
  * Start node represents the start of a function.
  * Following Simple compiler Chapter 1.
  */
-class StartNode : public Node {
+class StartNode : public CFGNode {
 public:
     StartNode();
 
-    bool isCFG() const override { return true; }
+    bool blockHead() const override { return true; }
     std::string label() const override { return "Start"; }
+    CFGNode* idom() override { return nullptr; }
+    int idepth() override { return 0; }
+    int loopDepth() override { return 1; }
 };
 
 /**
@@ -236,7 +334,7 @@ public:
 };
 
 // INSTRUCTION: Add after ReturnNode
-class StopNode : public Node {
+class StopNode : public CFGNode {
     // Collects all Returns - has variable number of inputs
     std::vector<ReturnNode*> _returns;
 public:
@@ -245,20 +343,27 @@ public:
         if (ret) ret->_outputs.push_back(this);
         _returns.push_back(ret);
     }
-    bool isCFG() const override { return true; }
+    bool blockHead() const override { return true; }
+    bool blockTail() const override { return true; }
     std::string label() const override { return "Stop"; }
+    CFGNode* idom() override { return nullptr; }
+    int idepth() override;
+    int loopDepth() override { return 1; }
 };
 
 class PhiNode;
 
-class RegionNode : public Node {
+class RegionNode : public CFGNode {
 protected:
     std::vector<PhiNode*> _phis;  // Phis controlled by this region
 public:
-    RegionNode(Node* ctrl1, Node* ctrl2) : Node() { setInput(0, ctrl1); setInput(1, ctrl2); }
+    RegionNode(Node* ctrl1, Node* ctrl2) : CFGNode() { setInput(0, ctrl1); setInput(1, ctrl2); }
     void addPhi(PhiNode* phi);  // CRITICAL: Must set phi->_inputs[0] = this
-    bool isCFG() const override { return true; }
+    bool blockHead() const override { return true; }
     std::string label() const override { return "Region"; }
+    CFGNode* idom() override;
+    int idepth() override;
+    int loopDepth() override;
     Node* peephole() override;
 
     // Check if this region has all inputs (for loops)
@@ -278,6 +383,9 @@ public:
     LoopNode(Node* entry) : RegionNode(entry, nullptr) {}
 
     std::string label() const override { return "Loop"; }
+    CFGNode* idom() override;
+    int idepth() override;
+    int loopDepth() override;
 
     // Loops are incomplete until backedge is set
     bool hasAllInputs() const override { return in(1) != nullptr; }
@@ -304,11 +412,12 @@ public:
     std::string label() const override { return "Phi[" + _label + "]"; }
 };
 
-class IfNode : public Node {
+class IfNode : public CFGNode {
 public:
-    IfNode(Node* ctrl, Node* pred) : Node() { setInput(0, ctrl); setInput(1, pred); }
-    bool isCFG() const override { return true; }
+    IfNode(Node* ctrl, Node* pred) : CFGNode() { setInput(0, ctrl); setInput(1, pred); }
+    bool blockTail() const override { return true; }
     std::string label() const override { return "If"; }
+    CFGNode* idom() override;
 };
 
 class ProjNode : public Node {

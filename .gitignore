@@ -1,74 +1,45 @@
-# Build directories
-build/
-cmake-build-*/
-out/
-bin/
-obj/
+# Ignore everything by default
+/*
 
-# CMake generated files
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
+# Keep the .gitignore itself
+!.gitignore
 
-# Executables and binaries
-*.exe
-*.out
-*.o
-*.a
-*.so
-*.dylib
-*.dll
+# Keep documentation
+!/docs/
+!/docs/**
 
-# Test results and artifacts
-regression-tests/test-results/
-*.execution
-*.output
-*.cpp2.output
+# Allow src/ directory
+!/src/
 
-# macOS
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Re-ignore everything under src by default
+/src/**
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Whitelist stage folders
+!/src/stage0/
+!/src/stage0/**
 
-# Temporary files
-*.tmp
-*.temp
-*.log
-*.cache
+!/src/stage1/
+!/src/stage1/**
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
+!/src/stage2/
+!/src/stage2/**
 
-# Node.js
-node_modules/
-npm-debug.log*
+!/src/stage3/
+!/src/stage3/**
 
-# Regression test artifacts
-memvid_temp/
-tools/stage1/tools/
+# Preserve top-level and important CMake files
+!/CMakeLists.txt
+!/src/CMakeLists.txt
+!/src/stage0/CMakeLists.txt
+!/src/stage1/CMakeLists.txt
+!/src/stage2/CMakeLists.txt
+!/src/stage3/CMakeLists.txt
 
-# Build artifacts that may escape build directory
-*.dSYM/
-*stage*_*.cpp
-comprehensive_test_*
-Testing/
-bounds_binary*
+# Preserve Ninja build files (root and under allowed src paths)
+!/build.ninja
+!/*.ninja
+!/src/**/build.ninja
+!/src/**/*.ninja
+
+# Safety note: Everything else remains ignored (dotfiles, .bmad-*, .github/, tools/, examples/, etc.)
+# Existing tracked files will remain tracked until you run `git rm --cached` if you choose to untrack them.
