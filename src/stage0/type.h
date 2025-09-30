@@ -146,6 +146,213 @@ public:
     Type* meet(Type* t) override;
 };
 
+// ============================================================================
+// Band 4: Type System Expansion (Chapters 12-15)
+// ============================================================================
+
+/**
+ * Chapter 12: Floating Point Types
+ *
+ * Floating point types follow similar lattice structure as integers:
+ * - TOP: unknown float
+ * - Constants: specific float values
+ * - BOTTOM: non-constant float
+ */
+class TypeFloat : public Type {
+public:
+    enum Precision {
+        F32,  // 32-bit IEEE 754 single precision
+        F64   // 64-bit IEEE 754 double precision
+    };
+
+private:
+    Precision _precision;
+    double _value;
+    bool _is_constant;
+
+    TypeFloat(Precision prec, double val, bool is_const)
+        : _precision(prec), _value(val), _is_constant(is_const) {}
+
+public:
+    /**
+     * Create a constant float type.
+     */
+    static TypeFloat* constant(double value, Precision prec = F64);
+
+    /**
+     * Create a bottom (non-constant) float type.
+     */
+    static TypeFloat* bottom(Precision prec = F64);
+
+    bool isConstant() const override { return _is_constant; }
+    bool isBottom() const override { return !_is_constant; }
+
+    double value() const { return _value; }
+    Precision precision() const { return _precision; }
+
+    std::string toString() const override {
+        if (isConstant()) {
+            return std::to_string(_value) + (_precision == F32 ? "f" : "d");
+        }
+        return _precision == F32 ? "f32⊥" : "f64⊥";
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 13: Reference Types
+ *
+ * References to structs/objects with nullable distinction.
+ * Follows Simple's struct pointer semantics.
+ */
+class TypePointer : public Type {
+private:
+    std::string _target_name;  // Name of the struct/type being referenced
+    bool _nullable;            // Can be null?
+    bool _is_null;             // Is definitely null?
+
+    TypePointer(const std::string& name, bool nullable, bool is_null)
+        : _target_name(name), _nullable(nullable), _is_null(is_null) {}
+
+public:
+    /**
+     * Create a nullable reference type (Struct?)
+     */
+    static TypePointer* nullable(const std::string& struct_name);
+
+    /**
+     * Create a non-nullable reference type (Struct)
+     */
+    static TypePointer* nonNullable(const std::string& struct_name);
+
+    /**
+     * Create a null constant reference
+     */
+    static TypePointer* nullType();
+
+    bool isConstant() const override { return _is_null; }
+    bool isNullable() const { return _nullable; }
+    bool isNull() const { return _is_null; }
+
+    const std::string& targetName() const { return _target_name; }
+
+    std::string toString() const override {
+        if (_is_null) return "null";
+        return _target_name + (_nullable ? "?" : "");
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 14: Narrow Integer Types
+ *
+ * Sub-word integer types with sign and width.
+ * Requires explicit coercion/widening operations.
+ */
+class TypeNarrow : public Type {
+public:
+    enum Width {
+        I8,   // 8-bit signed
+        I16,  // 16-bit signed
+        I32,  // 32-bit signed
+        I64,  // 64-bit signed
+        U8,   // 8-bit unsigned
+        U16,  // 16-bit unsigned
+        U32   // 32-bit unsigned
+    };
+
+private:
+    Width _width;
+    long _lo;
+    long _hi;
+
+    TypeNarrow(Width w, long lo, long hi)
+        : _width(w), _lo(lo), _hi(hi) {}
+
+public:
+    /**
+     * Create a constant narrow integer.
+     */
+    static TypeNarrow* constant(long value, Width width);
+
+    /**
+     * Create a bottom narrow integer.
+     */
+    static TypeNarrow* bottom(Width width);
+
+    bool isConstant() const override { return _lo == _hi; }
+    bool isBottom() const override;
+
+    long value() const { return _lo; }
+    Width width() const { return _width; }
+    bool isSigned() const { return _width <= I64; }
+
+    int bitWidth() const {
+        switch(_width) {
+            case I8: case U8: return 8;
+            case I16: case U16: return 16;
+            case I32: case U32: return 32;
+            case I64: return 64;
+        }
+        return 32;
+    }
+
+    std::string toString() const override;
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 15: Array Types
+ *
+ * Fixed-size and dynamic arrays with element type.
+ * Tracks length for bounds checking.
+ */
+class TypeArray : public Type {
+private:
+    Type* _element_type;  // Element type
+    long _length;         // -1 for dynamic, >= 0 for fixed size
+    bool _nullable;       // Can the array reference be null?
+
+    TypeArray(Type* elem, long len, bool nullable)
+        : _element_type(elem), _length(len), _nullable(nullable) {}
+
+public:
+    /**
+     * Create a fixed-size array type.
+     */
+    static TypeArray* fixedSize(Type* element_type, long length);
+
+    /**
+     * Create a dynamic array type (length unknown at compile time).
+     */
+    static TypeArray* dynamic(Type* element_type);
+
+    /**
+     * Create a nullable array type.
+     */
+    static TypeArray* nullable(Type* element_type);
+
+    Type* elementType() const { return _element_type; }
+    long length() const { return _length; }
+    bool isDynamic() const { return _length < 0; }
+    bool isNullable() const { return _nullable; }
+
+    std::string toString() const override {
+        std::string result = _element_type->toString();
+        if (_nullable) result += "?";
+        result += "[]";
+        if (!isDynamic()) {
+            result += "[" + std::to_string(_length) + "]";
+        }
+        return result;
+    }
+
+    Type* meet(Type* t) override;
+};
+
 } // namespace cppfort::ir
 
 #endif // CPPFORT_TYPE_H

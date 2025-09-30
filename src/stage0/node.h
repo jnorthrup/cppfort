@@ -753,6 +753,130 @@ public:
     int scopeLevel() const { return _scopes.size(); }
 };
 
+// ============================================================================
+// Band 4: Type System Extension Nodes (Chapters 12-15)
+// ============================================================================
+
+/**
+ * Chapter 12-14: Type Conversion/Coercion Nodes
+ *
+ * Extended type conversions for Band 4 type system.
+ * Uses existing CastNode (line ~662) but adds specialized nodes for:
+ * - Floating point conversions
+ * - Narrow/wide integer conversions
+ * - Array bounds enforcement
+ *
+ * Note: The existing CastNode (ctrl, value, toType) is kept for compatibility.
+ * New type-specific conversion nodes could be added here if needed.
+ */
+
+/**
+ * Chapter 15: Array Allocation Node
+ *
+ * Allocates a new array with specified length.
+ * Input 0: control
+ * Input 1: length (integer expression)
+ */
+class NewArrayNode : public Node {
+    Type* _element_type;
+
+public:
+    NewArrayNode(Node* ctrl, Node* length, Type* elem_type)
+        : Node(), _element_type(elem_type) {
+        setInput(0, ctrl);
+        setInput(1, length);
+    }
+
+    Type* elementType() const { return _element_type; }
+
+    std::string label() const override {
+        return "NewArray[" + _element_type->toString() + "]";
+    }
+
+    bool hasSideEffects() const override { return true; }
+
+    Type* compute() override;
+};
+
+/**
+ * Chapter 15: Array Load Node
+ *
+ * Loads an element from an array.
+ * Input 0: memory
+ * Input 1: array pointer
+ * Input 2: index
+ */
+class ArrayLoadNode : public MemOpNode {
+public:
+    ArrayLoadNode(int alias, Node* mem, Node* array, Node* index)
+        : MemOpNode(alias) {
+        setInput(0, mem);
+        setInput(1, array);
+        setInput(2, index);
+    }
+
+    std::string label() const override { return "ALoad"; }
+
+    Node* mem() const { return in(0); }
+    Node* array() const { return in(1); }
+    Node* index() const { return in(2); }
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 15: Array Store Node
+ *
+ * Stores a value to an array element.
+ * Input 0: memory
+ * Input 1: array pointer
+ * Input 2: index
+ * Input 3: value to store
+ */
+class ArrayStoreNode : public MemOpNode {
+public:
+    ArrayStoreNode(int alias, Node* mem, Node* array, Node* index, Node* value)
+        : MemOpNode(alias) {
+        setInput(0, mem);
+        setInput(1, array);
+        setInput(2, index);
+        setInput(3, value);
+    }
+
+    std::string label() const override { return "AStore"; }
+
+    bool hasSideEffects() const override { return true; }
+
+    Node* mem() const { return in(0); }
+    Node* array() const { return in(1); }
+    Node* index() const { return in(2); }
+    Node* value() const { return in(3); }
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 15: Array Length Node
+ *
+ * Returns the length of an array (using '#' postfix operator).
+ * Input 0: array pointer
+ */
+class ArrayLengthNode : public Node {
+public:
+    ArrayLengthNode(Node* array) : Node() {
+        setInput(0, array);
+    }
+
+    std::string label() const override { return "ArrayLength"; }
+
+    Node* array() const { return in(0); }
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
 } // namespace cppfort::ir
 
 #endif // CPPFORT_NODE_H

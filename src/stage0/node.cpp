@@ -793,4 +793,68 @@ int StopNode::idepth() {
     return _idepth = d;
 }
 
+// ============================================================================
+// Band 4: Type System Extension Node Implementations
+// ============================================================================
+
+// Note: Type conversion implementations will use the existing CastNode
+// or extend it in future. For now, focus on array operations.
+
+// NewArrayNode implementation
+Type* NewArrayNode::compute() {
+    // Array allocation returns a pointer to array
+    return TypeArray::dynamic(_element_type);
+}
+
+// ArrayLoadNode implementation
+Type* ArrayLoadNode::compute() {
+    Node* array_node = array();
+    if (!array_node || !array_node->_type) return Type::BOTTOM;
+
+    TypeArray* array_type = dynamic_cast<TypeArray*>(array_node->_type);
+    if (!array_type) return Type::BOTTOM;
+
+    return array_type->elementType();
+}
+
+Node* ArrayLoadNode::peephole() {
+    // TODO: Constant folding for array loads with known index
+    // TODO: Load-after-store elimination
+    return this;
+}
+
+// ArrayStoreNode implementation
+Type* ArrayStoreNode::compute() {
+    // Store returns updated memory
+    return mem()->_type;
+}
+
+Node* ArrayStoreNode::peephole() {
+    // TODO: Dead store elimination
+    // TODO: Store-after-store to same location
+    return this;
+}
+
+// ArrayLengthNode implementation
+Type* ArrayLengthNode::compute() {
+    Node* array_node = array();
+    if (!array_node || !array_node->_type) return TypeInteger::bottom();
+
+    TypeArray* array_type = dynamic_cast<TypeArray*>(array_node->_type);
+    if (!array_type) return TypeInteger::bottom();
+
+    // If array has known fixed size, return constant
+    if (!array_type->isDynamic()) {
+        return TypeInteger::constant(array_type->length());
+    }
+
+    // Otherwise return non-constant integer
+    return TypeInteger::bottom();
+}
+
+Node* ArrayLengthNode::peephole() {
+    // If array length is constant, we already return it from compute()
+    return this;
+}
+
 } // namespace cppfort::ir
