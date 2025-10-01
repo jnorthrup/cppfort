@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 #include <array>
-#include <random>
 #include <algorithm>
+#include <initializer_list>
 
 #include "orbit_scanner.h"
 #include "orbit_mask.h"
@@ -12,218 +12,205 @@
 
 namespace cppfort::ir {
 
-/**
- * Test fixture for generating copious orbit mock scanning data.
- * Creates thousands of test cases with varying orbit structures to validate
- * hierarchical hashing based on orbit anchor/parameter counts.
- */
 class OrbitMockScanningTest : public ::testing::Test {
 protected:
     void SetUp() override {
         OrbitScannerConfig config;
-        config.patternsDir = "../patterns";  // Correct path from build directory
-        config.patternThreshold = 0.1;  // Lower threshold for mock data
-        config.minConfidence = 0.1;  // Lower min confidence for detection
-        scanner = std::make_unique<OrbitScanner>(config);
-        // Initialize the scanner to load patterns
-        ASSERT_TRUE(scanner->initialize()) << "Failed to initialize scanner";
-        // Debug: check pattern count
-        size_t patternCount = scanner->getPatternCount();
-        ::std::cout << "Loaded " << patternCount << " patterns" << ::std::endl;
+        config.patternThreshold = 0.05;   // Allow low-signal mock matches
+        config.minConfidence = 0.0;       // Let the scanner report tentative grammars
+        config.maxMatches = 64;           // Keep deterministic while exercising truncation
+        config.maxDepth = 256;            // Plenty of headroom for synthetic snippets
+        scanner = ::std::make_unique<OrbitScanner>(config);
+
+        mockPatterns = {
+            makePattern("mock_c", GrammarType::C, 1.0, {"printf", "%d"}),
+            makePattern("mock_cpp", GrammarType::CPP, 1.75, {"std::vector", "template"}),
+            makePattern("mock_cpp2", GrammarType::CPP2, 1.75, {"inspect", "=>"})
+        };
     }
 
-    void TearDown() override {
-        scanner.reset();
+    static OrbitPattern makePattern(const ::std::string& name,
+                                    GrammarType grammar,
+                                    double weight,
+                                    ::std::initializer_list<::std::string> signatures) {
+        OrbitPattern pattern(name, static_cast<uint32_t>(grammar), weight);
+        pattern.signature_patterns = signatures;
+        pattern.protocol_indicators = {name + "_protocol"};
+        pattern.version_patterns = {"1.0"};
+        return pattern;
     }
 
-    std::unique_ptr<OrbitScanner> scanner;
-
-    // Orbit element types for mock data generation
-    enum class MockOrbitType {
-        BRACE,    // { }
-        BRACKET,  // [ ]
-        ANGLE,    // < >
-        PAREN,    // ( )
-        QUOTE,    // "
-        NUMBER    // numeric literals
-    };
-
-    // Generate random orbit structures
-    struct MockOrbitData {
-        std::string code;
-        std::array<size_t, 6> expectedCounts;  // [brace, bracket, angle, paren, quote, number]
-        std::array<uint64_t, 6> expectedHashes;
-        double expectedConfidence;
-    };
-
-    // Generate mock code with specific orbit patterns
-    std::string generateMockCode(const std::array<size_t, 6>& orbitCounts) {
-        std::string code;
-        std::mt19937 rng(42);  // Fixed seed for reproducibility
-
-        // Generate braces
-        for (size_t i = 0; i < orbitCounts[0]; ++i) {
-            code += '{';
-            code += "content" + std::to_string(i) + ";";
-            code += '}';
-        }
-
-        // Generate brackets
-        for (size_t i = 0; i < orbitCounts[1]; ++i) {
-            code += '[';
-            code += "item" + std::to_string(i);
-            code += ']';
-        }
-
-        // Generate angles
-        for (size_t i = 0; i < orbitCounts[2]; ++i) {
-            code += '<';
-            code += "type" + std::to_string(i);
-            code += '>';
-        }
-
-        // Generate parens
-        for (size_t i = 0; i < orbitCounts[3]; ++i) {
-            code += '(';
-            code += "arg" + std::to_string(i);
-            code += ')';
-        }
-
-        // Generate quotes
-        for (size_t i = 0; i < orbitCounts[4]; ++i) {
-            code += '"';
-            code += "string" + std::to_string(i);
-            code += '"';
-        }
-
-        // Generate numbers (simplified)
-        for (size_t i = 0; i < orbitCounts[5]; ++i) {
-            code += std::to_string(i * 42);
-        }
-
-        return code;
-    }
-
-    // Generate expected hashes for validation
-    std::array<uint64_t, 6> computeExpectedHashes(const std::array<size_t, 6>& counts) {
-        std::array<uint64_t, 6> hashes = {0};
-        const uint64_t PRIME = 31;
-
-        for (size_t type = 0; type < 6; ++type) {
-            uint64_t hash = 0;
-            size_t count = counts[type];
-
-            // Hierarchical hash: each level contributes
-            for (size_t level = 0; level < count; ++level) {
-                hash = (hash + 1ULL) % UINT64_MAX;  // Simplified for mock data
-            }
-
-            hashes[type] = hash;
-        }
-
-        return hashes;
-    }
+    ::std::unique_ptr<OrbitScanner> scanner;
+    ::std::vector<OrbitPattern> mockPatterns;
 };
 
-/**
- * Generate thousands of mock scanning test cases with varying orbit structures.
- */
-TEST_F(OrbitMockScanningTest, GenerateCopiousMockData) {
-    std::vector<MockOrbitData> mockData;
+TEST_F(OrbitMockScanningTest, ClassifiesMockGrammarsFromOrbitSignals) {
+    struct Scenario {
+        ::std::string description;
+        GrammarType expected;
+        ::std::string code;
+    };
 
-    // Generate 10,000 test cases with different orbit combinations
-    for (size_t testCase = 0; testCase < 10000; ++testCase) {
-        // Create random orbit counts (0-10 for each type)
-        std::array<size_t, 6> counts;
-        std::mt19937 rng(testCase);  // Use testCase as seed for reproducibility
-        std::uniform_int_distribution<size_t> dist(0, 10);
+    const ::std::vector<Scenario> scenarios = {
+        {
+            "C constructs",
+            GrammarType::C,
+            R"(
+#include <stdio.h>
 
-        for (size_t i = 0; i < 6; ++i) {
-            counts[i] = dist(rng);
-        }
-
-        // Generate mock code
-        std::string code = generateMockCode(counts);
-
-        // Compute expected hashes
-        auto expectedHashes = computeExpectedHashes(counts);
-
-        // Calculate expected confidence based on balance
-        double expectedConfidence = 1.0;
-        if (counts[0] > 0 || counts[1] > 0 || counts[2] > 0 || counts[3] > 0) {
-            // Penalize unbalanced structures
-            expectedConfidence = 0.8;
-        }
-
-        mockData.push_back({
-            code,
-            counts,
-            expectedHashes,
-            expectedConfidence
-        });
-    }
-
-    // Validate that we generated the expected number of test cases
-    EXPECT_EQ(mockData.size(), 10000u);
-
-    // Test a few representative cases
-    for (size_t i = 0; i < std::min<size_t>(100u, mockData.size()); ++i) {
-        const auto& testCase = mockData[i];
-
-        // Scan the mock code
-        auto result = scanner->scan(testCase.code);
-
-        // Basic validation - scanner should detect something
-        EXPECT_NE(result.detectedGrammar, GrammarType::UNKNOWN);
-
-        // For simple cases, confidence should be reasonable
-        if (testCase.expectedConfidence > 0.5) {
-            EXPECT_GT(result.confidence, 0.0);
+int fizzbuzz_c(void) {
+    for (int i = 1; i <= 15; ++i) {
+        if (i % 15 == 0) {
+            printf("FizzBuzz\n");
+        } else if (i % 3 == 0) {
+            printf("Fizz\n");
+        } else if (i % 5 == 0) {
+            printf("Buzz\n");
+        } else {
+            printf("%d\n", i);
         }
     }
+    return 0;
+}
+)"
+        },
+        {
+            "C++ constructs",
+            GrammarType::CPP,
+            R"(
+#include <iostream>
+#include <vector>
+#include <string>
 
-    // Test edge cases with extreme orbit counts
-    std::array<size_t, 6> extremeCounts = {50, 50, 50, 50, 50, 50};
-    std::string extremeCode = generateMockCode(extremeCounts);
+template <typename Printer>
+void fizzbuzz_cpp(int limit, Printer printer) {
+    std::vector<std::string> cache;
+    cache.reserve(limit);
 
-    auto extremeResult = scanner->scan(extremeCode);
-    // Should still work even with extreme nesting
-    EXPECT_NE(extremeResult.detectedGrammar, GrammarType::UNKNOWN);
+    for (int i = 1; i <= limit; ++i) {
+        if (i % 15 == 0) {
+            cache.emplace_back("FizzBuzz");
+        } else if (i % 3 == 0) {
+            cache.emplace_back("Fizz");
+        } else if (i % 5 == 0) {
+            cache.emplace_back("Buzz");
+        } else {
+            cache.emplace_back(std::to_string(i));
+        }
+    }
 
-    // Test empty code
-    auto emptyResult = scanner->scan("");
-    EXPECT_EQ(emptyResult.detectedGrammar, GrammarType::UNKNOWN);
-    EXPECT_EQ(emptyResult.confidence, 0.0);
+    for (const auto& item : cache) {
+        printer(item);
+    }
+}
+)"
+        },
+        {
+            "CPP2 constructs",
+            GrammarType::CPP2,
+            R"(
+auto fizzbuzz_cpp2 = [](auto limit) {
+    for (auto i = 1; i <= limit; ++i) {
+        inspect (i) {
+            0 => "zero";
+            _ when i % 15 == 0 => "FizzBuzz";
+            _ when i % 3 == 0 => "Fizz";
+            _ when i % 5 == 0 => "Buzz";
+            _ => std::to_string(i);
+        };
+    }
+};
+)"
+        }
+    };
 
-    // Test code with only whitespace
-    auto whitespaceResult = scanner->scan("   \n\t  \r\n");
-    EXPECT_EQ(whitespaceResult.detectedGrammar, GrammarType::UNKNOWN);
+    for (const auto& scenario : scenarios) {
+        auto result = scanner->scan(scenario.code, mockPatterns);
+
+        EXPECT_EQ(result.detectedGrammar, scenario.expected) << scenario.description;
+        EXPECT_GT(result.confidence, 0.0) << scenario.description;
+        EXPECT_FALSE(result.matches.empty()) << scenario.description;
+    }
 }
 
-/**
- * Test orbit-based hierarchical hashing with mock data.
- */
+TEST_F(OrbitMockScanningTest, AttachesOrbitCountsAndHashesToMatches) {
+    const ::std::string code = "void fizz() { printf(\"FizzBuzz\\n\"); }";
+    auto result = scanner->scan(code, mockPatterns);
+
+    ASSERT_FALSE(result.matches.empty());
+    const auto& match = result.matches.front();
+    EXPECT_EQ(match.grammarType, GrammarType::C);
+    EXPECT_GT(match.orbitCounts[0], 0u);
+    EXPECT_GT(match.orbitHashes[0], 0u);
+}
+
+TEST_F(OrbitMockScanningTest, RespectsConfiguredMatchLimit) {
+    OrbitScannerConfig limitedConfig = scanner->getConfig();
+    limitedConfig.maxMatches = 5;
+    scanner->updateConfig(limitedConfig);
+
+    ::std::string noisyCode;
+    for (int i = 0; i < 20; ++i) {
+        noisyCode += "printf(\"FizzBuzz\\n\");";
+    }
+
+    auto result = scanner->scan(noisyCode, mockPatterns);
+    EXPECT_LE(result.matches.size(), limitedConfig.maxMatches);
+}
+
+TEST_F(OrbitMockScanningTest, HonorsMinimumConfidenceFloor) {
+    const ::std::string code = "int main() { printf(\"FizzBuzz\\n\"); }";
+
+    auto baseline = scanner->scan(code, mockPatterns);
+    EXPECT_NE(baseline.detectedGrammar, GrammarType::UNKNOWN);
+    EXPECT_GT(baseline.confidence, 0.0);
+
+    OrbitScannerConfig strictConfig = scanner->getConfig();
+    strictConfig.minConfidence = 0.95;
+    scanner->updateConfig(strictConfig);
+
+    auto strictResult = scanner->scan(code, mockPatterns);
+    EXPECT_EQ(strictResult.detectedGrammar, GrammarType::UNKNOWN);
+    EXPECT_DOUBLE_EQ(strictResult.confidence, 0.0);
+    EXPECT_NE(strictResult.reasoning.find("No grammar detected"), ::std::string::npos);
+}
+
+TEST_F(OrbitMockScanningTest, OrbitContextBalanceReflectsConfidence) {
+    OrbitContext balanced;
+    for (char ch : ::std::string("{[()]}")) {
+        balanced.update(ch);
+    }
+
+    EXPECT_TRUE(balanced.isBalanced());
+    EXPECT_DOUBLE_EQ(balanced.calculateConfidence(), 1.0);
+
+    OrbitContext unbalanced;
+    for (char ch : ::std::string("{{[")) {
+        unbalanced.update(ch);
+    }
+
+    EXPECT_FALSE(unbalanced.isBalanced());
+    EXPECT_LT(unbalanced.calculateConfidence(), 1.0);
+}
+
 TEST_F(OrbitMockScanningTest, OrbitHierarchicalHashing) {
     RabinKarp rabinKarp;
 
-    // Test various orbit count combinations
-    std::vector<std::array<size_t, 6>> testCounts = {
-        {0, 0, 0, 0, 0, 0},  // Empty
-        {1, 0, 0, 0, 0, 0},  // Single brace
-        {0, 1, 0, 0, 0, 0},  // Single bracket
-        {0, 0, 1, 0, 0, 0},  // Single angle
-        {0, 0, 0, 1, 0, 0},  // Single paren
-        {0, 0, 0, 0, 1, 0},  // Single quote
-        {0, 0, 0, 0, 0, 1},  // Single number
-        {3, 2, 1, 4, 2, 3},  // Mixed complex case
-        {10, 10, 10, 10, 10, 10},  // High counts
+    ::std::vector<::std::array<size_t, 6>> testCounts = {
+        {0, 0, 0, 0, 0, 0},
+        {1, 0, 0, 0, 0, 0},
+        {0, 1, 0, 0, 0, 0},
+        {0, 0, 1, 0, 0, 0},
+        {0, 0, 0, 1, 0, 0},
+        {0, 0, 0, 0, 1, 0},
+        {0, 0, 0, 0, 0, 1},
+        {3, 2, 1, 4, 2, 3},
+        {10, 10, 10, 10, 10, 10},
     };
 
     for (const auto& counts : testCounts) {
-        // Create orbit context with these counts
         OrbitContext context;
-        for (size_t type = 0; type < 6; ++type) {
-            // Simulate the counts by updating context multiple times
+        for (size_t type = 0; type < counts.size(); ++type) {
             char ch = ' ';
             switch (type) {
                 case 0: ch = '{'; break;
@@ -231,7 +218,7 @@ TEST_F(OrbitMockScanningTest, OrbitHierarchicalHashing) {
                 case 2: ch = '<'; break;
                 case 3: ch = '('; break;
                 case 4: ch = '"'; break;
-                case 5: ch = '1'; break;  // Simplified for numbers
+                case 5: ch = '1'; break;
             }
 
             for (size_t i = 0; i < counts[type]; ++i) {
@@ -239,93 +226,26 @@ TEST_F(OrbitMockScanningTest, OrbitHierarchicalHashing) {
             }
         }
 
-        // Get actual counts from context
         auto actualCounts = context.getCounts();
-
-        // Compute hashes
         auto hashes = rabinKarp.processOrbitContext(context);
 
-        // Validate that hashes are computed (non-zero for non-empty cases)
-        bool hasAnyCounts = std::any_of(counts.begin(), counts.end(), [](size_t c) { return c > 0; });
+        bool hasAnyCounts = ::std::any_of(counts.begin(), counts.end(), [](size_t c) { return c > 0; });
         if (hasAnyCounts) {
-            bool hasAnyHashes = std::any_of(hashes.begin(), hashes.end(), [](uint64_t h) { return h > 0; });
-            EXPECT_TRUE(hasAnyHashes) << "Expected non-zero hashes for counts: "
-                << counts[0] << "," << counts[1] << "," << counts[2] << ","
-                << counts[3] << "," << counts[4] << "," << counts[5];
+            bool hasAnyHashes = ::std::any_of(hashes.begin(), hashes.end(), [](uint64_t h) { return h > 0; });
+            EXPECT_TRUE(hasAnyHashes) << "Expected non-zero hashes for populated orbit context";
         }
 
-        // Validate hash consistency - same counts should produce same hashes
         auto hashes2 = rabinKarp.processOrbitContext(context);
-        EXPECT_EQ(hashes, hashes2) << "Hashes should be consistent for same orbit context";
-    }
-}
+        EXPECT_EQ(hashes, hashes2);
 
-/**
- * Performance test with large mock datasets.
- */
-TEST_F(OrbitMockScanningTest, PerformanceWithLargeMockData) {
-    const size_t LARGE_DATASET_SIZE = 50000;
-    std::vector<std::string> largeDataset;
-
-    // Generate large dataset
-    for (size_t i = 0; i < LARGE_DATASET_SIZE; ++i) {
-        std::array<size_t, 6> counts = {1, 1, 1, 1, 1, 1};  // Simple balanced case
-        largeDataset.push_back(generateMockCode(counts));
-    }
-
-    EXPECT_EQ(largeDataset.size(), LARGE_DATASET_SIZE);
-
-    // Time the scanning (basic performance validation)
-    for (size_t i = 0; i < std::min<size_t>(1000u, largeDataset.size()); ++i) {
-        auto result = scanner->scan(largeDataset[i]);
-        // Just ensure it doesn't crash and returns a result
-        EXPECT_TRUE(result.detectedGrammar != GrammarType::UNKNOWN ||
-                   result.confidence >= 0.0);
-    }
-}
-
-/**
- * Test orbit context balance validation with mock data.
- */
-TEST_F(OrbitMockScanningTest, OrbitBalanceValidation) {
-    // Temporarily disabled - balance validation needs debugging
-    /*
-    std::vector<std::pair<std::string, bool>> balanceTestCases = {
-        {"{}", true},           // Balanced braces
-        {"[]", true},           // Balanced brackets
-        {"<>", true},           // Balanced angles
-        {"()", true},           // Balanced parens
-        {"\"\"", true},         // Balanced quotes
-        {"{{}}", true},         // Nested balanced
-        {"{[()]}", true},       // Complex balanced
-        {"{{}", false},         // Unbalanced braces
-        {"[[]", false},         // Unbalanced brackets
-        {"<(>", false},         // Unbalanced angles
-        {"(()", false},         // Unbalanced parens
-        {"\"hello", false},     // Unbalanced quotes
-        {"{[}]", false},        // Mismatched delimiters
-    };
-
-    for (const auto& [code, shouldBeBalanced] : balanceTestCases) {
-        OrbitContext context;
-
-        for (char ch : code) {
-            context.update(ch);
-        }
-
-        EXPECT_EQ(context.isBalanced(), shouldBeBalanced) << "Code: " << code;
-
-        // Test confidence calculation
-        double confidence = context.calculateConfidence();
-        EXPECT_GE(confidence, 0.0);
-        EXPECT_LE(confidence, 1.0);
-
-        if (shouldBeBalanced) {
-            EXPECT_GT(confidence, 0.5) << "Balanced code should have reasonable confidence: " << code;
+        for (size_t type = 0; type < counts.size(); ++type) {
+            if (type == 4) { // quote depth toggles between 0 and 1
+                EXPECT_LE(actualCounts[type], 1u);
+                continue;
+            }
+            EXPECT_EQ(actualCounts[type], counts[type]);
         }
     }
-    */
-    SUCCEED();  // Placeholder
 }
 
 } // namespace cppfort::ir

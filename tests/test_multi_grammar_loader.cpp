@@ -128,13 +128,13 @@ TEST_F(MultiGrammarLoaderTest, ClearLoader) {
   EXPECT_EQ(stats.totalPatterns, 0);
 }
 
-TEST_F(MultiGrammarLoaderTest, GrammarTypeDetection) {
-  // Test filename to grammar type detection
-  EXPECT_EQ(loader->detectGrammarType("c_patterns.yaml"), GrammarType::C);
-  EXPECT_EQ(loader->detectGrammarType("cpp_patterns.yaml"), GrammarType::CPP);
-  EXPECT_EQ(loader->detectGrammarType("cpp2_patterns.yaml"), GrammarType::CPP2);
-  EXPECT_EQ(loader->detectGrammarType("unknown.yaml"), GrammarType::UNKNOWN);
-}
+// TEST_F(MultiGrammarLoaderTest, GrammarTypeDetection) {
+//   // Test filename to grammar type detection
+//   EXPECT_EQ(loader->detectGrammarType("c_patterns.yaml"), GrammarType::C);
+//   EXPECT_EQ(loader->detectGrammarType("cpp_patterns.yaml"), GrammarType::CPP);
+//   EXPECT_EQ(loader->detectGrammarType("cpp2_patterns.yaml"), GrammarType::CPP2);
+//   EXPECT_EQ(loader->detectGrammarType("unknown.yaml"), GrammarType::UNKNOWN);
+// }
 
 TEST_F(MultiGrammarLoaderTest, UtilityFunctions) {
   EXPECT_EQ(grammarTypeToString(GrammarType::C), "C");

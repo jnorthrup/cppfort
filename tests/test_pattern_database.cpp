@@ -61,22 +61,22 @@ TEST_F(PatternDatabaseTest, LoadFromYaml) {
 
   // Check first pattern
   EXPECT_EQ(patterns[0].name, "test_pattern");
-  EXPECT_EQ(patterns[0].orbitId, 1);
+  EXPECT_EQ(patterns[0].orbit_id, 1);
   EXPECT_DOUBLE_EQ(patterns[0].weight, 0.8);
-  EXPECT_EQ(patterns[0].signaturePatterns.size(), 2);
-  EXPECT_EQ(patterns[0].protocolIndicators.size(), 1);
-  EXPECT_EQ(patterns[0].versionPatterns.size(), 1);
+  EXPECT_EQ(patterns[0].signature_patterns.size(), 2);
+  EXPECT_EQ(patterns[0].protocol_indicators.size(), 1);
+  EXPECT_EQ(patterns[0].version_patterns.size(), 1);
 
   // Check second pattern
   EXPECT_EQ(patterns[1].name, "another_pattern");
-  EXPECT_EQ(patterns[1].orbitId, 2);
+  EXPECT_EQ(patterns[1].orbit_id, 2);
   EXPECT_DOUBLE_EQ(patterns[1].weight, 0.9);
 }
 
 TEST_F(PatternDatabaseTest, ExportToTableGen) {
   database->loadFromYaml(testFilePath);
 
-  std::string tablegen = database->exportToTableGen();
+  std::string tablegen = database->exportToTableGen("TestDialect");
   EXPECT_FALSE(tablegen.empty());
 
   // Check for expected TableGen structure
@@ -85,53 +85,31 @@ TEST_F(PatternDatabaseTest, ExportToTableGen) {
   EXPECT_NE(tablegen.find("another_pattern"), std::string::npos);
 }
 
-TEST_F(PatternDatabaseTest, FindPatternByName) {
+TEST_F(PatternDatabaseTest, GetPatternByName) {
   database->loadFromYaml(testFilePath);
 
-  auto pattern = database->findPattern("test_pattern");
+  auto pattern = database->getPattern("test_pattern");
   ASSERT_TRUE(pattern.has_value());
   EXPECT_EQ(pattern->name, "test_pattern");
-  EXPECT_EQ(pattern->orbitId, 1);
+  EXPECT_EQ(pattern->orbit_id, 1);
 
-  auto notFound = database->findPattern("nonexistent");
+  auto notFound = database->getPattern("nonexistent");
   EXPECT_FALSE(notFound.has_value());
 }
 
-TEST_F(PatternDatabaseTest, GetPatternsByOrbitId) {
+TEST_F(PatternDatabaseTest, GetPatternsForOrbit) {
   database->loadFromYaml(testFilePath);
 
-  auto orbit1Patterns = database->getPatternsByOrbitId(1);
-  ASSERT_EQ(orbit1Patterns.size(), 1);
-  EXPECT_EQ(orbit1Patterns[0].name, "test_pattern");
+  auto orbit1Patterns = database->getPatternsForOrbit(1);
+  EXPECT_EQ(orbit1Patterns.size(), 1);
+  EXPECT_EQ(orbit1Patterns[0].orbit_id, 1);
 
-  auto orbit2Patterns = database->getPatternsByOrbitId(2);
-  ASSERT_EQ(orbit2Patterns.size(), 1);
-  EXPECT_EQ(orbit2Patterns[0].name, "another_pattern");
+  auto orbit2Patterns = database->getPatternsForOrbit(2);
+  EXPECT_EQ(orbit2Patterns.size(), 1);
+  EXPECT_EQ(orbit2Patterns[0].orbit_id, 2);
 
-  auto orbit3Patterns = database->getPatternsByOrbitId(3);
+  auto orbit3Patterns = database->getPatternsForOrbit(3);
   EXPECT_TRUE(orbit3Patterns.empty());
-}
-
-TEST_F(PatternDatabaseTest, PatternMatching) {
-  database->loadFromYaml(testFilePath);
-
-  // Test matching code against patterns
-  std::string testCode = "This is a test example";
-
-  auto matches = database->findMatches(testCode);
-  EXPECT_FALSE(matches.empty());
-
-  // Should find matches for both patterns
-  bool foundTest = false;
-  bool foundAnother = false;
-
-  for (const auto& match : matches) {
-    if (match.patternName == "test_pattern") foundTest = true;
-    if (match.patternName == "another_pattern") foundAnother = true;
-  }
-
-  EXPECT_TRUE(foundTest);
-  EXPECT_FALSE(foundAnother); // "another" not in test code
 }
 
 TEST_F(PatternDatabaseTest, InvalidYamlFile) {
@@ -142,9 +120,6 @@ TEST_F(PatternDatabaseTest, InvalidYamlFile) {
 TEST_F(PatternDatabaseTest, EmptyDatabase) {
   const auto& patterns = database->getPatterns();
   EXPECT_TRUE(patterns.empty());
-
-  auto matches = database->findMatches("any code");
-  EXPECT_TRUE(matches.empty());
 }
 
 TEST_F(PatternDatabaseTest, PatternWeights) {

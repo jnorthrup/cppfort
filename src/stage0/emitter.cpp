@@ -241,6 +241,33 @@ bool looks_like_initializer_list(const ::std::string& expr) {
         expr = "(void)(" + expr.substr(4) + ")";
     }
 
+    // Remove unnecessary parentheses around simple expressions
+    // Pattern: (simple_expr) -> simple_expr, where simple_expr is a number, identifier, or string literal
+    if (expr.size() >= 3 && expr.front() == '(' && expr.back() == ')') {
+        ::std::string inner = expr.substr(1, expr.size() - 2);
+        // Check if inner is a simple expression (number, identifier, or string literal)
+        bool is_simple = true;
+        if (inner.empty()) {
+            is_simple = false;
+        } else if (::std::isdigit(static_cast<unsigned char>(inner[0])) || inner[0] == '"' || inner[0] == '\'') {
+            // Starts with digit, quote, or apostrophe - likely a literal
+        } else if (::std::isalpha(static_cast<unsigned char>(inner[0])) || inner[0] == '_') {
+            // Starts with letter or underscore - check if it's a valid identifier
+            for (char c : inner) {
+                if (!(::std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
+                    is_simple = false;
+                    break;
+                }
+            }
+        } else {
+            is_simple = false;
+        }
+        
+        if (is_simple) {
+            expr = inner;
+        }
+    }
+
     return expr;
 }
 }

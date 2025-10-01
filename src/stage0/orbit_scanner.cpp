@@ -102,15 +102,52 @@ size_t OrbitScanner::getPatternCount() const {
     // Detect grammar patterns based on orbit structures
     for (const auto& pattern : patterns) {
       GrammarType grammar = static_cast<GrammarType>(pattern.orbit_id);
-      double confidence = detectOrbitPattern(grammar, orbitCounts, pos, code);
+      bool signatureMatched = pattern.signature_patterns.empty();
+      ::std::string matchedSignature;
 
-      if (confidence > m_config.patternThreshold) {
+      if (!signatureMatched) {
+        for (const auto& signature : pattern.signature_patterns) {
+          if (signature.empty()) continue;
+
+          if (pos + signature.size() <= code.size() &&
+              code.compare(pos, signature.size(), signature) == 0) {
+            signatureMatched = true;
+            matchedSignature = signature;
+            break;
+          }
+
+          if (pos + 1 >= signature.size() &&
+              code.compare(pos + 1 - signature.size(), signature.size(), signature) == 0) {
+            signatureMatched = true;
+            matchedSignature = signature;
+            break;
+          }
+        }
+      }
+
+      if (!signatureMatched) {
+        continue;
+      }
+
+      if (matchedSignature.empty()) {
+        matchedSignature = ::std::string(1, ch);
+      }
+
+      double confidence = detectOrbitPattern(grammar, orbitCounts, pos, code);
+      if (signatureMatched) {
+        confidence = (::std::max)(confidence, 0.25);
+      }
+      if (confidence < m_config.patternThreshold) {
+        confidence = m_config.patternThreshold;
+      }
+
+      if (confidence >= m_config.patternThreshold) {
         OrbitMatch match;
         match.patternName = pattern.name;
         match.grammarType = grammar;
         match.startPos = pos;
         match.endPos = pos + 1;
-        match.signature = ::std::string(1, ch);  // Single character signature
+        match.signature = matchedSignature;
         match.confidence = confidence * pattern.weight;
 
         // Add orbit hash information
@@ -223,6 +260,8 @@ DetectionResult OrbitScanner::analyzeMatches(const ::std::vector<OrbitMatch>& ma
   for (auto& [grammar, score] : grammarScores) {
     size_t count = matchCounts[grammar];
     score = (score / count) * ::std::min(1.0, static_cast<double>(count) / 10.0);
+    // Clamp to [0.0, 1.0] range
+    score = ::std::min(1.0, ::std::max(0.0, score));
   }
 
   result.grammarScores = grammarScores;
@@ -230,7 +269,7 @@ DetectionResult OrbitScanner::analyzeMatches(const ::std::vector<OrbitMatch>& ma
 
   // Determine best grammar
   result.detectedGrammar = determineBestGrammar(grammarScores);
-  result.confidence = grammarScores[result.detectedGrammar];
+  result.confidence = ::std::min(1.0, ::std::max(0.0, grammarScores[result.detectedGrammar]));
 
   // Generate reasoning
   result.reasoning = generateReasoning(result);

@@ -3,9 +3,21 @@
 #include <string>
 
 namespace cppfort {
-namespace ir {
+naTEST_F(OrbitContextTest, LowConfidenceForUnbalanced) {
+  // Test confidence for unbalanced code
+  std::string unbalancedCode = "if (x > 0) { return x;";
 
-class OrbitContextTest : public ::testing::Test {
+  for (char c : unbalancedCode) {
+    context->update(c);
+  }
+
+  double confidence = context->calculateConfidence();
+  EXPECT_LT(confidence, 0.5); // Should be low for unbalanced code
+}
+
+TEST_F(OrbitContextTest, ResetFunctionality) {
+  context->update('(');
+  EXPECT_FALSE(context->isBalanced());lass OrbitContextTest : public ::testing::Test {
 protected:
   void SetUp() override {
     context = std::make_unique<OrbitContext>(100);
@@ -22,11 +34,11 @@ TEST_F(OrbitContextTest, Initialization) {
 
 TEST_F(OrbitContextTest, ParenthesesTracking) {
   // Test balanced parentheses
-  context->processChar('(');
+  context->update('(');
   EXPECT_EQ(context->getDepth(), 1);
   EXPECT_FALSE(context->isBalanced());
 
-  context->processChar(')');
+  context->update(')');
   EXPECT_EQ(context->getDepth(), 0);
   EXPECT_TRUE(context->isBalanced());
 }
@@ -35,7 +47,7 @@ TEST_F(OrbitContextTest, NestedStructures) {
   std::string code = "if (x > 0) { return x; }";
 
   for (char c : code) {
-    context->processChar(c);
+    context->update(c);
   }
 
   EXPECT_TRUE(context->isBalanced());
@@ -47,7 +59,7 @@ TEST_F(OrbitContextTest, UnbalancedStructures) {
   std::string code = "if (x > 0) { return x;";
 
   for (char c : code) {
-    context->processChar(c);
+    context->update(c);
   }
 
   EXPECT_FALSE(context->isBalanced());
@@ -58,7 +70,7 @@ TEST_F(OrbitContextTest, MultipleStructureTypes) {
   std::string code = "func() { if (true) [1, 2, 3]; }";
 
   for (char c : code) {
-    context->processChar(c);
+    context->update(c);
   }
 
   EXPECT_TRUE(context->isBalanced());
@@ -69,7 +81,7 @@ TEST_F(OrbitContextTest, DepthLimit) {
 
   // Exceed depth limit
   for (int i = 0; i < 5; ++i) {
-    limitedContext.processChar('(');
+    limitedContext.update('(');
   }
 
   EXPECT_GT(limitedContext.getDepth(), 3);
@@ -81,7 +93,7 @@ TEST_F(OrbitContextTest, ConfidenceCalculation) {
   std::string balancedCode = "if (x > 0) { return x; }";
 
   for (char c : balancedCode) {
-    context->processChar(c);
+    context->update(c);
   }
 
   double confidence = context->calculateConfidence();
@@ -113,7 +125,7 @@ TEST_F(OrbitContextTest, ComplexNesting) {
   std::string complexCode = "function() { if (a && (b || c)) { for (i in [1,2,3]) { process(i); } } }";
 
   for (char c : complexCode) {
-    context->processChar(c);
+    context->update(c);
   }
 
   EXPECT_TRUE(context->isBalanced());
@@ -125,7 +137,7 @@ TEST_F(OrbitContextTest, StringLiteralHandling) {
   std::string codeWithStrings = "if (str == \"hello (world)\") { return true; }";
 
   for (char c : codeWithStrings) {
-    context->processChar(c);
+    context->update(c);
   }
 
   EXPECT_TRUE(context->isBalanced());
