@@ -53,6 +53,15 @@ public:
      */
     virtual Type* meet(Type* t) = 0;
 
+    /**
+     * Chapter 17: Compute the GLB (Greatest Lower Bound) type for var/val inference.
+     * This is similar to meet but follows specific rules:
+     * - Narrow types widen to int/flt
+     * - References always infer as nullable
+     * - Primitives remain the same
+     */
+    virtual Type* glb() const;
+
     // Singleton BOTTOM instance
     static Type* BOTTOM;
 
@@ -206,45 +215,61 @@ public:
 };
 
 /**
- * Chapter 13: Reference Types
+ * Chapter 13-17: Reference Types
  *
  * References to structs/objects with nullable distinction.
  * Follows Simple's struct pointer semantics.
+ * Chapter 17: Adds mutability tracking for deep immutability.
  */
 class TypePointer : public Type {
 private:
     std::string _target_name;  // Name of the struct/type being referenced
     bool _nullable;            // Can be null?
     bool _is_null;             // Is definitely null?
+    bool _mutable;             // Chapter 17: Is this reference mutable?
 
-    TypePointer(const std::string& name, bool nullable, bool is_null)
-        : _target_name(name), _nullable(nullable), _is_null(is_null) {}
+    TypePointer(const std::string& name, bool nullable, bool is_null, bool mutable_ref = true)
+        : _target_name(name), _nullable(nullable), _is_null(is_null), _mutable(mutable_ref) {}
 
 public:
     /**
      * Create a nullable reference type (Struct?)
      */
-    static TypePointer* nullable(const std::string& struct_name);
+    static TypePointer* nullable(const std::string& struct_name, bool mutable_ref = true);
 
     /**
      * Create a non-nullable reference type (Struct)
      */
-    static TypePointer* nonNullable(const std::string& struct_name);
+    static TypePointer* nonNullable(const std::string& struct_name, bool mutable_ref = true);
 
     /**
      * Create a null constant reference
      */
     static TypePointer* nullType();
 
+    /**
+     * Chapter 17: Create an immutable reference (val semantics)
+     */
+    static TypePointer* immutable(const std::string& struct_name, bool nullable = false);
+
+    /**
+     * Chapter 17: Create a mutable reference (var or ! semantics)
+     */
+    static TypePointer* mutable_(const std::string& struct_name, bool nullable = false);
+
     bool isConstant() const override { return _is_null; }
     bool isNullable() const { return _nullable; }
     bool isNull() const { return _is_null; }
+    bool isMutable() const { return _mutable; }
 
     const std::string& targetName() const { return _target_name; }
 
     std::string toString() const override {
         if (_is_null) return "null";
-        return _target_name + (_nullable ? "?" : "");
+        std::string result;
+        if (!_mutable) result = "val ";
+        result += _target_name + (_nullable ? "?" : "");
+        return result;
     }
 
     Type* meet(Type* t) override;
@@ -359,7 +384,7 @@ public:
 };
 
 /**
- * Chapter 16: Field Metadata
+ * Chapter 16-17: Field Metadata
  *
  * Represents a field within a struct, tracking:
  * - Field name
@@ -367,16 +392,47 @@ public:
  * - Whether the field is final (immutable after initialization)
  * - Initial value expression (if any)
  * - Offset within struct layout
+ * - Mutability qualifier (Chapter 17)
  */
 struct Field {
-    std::string name;       // Field name
-    Type* type;             // Field type
-    bool isFinal;           // Is this field final (immutable)?
-    Node* initialValue;     // Initial value expression (may be null)
-    int offset;             // Byte offset in struct layout
+    enum MutabilityQualifier {
+        MUTABLE,       // Default for primitives, or explicitly marked with '!'
+        IMMUTABLE,     // References with initializers, or marked with 'val'
+        VAR_INFERRED,  // Marked with 'var' keyword (always mutable)
+        VAL_INFERRED   // Marked with 'val' keyword (always immutable)
+    };
 
-    Field(const std::string& n, Type* t, bool final = false, Node* init = nullptr, int off = 0)
-        : name(n), type(t), isFinal(final), initialValue(init), offset(off) {}
+    std::string name;                // Field name
+    Type* type;                      // Field type
+    bool isFinal;                    // Is this field final (immutable)?
+    Node* initialValue;              // Initial value expression (may be null)
+    int offset;                      // Byte offset in struct layout
+    MutabilityQualifier mutability;  // Chapter 17: Mutability qualifier
+
+    Field(const std::string& n, Type* t, bool final = false, Node* init = nullptr, int off = 0,
+          MutabilityQualifier mut = MUTABLE)
+        : name(n), type(t), isFinal(final), initialValue(init), offset(off), mutability(mut) {}
+
+    /**
+     * Check if this field is mutable through a given reference.
+     * Chapter 17: Deep immutability rules.
+     */
+    bool isMutableThrough(bool refIsMutable) const {
+        // If the reference itself is immutable, field cannot be mutated
+        if (!refIsMutable) return false;
+
+        // VAR is always mutable if reference allows
+        if (mutability == VAR_INFERRED) return true;
+
+        // VAL is always immutable
+        if (mutability == VAL_INFERRED) return false;
+
+        // IMMUTABLE fields cannot be mutated
+        if (mutability == IMMUTABLE) return false;
+
+        // MUTABLE fields can be mutated if reference allows
+        return mutability == MUTABLE;
+    }
 };
 
 /**
@@ -406,7 +462,8 @@ public:
      * Add a field to this struct.
      * Returns the field's index.
      */
-    int addField(const std::string& name, Type* type, bool isFinal = false, Node* initVal = nullptr);
+    int addField(const std::string& name, Type* type, bool isFinal = false, Node* initVal = nullptr,
+                 Field::MutabilityQualifier mutability = Field::MUTABLE);
 
     /**
      * Lookup a field by name.

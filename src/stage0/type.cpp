@@ -10,6 +10,12 @@ Type* Type::BOTTOM = new TypeBottom();
 Type* Type::TOP = new TypeTop();
 int Type::GENERATION = 1;
 
+// Chapter 17: Default GLB implementation
+Type* Type::glb() const {
+    // Default: return bottom (widest type)
+    return Type::BOTTOM;
+}
+
 // Cache for constant integer types to avoid duplicates
 static std::unordered_map<long, TypeInteger*> constant_cache;
 
@@ -136,37 +142,68 @@ Type* TypeFloat::meet(Type* t) {
 // Chapter 13: Reference Types
 // ============================================================================
 
-static std::unordered_map<std::string, TypePointer*> nullable_ptr_cache;
-static std::unordered_map<std::string, TypePointer*> non_nullable_ptr_cache;
+// Chapter 17: Cache key includes mutability
+struct PtrCacheKey {
+    std::string name;
+    bool nullable;
+    bool mutable_ref;
+
+    bool operator==(const PtrCacheKey& other) const {
+        return name == other.name && nullable == other.nullable && mutable_ref == other.mutable_ref;
+    }
+};
+
+struct PtrCacheKeyHash {
+    std::size_t operator()(const PtrCacheKey& k) const {
+        std::size_t h1 = std::hash<std::string>()(k.name);
+        std::size_t h2 = std::hash<bool>()(k.nullable);
+        std::size_t h3 = std::hash<bool>()(k.mutable_ref);
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+};
+
+static std::unordered_map<PtrCacheKey, TypePointer*, PtrCacheKeyHash> ptr_cache;
 static TypePointer* NULL_TYPE = nullptr;
 
-TypePointer* TypePointer::nullable(const std::string& struct_name) {
-    auto it = nullable_ptr_cache.find(struct_name);
-    if (it != nullable_ptr_cache.end()) {
+TypePointer* TypePointer::nullable(const std::string& struct_name, bool mutable_ref) {
+    PtrCacheKey key{struct_name, true, mutable_ref};
+    auto it = ptr_cache.find(key);
+    if (it != ptr_cache.end()) {
         return it->second;
     }
 
-    auto* type = new TypePointer(struct_name, true, false);
-    nullable_ptr_cache[struct_name] = type;
+    auto* type = new TypePointer(struct_name, true, false, mutable_ref);
+    ptr_cache[key] = type;
     return type;
 }
 
-TypePointer* TypePointer::nonNullable(const std::string& struct_name) {
-    auto it = non_nullable_ptr_cache.find(struct_name);
-    if (it != non_nullable_ptr_cache.end()) {
+TypePointer* TypePointer::nonNullable(const std::string& struct_name, bool mutable_ref) {
+    PtrCacheKey key{struct_name, false, mutable_ref};
+    auto it = ptr_cache.find(key);
+    if (it != ptr_cache.end()) {
         return it->second;
     }
 
-    auto* type = new TypePointer(struct_name, false, false);
-    non_nullable_ptr_cache[struct_name] = type;
+    auto* type = new TypePointer(struct_name, false, false, mutable_ref);
+    ptr_cache[key] = type;
     return type;
 }
 
 TypePointer* TypePointer::nullType() {
     if (NULL_TYPE == nullptr) {
-        NULL_TYPE = new TypePointer("", true, true);
+        NULL_TYPE = new TypePointer("", true, true, false);
     }
     return NULL_TYPE;
+}
+
+TypePointer* TypePointer::immutable(const std::string& struct_name, bool nullable) {
+    return nullable ? TypePointer::nullable(struct_name, false)
+                    : TypePointer::nonNullable(struct_name, false);
+}
+
+TypePointer* TypePointer::mutable_(const std::string& struct_name, bool nullable) {
+    return nullable ? TypePointer::nullable(struct_name, true)
+                    : TypePointer::nonNullable(struct_name, true);
 }
 
 Type* TypePointer::meet(Type* t) {
@@ -185,11 +222,17 @@ Type* TypePointer::meet(Type* t) {
     if (_target_name != other->_target_name) return Type::BOTTOM;
 
     // Nullability: meet is the more permissive (nullable)
-    if (_nullable || other->_nullable) {
-        return nullable(_target_name);
+    bool result_nullable = _nullable || other->_nullable;
+
+    // Chapter 17: Mutability: meet is the less permissive (immutable)
+    // If either reference is immutable, the result is immutable
+    bool result_mutable = _mutable && other->_mutable;
+
+    if (result_nullable) {
+        return nullable(_target_name, result_mutable);
     }
 
-    return this;
+    return nonNullable(_target_name, result_mutable);
 }
 
 // Chapter 14: Narrow Integer Types
@@ -364,7 +407,8 @@ TypeStruct* TypeStruct::create(const std::string& name, bool nullable) {
     return type;
 }
 
-int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node* initVal) {
+int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node* initVal,
+                         Field::MutabilityQualifier mutability) {
     // Check for duplicate field names
     if (_fieldMap.find(name) != _fieldMap.end()) {
         // Field already exists - error
@@ -378,7 +422,7 @@ int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node
     // For now, just use 8 bytes per field
     _totalSize += 8;
 
-    _fields.emplace_back(name, type, isFinal, initVal, offset);
+    _fields.emplace_back(name, type, isFinal, initVal, offset, mutability);
     _fieldMap[name] = index;
 
     return index;

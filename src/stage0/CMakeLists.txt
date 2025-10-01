@@ -56,6 +56,10 @@ target_link_libraries(test_band5 PRIVATE stage0)
 add_executable(test_chapter16 test_chapter16.cpp)
 target_link_libraries(test_chapter16 PRIVATE stage0)
 
+# Chapter 17 syntax sugar (mutability and type inference) test
+add_executable(test_chapter17 test_chapter17.cpp)
+target_link_libraries(test_chapter17 PRIVATE stage0)
+
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
