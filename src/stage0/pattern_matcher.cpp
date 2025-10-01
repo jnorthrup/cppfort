@@ -9,7 +9,9 @@ namespace cppfort::ir {
 // ============================================================================
 
 PatternMatcher::PatternMatcher() {
-    registerBuiltinPatterns();
+    // Chapter 19: Don't register builtin patterns here.
+    // Machines will register their own patterns when needed.
+    // registerBuiltinPatterns();
 }
 
 void PatternMatcher::registerPattern(
@@ -19,6 +21,18 @@ void PatternMatcher::registerPattern(
     int priority
 ) {
     Pattern p(kind, target, rewrite, priority);
+    registerPattern(p);
+}
+
+void PatternMatcher::registerPattern(
+    NodeKind kind,
+    TargetLanguage target,
+    std::function<std::string(Node*)> rewrite,
+    int priority,
+    std::function<bool(Node*)> constraint
+) {
+    Pattern p(kind, target, rewrite, priority);
+    p.typeConstraint = constraint;
     registerPattern(p);
 }
 
@@ -106,6 +120,11 @@ void PatternMatcher::clear() {
 }
 
 void PatternMatcher::registerBuiltinPatterns() {
+    // Chapter 19: Builtin patterns disabled - machines register their own patterns
+    // TODO: Re-enable when TargetLanguage enum includes C/CPP/CPP2
+    return;
+
+    /* // Commented out until TargetLanguage enum is extended
     // ========================================================================
     // Arithmetic Operations → C
     // ========================================================================
@@ -341,6 +360,7 @@ void PatternMatcher::registerBuiltinPatterns() {
             }
             return std::string("%const = arith.constant 0 : i64");
         }, 10);
+    */ // End commented out builtin patterns
 }
 
 // ============================================================================

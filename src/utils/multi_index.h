@@ -80,6 +80,7 @@ enum class NodeKind {
     LOAD = DATA_START,
     STORE,
     ALLOC,
+    NEW = ALLOC,  // Alias for ALLOC (Chapter 10/19 compat)
     FREE,
     ARRAY_LOAD,
     ARRAY_STORE,
@@ -195,7 +196,9 @@ enum class NodeKind {
 
     CONSTANT = CONSTANT_START,
     PARAMETER,
+    PARM = PARAMETER,  // Alias for PARAMETER (Chapter 18/19 compat)
     FUNCTION,
+    FUN = FUNCTION,    // Alias for FUNCTION (Chapter 18/19 compat)
     GLOBAL_VAR,
     STRING_LITERAL,
     NULL_PTR,

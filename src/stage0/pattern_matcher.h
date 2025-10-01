@@ -10,23 +10,7 @@
 
 namespace cppfort::ir {
 
-/**
- * Band 5: Target language enumeration for n-way lowering.
- *
- * Cppfort diverges from Simple compiler's single-target approach.
- * This enum enables pattern-based lowering to multiple target languages.
- */
-enum class TargetLanguage {
-    C,           // Direct C emission
-    CPP,         // C++ emission
-    CPP2,        // CPP2 (cppfront) emission
-    MLIR_ARITH,  // MLIR arithmetic dialect
-    MLIR_MEMREF, // MLIR memref dialect
-    MLIR_CF,     // MLIR control flow dialect
-    MLIR_SCF,    // MLIR structured control flow
-    RUST,        // Rust emission (future)
-    WASM         // WebAssembly (future)
-};
+// TargetLanguage is defined in node.h to avoid circular dependencies
 
 /**
  * Band 5: Pattern structure for declarative lowering.
@@ -113,13 +97,13 @@ private:
 
     std::unordered_map<PatternKey, std::vector<Pattern>, PatternKeyHash> _registry;
 
+public:
     /**
      * Find best matching pattern for (node, target).
      * Returns nullptr if no pattern matches.
+     * Made public for InstructionSelection to use.
      */
     const Pattern* findBestMatch(Node* node, TargetLanguage target) const;
-
-public:
     PatternMatcher();
     ~PatternMatcher() = default;
 
@@ -139,6 +123,23 @@ public:
         TargetLanguage target,
         std::function<std::string(Node*)> rewrite,
         int priority = 0
+    );
+
+    /**
+     * Register a pattern with a type constraint.
+     *
+     * @param kind          Node kind this pattern matches
+     * @param target        Target language for lowering
+     * @param rewrite       Function that transforms Node* → target code
+     * @param priority      Priority for disambiguation
+     * @param constraint    Type constraint predicate
+     */
+    void registerPattern(
+        NodeKind kind,
+        TargetLanguage target,
+        std::function<std::string(Node*)> rewrite,
+        int priority,
+        std::function<bool(Node*)> constraint
     );
 
     /**

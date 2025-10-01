@@ -24,7 +24,6 @@ set(STAGE0_SOURCES
     # region_curing.cpp # MLIR Region Curing - temporarily disabled
     ${MyDialect_generated_sources}
 )
-)
 
 add_library(stage0 STATIC ${STAGE0_SOURCES})
 

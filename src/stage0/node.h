@@ -11,6 +11,19 @@
 
 namespace cppfort::ir {
 
+/**
+ * Chapter 19: Target MLIR Dialect Enum
+ * Represents the various MLIR dialects for instruction selection
+ */
+enum class TargetLanguage {
+    MLIR_ARITH,    // Arithmetic dialect (add, sub, mul, div, etc.)
+    MLIR_CF,       // Control Flow dialect (branches, jumps)
+    MLIR_SCF,      // Structured Control Flow (if, for, while)
+    MLIR_MEMREF,   // Memory Reference dialect (loads, stores)
+    MLIR_FUNC,     // Function dialect (calls, returns)
+    UNKNOWN        // Unspecified/unhandled dialect
+};
+
 // Forward declarations for function nodes
 class FunNode;
 class ParmNode;
