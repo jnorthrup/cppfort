@@ -473,4 +473,241 @@ Type* TypeStruct::meet(Type* t) {
     return create(_name, nullable);
 }
 
+// ============================================================================
+// Chapter 18: Function Types
+// ============================================================================
+
+// TypeTuple cache - avoid duplicate tuples with same signature
+static std::vector<TypeTuple*> tuple_cache;
+
+TypeTuple* TypeTuple::create(const std::vector<Type*>& types) {
+    // Check cache for existing tuple with same types
+    for (TypeTuple* cached : tuple_cache) {
+        if (cached->types().size() != types.size()) continue;
+
+        bool match = true;
+        for (size_t i = 0; i < types.size(); ++i) {
+            if (cached->get(i) != types[i]) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) return cached;
+    }
+
+    // Create new tuple and cache it
+    auto* tuple = new TypeTuple(types);
+    tuple_cache.push_back(tuple);
+    return tuple;
+}
+
+Type* TypeTuple::meet(Type* t) {
+    if (!t) return Type::BOTTOM;
+    if (t->isTop()) return this;
+    if (t == Type::BOTTOM) return t;  // Check for universal BOTTOM
+
+    TypeTuple* other = dynamic_cast<TypeTuple*>(t);
+    if (!other) return Type::BOTTOM;
+
+    // Tuples must have same size
+    if (_types.size() != other->_types.size()) return Type::BOTTOM;
+
+    // Meet each element
+    std::vector<Type*> result_types;
+    for (size_t i = 0; i < _types.size(); ++i) {
+        Type* elem_meet = _types[i]->meet(other->_types[i]);
+        // Check for universal BOTTOM (meet failed), not type-specific bottom
+        if (elem_meet == Type::BOTTOM) return Type::BOTTOM;
+        result_types.push_back(elem_meet);
+    }
+
+    return create(result_types);
+}
+
+// TypeFunPtr cache
+struct FunPtrCacheKey {
+    TypeTuple* args;
+    Type* ret;
+    int fidx;
+    bool nullable;
+    bool mutable_ref;
+
+    bool operator==(const FunPtrCacheKey& other) const {
+        return args == other.args && ret == other.ret && fidx == other.fidx &&
+               nullable == other.nullable && mutable_ref == other.mutable_ref;
+    }
+};
+
+struct FunPtrCacheKeyHash {
+    std::size_t operator()(const FunPtrCacheKey& k) const {
+        std::size_t h1 = std::hash<void*>()(k.args);
+        std::size_t h2 = std::hash<void*>()(k.ret);
+        std::size_t h3 = std::hash<int>()(k.fidx);
+        std::size_t h4 = std::hash<bool>()(k.nullable);
+        std::size_t h5 = std::hash<bool>()(k.mutable_ref);
+        return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4);
+    }
+};
+
+static std::unordered_map<FunPtrCacheKey, TypeFunPtr*, FunPtrCacheKeyHash> funptr_cache;
+static TypeFunPtr* NULL_FUNPTR = nullptr;
+
+TypeFunPtr* TypeFunPtr::create(TypeTuple* args, Type* ret, int fidx) {
+    FunPtrCacheKey key{args, ret, fidx, false, true};
+    auto it = funptr_cache.find(key);
+    if (it != funptr_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeFunPtr(args, ret, fidx, false, true);
+    funptr_cache[key] = type;
+    return type;
+}
+
+TypeFunPtr* TypeFunPtr::nullable(TypeTuple* args, Type* ret) {
+    FunPtrCacheKey key{args, ret, -1, true, true};
+    auto it = funptr_cache.find(key);
+    if (it != funptr_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeFunPtr(args, ret, -1, true, true);
+    funptr_cache[key] = type;
+    return type;
+}
+
+TypeFunPtr* TypeFunPtr::mutable_(TypeTuple* args, Type* ret, bool nullable) {
+    FunPtrCacheKey key{args, ret, -1, nullable, true};
+    auto it = funptr_cache.find(key);
+    if (it != funptr_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeFunPtr(args, ret, -1, nullable, true);
+    funptr_cache[key] = type;
+    return type;
+}
+
+TypeFunPtr* TypeFunPtr::immutable(TypeTuple* args, Type* ret, bool nullable) {
+    FunPtrCacheKey key{args, ret, -1, nullable, false};
+    auto it = funptr_cache.find(key);
+    if (it != funptr_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeFunPtr(args, ret, -1, nullable, false);
+    funptr_cache[key] = type;
+    return type;
+}
+
+TypeFunPtr* TypeFunPtr::nullType() {
+    if (NULL_FUNPTR == nullptr) {
+        // Create an empty tuple for null function
+        TypeTuple* empty = TypeTuple::create({});
+        NULL_FUNPTR = new TypeFunPtr(empty, Type::BOTTOM, -1, true, false);
+    }
+    return NULL_FUNPTR;
+}
+
+Type* TypeFunPtr::meet(Type* t) {
+    if (!t) return Type::BOTTOM;
+    if (t->isTop()) return this;
+    if (t == Type::BOTTOM) return t;  // Check for universal BOTTOM
+
+    TypeFunPtr* other = dynamic_cast<TypeFunPtr*>(t);
+    if (!other) return Type::BOTTOM;
+
+    // Meet argument types
+    Type* args_meet = _args->meet(other->_args);
+    if (args_meet == Type::BOTTOM) return Type::BOTTOM;  // Check for universal BOTTOM
+    TypeTuple* args_tuple = dynamic_cast<TypeTuple*>(args_meet);
+    if (!args_tuple) return Type::BOTTOM;
+
+    // Meet return type
+    Type* ret_meet = _ret->meet(other->_ret);
+    if (ret_meet == Type::BOTTOM) return Type::BOTTOM;  // Check for universal BOTTOM
+
+    // Nullability: meet is more permissive (nullable)
+    bool result_nullable = _nullable || other->_nullable;
+
+    // Mutability: meet is less permissive (immutable)
+    bool result_mutable = _mutable && other->_mutable;
+
+    // Function index: if both have same fidx, keep it; otherwise -1
+    int result_fidx = (_fidx >= 0 && _fidx == other->_fidx) ? _fidx : -1;
+
+    // Create result function type
+    FunPtrCacheKey key{args_tuple, ret_meet, result_fidx, result_nullable, result_mutable};
+    auto it = funptr_cache.find(key);
+    if (it != funptr_cache.end()) {
+        return it->second;
+    }
+
+    auto* result = new TypeFunPtr(args_tuple, ret_meet, result_fidx, result_nullable, result_mutable);
+    funptr_cache[key] = result;
+    return result;
+}
+
+// TypeRPC implementation
+static std::unordered_map<int, TypeRPC*> rpc_cache;
+static TypeRPC* NULL_RPC = nullptr;
+static TypeRPC* NULLABLE_RPC = nullptr;
+
+TypeRPC* TypeRPC::create(int rpc) {
+    auto it = rpc_cache.find(rpc);
+    if (it != rpc_cache.end()) {
+        return it->second;
+    }
+
+    auto* type = new TypeRPC(rpc, false);
+    rpc_cache[rpc] = type;
+    return type;
+}
+
+TypeRPC* TypeRPC::nullable() {
+    if (NULLABLE_RPC == nullptr) {
+        NULLABLE_RPC = new TypeRPC(-1, true);
+    }
+    return NULLABLE_RPC;
+}
+
+TypeRPC* TypeRPC::nullType() {
+    if (NULL_RPC == nullptr) {
+        NULL_RPC = new TypeRPC(-1, true);
+    }
+    return NULL_RPC;
+}
+
+Type* TypeRPC::meet(Type* t) {
+    if (!t) return Type::BOTTOM;
+    if (t->isTop()) return this;
+    if (t->isBottom()) return t;
+
+    TypeRPC* other = dynamic_cast<TypeRPC*>(t);
+    if (!other) return Type::BOTTOM;
+
+    // Nullability: meet is more permissive (nullable)
+    bool result_nullable = _nullable || other->_nullable;
+
+    // RPC: if both have same RPC, keep it; otherwise -1
+    int result_rpc = (_rpc >= 0 && _rpc == other->_rpc) ? _rpc : -1;
+
+    if (result_nullable && result_rpc < 0) {
+        return nullable();
+    }
+
+    if (result_rpc >= 0) {
+        auto it = rpc_cache.find(result_rpc);
+        if (it != rpc_cache.end()) {
+            return it->second;
+        }
+        auto* result = new TypeRPC(result_rpc, result_nullable);
+        rpc_cache[result_rpc] = result;
+        return result;
+    }
+
+    return nullable();
+}
+
 } // namespace cppfort::ir

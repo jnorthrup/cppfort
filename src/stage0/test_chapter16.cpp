@@ -220,6 +220,164 @@ void test_fully_initialized_check() {
     std::cout << "  PASS: isFullyInitialized check works\n";
 }
 
+// ============================================================================
+// REGRESSION TESTS: Chapter 18 Function Type Integration
+// ============================================================================
+
+void test_function_pointer_fields() {
+    std::cout << "Test: REGRESSION - Function pointer fields in structs\n";
+
+    // Create function type: {int->int}
+    TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
+    TypeFunPtr* funcType = TypeFunPtr::create(intArg, TypeInteger::bottom());
+
+    assert(funcType != nullptr);
+    assert(funcType->args()->size() == 1);
+    assert(funcType->ret() == TypeInteger::bottom());
+
+    // Create struct with function pointer field
+    TypeStruct* handlerType = TypeStruct::create("Handler");
+    handlerType->addField("callback", funcType, false, nullptr);
+
+    const Field* callbackField = handlerType->getField("callback");
+    assert(callbackField != nullptr);
+    assert(callbackField->type == funcType);
+
+    std::cout << "  PASS: Function pointer fields work\n";
+}
+
+void test_final_function_pointer_field() {
+    std::cout << "Test: REGRESSION - Final function pointer field\n";
+
+    // Create function type: {int, int -> int}
+    TypeTuple* twoInts = TypeTuple::create({TypeInteger::bottom(), TypeInteger::bottom()});
+    TypeFunPtr* binaryOp = TypeFunPtr::create(twoInts, TypeInteger::bottom(), 42);  // fidx=42
+
+    // Struct with final function pointer field
+    TypeStruct* calcType = TypeStruct::create("Calculator");
+    calcType->addField("operation", binaryOp, true, nullptr);  // final, no default
+
+    const Field* opField = calcType->getField("operation");
+    assert(opField->isFinal == true);
+
+    // Should not be fully initialized (final field without default)
+    assert(!calcType->isFullyInitialized());
+
+    std::cout << "  PASS: Final function pointer fields work\n";
+}
+
+void test_nullable_function_pointer_field() {
+    std::cout << "Test: REGRESSION - Nullable function pointer field\n";
+
+    // Create nullable function type: {int->int}?
+    TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
+    TypeFunPtr* nullableFuncType = TypeFunPtr::nullable(intArg, TypeInteger::bottom());
+
+    assert(nullableFuncType->isNullable() == true);
+
+    // Struct with nullable function pointer field
+    TypeStruct* optHandlerType = TypeStruct::create("OptionalHandler");
+    optHandlerType->addField("callback", nullableFuncType, false, nullptr);
+
+    const Field* callbackField = optHandlerType->getField("callback");
+    TypeFunPtr* fieldType = dynamic_cast<TypeFunPtr*>(callbackField->type);
+    assert(fieldType != nullptr);
+    assert(fieldType->isNullable() == true);
+
+    std::cout << "  PASS: Nullable function pointer fields work\n";
+}
+
+void test_multiple_function_pointer_fields() {
+    std::cout << "Test: REGRESSION - Multiple function pointer fields\n";
+
+    // Create different function types
+    TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
+    TypeTuple* noArgs = TypeTuple::create({});
+
+    TypeFunPtr* unaryOp = TypeFunPtr::create(intArg, TypeInteger::bottom());
+    TypeFunPtr* generator = TypeFunPtr::create(noArgs, TypeInteger::bottom());
+
+    // Struct with multiple function pointer fields
+    TypeStruct* multiFunc = TypeStruct::create("MultiFunction");
+    multiFunc->addField("transform", unaryOp, false, nullptr);
+    multiFunc->addField("source", generator, false, nullptr);
+
+    assert(multiFunc->fieldCount() == 2);
+
+    const Field* transformField = multiFunc->getField("transform");
+    const Field* sourceField = multiFunc->getField("source");
+
+    TypeFunPtr* transform_type = dynamic_cast<TypeFunPtr*>(transformField->type);
+    TypeFunPtr* source_type = dynamic_cast<TypeFunPtr*>(sourceField->type);
+
+    assert(transform_type->args()->size() == 1);
+    assert(source_type->args()->size() == 0);
+
+    std::cout << "  PASS: Multiple function pointer fields work\n";
+}
+
+void test_function_type_meet() {
+    std::cout << "Test: REGRESSION - Function type meet operations\n";
+
+    // Create two function types with same signature
+    TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
+    TypeFunPtr* func1 = TypeFunPtr::create(intArg, TypeInteger::bottom(), 1);
+    TypeFunPtr* func2 = TypeFunPtr::create(intArg, TypeInteger::bottom(), 2);
+
+    // Meet should produce a function with same signature but no specific fidx
+    Type* meetResult = func1->meet(func2);
+    TypeFunPtr* meetFunc = dynamic_cast<TypeFunPtr*>(meetResult);
+
+    assert(meetFunc != nullptr);
+    assert(meetFunc->args()->size() == 1);
+    assert(meetFunc->fidx() == -1);  // Different fidx, so result is -1
+
+    // Meet with nullable should produce nullable result
+    TypeFunPtr* nullable1 = TypeFunPtr::nullable(intArg, TypeInteger::bottom());
+    Type* meetNullable = func1->meet(nullable1);
+    TypeFunPtr* meetNullableFunc = dynamic_cast<TypeFunPtr*>(meetNullable);
+
+    assert(meetNullableFunc != nullptr);
+    assert(meetNullableFunc->isNullable() == true);
+
+    std::cout << "  PASS: Function type meet operations work\n";
+}
+
+void test_tuple_type_basics() {
+    std::cout << "Test: REGRESSION - TypeTuple basics\n";
+
+    // Create various tuples
+    TypeTuple* empty = TypeTuple::create({});
+    TypeTuple* single = TypeTuple::create({TypeInteger::bottom()});
+    TypeTuple* triple = TypeTuple::create({
+        TypeInteger::bottom(),
+        TypeFloat::bottom(),
+        TypePointer::nonNullable("Foo")
+    });
+
+    assert(empty->size() == 0);
+    assert(single->size() == 1);
+    assert(triple->size() == 3);
+
+    assert(triple->get(0) == TypeInteger::bottom());
+    assert(triple->get(1) == TypeFloat::bottom());
+    assert(dynamic_cast<TypePointer*>(triple->get(2)) != nullptr);
+
+    // Test tuple meet
+    TypeTuple* triple2 = TypeTuple::create({
+        TypeInteger::bottom(),
+        TypeFloat::bottom(),
+        TypePointer::nonNullable("Foo")
+    });
+
+    Type* meetResult = triple->meet(triple2);
+    TypeTuple* meetTuple = dynamic_cast<TypeTuple*>(meetResult);
+    assert(meetTuple != nullptr);
+    assert(meetTuple->size() == 3);
+
+    std::cout << "  PASS: TypeTuple basics work\n";
+}
+
 int main() {
     std::cout << "=== Chapter 16: Constructors and Final Fields Test Suite ===\n\n";
 
@@ -232,6 +390,15 @@ int main() {
     test_nullable_struct_types();
     test_type_meet();
     test_fully_initialized_check();
+
+    std::cout << "\n=== REGRESSION TESTS: Chapter 18 Integration ===\n\n";
+
+    test_function_pointer_fields();
+    test_final_function_pointer_field();
+    test_nullable_function_pointer_field();
+    test_multiple_function_pointer_fields();
+    test_function_type_meet();
+    test_tuple_type_basics();
 
     std::cout << "\n=== All Chapter 16 tests passed! ===\n";
     return 0;

@@ -6,6 +6,7 @@
 #include <limits>
 #include <vector>
 #include <unordered_map>
+#include <algorithm>
 
 namespace cppfort::ir {
 
@@ -515,6 +516,198 @@ public:
 
     std::string toString() const override {
         return _name + (_nullable ? "?" : "");
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 18: Tuple Types
+ *
+ * Represents a tuple of types used for function arguments.
+ * Tuples are immutable ordered collections of types.
+ */
+class TypeTuple : public Type {
+private:
+    std::vector<Type*> _types;
+
+    TypeTuple(const std::vector<Type*>& types) : _types(types) {}
+
+public:
+    /**
+     * Create a tuple type from a list of types.
+     */
+    static TypeTuple* create(const std::vector<Type*>& types);
+
+    /**
+     * Get the types in this tuple.
+     */
+    const std::vector<Type*>& types() const { return _types; }
+
+    /**
+     * Get the number of types in this tuple.
+     */
+    size_t size() const { return _types.size(); }
+
+    /**
+     * Get a specific type from the tuple.
+     */
+    Type* get(size_t index) const {
+        return index < _types.size() ? _types[index] : nullptr;
+    }
+
+    std::string toString() const override {
+        std::string result = "(";
+        for (size_t i = 0; i < _types.size(); ++i) {
+            if (i > 0) result += ",";
+            result += _types[i]->toString();
+        }
+        result += ")";
+        return result;
+    }
+
+    bool isConstant() const override {
+        // A tuple is constant if all its elements are constant
+        for (Type* t : _types) {
+            if (!t->isConstant()) return false;
+        }
+        return true;
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 18: Function Pointer Types
+ *
+ * Represents a function pointer type with signature.
+ * Tracks function index (fidx) for code generation.
+ * Can track multiple functions with same signature via bitset.
+ *
+ * Mutability: Function pointers themselves can be var/val
+ */
+class TypeFunPtr : public Type {
+private:
+    TypeTuple* _args;       // Argument types
+    Type* _ret;             // Return type
+    int _fidx;              // Function index (-1 for multiple/unknown)
+    bool _nullable;         // Can be null?
+    bool _mutable;          // Is this reference mutable?
+    std::vector<int> _fidxs; // Bit set of possible function indices
+
+    TypeFunPtr(TypeTuple* args, Type* ret, int fidx = -1, bool nullable = false, bool mutable_ref = true)
+        : _args(args), _ret(ret), _fidx(fidx), _nullable(nullable), _mutable(mutable_ref) {
+        if (fidx >= 0) _fidxs.push_back(fidx);
+    }
+
+public:
+    /**
+     * Create a function pointer type.
+     */
+    static TypeFunPtr* create(TypeTuple* args, Type* ret, int fidx = -1);
+
+    /**
+     * Create a nullable function pointer type.
+     */
+    static TypeFunPtr* nullable(TypeTuple* args, Type* ret);
+
+    /**
+     * Create a mutable function pointer type.
+     */
+    static TypeFunPtr* mutable_(TypeTuple* args, Type* ret, bool nullable = false);
+
+    /**
+     * Create an immutable function pointer type.
+     */
+    static TypeFunPtr* immutable(TypeTuple* args, Type* ret, bool nullable = false);
+
+    /**
+     * Create a null function pointer constant.
+     */
+    static TypeFunPtr* nullType();
+
+    TypeTuple* args() const { return _args; }
+    Type* ret() const { return _ret; }
+    int fidx() const { return _fidx; }
+    bool isNullable() const { return _nullable; }
+    bool isMutable() const { return _mutable; }
+    const std::vector<int>& fidxs() const { return _fidxs; }
+
+    /**
+     * Add a function index to the set.
+     */
+    void addFidx(int fidx) {
+        if (std::find(_fidxs.begin(), _fidxs.end(), fidx) == _fidxs.end()) {
+            _fidxs.push_back(fidx);
+        }
+    }
+
+    bool isConstant() const override {
+        // A function pointer is constant if it's null or refers to a single known function
+        return _fidx >= 0 || (_nullable && _fidxs.empty());
+    }
+
+    std::string toString() const override {
+        if (_fidx < 0 && _fidxs.empty() && _nullable) return "null";
+
+        std::string result;
+        if (!_mutable) result = "val ";
+        result += "{" + _args->toString() + "->" + _ret->toString() + "}";
+        if (_nullable) result += "?";
+        if (_fidx >= 0) result += "[fidx=" + std::to_string(_fidx) + "]";
+        return result;
+    }
+
+    Type* meet(Type* t) override;
+};
+
+/**
+ * Chapter 18: Return Program Counter Types
+ *
+ * Represents a return program counter for function calls.
+ * Each call site gets a unique RPC value.
+ * Similar to TypeFunPtr but signature doesn't matter.
+ *
+ * Used by evaluator to return from functions without relying on
+ * the implementation language's stack.
+ */
+class TypeRPC : public Type {
+private:
+    int _rpc;              // Return program counter ID (-1 for unknown)
+    bool _nullable;        // Can be null?
+
+    TypeRPC(int rpc = -1, bool nullable = false)
+        : _rpc(rpc), _nullable(nullable) {}
+
+public:
+    /**
+     * Create an RPC type with specific ID.
+     */
+    static TypeRPC* create(int rpc);
+
+    /**
+     * Create a nullable RPC type.
+     */
+    static TypeRPC* nullable();
+
+    /**
+     * Create a null RPC constant.
+     */
+    static TypeRPC* nullType();
+
+    int rpc() const { return _rpc; }
+    bool isNullable() const { return _nullable; }
+
+    bool isConstant() const override {
+        return _rpc >= 0 || (_nullable && _rpc < 0);
+    }
+
+    std::string toString() const override {
+        if (_rpc < 0 && _nullable) return "null";
+        std::string result = "RPC";
+        if (_rpc >= 0) result += "[" + std::to_string(_rpc) + "]";
+        if (_nullable) result += "?";
+        return result;
     }
 
     Type* meet(Type* t) override;
