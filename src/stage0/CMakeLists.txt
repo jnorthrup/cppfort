@@ -19,8 +19,11 @@ set(STAGE0_SOURCES
     gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
     pattern_matcher.cpp  # Band 5: N-way pattern-based lowering
     mlir_emitter.cpp
+    machine.cpp  # Chapter 19: Machine abstraction for MLIR dialects
+    instruction_selection.cpp  # Chapter 19: Instruction selection phase
     # region_curing.cpp # MLIR Region Curing - temporarily disabled
     ${MyDialect_generated_sources}
+)
 )
 
 add_library(stage0 STATIC ${STAGE0_SOURCES})
@@ -85,6 +88,10 @@ target_link_libraries(test_chapter16 PRIVATE stage0)
 # Chapter 17 syntax sugar (mutability and type inference) test
 add_executable(test_chapter17 test_chapter17.cpp)
 target_link_libraries(test_chapter17 PRIVATE stage0)
+
+# Chapter 19 instruction selection test
+add_executable(test_chapter19 test_chapter19.cpp)
+target_link_libraries(test_chapter19 PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES

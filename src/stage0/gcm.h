@@ -1,5 +1,4 @@
-#ifndef CPPFORT_GCM_H
-#define CPPFORT_GCM_H
+#pragma once
 
 #include <vector>
 #include <unordered_set>
@@ -134,5 +133,3 @@ public:
 };
 
 } // namespace cppfort::ir
-
-#endif // CPPFORT_GCM_H

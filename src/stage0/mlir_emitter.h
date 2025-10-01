@@ -1,23 +1,27 @@
 #pragma once
 
 #include "node.h"
+#include "machine.h"
+#include "instruction_selection.h"
 #include <memory>
 #include <unordered_map>
 
-// Forward declarations for MLIR types
-// In real implementation, include actual MLIR headers
-namespace mlir {
-    class MLIRContext;
-    class ModuleOp;
-    class OpBuilder;
-    class Location;
-    class Type;
-    class Value;
-    class Block;
-    class Region;
-    class FuncOp;
-    class CallOp;
-    class ReturnOp;
+// MLIR headers for actual implementation
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/Module.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/Types.h"
+#include "mlir/IR/Values.h"
+#include "mlir/IR/Block.h"
+#include "mlir/IR/Region.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/OpDefinition.h"
+
+// Forward declarations for MLIR types - now using actual includes above
+// namespace mlir {
+//     // Types now properly included
+// }
 }
 
 namespace cppfort::ir {

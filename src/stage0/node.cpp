@@ -1073,8 +1073,8 @@ bool NewNode::validateInitialization() const {
 // ============================================================================
 
 Type* FunNode::compute() {
-    // Function nodes represent function types
-    return Type::BOTTOM;  // TODO: Return proper function type
+    // Function nodes represent their function type
+    return _sig;
 }
 
 Node* FunNode::peephole() {
@@ -1092,8 +1092,29 @@ bool FunNode::inProgress() const {
 }
 
 Type* ParmNode::compute() {
-    // TODO: Implement parameter type computation
-    return Type::BOTTOM;
+    // ParmNode merges argument types from all call sites
+    // Input 0 is the FunNode, inputs 1+ are arguments from call sites
+
+    if (nIns() <= 1) {
+        // No arguments yet, return bottom
+        return Type::BOTTOM;
+    }
+
+    // Start with the first argument type
+    Type* result = in(1)->_type;
+    if (!result) return Type::BOTTOM;
+
+    // Meet with all other argument types
+    for (int i = 2; i < nIns(); ++i) {
+        Node* arg = in(i);
+        if (!arg || !arg->_type) return Type::BOTTOM;
+
+        Type::GENERATION++;
+        result = result->meet(arg->_type);
+        if (result == Type::BOTTOM) return Type::BOTTOM;
+    }
+
+    return result;
 }
 
 Node* ParmNode::peephole() {
@@ -1112,15 +1133,53 @@ Type* CallNode::compute() {
     // Call node type is control flow
     return Type::BOTTOM;  // TODO: Return proper control type
 }
-
 Node* CallNode::peephole() {
-    // TODO: Implement function linking and inlining logic
+    // Link exact constant functions
+    Node* fptr_node = fptr();
+    if (!fptr_node) return this;
+
+    // Check if fptr is a constant function
+    ConstantNode* const_fptr = dynamic_cast<ConstantNode*>(fptr_node);
+    if (!const_fptr) return this;
+
+    TypeFunPtr* fun_type = dynamic_cast<TypeFunPtr*>(const_fptr->_type);
+    if (!fun_type || fun_type->fidx() < 0) return this;
+
+    // Find the function with this fidx
+    // TODO: Need a way to find FunNode by fidx
+    // For now, assume we can find it somehow
+    // FunNode* fun = findFunByFidx(fun_type->fidx());
+    // if (!fun) return this;
+    // For now, skip inlining logic - just return this
     return this;
 }
 
 Type* CallEndNode::compute() {
-    // CallEnd type is control flow
-    return Type::BOTTOM;  // TODO: Return proper control type
+    // CallEnd returns the return type of the called function(s)
+    // Input 0 is CallNode, inputs 1+ are linked functions
+
+    if (nIns() <= 1) {
+        // No linked functions yet
+        return Type::BOTTOM;
+    }
+
+    // Get return type from first linked function
+    FunNode* fun = dynamic_cast<FunNode*>(in(1));
+    if (!fun || !fun->sig()) return Type::BOTTOM;
+
+    Type* result = fun->sig()->ret();
+
+    // Meet with return types of other linked functions
+    for (int i = 2; i < nIns(); ++i) {
+        FunNode* other_fun = dynamic_cast<FunNode*>(in(i));
+        if (!other_fun || !other_fun->sig()) return Type::BOTTOM;
+
+        Type::GENERATION++;
+        result = result->meet(other_fun->sig()->ret());
+        if (result == Type::BOTTOM) return Type::BOTTOM;
+    }
+
+    return result;
 }
 
 Node* CallEndNode::peephole() {

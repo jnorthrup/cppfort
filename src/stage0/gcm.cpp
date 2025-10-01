@@ -21,6 +21,11 @@ Type* NeverNode::compute() {
     return TypeInteger::boolFalse();  // Always false
 }
 
+Node* NeverNode::peephole() {
+    // Never executes, no optimization possible
+    return nullptr;
+}
+
 // ============================================================================
 // GlobalCodeMotion implementations
 // ============================================================================
