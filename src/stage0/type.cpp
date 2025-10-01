@@ -8,6 +8,7 @@ namespace cppfort::ir {
 // Singleton instances
 Type* Type::BOTTOM = new TypeBottom();
 Type* Type::TOP = new TypeTop();
+// Type* Type::CONTROL = new TypeBottom();  // Control flow is like bottom for now
 int Type::GENERATION = 1;
 
 // Chapter 17: Default GLB implementation

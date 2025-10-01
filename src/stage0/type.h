@@ -69,6 +69,9 @@ public:
     // Singleton TOP instance
     static Type* TOP;
 
+    // Singleton CONTROL instance for control flow
+    // static Type* CONTROL;
+
     // Generation counter used for cycle detection during meet
     static int GENERATION;
 

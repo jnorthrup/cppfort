@@ -1,3 +1,9 @@
+include(TableGen)
+
+add_mlir_dialect(MyDialect
+  mlir/MyDialect.td
+)
+
 set(STAGE0_SOURCES
     lexer.cpp
     parser.cpp
@@ -12,12 +18,32 @@ set(STAGE0_SOURCES
     iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
     gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
     pattern_matcher.cpp  # Band 5: N-way pattern-based lowering
-    # mlir_emitter.cpp  # Uncomment when MLIR headers available
+    mlir_emitter.cpp
+    # region_curing.cpp # MLIR Region Curing - temporarily disabled
+    ${MyDialect_generated_sources}
 )
 
 add_library(stage0 STATIC ${STAGE0_SOURCES})
 
-target_include_directories(stage0 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(stage0 PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR} # For generated headers
+    ${MLIR_INCLUDE_DIRS}
+    ${LLVM_INCLUDE_DIRS}
+)
+
+target_link_libraries(stage0
+    PUBLIC
+    c++
+    c++abi
+    PRIVATE
+    cppfort::compat
+    MLIRIR
+    MLIRDialect
+    MLIRSupport
+    LLVMCore
+    LLVMSupport
+)
 
 target_compile_features(stage0 PUBLIC cxx_std_20)
 

@@ -8,6 +8,7 @@
 *.app
 *.dSYM/
 
+!.claude
 
 docs/**/*.java
 pom.xml
@@ -22,7 +23,7 @@ cmake_install.cmake
 Makefile
 
 # IDE and editor files
-.vscode/
+!.vscode/
 .idea/
 *.swp
 *.swo

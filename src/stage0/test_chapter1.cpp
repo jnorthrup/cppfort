@@ -7,8 +7,11 @@ using namespace cppfort::ir;
 void test_return_constant() {
     std::cout << "Testing: return 1;\n";
     SoNParser parser;
+    std::cout << "Parser created\n";
 
+    std::cout << "Calling parser.parse...\n";
     Node* result = parser.parse("return 1;");
+    std::cout << "Parse completed\n";
 
     // Verify we got a ReturnNode
     assert(result != nullptr);

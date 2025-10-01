@@ -4,6 +4,7 @@
 #include <cctype>
 #include <algorithm>
 #include <set>
+#include <iostream>
 
 namespace cppfort::ir {
 
@@ -146,20 +147,20 @@ Node* SoNParser::parseExpression() {
 }
 
 Node* SoNParser::parseAddition() {
-    Node* lhs = parseShifts();
+    Node* lhs = parseMultiplication();
 
     while (true) {
         skipWhitespace();
 
         if (peek() == '+') {
             advance();
-            Node* rhs = parseShifts();
+            Node* rhs = parseMultiplication();
             // Create AddNode and apply peephole optimization
             lhs = (new AddNode(lhs, rhs))->peephole();
         } else if (peek() == '-') {
             // This is subtraction (unary minus is handled in parseUnary)
             advance();
-            Node* rhs = parseShifts();
+            Node* rhs = parseMultiplication();
             // Create SubNode and apply peephole optimization
             lhs = (new SubNode(lhs, rhs))->peephole();
         } else {

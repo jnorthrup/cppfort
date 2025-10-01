@@ -91,7 +91,24 @@
 
 ---
 
-### Band 5+: Advanced Optimizations (Chapters 16-24)
+### Band 5: Constructors & Mutability (Chapters 16-17)
+**Theme:** Struct constructors, final fields, and mutability semantics.
+
+**Components:**
+- **Chapter 16: Constructors and Final Fields**
+  - `TypeStruct` with field metadata (finality, defaults)
+  - `NewNode` enhancements for constructor initializers
+  - Initialization validation for final and non-nullable fields
+- **Chapter 17: Syntax Sugar - Mutability and Type Inference**
+  - Field and pointer mutability qualifiers (`var`, `val`, `!`)
+  - Deep immutability rules
+  - Foundation for type inference (`glb`)
+
+**Status:** ✅ Complete. See [review](../qa/band5_ch16_ch17_review.md).
+
+---
+
+### Band 6+: Advanced Optimizations (Chapters 18-24)
 **Theme:** Production-strength optimization passes
 
 **Likely Components:**
@@ -135,7 +152,9 @@ Band 3 (Scheduling) ← CRITICAL CONVERGENCE POINT
    ↓
 Band 4 (Types)
    ↓
-Band 5+ (Advanced Opts)
+Band 5 (Constructors & Mutability)
+   ↓
+Band 6+ (Advanced Opts)
 ```
 
 **Band 3 is the critical chokepoint:** All optimization passes must respect scheduling.
@@ -168,7 +187,8 @@ See [Subsumption Boundaries vs Bands](subsumption-boundaries-vs-bands.md) for de
 | 2 | 7-10 | ✓ Complete | d914415+ | Loops + memory working |
 | 3 | 11 | ⚠️ Partial | c8ad3b1 | GCM implemented but has gaps |
 | 4 | 12-15 | ✓ Complete | f49ac4b | Type system expansion done |
-| 5+ | 16-24 | ❌ Not started | - | Advanced opts pending |
+| 5  | 16-17 | ✅ Complete | f0b9243 | See [review](../qa/band5_ch16_ch17_review.md) |
+| 6+ | 18-24 | ❌ Not started | - | Advanced opts pending |
 
 ## Current Focus: Band 3 Quality + Subsumption Foundation
 
@@ -192,7 +212,11 @@ See [Subsumption Boundaries vs Bands](subsumption-boundaries-vs-bands.md) for de
 - No dedicated band4 tests yet
 - Should test type conversions, null safety, bounds checking
 
-### Band 5+
+### Band 5
+- Chapter-specific tests (`test_chapter16.cpp`, `test_chapter17.cpp`)
+- All passing.
+
+### Band 6+
 - Will need comprehensive optimization benchmarks
 - Performance regression testing
 - Comparison with Clang/GCC output
@@ -225,7 +249,8 @@ git commit -m "subsumption: Add hash-based primary index (for Band 3+)"
 **Band 2:** Loops and memory allocations work
 **Band 3:** Scheduling produces correct execution order
 **Band 4:** All type conversions preserve semantics
-**Band 5+:** Performance competitive with commercial compilers
+**Band 5:** Correct constructor and mutability semantics enforced.
+**Band 6+:** Performance competitive with commercial compilers
 
 ## Related Documents
 

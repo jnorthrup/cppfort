@@ -1068,4 +1068,64 @@ bool NewNode::validateInitialization() const {
     return true;
 }
 
+// ============================================================================
+// Chapter 18: Function Nodes
+// ============================================================================
+
+Type* FunNode::compute() {
+    // Function nodes represent function types
+    return Type::BOTTOM;  // TODO: Return proper function type
+}
+
+Node* FunNode::peephole() {
+    return this;
+}
+
+bool FunNode::inProgress() const {
+    // Function is in progress if it has unknown callers (null inputs beyond the first)
+    for (size_t i = 1; i < _inputs.size(); ++i) {
+        if (_inputs[i] == nullptr) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Type* ParmNode::compute() {
+    // TODO: Implement parameter type computation
+    return Type::BOTTOM;
+}
+
+Node* ParmNode::peephole() {
+    return this;
+}
+
+CallEndNode* CallNode::cend() const {
+    // CallEnd is always the first output if it exists
+    if (!_outputs.empty()) {
+        return dynamic_cast<CallEndNode*>(_outputs[0]);
+    }
+    return nullptr;
+}
+
+Type* CallNode::compute() {
+    // Call node type is control flow
+    return Type::BOTTOM;  // TODO: Return proper control type
+}
+
+Node* CallNode::peephole() {
+    // TODO: Implement function linking and inlining logic
+    return this;
+}
+
+Type* CallEndNode::compute() {
+    // CallEnd type is control flow
+    return Type::BOTTOM;  // TODO: Return proper control type
+}
+
+Node* CallEndNode::peephole() {
+    // TODO: Implement call end optimizations
+    return this;
+}
+
 } // namespace cppfort::ir

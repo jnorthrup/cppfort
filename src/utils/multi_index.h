@@ -62,6 +62,7 @@ enum class NodeKind {
     LOOP,
     RETURN,
     CALL,
+    CALL_END,
     THROW,
     CATCH,
     SWITCH,
@@ -194,6 +195,7 @@ enum class NodeKind {
 
     CONSTANT = CONSTANT_START,
     PARAMETER,
+    FUNCTION,
     GLOBAL_VAR,
     STRING_LITERAL,
     NULL_PTR,
@@ -222,6 +224,7 @@ inline const char* nodeKindToString(NodeKind kind) {
         case NodeKind::LOOP: return "LOOP";
         case NodeKind::RETURN: return "RETURN";
         case NodeKind::CALL: return "CALL";
+        case NodeKind::CALL_END: return "CALL_END";
         case NodeKind::THROW: return "THROW";
         case NodeKind::CATCH: return "CATCH";
         case NodeKind::SWITCH: return "SWITCH";
@@ -306,6 +309,7 @@ inline const char* nodeKindToString(NodeKind kind) {
         // Constants
         case NodeKind::CONSTANT: return "CONSTANT";
         case NodeKind::PARAMETER: return "PARAMETER";
+        case NodeKind::FUNCTION: return "FUNCTION";
         case NodeKind::GLOBAL_VAR: return "GLOBAL_VAR";
         case NodeKind::STRING_LITERAL: return "STRING_LITERAL";
         case NodeKind::NULL_PTR: return "NULL_PTR";

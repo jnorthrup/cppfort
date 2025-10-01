@@ -11,6 +11,12 @@
 
 namespace cppfort::ir {
 
+// Forward declarations for function nodes
+class FunNode;
+class ParmNode;
+class CallNode;
+class CallEndNode;
+
 // Forward declaration for GVN
 class Node;
 
@@ -96,6 +102,11 @@ public:
      * Get the next unique ID for node creation.
      */
     static int nextUniqueId() { return UNIQUE_ID++; }
+
+    /**
+     * Get the unique node ID.
+     */
+    int id() const { return _nid; }
 
     /**
      * Check if this is a Control Flow Graph node.
@@ -423,6 +434,7 @@ public:
 };
 
 class PhiNode : public Node {
+protected:
     std::string _label;  // Variable name for debugging
 public:
     // CRITICAL: Region can be nullptr at construction
@@ -455,6 +467,7 @@ public:
     std::string label() const override {
         return std::string("Proj[") + (_idx ? "F" : "T") + "]";
     }
+    int idx() const { return _idx; }
     NodeKind getKind() const override { return NodeKind::PROJ; }
 };
 
@@ -1096,6 +1109,127 @@ public:
     std::string label() const override { return "ArrayLength"; }
 
     Node* array() const { return in(0); }
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 18: Function Node
+ *
+ * Represents a function definition. Extends RegionNode to merge all call sites.
+ * Input 0: START node (for linking)
+ * Has ParmNodes for parameters and a ReturnNode for the function body.
+ */
+class FunNode : public RegionNode {
+protected:
+    TypeFunPtr* _sig;       // Function signature
+    ReturnNode* _ret;       // Single return point for all returns in function
+    bool _folding;          // True if function is being inlined/folded
+
+public:
+    FunNode(Node* start, TypeFunPtr* sig)
+        : RegionNode(start, nullptr), _sig(sig), _ret(nullptr), _folding(false) {}
+
+    std::string label() const override { return "Fun"; }
+    NodeKind getKind() const override { return NodeKind::FUNCTION; }
+
+    TypeFunPtr* sig() const { return _sig; }
+    ReturnNode* ret() const { return _ret; }
+    void setRet(ReturnNode* ret) { _ret = ret; }
+
+    bool folding() const { return _folding; }
+    void setFolding(bool f) { _folding = f; }
+
+    // Check if function is in progress (has unknown callers)
+    bool inProgress() const;
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 18: Parameter Node
+ *
+ * Represents a function parameter. Extends PhiNode to merge arguments from all call sites.
+ * Input 0: FunNode
+ * Additional inputs: arguments from each call site
+ */
+class ParmNode : public PhiNode {
+private:
+    int _idx;  // Parameter index (0 = RPC, 1 = memory, 2+ = actual parameters)
+
+public:
+    ParmNode(const std::string& label, int idx, Type* declaredType, Node* fun)
+        : PhiNode(label, nullptr, nullptr, nullptr), _idx(idx) {
+        setInput(0, fun);
+    }
+
+    std::string label() const override { return "Parm_" + _label; }
+    NodeKind getKind() const override { return NodeKind::PARAMETER; }
+
+    int idx() const { return _idx; }
+    FunNode* fun() const { return static_cast<FunNode*>(in(0)); }
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 18: Call Node
+ *
+ * Represents a function call.
+ * Input 0: control
+ * Input 1: memory
+ * Input 2+: arguments
+ * Last input: function pointer
+ */
+class CallNode : public CFGNode {
+public:
+    CallNode(Node* ctrl, Node* mem, Node* fptr) : CFGNode() {
+        setInput(0, ctrl);
+        setInput(1, mem);
+        setInput(2, fptr);  // Function pointer is last input
+    }
+
+    std::string label() const override { return "Call"; }
+    NodeKind getKind() const override { return NodeKind::CALL; }
+
+    Node* ctrl() const { return in(0); }
+    Node* mem() const { return in(1); }
+    Node* fptr() const { return in(nIns() - 1); }  // Function pointer is last
+
+    // Arguments are inputs 2 to nIns()-2
+    int nArgs() const { return nIns() - 3; }
+    Node* arg(int i) const {
+        if (i >= 0 && i < nArgs()) return in(i + 2);
+        return nullptr;
+    }
+
+    // Find the CallEnd from this Call
+    CallEndNode* cend() const;
+
+    Type* compute() override;
+    Node* peephole() override;
+};
+
+/**
+ * Chapter 18: Call End Node
+ *
+ * Represents the end of a function call with projections for control, memory, and return value.
+ * Input 0: CallNode
+ * Additional inputs: all linked functions
+ */
+class CallEndNode : public CFGNode {
+public:
+    CallEndNode(CallNode* call) : CFGNode() {
+        setInput(0, call);
+    }
+
+    std::string label() const override { return "CEnd"; }
+    NodeKind getKind() const override { return NodeKind::CALL_END; }
+
+    CallNode* call() const { return static_cast<CallNode*>(in(0)); }
 
     Type* compute() override;
     Node* peephole() override;

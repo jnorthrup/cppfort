@@ -15,6 +15,9 @@ namespace mlir {
     class Value;
     class Block;
     class Region;
+    class FuncOp;
+    class CallOp;
+    class ReturnOp;
 }
 
 namespace cppfort::ir {
@@ -70,6 +73,11 @@ private:
     mlir::Block* emitControlNode(Node* node);
 
     /**
+     * Emit function nodes (Fun, Parm, Call, CallEnd).
+     */
+    mlir::Value* emitFunctionNode(Node* node);
+
+    /**
      * Convert SoN Region+Phi pattern to MLIR block with arguments.
      */
     mlir::Block* emitRegionWithPhis(RegionNode* region);
@@ -77,7 +85,7 @@ private:
     /**
      * Get MLIR type for a SoN node.
      */
-    mlir::Type* getMLIRType(Node* node);
+    mlir::Type getMLIRType(Node* node);
 
     /**
      * Get MLIR location for debugging.

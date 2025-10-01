@@ -48,9 +48,9 @@ mlir::ModuleOp* MLIREmitter::emit(Node* entry) {
             ProjNode* falseProj = nullptr;
             for (Node* use : ifNode->_outputs) {
                 if (auto* proj = dynamic_cast<ProjNode*>(use)) {
-                    // proj->_idx: 0=true, 1=false
-                    if (proj->_idx == 0) trueProj = proj;
-                    else falseProj = proj;
+                    // proj->idx(): 0=true, 1=false
+                    if (proj->idx() == 0) trueProj = proj;
+                    else if (proj->idx() == 1) falseProj = proj;
                 }
             }
 
