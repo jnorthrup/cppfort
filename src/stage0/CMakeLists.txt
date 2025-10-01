@@ -18,7 +18,7 @@ set(STAGE0_SOURCES
     iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
     gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
     pattern_matcher.cpp  # Band 5: N-way pattern-based lowering
-    mlir_emitter.cpp
+    # mlir_emitter.cpp # TODO: Fix corrupted file
     machine.cpp  # Chapter 19: Machine abstraction for MLIR dialects
     instruction_selection.cpp  # Chapter 19: Instruction selection phase
     # region_curing.cpp # MLIR Region Curing - temporarily disabled

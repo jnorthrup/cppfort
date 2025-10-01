@@ -185,7 +185,7 @@ The framework provides detailed feedback on which components need improvement an
       subgraph "Phase 3: Simple Chapters 11-15"
           S6[Simple Ch11-15<br>Optimization] --> O1[Peephole]
           O1 --> O2[Global Motion]
-          O2 --> O3[Coroutine Frame<br/>Elision]
+          O2 --> O3[Coroutine Frame<br>Elision]
       end
 
       subgraph "Phase 4: Simple Chapters 16-23"

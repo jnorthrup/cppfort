@@ -63,6 +63,14 @@ public:
      */
     virtual Type* glb() const;
 
+    /**
+     * Chapter 19: Emit the MLIR type representation.
+     *
+     * @return A string representing the MLIR type for this object.
+     * Default implementation returns "i32" as a fallback.
+     */
+    virtual std::string emitMLIR() const { return "i32"; }
+
     // Singleton BOTTOM instance
     static Type* BOTTOM;
 
@@ -158,6 +166,23 @@ public:
         return "[" + std::to_string(_lo) + "," + std::to_string(_hi) + "]";
     }
 
+    /**
+     * Chapter 19: MLIR type emission for integers.
+     * - Constants use specific bitwidth
+     * - Bottom type defaults to i32
+     * - Booleans use i1
+     */
+    std::string emitMLIR() const override {
+        if (isBottom()) return "i32";
+        if (_lo == 0 && _hi == 1) return "i1";
+
+        // Otherwise, choose appropriate bit width
+        long absMax = std::max(std::abs(_lo), std::abs(_hi));
+        if (absMax <= 127) return "i8";
+        if (absMax <= 32767) return "i16";
+        return "i32";
+    }
+
     long lo() const { return _lo; }
     long hi() const { return _hi; }
 
@@ -213,6 +238,16 @@ public:
             return std::to_string(_value) + (_precision == F32 ? "f" : "d");
         }
         return _precision == F32 ? "f32⊥" : "f64⊥";
+    }
+
+    /**
+     * Chapter 19: MLIR type emission for float.
+     * - Maps float types to MLIR corresponding types
+     * - Bottom type defaults to f64 (double precision)
+     */
+    std::string emitMLIR() const override {
+        if (isBottom()) return _precision == F32 ? "f32" : "f64";
+        return _precision == F32 ? "f32" : "f64";
     }
 
     Type* meet(Type* t) override;
@@ -274,6 +309,17 @@ public:
         if (!_mutable) result = "val ";
         result += _target_name + (_nullable ? "?" : "");
         return result;
+    }
+
+    /**
+     * Chapter 19: MLIR type emission for pointers.
+     * - Emit as memref type for structs and arrays
+     * - Nullable types get wrapped in optional
+     */
+    std::string emitMLIR() const override {
+        std::string baseType = "memref<" + _target_name + ">";
+        if (_nullable) return "!llvm.ptr<" + baseType + ">";
+        return baseType;
     }
 
     Type* meet(Type* t) override;
@@ -521,6 +567,17 @@ public:
         return _name + (_nullable ? "?" : "");
     }
 
+    /**
+     * Chapter 19: MLIR type emission for structs.
+     * - Emit struct name as memref type
+     * - Always use memref for consistency with other types
+     * - Track nullable and field information
+     */
+    std::string emitMLIR() const override {
+        if (_nullable) return "!llvm.ptr<memref<" + _name + ">>";
+        return "memref<" + _name + ">";
+    }
+
     Type* meet(Type* t) override;
 };
 
@@ -575,6 +632,27 @@ public:
             if (!t->isConstant()) return false;
         }
         return true;
+    }
+
+    /**
+     * Chapter 19: MLIR type emission for tuples.
+     * - Translate type tuple to MLIR tuple/function type
+     * - Empty tuples map to unit type
+     * - Single element tuples map to their contained type
+     * - Composite tuples use MLIR tuple type: tuple<...>
+     */
+    std::string emitMLIR() const override {
+        if (_types.empty()) return "()";  // Unit type
+        if (_types.size() == 1) return _types[0]->emitMLIR();
+
+        // Create a tuple type by emitting each type
+        std::string result = "tuple<";
+        for (size_t i = 0; i < _types.size(); ++i) {
+            if (i > 0) result += ", ";
+            result += _types[i]->emitMLIR();
+        }
+        result += ">";
+        return result;
     }
 
     Type* meet(Type* t) override;
@@ -659,6 +737,26 @@ public:
         if (_nullable) result += "?";
         if (_fidx >= 0) result += "[fidx=" + std::to_string(_fidx) + "]";
         return result;
+    }
+
+    /**
+     * Chapter 19: MLIR type emission for function pointers.
+     * - Emit as function type with argument and return type
+     * - Nullable types wrapped in !llvm.ptr
+     * - Map argument and return types to their MLIR representation
+     */
+    std::string emitMLIR() const override {
+        // Construct the function signature
+        std::string signature = "(" +
+            (_args ? _args->emitMLIR() : "()") +
+            " -> " +
+            (_ret ? _ret->emitMLIR() : "void") +
+            ")";
+
+        // Wrap with nullability if needed
+        return _nullable
+            ? "!llvm.ptr<" + signature + ">"
+            : signature;
     }
 
     Type* meet(Type* t) override;

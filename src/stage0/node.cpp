@@ -967,10 +967,6 @@ int StopNode::idepth() {
     return _idepth = d;
 }
 
-Type* NeverNode::compute() {
-    // Never executes, predicate is always false (0)
-    return TypeInteger::constant(0);
-}
 
 // ============================================================================
 // Band 4: Type System Extension Node Implementations

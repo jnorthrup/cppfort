@@ -544,6 +544,7 @@ public:
 
     // Never executes, so predicate is always false
     Type* compute() override;
+    Node* peephole() override;  // Chapter 19: peephole for NeverNode
     NodeKind getKind() const override { return NodeKind::IF; }  // Special If node
 };
 

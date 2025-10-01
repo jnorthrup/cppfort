@@ -22,7 +22,7 @@ The `arith` dialect provides operations for integer and floating-point arithmeti
 | `arith.remui` | `a % b` (unsigned) | Unsigned integer remainder. |
 | `arith.remf` | `fmod(a, b)` | Floating-point remainder. |
 | `arith.andi` | `a & b` | Bitwise AND. |
-| `arith.ori` | `a | b` | Bitwise OR. |
+| `arith.ori` | `a \| b` | Bitwise OR. |
 | `arith.xori` | `a ^ b` | Bitwise XOR. |
 | `arith.shli` | `a << b` | Shift left. |
 | `arith.shrsi` | `a >> b` (signed) | Arithmetic (signed) shift right. |
