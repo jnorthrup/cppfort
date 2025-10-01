@@ -11,15 +11,15 @@
 namespace cppfort::stage0 {
 
 struct LexResult {
-    std::vector<Token> tokens;
-    std::string source;
-    std::string filename;
+    ::std::vector<Token> tokens;
+    ::std::string source;
+    ::std::string filename;
 };
 
 class LexerPass {
   public:
     virtual ~LexerPass() = default;
-    virtual LexResult run(const std::string& source, const std::string& filename) const = 0;
+    virtual LexResult run(const ::std::string& source, const ::std::string& filename) const = 0;
 };
 
 class ParserPass {
@@ -31,13 +31,13 @@ class ParserPass {
 class EmitterPass {
   public:
     virtual ~EmitterPass() = default;
-    virtual std::string run(const TranslationUnit& unit, const EmitOptions& options) const = 0;
+    virtual ::std::string run(const TranslationUnit& unit, const EmitOptions& options) const = 0;
 };
 
 struct Pipeline {
-    std::shared_ptr<LexerPass> lexer;
-    std::shared_ptr<ParserPass> parser;
-    std::shared_ptr<EmitterPass> emitter;
+    ::std::shared_ptr<LexerPass> lexer;
+    ::std::shared_ptr<ParserPass> parser;
+    ::std::shared_ptr<EmitterPass> emitter;
 };
 
 Pipeline make_default_pipeline();

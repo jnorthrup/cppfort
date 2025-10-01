@@ -17,7 +17,7 @@ PatternMatcher::PatternMatcher() {
 void PatternMatcher::registerPattern(
     NodeKind kind,
     TargetLanguage target,
-    std::function<std::string(Node*)> rewrite,
+    ::std::function<::std::string(Node*)> rewrite,
     int priority
 ) {
     Pattern p(kind, target, rewrite, priority);
@@ -27,9 +27,9 @@ void PatternMatcher::registerPattern(
 void PatternMatcher::registerPattern(
     NodeKind kind,
     TargetLanguage target,
-    std::function<std::string(Node*)> rewrite,
+    ::std::function<::std::string(Node*)> rewrite,
     int priority,
-    std::function<bool(Node*)> constraint
+    ::std::function<bool(Node*)> constraint
 ) {
     Pattern p(kind, target, rewrite, priority);
     p.typeConstraint = constraint;
@@ -41,7 +41,7 @@ void PatternMatcher::registerPattern(Pattern pattern) {
 
     // Insert pattern in priority-sorted order (highest first)
     auto& patterns = _registry[key];
-    auto it = std::upper_bound(patterns.begin(), patterns.end(), pattern,
+    auto it = ::std::upper_bound(patterns.begin(), patterns.end(), pattern,
         [](const Pattern& a, const Pattern& b) {
             return a.priority > b.priority;  // Sort descending
         });
@@ -75,7 +75,7 @@ const Pattern* PatternMatcher::findBestMatch(Node* node, TargetLanguage target) 
     return nullptr;  // No pattern satisfied constraints
 }
 
-std::string PatternMatcher::match(Node* node, TargetLanguage target) const {
+::std::string PatternMatcher::match(Node* node, TargetLanguage target) const {
     if (!node) {
         return "";  // Null node → empty string
     }
@@ -83,7 +83,7 @@ std::string PatternMatcher::match(Node* node, TargetLanguage target) const {
     const Pattern* pattern = findBestMatch(node, target);
     if (!pattern) {
         // No pattern found, return placeholder
-        return "<UNMATCHED:" + std::string(nodeKindToString(node->getKind())) + ">";
+        return "<UNMATCHED:" + ::std::string(nodeKindToString(node->getKind())) + ">";
     }
 
     // Apply rewrite function
@@ -95,8 +95,8 @@ bool PatternMatcher::hasPattern(NodeKind kind, TargetLanguage target) const {
     return _registry.find(key) != _registry.end();
 }
 
-std::vector<Pattern> PatternMatcher::getPatternsForKind(NodeKind kind) const {
-    std::vector<Pattern> result;
+::std::vector<Pattern> PatternMatcher::getPatternsForKind(NodeKind kind) const {
+    ::std::vector<Pattern> result;
 
     for (const auto& [key, patterns] : _registry) {
         if (key.first == kind) {
@@ -229,7 +229,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::ADD, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.addi "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -239,7 +239,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::SUB, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.subi "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -249,7 +249,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::MUL, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.muli "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -259,7 +259,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::DIV, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.divsi "  // Signed division
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -273,7 +273,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::AND, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.andi "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -283,7 +283,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::OR, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.ori "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -293,7 +293,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::XOR, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.xori "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -303,7 +303,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::SHL, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.shli "
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -313,7 +313,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::LSHR, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.shrui "  // Unsigned right shift
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -323,7 +323,7 @@ void PatternMatcher::registerBuiltinPatterns() {
 
     registerPattern(NodeKind::ASHR, TargetLanguage::MLIR_ARITH,
         [this](Node* n) {
-            std::ostringstream ss;
+            ::std::ostringstream ss;
             ss << "%result = arith.shrsi "  // Signed right shift
                << pattern_helpers::emitNode(n->in(0), *this, TargetLanguage::MLIR_ARITH)
                << ", "
@@ -341,10 +341,10 @@ void PatternMatcher::registerBuiltinPatterns() {
             if (constant && constant->_type) {
                 auto* intType = dynamic_cast<TypeInteger*>(constant->_type);
                 if (intType && intType->isConstant()) {
-                    return std::to_string(intType->value());
+                    return ::std::to_string(intType->value());
                 }
             }
-            return std::string("0");  // Fallback
+            return ::std::string("0");  // Fallback
         }, 10);
 
     registerPattern(NodeKind::CONSTANT, TargetLanguage::MLIR_ARITH,
@@ -353,12 +353,12 @@ void PatternMatcher::registerBuiltinPatterns() {
             if (constant && constant->_type) {
                 auto* intType = dynamic_cast<TypeInteger*>(constant->_type);
                 if (intType && intType->isConstant()) {
-                    std::ostringstream ss;
+                    ::std::ostringstream ss;
                     ss << "%const = arith.constant " << intType->value() << " : i64";
                     return ss.str();
                 }
             }
-            return std::string("%const = arith.constant 0 : i64");
+            return ::std::string("%const = arith.constant 0 : i64");
         }, 10);
     */ // End commented out builtin patterns
 }
@@ -369,20 +369,20 @@ void PatternMatcher::registerBuiltinPatterns() {
 
 namespace pattern_helpers {
 
-std::string emitNode(Node* node, const PatternMatcher& matcher, TargetLanguage target) {
+::std::string emitNode(Node* node, const PatternMatcher& matcher, TargetLanguage target) {
     if (!node) {
         return "<null>";
     }
     return matcher.match(node, target);
 }
 
-std::string formatBinaryOp(Node* node, const std::string& op,
+::std::string formatBinaryOp(Node* node, const ::std::string& op,
                            const PatternMatcher& matcher, TargetLanguage target) {
     if (!node || node->nIns() < 2) {
         return "<invalid-binop>";
     }
 
-    std::ostringstream ss;
+    ::std::ostringstream ss;
     ss << "(" << emitNode(node->in(0), matcher, target)
        << " " << op << " "
        << emitNode(node->in(1), matcher, target) << ")";
@@ -390,13 +390,13 @@ std::string formatBinaryOp(Node* node, const std::string& op,
     return ss.str();
 }
 
-std::string formatUnaryOp(Node* node, const std::string& op,
+::std::string formatUnaryOp(Node* node, const ::std::string& op,
                           const PatternMatcher& matcher, TargetLanguage target) {
     if (!node || node->nIns() < 1) {
         return "<invalid-unop>";
     }
 
-    std::ostringstream ss;
+    ::std::ostringstream ss;
     ss << op << emitNode(node->in(0), matcher, target);
 
     return ss.str();

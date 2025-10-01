@@ -13,7 +13,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::ADD,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* add = static_cast<AddNode*>(node);
             return "arith.addi";
         },
@@ -24,7 +24,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::SUB,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* sub = static_cast<SubNode*>(node);
             return "arith.subi";
         },
@@ -35,7 +35,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::MUL,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* mul = static_cast<MulNode*>(node);
             return "arith.muli";
         },
@@ -46,7 +46,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::DIV,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* div = static_cast<DivNode*>(node);
             return "arith.divsi";
         },
@@ -57,7 +57,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::EQ,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* eq = static_cast<EQNode*>(node);
             return "arith.cmpi eq";
         },
@@ -68,7 +68,7 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::LT,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* lt = static_cast<LTNode*>(node);
             return "arith.cmpi slt";
         },
@@ -79,9 +79,9 @@ void MLIRArithMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::CONSTANT,
         TargetLanguage::MLIR_ARITH,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* constant = static_cast<ConstantNode*>(node);
-            return "arith.constant " + std::to_string(constant->_value);
+            return "arith.constant " + ::std::to_string(constant->_value);
         },
         100
     );
@@ -103,7 +103,7 @@ void MLIRCFMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::IF,
         TargetLanguage::MLIR_CF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* ifNode = static_cast<IfNode*>(node);
             return "cf.cond_br";
         },
@@ -114,7 +114,7 @@ void MLIRCFMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::PROJ,
         TargetLanguage::MLIR_CF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* proj = static_cast<ProjNode*>(node);
             if (proj->idx() == 0) {
                 return "cf.br true_branch";
@@ -143,7 +143,7 @@ void MLIRSCFMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::IF,
         TargetLanguage::MLIR_SCF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* ifNode = static_cast<IfNode*>(node);
             return "scf.if";
         },
@@ -154,7 +154,7 @@ void MLIRSCFMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::REGION,
         TargetLanguage::MLIR_SCF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* region = static_cast<RegionNode*>(node);
             return "scf.execute_region";
         },
@@ -175,7 +175,7 @@ void MLIRMemRefMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::LOAD,
         TargetLanguage::MLIR_MEMREF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* load = static_cast<LoadNode*>(node);
             return "memref.load";
         },
@@ -186,7 +186,7 @@ void MLIRMemRefMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::STORE,
         TargetLanguage::MLIR_MEMREF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* store = static_cast<StoreNode*>(node);
             return "memref.store";
         },
@@ -197,7 +197,7 @@ void MLIRMemRefMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::NEW,
         TargetLanguage::MLIR_MEMREF,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* newNode = static_cast<NewNode*>(node);
             return "memref.alloc";
         },
@@ -218,7 +218,7 @@ void MLIRFuncMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::FUN,
         TargetLanguage::MLIR_FUNC,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* fun = static_cast<FunNode*>(node);
             return "func.func";
         },
@@ -229,7 +229,7 @@ void MLIRFuncMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::CALL,
         TargetLanguage::MLIR_FUNC,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* call = static_cast<CallNode*>(node);
             return "func.call";
         },
@@ -240,7 +240,7 @@ void MLIRFuncMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::RETURN,
         TargetLanguage::MLIR_FUNC,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* ret = static_cast<ReturnNode*>(node);
             return "func.return";
         },
@@ -251,7 +251,7 @@ void MLIRFuncMachine::registerPatterns(PatternMatcher& matcher) {
     matcher.registerPattern(
         NodeKind::PARM,
         TargetLanguage::MLIR_FUNC,
-        [](Node* node) -> std::string {
+        [](Node* node) -> ::std::string {
             auto* parm = static_cast<ParmNode*>(node);
             return "func.parameter";
         },
@@ -270,14 +270,14 @@ bool MLIRFuncMachine::canHandle(NodeKind kind) const {
 
 MachineRegistry::MachineRegistry() {
     // Register all available machines
-    registerMachine(std::make_unique<MLIRArithMachine>());
-    registerMachine(std::make_unique<MLIRCFMachine>());
-    registerMachine(std::make_unique<MLIRSCFMachine>());
-    registerMachine(std::make_unique<MLIRMemRefMachine>());
-    registerMachine(std::make_unique<MLIRFuncMachine>());
+    registerMachine(::std::make_unique<MLIRArithMachine>());
+    registerMachine(::std::make_unique<MLIRCFMachine>());
+    registerMachine(::std::make_unique<MLIRSCFMachine>());
+    registerMachine(::std::make_unique<MLIRMemRefMachine>());
+    registerMachine(::std::make_unique<MLIRFuncMachine>());
 }
 
-Machine* MachineRegistry::getMachine(const std::string& name) const {
+Machine* MachineRegistry::getMachine(const ::std::string& name) const {
     auto it = _machines.find(name);
     if (it == _machines.end()) {
         return nullptr;
@@ -285,12 +285,12 @@ Machine* MachineRegistry::getMachine(const std::string& name) const {
     return it->second.get();
 }
 
-void MachineRegistry::registerMachine(std::unique_ptr<Machine> machine) {
-    _machines[machine->name()] = std::move(machine);
+void MachineRegistry::registerMachine(::std::unique_ptr<Machine> machine) {
+    _machines[machine->name()] = ::std::move(machine);
 }
 
-std::vector<std::string> MachineRegistry::availableMachines() const {
-    std::vector<std::string> names;
+::std::vector<::std::string> MachineRegistry::availableMachines() const {
+    ::std::vector<::std::string> names;
     for (const auto& pair : _machines) {
         names.push_back(pair.first);
     }

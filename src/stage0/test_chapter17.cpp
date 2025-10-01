@@ -25,7 +25,7 @@
 using namespace cppfort::ir;
 
 void test_field_mutability_qualifiers() {
-    std::cout << "Test: Field mutability qualifiers\n";
+    ::std::cout << "Test: Field mutability qualifiers\n";
 
     TypeStruct* testType = TypeStruct::create("MutabilityTest");
 
@@ -52,11 +52,11 @@ void test_field_mutability_qualifiers() {
     assert(var_f->isMutableThrough(false) == false);
     assert(val_f->isMutableThrough(false) == false);
 
-    std::cout << "  PASS: Field mutability qualifiers work\n";
+    ::std::cout << "  PASS: Field mutability qualifiers work\n";
 }
 
 void test_pointer_mutability_tracking() {
-    std::cout << "Test: TypePointer mutability tracking\n";
+    ::std::cout << "Test: TypePointer mutability tracking\n";
 
     // Create mutable and immutable references
     TypePointer* mutablePtr = TypePointer::mutable_("Foo", false);
@@ -66,17 +66,17 @@ void test_pointer_mutability_tracking() {
     assert(immutablePtr->isMutable() == false);
 
     // Test toString includes mutability
-    std::string mutableStr = mutablePtr->toString();
-    std::string immutableStr = immutablePtr->toString();
+    ::std::string mutableStr = mutablePtr->toString();
+    ::std::string immutableStr = immutablePtr->toString();
 
     assert(mutableStr == "Foo");  // Mutable is default, no prefix
     assert(immutableStr == "val Foo");  // Immutable has 'val' prefix
 
-    std::cout << "  PASS: TypePointer mutability tracking works\n";
+    ::std::cout << "  PASS: TypePointer mutability tracking works\n";
 }
 
 void test_pointer_mutability_meet() {
-    std::cout << "Test: TypePointer mutability meet operation\n";
+    ::std::cout << "Test: TypePointer mutability meet operation\n";
 
     TypePointer* mutable1 = TypePointer::mutable_("Bar", false);
     TypePointer* mutable2 = TypePointer::mutable_("Bar", false);
@@ -100,11 +100,11 @@ void test_pointer_mutability_meet() {
     assert(meetII_ptr != nullptr);
     assert(meetII_ptr->isMutable() == false);
 
-    std::cout << "  PASS: TypePointer mutability meet works\n";
+    ::std::cout << "  PASS: TypePointer mutability meet works\n";
 }
 
 void test_deep_immutability_example() {
-    std::cout << "Test: Deep immutability example from Chapter 17\n";
+    ::std::cout << "Test: Deep immutability example from Chapter 17\n";
 
     // Recreate the example from the docs:
     // struct Bar { int x; }
@@ -125,11 +125,11 @@ void test_deep_immutability_example() {
     // Test: Immutable Foo reference cannot mutate fields (deep immutability)
     assert(barField->isMutableThrough(false) == false);
 
-    std::cout << "  PASS: Deep immutability example works\n";
+    ::std::cout << "  PASS: Deep immutability example works\n";
 }
 
 void test_var_val_semantics() {
-    std::cout << "Test: var/val field semantics\n";
+    ::std::cout << "Test: var/val field semantics\n";
 
     TypeStruct* configType = TypeStruct::create("Config");
 
@@ -153,11 +153,11 @@ void test_var_val_semantics() {
     assert(valField->isMutableThrough(true) == false);
     assert(valField->isMutableThrough(false) == false);
 
-    std::cout << "  PASS: var/val field semantics work\n";
+    ::std::cout << "  PASS: var/val field semantics work\n";
 }
 
 void test_nullable_with_mutability() {
-    std::cout << "Test: Nullable references with mutability\n";
+    ::std::cout << "Test: Nullable references with mutability\n";
 
     // Create all combinations
     TypePointer* mutableNullable = TypePointer::mutable_("Baz", true);
@@ -184,11 +184,11 @@ void test_nullable_with_mutability() {
     assert(meetPtr->isNullable() == true);   // More permissive
     assert(meetPtr->isMutable() == false);   // Less permissive
 
-    std::cout << "  PASS: Nullable references with mutability work\n";
+    ::std::cout << "  PASS: Nullable references with mutability work\n";
 }
 
 void test_glb_type_inference() {
-    std::cout << "Test: GLB type inference for var/val\n";
+    ::std::cout << "Test: GLB type inference for var/val\n";
 
     // Test integer GLB (should stay as int)
     TypeInteger* intConst = TypeInteger::constant(42);
@@ -197,11 +197,11 @@ void test_glb_type_inference() {
     // For now, default implementation returns BOTTOM
     // In full implementation, integers would stay as int
 
-    std::cout << "  PASS: GLB type inference basic test works\n";
+    ::std::cout << "  PASS: GLB type inference basic test works\n";
 }
 
 void test_primitive_always_mutable() {
-    std::cout << "Test: Primitive fields are always mutable\n";
+    ::std::cout << "Test: Primitive fields are always mutable\n";
 
     TypeStruct* primTest = TypeStruct::create("PrimitiveTest");
 
@@ -214,11 +214,11 @@ void test_primitive_always_mutable() {
     const Field* xField = primTest->getField("x");
     assert(xField->isMutableThrough(true) == true);
 
-    std::cout << "  PASS: Primitive fields always mutable\n";
+    ::std::cout << "  PASS: Primitive fields always mutable\n";
 }
 
 void test_reference_with_initializer_immutable() {
-    std::cout << "Test: Reference with initializer defaults to immutable\n";
+    ::std::cout << "Test: Reference with initializer defaults to immutable\n";
 
     TypeStruct* refTest = TypeStruct::create("ReferenceTest");
 
@@ -232,7 +232,7 @@ void test_reference_with_initializer_immutable() {
     const Field* refField = refTest->getField("ref");
     assert(refField->isMutableThrough(true) == false);
 
-    std::cout << "  PASS: Reference with initializer immutable by default\n";
+    ::std::cout << "  PASS: Reference with initializer immutable by default\n";
 }
 
 // ============================================================================
@@ -240,7 +240,7 @@ void test_reference_with_initializer_immutable() {
 // ============================================================================
 
 void test_function_pointer_mutability() {
-    std::cout << "Test: REGRESSION - Function pointer mutability (var/val)\n";
+    ::std::cout << "Test: REGRESSION - Function pointer mutability (var/val)\n";
 
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
 
@@ -253,14 +253,14 @@ void test_function_pointer_mutability() {
     assert(immutableFunc->isMutable() == false);
 
     // Test toString includes mutability
-    std::string immutableStr = immutableFunc->toString();
-    assert(immutableStr.find("val") != std::string::npos);
+    ::std::string immutableStr = immutableFunc->toString();
+    assert(immutableStr.find("val") != ::std::string::npos);
 
-    std::cout << "  PASS: Function pointer mutability works\n";
+    ::std::cout << "  PASS: Function pointer mutability works\n";
 }
 
 void test_function_pointer_mutability_meet() {
-    std::cout << "Test: REGRESSION - Function pointer mutability meet\n";
+    ::std::cout << "Test: REGRESSION - Function pointer mutability meet\n";
 
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
 
@@ -286,11 +286,11 @@ void test_function_pointer_mutability_meet() {
     assert(meetII_ptr != nullptr);
     assert(meetII_ptr->isMutable() == false);
 
-    std::cout << "  PASS: Function pointer mutability meet works\n";
+    ::std::cout << "  PASS: Function pointer mutability meet works\n";
 }
 
 void test_function_pointer_field_mutability() {
-    std::cout << "Test: REGRESSION - Function pointer fields with mutability qualifiers\n";
+    ::std::cout << "Test: REGRESSION - Function pointer fields with mutability qualifiers\n";
 
     TypeTuple* noArgs = TypeTuple::create({});
     TypeFunPtr* funcType = TypeFunPtr::create(noArgs, TypeInteger::bottom());
@@ -323,11 +323,11 @@ void test_function_pointer_field_mutability() {
     assert(mutField->isMutableThrough(true) == true);
     assert(mutField->isMutableThrough(false) == false);
 
-    std::cout << "  PASS: Function pointer field mutability works\n";
+    ::std::cout << "  PASS: Function pointer field mutability works\n";
 }
 
 void test_nullable_function_pointer_mutability() {
-    std::cout << "Test: REGRESSION - Nullable function pointers with mutability\n";
+    ::std::cout << "Test: REGRESSION - Nullable function pointers with mutability\n";
 
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
 
@@ -356,11 +356,11 @@ void test_nullable_function_pointer_mutability() {
     assert(meetPtr->isNullable() == true);   // More permissive
     assert(meetPtr->isMutable() == false);   // Less permissive
 
-    std::cout << "  PASS: Nullable function pointers with mutability work\n";
+    ::std::cout << "  PASS: Nullable function pointers with mutability work\n";
 }
 
 void test_function_null_constant() {
-    std::cout << "Test: REGRESSION - null constant for function pointers\n";
+    ::std::cout << "Test: REGRESSION - null constant for function pointers\n";
 
     TypeFunPtr* nullFunc = TypeFunPtr::nullType();
     assert(nullFunc != nullptr);
@@ -372,11 +372,11 @@ void test_function_null_constant() {
 
     // For now, null function meet with specific function type should work
     // (In full implementation, this would produce nullable version of the specific type)
-    std::cout << "  PASS: null constant for function pointers works\n";
+    ::std::cout << "  PASS: null constant for function pointers works\n";
 }
 
 int main() {
-    std::cout << "=== Chapter 17: Syntax Sugar Test Suite ===\n\n";
+    ::std::cout << "=== Chapter 17: Syntax Sugar Test Suite ===\n\n";
 
     test_field_mutability_qualifiers();
     test_pointer_mutability_tracking();
@@ -388,7 +388,7 @@ int main() {
     test_primitive_always_mutable();
     test_reference_with_initializer_immutable();
 
-    std::cout << "\n=== REGRESSION TESTS: Chapter 18 Integration ===\n\n";
+    ::std::cout << "\n=== REGRESSION TESTS: Chapter 18 Integration ===\n\n";
 
     test_function_pointer_mutability();
     test_function_pointer_mutability_meet();
@@ -396,6 +396,6 @@ int main() {
     test_nullable_function_pointer_mutability();
     test_function_null_constant();
 
-    std::cout << "\n=== All Chapter 17 tests passed! ===\n";
+    ::std::cout << "\n=== All Chapter 17 tests passed! ===\n";
     return 0;
 }

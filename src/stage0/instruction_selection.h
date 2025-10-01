@@ -20,13 +20,13 @@ namespace cppfort::ir {
 class InstructionSelection {
 private:
     MachineRegistry _registry;
-    std::vector<std::string> _targetMachines;
+    ::std::vector<::std::string> _targetMachines;
 
 public:
     /**
      * Create instruction selection for specific target machines.
      */
-    InstructionSelection(const std::vector<std::string>& targetMachines = {"mlir-arith", "mlir-func"});
+    InstructionSelection(const ::std::vector<::std::string>& targetMachines = {"mlir-arith", "mlir-func"});
 
     /**
      * Run instruction selection on the given start node.

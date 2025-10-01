@@ -18,7 +18,7 @@ Type* Type::glb() const {
 }
 
 // Cache for constant integer types to avoid duplicates
-static std::unordered_map<long, TypeInteger*> constant_cache;
+static ::std::unordered_map<long, TypeInteger*> constant_cache;
 
 // Singleton for bottom integer
 static TypeInteger* BOTTOM_INTEGER = nullptr;
@@ -39,8 +39,8 @@ TypeInteger* TypeInteger::constant(long value) {
 
 TypeInteger* TypeInteger::bottom() {
     if (BOTTOM_INTEGER == nullptr) {
-        BOTTOM_INTEGER = new TypeInteger(std::numeric_limits<long>::min(),
-                                         std::numeric_limits<long>::max());
+        BOTTOM_INTEGER = new TypeInteger(::std::numeric_limits<long>::min(),
+                                         ::std::numeric_limits<long>::max());
     }
     return BOTTOM_INTEGER;
 }
@@ -69,8 +69,8 @@ Type* TypeInteger::meet(Type* t) {
         return _meet_cache;
     }
 
-    long lo = std::max(_lo, ti->_lo);
-    long hi = std::min(_hi, ti->_hi);
+    long lo = ::std::max(_lo, ti->_lo);
+    long hi = ::std::min(_hi, ti->_hi);
 
     if (lo > hi) {
         _meet_cache = Type::BOTTOM;
@@ -78,8 +78,8 @@ Type* TypeInteger::meet(Type* t) {
         _meet_cache = TypeInteger::constant(lo);
     } else if (lo == 0 && hi == 1) {
         _meet_cache = TypeInteger::boolean();
-    } else if (lo == std::numeric_limits<long>::min() &&
-               hi == std::numeric_limits<long>::max()) {
+    } else if (lo == ::std::numeric_limits<long>::min() &&
+               hi == ::std::numeric_limits<long>::max()) {
         _meet_cache = TypeInteger::bottom();
     } else {
         _meet_cache = new TypeInteger(lo, hi);
@@ -95,8 +95,8 @@ Type* TypeInteger::meet(Type* t) {
 // Chapter 12: Floating Point Types
 // ============================================================================
 
-static std::unordered_map<double, TypeFloat*> float_constant_cache_f32;
-static std::unordered_map<double, TypeFloat*> float_constant_cache_f64;
+static ::std::unordered_map<double, TypeFloat*> float_constant_cache_f32;
+static ::std::unordered_map<double, TypeFloat*> float_constant_cache_f64;
 static TypeFloat* BOTTOM_FLOAT_F32 = nullptr;
 static TypeFloat* BOTTOM_FLOAT_F64 = nullptr;
 
@@ -145,7 +145,7 @@ Type* TypeFloat::meet(Type* t) {
 
 // Chapter 17: Cache key includes mutability
 struct PtrCacheKey {
-    std::string name;
+    ::std::string name;
     bool nullable;
     bool mutable_ref;
 
@@ -155,18 +155,18 @@ struct PtrCacheKey {
 };
 
 struct PtrCacheKeyHash {
-    std::size_t operator()(const PtrCacheKey& k) const {
-        std::size_t h1 = std::hash<std::string>()(k.name);
-        std::size_t h2 = std::hash<bool>()(k.nullable);
-        std::size_t h3 = std::hash<bool>()(k.mutable_ref);
+    ::std::size_t operator()(const PtrCacheKey& k) const {
+        ::std::size_t h1 = ::std::hash<::std::string>()(k.name);
+        ::std::size_t h2 = ::std::hash<bool>()(k.nullable);
+        ::std::size_t h3 = ::std::hash<bool>()(k.mutable_ref);
         return h1 ^ (h2 << 1) ^ (h3 << 2);
     }
 };
 
-static std::unordered_map<PtrCacheKey, TypePointer*, PtrCacheKeyHash> ptr_cache;
+static ::std::unordered_map<PtrCacheKey, TypePointer*, PtrCacheKeyHash> ptr_cache;
 static TypePointer* NULL_TYPE = nullptr;
 
-TypePointer* TypePointer::nullable(const std::string& struct_name, bool mutable_ref) {
+TypePointer* TypePointer::nullable(const ::std::string& struct_name, bool mutable_ref) {
     PtrCacheKey key{struct_name, true, mutable_ref};
     auto it = ptr_cache.find(key);
     if (it != ptr_cache.end()) {
@@ -178,7 +178,7 @@ TypePointer* TypePointer::nullable(const std::string& struct_name, bool mutable_
     return type;
 }
 
-TypePointer* TypePointer::nonNullable(const std::string& struct_name, bool mutable_ref) {
+TypePointer* TypePointer::nonNullable(const ::std::string& struct_name, bool mutable_ref) {
     PtrCacheKey key{struct_name, false, mutable_ref};
     auto it = ptr_cache.find(key);
     if (it != ptr_cache.end()) {
@@ -197,12 +197,12 @@ TypePointer* TypePointer::nullType() {
     return NULL_TYPE;
 }
 
-TypePointer* TypePointer::immutable(const std::string& struct_name, bool nullable) {
+TypePointer* TypePointer::immutable(const ::std::string& struct_name, bool nullable) {
     return nullable ? TypePointer::nullable(struct_name, false)
                     : TypePointer::nonNullable(struct_name, false);
 }
 
-TypePointer* TypePointer::mutable_(const std::string& struct_name, bool nullable) {
+TypePointer* TypePointer::mutable_(const ::std::string& struct_name, bool nullable) {
     return nullable ? TypePointer::nullable(struct_name, true)
                     : TypePointer::nonNullable(struct_name, true);
 }
@@ -240,17 +240,17 @@ Type* TypePointer::meet(Type* t) {
 // ============================================================================
 
 struct NarrowKeyHash {
-    std::size_t operator()(const std::pair<long, TypeNarrow::Width>& p) const {
-        return std::hash<long>()(p.first) ^ (std::hash<int>()(static_cast<int>(p.second)) << 1);
+    ::std::size_t operator()(const ::std::pair<long, TypeNarrow::Width>& p) const {
+        return ::std::hash<long>()(p.first) ^ (::std::hash<int>()(static_cast<int>(p.second)) << 1);
     }
 };
 
-static std::unordered_map<std::pair<long, TypeNarrow::Width>, TypeNarrow*, NarrowKeyHash> narrow_constant_cache;
+static ::std::unordered_map<::std::pair<long, TypeNarrow::Width>, TypeNarrow*, NarrowKeyHash> narrow_constant_cache;
 
-static std::unordered_map<TypeNarrow::Width, TypeNarrow*> narrow_bottom_cache;
+static ::std::unordered_map<TypeNarrow::Width, TypeNarrow*> narrow_bottom_cache;
 
 TypeNarrow* TypeNarrow::constant(long value, Width width) {
-    auto key = std::make_pair(value, width);
+    auto key = ::std::make_pair(value, width);
     auto it = narrow_constant_cache.find(key);
     if (it != narrow_constant_cache.end()) {
         return it->second;
@@ -273,7 +273,7 @@ TypeNarrow* TypeNarrow::bottom(Width width) {
         case I8:  lo = -128; hi = 127; break;
         case I16: lo = -32768; hi = 32767; break;
         case I32: lo = -(1L << 31); hi = (1L << 31) - 1; break;
-        case I64: lo = std::numeric_limits<long>::min(); hi = std::numeric_limits<long>::max(); break;
+        case I64: lo = ::std::numeric_limits<long>::min(); hi = ::std::numeric_limits<long>::max(); break;
         case U8:  lo = 0; hi = 255; break;
         case U16: lo = 0; hi = 65535; break;
         case U32: lo = 0; hi = (1L << 32) - 1; break;
@@ -289,9 +289,9 @@ bool TypeNarrow::isBottom() const {
     return _lo == bot->_lo && _hi == bot->_hi;
 }
 
-std::string TypeNarrow::toString() const {
+::std::string TypeNarrow::toString() const {
     if (isConstant()) {
-        std::string suffix;
+        ::std::string suffix;
         switch(_width) {
             case I8:  suffix = "i8"; break;
             case I16: suffix = "i16"; break;
@@ -301,7 +301,7 @@ std::string TypeNarrow::toString() const {
             case U16: suffix = "u16"; break;
             case U32: suffix = "u32"; break;
         }
-        return std::to_string(_lo) + suffix;
+        return ::std::to_string(_lo) + suffix;
     }
 
     if (isBottom()) {
@@ -316,7 +316,7 @@ std::string TypeNarrow::toString() const {
         }
     }
 
-    return "[" + std::to_string(_lo) + "," + std::to_string(_hi) + "]";
+    return "[" + ::std::to_string(_lo) + "," + ::std::to_string(_hi) + "]";
 }
 
 Type* TypeNarrow::meet(Type* t) {
@@ -336,8 +336,8 @@ Type* TypeNarrow::meet(Type* t) {
     }
 
     // Compute range intersection
-    long lo = std::max(_lo, other->_lo);
-    long hi = std::min(_hi, other->_hi);
+    long lo = ::std::max(_lo, other->_lo);
+    long hi = ::std::min(_hi, other->_hi);
 
     if (lo > hi) return Type::BOTTOM;
     if (lo == hi) return constant(lo, _width);
@@ -393,11 +393,11 @@ Type* TypeArray::meet(Type* t) {
 // ============================================================================
 
 // Struct type cache - indexed by name
-static std::unordered_map<std::string, TypeStruct*> struct_type_cache;
+static ::std::unordered_map<::std::string, TypeStruct*> struct_type_cache;
 
-TypeStruct* TypeStruct::create(const std::string& name, bool nullable) {
+TypeStruct* TypeStruct::create(const ::std::string& name, bool nullable) {
     // Check cache for non-nullable version
-    std::string cache_key = name + (nullable ? "?" : "");
+    ::std::string cache_key = name + (nullable ? "?" : "");
     auto it = struct_type_cache.find(cache_key);
     if (it != struct_type_cache.end()) {
         return it->second;
@@ -408,7 +408,7 @@ TypeStruct* TypeStruct::create(const std::string& name, bool nullable) {
     return type;
 }
 
-int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node* initVal,
+int TypeStruct::addField(const ::std::string& name, Type* type, bool isFinal, Node* initVal,
                          Field::MutabilityQualifier mutability) {
     // Check for duplicate field names
     if (_fieldMap.find(name) != _fieldMap.end()) {
@@ -429,7 +429,7 @@ int TypeStruct::addField(const std::string& name, Type* type, bool isFinal, Node
     return index;
 }
 
-const Field* TypeStruct::getField(const std::string& name) const {
+const Field* TypeStruct::getField(const ::std::string& name) const {
     auto it = _fieldMap.find(name);
     if (it == _fieldMap.end()) {
         return nullptr;
@@ -479,9 +479,9 @@ Type* TypeStruct::meet(Type* t) {
 // ============================================================================
 
 // TypeTuple cache - avoid duplicate tuples with same signature
-static std::vector<TypeTuple*> tuple_cache;
+static ::std::vector<TypeTuple*> tuple_cache;
 
-TypeTuple* TypeTuple::create(const std::vector<Type*>& types) {
+TypeTuple* TypeTuple::create(const ::std::vector<Type*>& types) {
     // Check cache for existing tuple with same types
     for (TypeTuple* cached : tuple_cache) {
         if (cached->types().size() != types.size()) continue;
@@ -515,7 +515,7 @@ Type* TypeTuple::meet(Type* t) {
     if (_types.size() != other->_types.size()) return Type::BOTTOM;
 
     // Meet each element
-    std::vector<Type*> result_types;
+    ::std::vector<Type*> result_types;
     for (size_t i = 0; i < _types.size(); ++i) {
         Type* elem_meet = _types[i]->meet(other->_types[i]);
         // Check for universal BOTTOM (meet failed), not type-specific bottom
@@ -541,17 +541,17 @@ struct FunPtrCacheKey {
 };
 
 struct FunPtrCacheKeyHash {
-    std::size_t operator()(const FunPtrCacheKey& k) const {
-        std::size_t h1 = std::hash<void*>()(k.args);
-        std::size_t h2 = std::hash<void*>()(k.ret);
-        std::size_t h3 = std::hash<int>()(k.fidx);
-        std::size_t h4 = std::hash<bool>()(k.nullable);
-        std::size_t h5 = std::hash<bool>()(k.mutable_ref);
+    ::std::size_t operator()(const FunPtrCacheKey& k) const {
+        ::std::size_t h1 = ::std::hash<void*>()(k.args);
+        ::std::size_t h2 = ::std::hash<void*>()(k.ret);
+        ::std::size_t h3 = ::std::hash<int>()(k.fidx);
+        ::std::size_t h4 = ::std::hash<bool>()(k.nullable);
+        ::std::size_t h5 = ::std::hash<bool>()(k.mutable_ref);
         return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4);
     }
 };
 
-static std::unordered_map<FunPtrCacheKey, TypeFunPtr*, FunPtrCacheKeyHash> funptr_cache;
+static ::std::unordered_map<FunPtrCacheKey, TypeFunPtr*, FunPtrCacheKeyHash> funptr_cache;
 static TypeFunPtr* NULL_FUNPTR = nullptr;
 
 TypeFunPtr* TypeFunPtr::create(TypeTuple* args, Type* ret, int fidx) {
@@ -651,7 +651,7 @@ Type* TypeFunPtr::meet(Type* t) {
 }
 
 // TypeRPC implementation
-static std::unordered_map<int, TypeRPC*> rpc_cache;
+static ::std::unordered_map<int, TypeRPC*> rpc_cache;
 static TypeRPC* NULL_RPC = nullptr;
 static TypeRPC* NULLABLE_RPC = nullptr;
 

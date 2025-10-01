@@ -36,7 +36,7 @@ struct Pattern {
      *       return format("{} + {}", emit(add->lhs()), emit(add->rhs()));
      *   }
      */
-    std::function<std::string(Node*)> rewrite;
+    ::std::function<::std::string(Node*)> rewrite;
 
     /**
      * Optional: Type constraint predicate.
@@ -45,7 +45,7 @@ struct Pattern {
      * Example: Only match integer operations
      *   [](Node* n) { return n->_type->isInteger(); }
      */
-    std::function<bool(Node*)> typeConstraint;
+    ::std::function<bool(Node*)> typeConstraint;
 
     /**
      * Optional: CFG legality constraint.
@@ -54,9 +54,9 @@ struct Pattern {
      * Example: Only lower if not in loop
      *   [](Node* n) { return !inLoop(n); }
      */
-    std::function<bool(Node*)> cfgConstraint;
+    ::std::function<bool(Node*)> cfgConstraint;
 
-    Pattern(NodeKind k, TargetLanguage t, std::function<std::string(Node*)> rw, int pri = 0)
+    Pattern(NodeKind k, TargetLanguage t, ::std::function<::std::string(Node*)> rw, int pri = 0)
         : kind(k), target(t), rewrite(rw), priority(pri),
           typeConstraint(nullptr), cfgConstraint(nullptr) {}
 };
@@ -77,8 +77,8 @@ struct Pattern {
  *   pm.registerPattern(NodeKind::ADD, TargetLanguage::MLIR_ARITH,
  *       [](Node* n) { return "arith.addi"; });
  *
- *   std::string c_code = pm.match(addNode, TargetLanguage::C);
- *   std::string mlir = pm.match(addNode, TargetLanguage::MLIR_ARITH);
+ *   ::std::string c_code = pm.match(addNode, TargetLanguage::C);
+ *   ::std::string mlir = pm.match(addNode, TargetLanguage::MLIR_ARITH);
  */
 class PatternMatcher {
 private:
@@ -86,16 +86,16 @@ private:
      * Pattern registry: maps (NodeKind, TargetLanguage) to list of patterns.
      * Multiple patterns per key supported (sorted by priority).
      */
-    using PatternKey = std::pair<NodeKind, TargetLanguage>;
+    using PatternKey = ::std::pair<NodeKind, TargetLanguage>;
 
     struct PatternKeyHash {
-        std::size_t operator()(const PatternKey& k) const {
-            return std::hash<int>()(static_cast<int>(k.first)) ^
-                   (std::hash<int>()(static_cast<int>(k.second)) << 1);
+        ::std::size_t operator()(const PatternKey& k) const {
+            return ::std::hash<int>()(static_cast<int>(k.first)) ^
+                   (::std::hash<int>()(static_cast<int>(k.second)) << 1);
         }
     };
 
-    std::unordered_map<PatternKey, std::vector<Pattern>, PatternKeyHash> _registry;
+    ::std::unordered_map<PatternKey, ::std::vector<Pattern>, PatternKeyHash> _registry;
 
 public:
     /**
@@ -121,7 +121,7 @@ public:
     void registerPattern(
         NodeKind kind,
         TargetLanguage target,
-        std::function<std::string(Node*)> rewrite,
+        ::std::function<::std::string(Node*)> rewrite,
         int priority = 0
     );
 
@@ -137,9 +137,9 @@ public:
     void registerPattern(
         NodeKind kind,
         TargetLanguage target,
-        std::function<std::string(Node*)> rewrite,
+        ::std::function<::std::string(Node*)> rewrite,
         int priority,
-        std::function<bool(Node*)> constraint
+        ::std::function<bool(Node*)> constraint
     );
 
     /**
@@ -162,7 +162,7 @@ public:
      * @param target  Target language
      * @return        Generated target code, or empty string if no match
      */
-    std::string match(Node* node, TargetLanguage target) const;
+    ::std::string match(Node* node, TargetLanguage target) const;
 
     /**
      * Check if a pattern exists for (NodeKind, TargetLanguage).
@@ -180,7 +180,7 @@ public:
      * @param kind    Node kind to query
      * @return        Vector of all patterns for this kind
      */
-    std::vector<Pattern> getPatternsForKind(NodeKind kind) const;
+    ::std::vector<Pattern> getPatternsForKind(NodeKind kind) const;
 
     /**
      * Get pattern count for debugging.
@@ -222,7 +222,7 @@ namespace pattern_helpers {
      * @param target   Target language
      * @return         Emitted code for node
      */
-    std::string emitNode(Node* node, const PatternMatcher& matcher, TargetLanguage target);
+    ::std::string emitNode(Node* node, const PatternMatcher& matcher, TargetLanguage target);
 
     /**
      * Format binary operation: "lhs op rhs"
@@ -233,7 +233,7 @@ namespace pattern_helpers {
      * @param target   Target language
      * @return         Formatted binary expression
      */
-    std::string formatBinaryOp(Node* node, const std::string& op,
+    ::std::string formatBinaryOp(Node* node, const ::std::string& op,
                                const PatternMatcher& matcher, TargetLanguage target);
 
     /**
@@ -245,7 +245,7 @@ namespace pattern_helpers {
      * @param target   Target language
      * @return         Formatted unary expression
      */
-    std::string formatUnaryOp(Node* node, const std::string& op,
+    ::std::string formatUnaryOp(Node* node, const ::std::string& op,
                               const PatternMatcher& matcher, TargetLanguage target);
 }
 

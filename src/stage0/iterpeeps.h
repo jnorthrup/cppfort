@@ -20,12 +20,12 @@ private:
      * Worklist of nodes to process.
      * Invariant: A node is either on the worklist OR no peephole applies.
      */
-    std::vector<Node*> _worklist;
+    ::std::vector<Node*> _worklist;
 
     /**
      * Set for fast membership testing.
      */
-    std::unordered_set<Node*> _inWorklist;
+    ::std::unordered_set<Node*> _inWorklist;
 
     /**
      * Add a node to the worklist if not already present.

@@ -4,7 +4,7 @@
 
 namespace cppfort::ir {
 
-InstructionSelection::InstructionSelection(const std::vector<std::string>& targetMachines)
+InstructionSelection::InstructionSelection(const ::std::vector<::std::string>& targetMachines)
     : _targetMachines(targetMachines) {
 }
 
@@ -14,7 +14,7 @@ Node* InstructionSelection::selectInstructions(Node* start) {
     // Create pattern matcher and register patterns for all target machines
     PatternMatcher matcher;
 
-    for (const std::string& machineName : _targetMachines) {
+    for (const ::std::string& machineName : _targetMachines) {
         Machine* machine = _registry.getMachine(machineName);
         if (machine) {
             machine->registerPatterns(matcher);
@@ -22,7 +22,7 @@ Node* InstructionSelection::selectInstructions(Node* start) {
     }
 
     // Walk the graph and apply transformations
-    std::unordered_set<Node*> visited;
+    ::std::unordered_set<Node*> visited;
     walkGraph(start, matcher);
 
     return start;  // Graph is transformed in-place
@@ -32,7 +32,7 @@ void InstructionSelection::walkGraph(Node* node, PatternMatcher& matcher) {
     if (!node) return;
 
     // Avoid processing the same node multiple times
-    static std::unordered_set<Node*> visited;
+    static ::std::unordered_set<Node*> visited;
     if (visited.count(node)) return;
     visited.insert(node);
 

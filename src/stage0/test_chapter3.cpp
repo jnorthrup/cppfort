@@ -5,7 +5,7 @@
 using namespace cppfort::ir;
 
 void test_simple_declaration() {
-    std::cout << "Testing: int a=1; return a;\n";
+    ::std::cout << "Testing: int a=1; return a;\n";
     SoNParser parser;
 
     Node* result = parser.parse("int a=1; return a;");
@@ -18,11 +18,11 @@ void test_simple_declaration() {
     assert(constant != nullptr);
     assert(constant->_value == 1);
 
-    std::cout << "✓ Test passed - simple declaration worked\n\n";
+    ::std::cout << "✓ Test passed - simple declaration worked\n\n";
 }
 
 void test_multiple_declarations() {
-    std::cout << "Testing: int a=1; int b=2; return a+b;\n";
+    ::std::cout << "Testing: int a=1; int b=2; return a+b;\n";
     SoNParser parser;
 
     Node* result = parser.parse("int a=1; int b=2; return a+b;");
@@ -35,11 +35,11 @@ void test_multiple_declarations() {
     assert(constant != nullptr);
     assert(constant->_value == 3);
 
-    std::cout << "✓ Test passed - multiple declarations worked\n\n";
+    ::std::cout << "✓ Test passed - multiple declarations worked\n\n";
 }
 
 void test_variable_reassignment() {
-    std::cout << "Testing: int a=1; a=5; return a;\n";
+    ::std::cout << "Testing: int a=1; a=5; return a;\n";
     SoNParser parser;
 
     Node* result = parser.parse("int a=1; a=5; return a;");
@@ -52,12 +52,12 @@ void test_variable_reassignment() {
     assert(constant != nullptr);
     assert(constant->_value == 5);
 
-    std::cout << "✓ Test passed - variable reassignment worked\n\n";
+    ::std::cout << "✓ Test passed - variable reassignment worked\n\n";
 }
 
 void test_nested_scope() {
-    std::cout << "Testing nested scope from README:\n";
-    std::cout << "  int a=1; int b=2; int c=0; { int b=3; c=a+b; } return c;\n";
+    ::std::cout << "Testing nested scope from README:\n";
+    ::std::cout << "  int a=1; int b=2; int c=0; { int b=3; c=a+b; } return c;\n";
     SoNParser parser;
 
     Node* result = parser.parse(
@@ -79,11 +79,11 @@ void test_nested_scope() {
     assert(constant != nullptr);
     assert(constant->_value == 4);
 
-    std::cout << "✓ Test passed - nested scope with variable shadowing worked\n\n";
+    ::std::cout << "✓ Test passed - nested scope with variable shadowing worked\n\n";
 }
 
 void test_complex_expression_with_vars() {
-    std::cout << "Testing: int x=2; int y=3; return x*y + x;\n";
+    ::std::cout << "Testing: int x=2; int y=3; return x*y + x;\n";
     SoNParser parser;
 
     Node* result = parser.parse("int x=2; int y=3; return x*y + x;");
@@ -96,13 +96,13 @@ void test_complex_expression_with_vars() {
     assert(constant != nullptr);
     assert(constant->_value == 8);
 
-    std::cout << "✓ Test passed - complex expression with variables worked\n\n";
+    ::std::cout << "✓ Test passed - complex expression with variables worked\n\n";
 }
 
 void test_distance_formula() {
-    std::cout << "Testing distance formula from README:\n";
-    std::cout << "  int x0=1; int y0=2; int x1=3; int y1=4;\n";
-    std::cout << "  return (x0-x1)*(x0-x1) + (y0-y1)*(y0-y1);\n";
+    ::std::cout << "Testing distance formula from README:\n";
+    ::std::cout << "  int x0=1; int y0=2; int x1=3; int y1=4;\n";
+    ::std::cout << "  return (x0-x1)*(x0-x1) + (y0-y1)*(y0-y1);\n";
     SoNParser parser;
 
     Node* result = parser.parse(
@@ -122,15 +122,15 @@ void test_distance_formula() {
     assert(constant != nullptr);
     assert(constant->_value == 8);
 
-    std::cout << "✓ Test passed - distance formula with peephole optimization worked\n\n";
+    ::std::cout << "✓ Test passed - distance formula with peephole optimization worked\n\n";
 }
 
 void test_multiple_scopes_at_same_level() {
-    std::cout << "Testing multiple scopes at same level:\n";
-    std::cout << "  int a=1; int b=2; int c=0;\n";
-    std::cout << "  { int b=5; c=a+b; }\n";
-    std::cout << "  { int e=6; c=a+e; }\n";
-    std::cout << "  return c;\n";
+    ::std::cout << "Testing multiple scopes at same level:\n";
+    ::std::cout << "  int a=1; int b=2; int c=0;\n";
+    ::std::cout << "  { int b=5; c=a+b; }\n";
+    ::std::cout << "  { int e=6; c=a+e; }\n";
+    ::std::cout << "  return c;\n";
     SoNParser parser;
 
     Node* result = parser.parse(
@@ -156,12 +156,12 @@ void test_multiple_scopes_at_same_level() {
     assert(constant != nullptr);
     assert(constant->_value == 7);
 
-    std::cout << "✓ Test passed - multiple scopes at same level worked\n\n";
+    ::std::cout << "✓ Test passed - multiple scopes at same level worked\n\n";
 }
 
 void test_deeply_nested_scopes() {
-    std::cout << "Testing deeply nested scopes:\n";
-    std::cout << "  int a=1; { int b=2; { int c=3; a=a+b+c; } } return a;\n";
+    ::std::cout << "Testing deeply nested scopes:\n";
+    ::std::cout << "  int a=1; { int b=2; { int c=3; a=a+b+c; } } return a;\n";
     SoNParser parser;
 
     Node* result = parser.parse(
@@ -184,12 +184,12 @@ void test_deeply_nested_scopes() {
     assert(constant != nullptr);
     assert(constant->_value == 6);
 
-    std::cout << "✓ Test passed - deeply nested scopes worked\n\n";
+    ::std::cout << "✓ Test passed - deeply nested scopes worked\n\n";
 }
 
 void test_scope_cleanup() {
-    std::cout << "Testing scope cleanup (variable dies when scope ends):\n";
-    std::cout << "  int a=1; { int b=a*a*a; } return a;\n";
+    ::std::cout << "Testing scope cleanup (variable dies when scope ends):\n";
+    ::std::cout << "  int a=1; { int b=a*a*a; } return a;\n";
     SoNParser parser;
 
     Node* result = parser.parse(
@@ -208,11 +208,11 @@ void test_scope_cleanup() {
     assert(constant != nullptr);
     assert(constant->_value == 1);
 
-    std::cout << "✓ Test passed - scope cleanup worked\n\n";
+    ::std::cout << "✓ Test passed - scope cleanup worked\n\n";
 }
 
 int main() {
-    std::cout << "=== Chapter 3 Tests: Variable Declarations and Scopes ===\n\n";
+    ::std::cout << "=== Chapter 3 Tests: Variable Declarations and Scopes ===\n\n";
 
     try {
         test_simple_declaration();
@@ -225,10 +225,10 @@ int main() {
         test_deeply_nested_scopes();
         test_scope_cleanup();
 
-        std::cout << "=== All Chapter 3 tests passed! ===\n";
+        ::std::cout << "=== All Chapter 3 tests passed! ===\n";
         return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed with error: " << e.what() << std::endl;
+    } catch (const ::std::exception& e) {
+        ::std::cerr << "Test failed with error: " << e.what() << ::std::endl;
         return 1;
     }
 }

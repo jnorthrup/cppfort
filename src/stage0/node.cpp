@@ -9,7 +9,7 @@ namespace cppfort::ir {
 int Node::UNIQUE_ID = 1;
 
 // Initialize GVN table - Chapter 9
-std::unordered_set<Node*, NodeHash, NodeEqual> Node::GVN;
+::std::unordered_set<Node*, NodeHash, NodeEqual> Node::GVN;
 
 Node::Node() : _nid(UNIQUE_ID++), _type(nullptr) {
 }
@@ -39,20 +39,20 @@ void Node::setInput(int idx, Node* n) {
 }
 
 void Node::addOutput(Node* n) {
-    if (n != nullptr && std::find(_outputs.begin(), _outputs.end(), n) == _outputs.end()) {
+    if (n != nullptr && ::std::find(_outputs.begin(), _outputs.end(), n) == _outputs.end()) {
         _outputs.push_back(n);
     }
 }
 
 void Node::removeOutput(Node* n) {
-    auto it = std::find(_outputs.begin(), _outputs.end(), n);
+    auto it = ::std::find(_outputs.begin(), _outputs.end(), n);
     if (it != _outputs.end()) {
         _outputs.erase(it);
     }
 }
 
-std::string Node::toString() const {
-    std::ostringstream ss;
+::std::string Node::toString() const {
+    ::std::ostringstream ss;
     ss << _nid << ": " << label();
     return ss.str();
 }
@@ -508,8 +508,8 @@ ScopeNode* ScopeNode::duplicate(bool forLoop) const {
     return dup;
 }
 
-std::unordered_map<std::string, Node*> ScopeNode::currentBindings() const {
-    std::unordered_map<std::string, Node*> out;
+::std::unordered_map<::std::string, Node*> ScopeNode::currentBindings() const {
+    ::std::unordered_map<::std::string, Node*> out;
     // fold from inner to outer; inner overrides
     for (auto it = _scopes.rbegin(); it != _scopes.rend(); ++it) {
         const auto& scope = *it;
@@ -522,7 +522,7 @@ std::unordered_map<std::string, Node*> ScopeNode::currentBindings() const {
 }
 
 void ScopeNode::push() {
-    _scopes.push_back(std::unordered_map<std::string, int>());
+    _scopes.push_back(::std::unordered_map<::std::string, int>());
 }
 
 void ScopeNode::pop() {
@@ -533,13 +533,13 @@ void ScopeNode::pop() {
 
     // Remove the inputs for variables in this scope
     // This allows them to be garbage collected if no longer referenced
-    std::vector<int> indicesToRemove;
+    ::std::vector<int> indicesToRemove;
     for (const auto& [name, idx] : currentScope) {
         indicesToRemove.push_back(idx);
     }
 
     // Sort indices in descending order to safely remove from _inputs
-    std::sort(indicesToRemove.rbegin(), indicesToRemove.rend());
+    ::std::sort(indicesToRemove.rbegin(), indicesToRemove.rend());
 
     // Remove the inputs (note: this may leave gaps in the input array)
     // In a production system, we might want to compact the array
@@ -560,7 +560,7 @@ void ScopeNode::pop() {
     _scopes.pop_back();
 }
 
-int ScopeNode::define(const std::string& name, Node* value) {
+int ScopeNode::define(const ::std::string& name, Node* value) {
     if (_scopes.empty()) {
         push();  // Ensure we have at least one scope
     }
@@ -586,7 +586,7 @@ int ScopeNode::define(const std::string& name, Node* value) {
     return idx;
 }
 
-void ScopeNode::update(const std::string& name, Node* value) {
+void ScopeNode::update(const ::std::string& name, Node* value) {
     // Search for the variable from innermost to outermost scope
     for (int i = _scopes.size() - 1; i >= 0; --i) {
         auto& scope = _scopes[i];
@@ -602,7 +602,7 @@ void ScopeNode::update(const std::string& name, Node* value) {
     define(name, value);
 }
 
-Node* ScopeNode::lookup(const std::string& name) const {
+Node* ScopeNode::lookup(const ::std::string& name) const {
     // Search from innermost to outermost scope
     for (int i = _scopes.size() - 1; i >= 0; --i) {
         const auto& scope = _scopes[i];
@@ -615,7 +615,7 @@ Node* ScopeNode::lookup(const std::string& name) const {
     return nullptr;
 }
 
-bool ScopeNode::contains(const std::string& name) const {
+bool ScopeNode::contains(const ::std::string& name) const {
     for (int i = _scopes.size() - 1; i >= 0; --i) {
         if (_scopes[i].count(name) > 0) {
             return true;
@@ -653,15 +653,15 @@ Type* PhiNode::compute() {
 }
 
 // Chapter 9: GVN implementations
-std::size_t Node::hashCode() const {
+::std::size_t Node::hashCode() const {
     if (_hash != 0) return _hash;  // Use cached hash
 
     // Compute hash based on node type (label) and inputs
-    std::size_t h = std::hash<std::string>{}(label());
+    ::std::size_t h = ::std::hash<::std::string>{}(label());
     for (int i = 0; i < nIns(); i++) {
         Node* input = in(i);
         // Mix in input pointer hash
-        h = h * 31 + std::hash<Node*>{}(input);
+        h = h * 31 + ::std::hash<Node*>{}(input);
     }
 
     // Avoid zero hash (reserved for unlocked)
@@ -720,7 +720,7 @@ Node* Node::gvn() {
 }
 
 // NodeHash and NodeEqual implementations for GVN table
-std::size_t NodeHash::operator()(const Node* n) const {
+::std::size_t NodeHash::operator()(const Node* n) const {
     return n ? n->hashCode() : 0;
 }
 
@@ -905,7 +905,7 @@ int RegionNode::idepth() {
     for (Node* n : _inputs) {
         if (n && n->isCFG()) {
             CFGNode* cfg = dynamic_cast<CFGNode*>(n);
-            if (cfg) d = std::max(d, cfg->idepth() + 1);
+            if (cfg) d = ::std::max(d, cfg->idepth() + 1);
         }
     }
     return _idepth = d;
@@ -961,7 +961,7 @@ int StopNode::idepth() {
     for (Node* n : _inputs) {
         if (n && n->isCFG()) {
             CFGNode* cfg = dynamic_cast<CFGNode*>(n);
-            if (cfg) d = std::max(d, cfg->idepth() + 1);
+            if (cfg) d = ::std::max(d, cfg->idepth() + 1);
         }
     }
     return _idepth = d;

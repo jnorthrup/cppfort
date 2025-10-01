@@ -6,10 +6,10 @@
 
 namespace cppfort::stage0 {
 
-Lexer::Lexer(std::string source, std::string file)
-    : m_source(std::move(source)), m_file(std::move(file)) {}
+Lexer::Lexer(::std::string source, ::std::string file)
+    : m_source(::std::move(source)), m_file(::std::move(file)) {}
 
-std::vector<Token> Lexer::tokenize() {
+::std::vector<Token> Lexer::tokenize() {
     m_tokens.clear();
     m_current = 0;
     m_line = 1;
@@ -130,12 +130,12 @@ std::vector<Token> Lexer::tokenize() {
                 lex_char();
                 break;
             default:
-                if (std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
+                if (::std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
                     lex_identifier();
-                } else if (std::isdigit(static_cast<unsigned char>(c))) {
+                } else if (::std::isdigit(static_cast<unsigned char>(c))) {
                     lex_number();
                 } else {
-                    std::ostringstream oss;
+                    ::std::ostringstream oss;
                     oss << "Unexpected character '" << c << "' at " << token_line << ':' << token_column;
                     throw LexError(oss.str());
                 }
@@ -176,15 +176,15 @@ char Lexer::advance() noexcept {
     return c;
 }
 
-void Lexer::add_token(TokenType type, std::size_t start_offset, std::size_t length,
-    std::size_t line, std::size_t column) {
+void Lexer::add_token(TokenType type, ::std::size_t start_offset, ::std::size_t length,
+    ::std::size_t line, ::std::size_t column) {
     add_token(type, start_offset, length, line, column, m_source.substr(start_offset, length));
 }
 
-void Lexer::add_token(TokenType type, std::size_t start_offset, std::size_t length,
-    std::size_t line, std::size_t column, std::string lexeme_override) {
+void Lexer::add_token(TokenType type, ::std::size_t start_offset, ::std::size_t length,
+    ::std::size_t line, ::std::size_t column, ::std::string lexeme_override) {
     SourceLocation loc {m_file, line, column};
-    m_tokens.emplace_back(type, std::move(lexeme_override), std::move(loc), start_offset, length);
+    m_tokens.emplace_back(type, ::std::move(lexeme_override), ::std::move(loc), start_offset, length);
 }
 
 bool Lexer::match(char expected) noexcept {
@@ -252,7 +252,7 @@ void Lexer::lex_identifier() {
 
     while (!is_at_end()) {
         char c = peek();
-                if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
+                if (::std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
             advance();
         } else if (c == ':' && peek_next() == ':') {
             // allow identifiers to include :: for fully qualified names
@@ -284,13 +284,13 @@ void Lexer::lex_number() {
     auto start_line = m_line;
     auto start_column = m_column - 1;
 
-    while (!is_at_end() && std::isdigit(static_cast<unsigned char>(peek()))) {
+    while (!is_at_end() && ::std::isdigit(static_cast<unsigned char>(peek()))) {
         advance();
     }
 
-    if (!is_at_end() && peek() == '.' && std::isdigit(static_cast<unsigned char>(peek_next()))) {
+    if (!is_at_end() && peek() == '.' && ::std::isdigit(static_cast<unsigned char>(peek_next()))) {
         advance();
-        while (!is_at_end() && std::isdigit(static_cast<unsigned char>(peek()))) {
+        while (!is_at_end() && ::std::isdigit(static_cast<unsigned char>(peek()))) {
             advance();
         }
     }
@@ -373,7 +373,7 @@ void Lexer::lex_preprocessor() {
     add_token(TokenType::Preprocessor, start_offset, length, start_line, start_column);
 }
 
-TokenType Lexer::keyword_type(const std::string& identifier) const noexcept {
+TokenType Lexer::keyword_type(const ::std::string& identifier) const noexcept {
     // Basic Cpp2 keywords
     if (identifier == "return") {
         return TokenType::KeywordReturn;

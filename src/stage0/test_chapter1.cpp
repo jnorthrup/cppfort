@@ -5,13 +5,13 @@
 using namespace cppfort::ir;
 
 void test_return_constant() {
-    std::cout << "Testing: return 1;\n";
+    ::std::cout << "Testing: return 1;\n";
     SoNParser parser;
-    std::cout << "Parser created\n";
+    ::std::cout << "Parser created\n";
 
-    std::cout << "Calling parser.parse...\n";
+    ::std::cout << "Calling parser.parse...\n";
     Node* result = parser.parse("return 1;");
-    std::cout << "Parse completed\n";
+    ::std::cout << "Parse completed\n";
 
     // Verify we got a ReturnNode
     assert(result != nullptr);
@@ -32,14 +32,14 @@ void test_return_constant() {
     assert(constant->_inputs.size() == 1);
     assert(constant->_inputs[0] == parser.getStart());
 
-    std::cout << "✓ Test passed\n\n";
+    ::std::cout << "✓ Test passed\n\n";
 
     // Visualize the graph
-    std::cout << parser.visualize() << "\n";
+    ::std::cout << parser.visualize() << "\n";
 }
 
 void test_return_larger_constant() {
-    std::cout << "Testing: return 42;\n";
+    ::std::cout << "Testing: return 42;\n";
     SoNParser parser;
 
     Node* result = parser.parse("return 42;");
@@ -51,11 +51,11 @@ void test_return_larger_constant() {
     assert(constant != nullptr);
     assert(constant->_value == 42);
 
-    std::cout << "✓ Test passed\n\n";
+    ::std::cout << "✓ Test passed\n\n";
 }
 
 void test_return_zero() {
-    std::cout << "Testing: return 0;\n";
+    ::std::cout << "Testing: return 0;\n";
     SoNParser parser;
 
     Node* result = parser.parse("return 0;");
@@ -67,11 +67,11 @@ void test_return_zero() {
     assert(constant != nullptr);
     assert(constant->_value == 0);
 
-    std::cout << "✓ Test passed\n\n";
+    ::std::cout << "✓ Test passed\n\n";
 }
 
 void test_return_negative() {
-    std::cout << "Testing: return -5;\n";
+    ::std::cout << "Testing: return -5;\n";
     SoNParser parser;
 
     Node* result = parser.parse("return -5;");
@@ -83,11 +83,11 @@ void test_return_negative() {
     assert(constant != nullptr);
     assert(constant->_value == -5);
 
-    std::cout << "✓ Test passed\n\n";
+    ::std::cout << "✓ Test passed\n\n";
 }
 
 void test_whitespace_handling() {
-    std::cout << "Testing: whitespace handling\n";
+    ::std::cout << "Testing: whitespace handling\n";
     SoNParser parser;
 
     Node* result = parser.parse("  return   123  ;  ");
@@ -99,11 +99,11 @@ void test_whitespace_handling() {
     assert(constant != nullptr);
     assert(constant->_value == 123);
 
-    std::cout << "✓ Test passed\n\n";
+    ::std::cout << "✓ Test passed\n\n";
 }
 
 int main() {
-    std::cout << "=== Chapter 1: Sea of Nodes - Return Statements ===\n\n";
+    ::std::cout << "=== Chapter 1: Sea of Nodes - Return Statements ===\n\n";
 
     try {
         test_return_constant();
@@ -112,16 +112,16 @@ int main() {
         test_return_negative();
         test_whitespace_handling();
 
-        std::cout << "=== All Chapter 1 tests passed! ===\n";
-        std::cout << "\nSummary:\n";
-        std::cout << "- Successfully built Sea of Nodes graph directly during parsing\n";
-        std::cout << "- No AST intermediate representation\n";
-        std::cout << "- Three node types implemented: StartNode, ConstantNode, ReturnNode\n";
-        std::cout << "- Bidirectional edges maintained (_inputs and _outputs)\n";
-        std::cout << "- Unique dense node IDs assigned\n";
+        ::std::cout << "=== All Chapter 1 tests passed! ===\n";
+        ::std::cout << "\nSummary:\n";
+        ::std::cout << "- Successfully built Sea of Nodes graph directly during parsing\n";
+        ::std::cout << "- No AST intermediate representation\n";
+        ::std::cout << "- Three node types implemented: StartNode, ConstantNode, ReturnNode\n";
+        ::std::cout << "- Bidirectional edges maintained (_inputs and _outputs)\n";
+        ::std::cout << "- Unique dense node IDs assigned\n";
 
-    } catch (const std::exception& e) {
-        std::cerr << "Test failed: " << e.what() << std::endl;
+    } catch (const ::std::exception& e) {
+        ::std::cerr << "Test failed: " << e.what() << ::std::endl;
         return 1;
     }
 

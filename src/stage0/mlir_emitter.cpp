@@ -41,7 +41,7 @@ mlir::ModuleOp* MLIREmitter::emit(Node* entry) {
     auto* startBlock = emitControlNode(selectedEntry);
 
     // Process control flow graph
-    std::queue<Node*> worklist;
+    ::std::queue<Node*> worklist;
     worklist.push(selectedEntry);
 
     while (!worklist.empty()) {
@@ -129,7 +129,7 @@ mlir::Block* MLIREmitter::emitRegionWithPhis(RegionNode* region) {
     auto* block = new mlir::Block();
 
     // Collect all Phi nodes controlled by this region
-    std::vector<PhiNode*> phis;
+    ::std::vector<PhiNode*> phis;
     for (Node* use : region->_outputs) {
         if (auto* phi = dynamic_cast<PhiNode*>(use)) {
             if (phi->region() == region) {
@@ -165,7 +165,7 @@ mlir::Block* MLIREmitter::emitRegionWithPhis(RegionNode* region) {
 }
 
 // Schedule nodes between control points
-std::vector<Node*> MLIREmitter::scheduleRegion(Node* from, Node* to) {
+::std::vector<Node*> MLIREmitter::scheduleRegion(Node* from, Node* to) {
     SoNScheduler scheduler;
     return scheduler.scheduleBlock(from, to);
 }
@@ -222,7 +222,7 @@ mlir::Value* MLIREmitter::emitNode(Node* node) {
                 auto fptr = emitNode(call->fptr());
 
                 // Collect arguments
-                std::vector<mlir::Value*> args;
+                ::std::vector<mlir::Value*> args;
                 for (int i = 0; i < call->nArgs(); ++i) {
                     if (auto* arg = emitNode(call->arg(i))) {
                         args.push_back(arg);
@@ -247,7 +247,7 @@ mlir::Value* MLIREmitter::emitNode(Node* node) {
     return nullptr;
 
 // Scheduler implementation
-std::vector<Node*> SoNScheduler::scheduleBlock(Node* entry, Node* exit) {
+::std::vector<Node*> SoNScheduler::scheduleBlock(Node* entry, Node* exit) {
     schedule.clear();
     visited.clear();
 
@@ -255,7 +255,7 @@ std::vector<Node*> SoNScheduler::scheduleBlock(Node* entry, Node* exit) {
     visitNode(entry);
 
     // Process data nodes reachable from entry
-    std::queue<Node*> worklist;
+    ::std::queue<Node*> worklist;
     for (Node* out : entry->_outputs) {
         if (!out->isCFG()) {
             worklist.push(out);

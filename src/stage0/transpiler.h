@@ -16,8 +16,8 @@ class Transpiler {
     Transpiler();
     explicit Transpiler(Pipeline pipeline);
 
-    [[nodiscard]] TranslationUnit parse(const std::string& source, const std::string& filename) const;
-    [[nodiscard]] std::string transpile(const std::string& source, const std::string& filename,
+    [[nodiscard]] TranslationUnit parse(const ::std::string& source, const ::std::string& filename) const;
+    [[nodiscard]] ::std::string transpile(const ::std::string& source, const ::std::string& filename,
         const TranspileOptions& options = {}) const;
 
     [[nodiscard]] const Pipeline& pipeline() const noexcept { return m_pipeline; }

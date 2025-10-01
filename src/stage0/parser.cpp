@@ -13,8 +13,8 @@ namespace {
 }
 }
 
-Parser::Parser(std::vector<Token> tokens, std::string source)
-    : m_tokens(std::move(tokens)), m_source(std::move(source)) {}
+Parser::Parser(::std::vector<Token> tokens, ::std::string source)
+    : m_tokens(::std::move(tokens)), m_source(::std::move(source)) {}
 
 TranslationUnit Parser::parse() {
     return parse_translation_unit();
@@ -33,7 +33,7 @@ TranslationUnit Parser::parse_translation_unit() {
             if (text.rfind("#include", 0) == 0) {
                 unit.includes.push_back(parse_include_directive(directive));
             } else {
-                unit.raw_declarations.push_back({std::move(text), directive.location});
+                unit.raw_declarations.push_back({::std::move(text), directive.location});
             }
             continue;
         }
@@ -44,16 +44,16 @@ TranslationUnit Parser::parse_translation_unit() {
         }
 
         auto decl = parse_declaration();
-        if (std::holds_alternative<FunctionDecl>(decl)) {
-            unit.functions.push_back(std::move(std::get<FunctionDecl>(decl)));
+        if (::std::holds_alternative<FunctionDecl>(decl)) {
+            unit.functions.push_back(::std::move(::std::get<FunctionDecl>(decl)));
         } else {
-            unit.types.push_back(std::move(std::get<TypeDecl>(decl)));
+            unit.types.push_back(::std::move(::std::get<TypeDecl>(decl)));
         }
     }
     return unit;
 }
 
-std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
+::std::variant<FunctionDecl, TypeDecl> Parser::parse_declaration() {
     // Support two styles:
     //  1) traditional: name: () -> type = { ... }
     //  2) auto-style: auto name() -> type { ... }
@@ -98,7 +98,7 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
     // 'name' and the ':' have already been consumed by the caller.
     auto parameters = parse_parameter_list();
 
-    std::optional<std::string> return_type;
+    ::std::optional<::std::string> return_type;
     if (match(TokenType::Arrow)) {
         SourceLocation span_location;
         // Stop collecting return-type text if we hit either '=' (traditional
@@ -130,15 +130,15 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
 
     FunctionDecl decl;
     decl.name = name.lexeme;
-    decl.parameters = std::move(parameters);
-    decl.return_type = std::move(return_type);
-    decl.body = std::move(body);
+    decl.parameters = ::std::move(parameters);
+    decl.return_type = ::std::move(return_type);
+    decl.body = ::std::move(body);
     decl.location = name.location;
     return decl;
 }
 
-std::vector<Parameter> Parser::parse_parameter_list() {
-    std::vector<Parameter> parameters;
+::std::vector<Parameter> Parser::parse_parameter_list() {
+    ::std::vector<Parameter> parameters;
     static_cast<void>(consume(TokenType::LParen, "Expected '(' to start parameter list"));
 
     if (check(TokenType::RParen)) {
@@ -172,7 +172,7 @@ std::vector<Parameter> Parser::parse_parameter_list() {
         const Token& param_name = consume(TokenType::Identifier, "Expected parameter name");
 
         SourceLocation span_location;
-        std::string type_text;
+        ::std::string type_text;
         // Allow omitted ':' for type deduction (e.g., unnamed/auto-typed params)
         if (check(TokenType::Colon)) {
             static_cast<void>(advance());
@@ -180,15 +180,15 @@ std::vector<Parameter> Parser::parse_parameter_list() {
             type_text = trim_copy(type_text);
         } else {
             // empty type -> deduction
-            type_text = std::string();
+            type_text = ::std::string();
         }
 
     Parameter param;
     param.name = param_name.lexeme;
-    param.type = std::move(type_text);
+    param.type = ::std::move(type_text);
     param.location = param_name.location;
     param.kind = pkind;
-        parameters.push_back(std::move(param));
+        parameters.push_back(::std::move(param));
 
         if (match(TokenType::Comma)) {
             continue;
@@ -279,11 +279,11 @@ Statement Parser::parse_statement() {
 
 VariableDecl Parser::parse_variable_decl(const Token& name) {
     SourceLocation span_location;
-    std::string type_text = collect_text_until({TokenType::Equals, TokenType::Semicolon}, &span_location);
+    ::std::string type_text = collect_text_until({TokenType::Equals, TokenType::Semicolon}, &span_location);
     type_text = trim_copy(type_text);
     // Allow empty type for type deduction
 
-    std::optional<std::string> initializer;
+    ::std::optional<::std::string> initializer;
     if (match(TokenType::Equals)) {
         auto init = collect_text_until_semicolon();
         initializer = trim_copy(init);
@@ -293,8 +293,8 @@ VariableDecl Parser::parse_variable_decl(const Token& name) {
 
     VariableDecl decl;
     decl.name = name.lexeme;
-    decl.type = std::move(type_text);
-    decl.initializer = std::move(initializer);
+    decl.type = ::std::move(type_text);
+    decl.initializer = ::std::move(initializer);
     decl.location = name.location;
     return decl;
 }
@@ -302,7 +302,7 @@ VariableDecl Parser::parse_variable_decl(const Token& name) {
 ReturnStmt Parser::parse_return_statement(const Token& keyword) {
     if (check(TokenType::Semicolon)) {
         static_cast<void>(advance());
-        return ReturnStmt {std::nullopt, keyword.location};
+        return ReturnStmt {::std::nullopt, keyword.location};
     }
 
     auto expression = collect_text_until_semicolon();
@@ -311,13 +311,13 @@ ReturnStmt Parser::parse_return_statement(const Token& keyword) {
 }
 
 AssertStmt Parser::parse_assert_statement(const Token& keyword) {
-    std::optional<std::string> category;
+    ::std::optional<::std::string> category;
 
     if (match(TokenType::Less)) {
         const Token& less_token = previous();
-        std::size_t content_start = less_token.end_offset();
-        std::size_t content_end = content_start;
-        std::size_t depth = 1;
+        ::std::size_t content_start = less_token.end_offset();
+        ::std::size_t content_end = content_start;
+        ::std::size_t depth = 1;
         while (!is_at_end() && depth > 0) {
             const Token& tok = advance();
             if (tok.type == TokenType::Less) {
@@ -334,9 +334,9 @@ AssertStmt Parser::parse_assert_statement(const Token& keyword) {
             throw ParseError("Unterminated assert annotation");
         }
         if (content_end > content_start) {
-            category = trim_copy(std::string_view(m_source).substr(content_start, content_end - content_start));
+            category = trim_copy(::std::string_view(m_source).substr(content_start, content_end - content_start));
         } else {
-            category = std::string{};
+            category = ::std::string{};
         }
     }
 
@@ -344,14 +344,14 @@ AssertStmt Parser::parse_assert_statement(const Token& keyword) {
     auto condition = collect_text_until({TokenType::RParen});
     static_cast<void>(consume(TokenType::RParen, "Expected ')' after assert condition"));
     static_cast<void>(consume(TokenType::Semicolon, "Expected ';' after assert"));
-    return AssertStmt {trim_copy(condition), std::move(category), keyword.location};
+    return AssertStmt {trim_copy(condition), ::std::move(category), keyword.location};
 }
 
 ForChainStmt Parser::parse_for_chain_statement(const Token& keyword) {
     ForChainStmt stmt;
     stmt.location = keyword.location;
 
-    auto collect_until = [&](const std::vector<TokenType>& terms) {
+    auto collect_until = [&](const ::std::vector<TokenType>& terms) {
         return trim_copy(collect_text_until(terms));
     };
 
@@ -366,7 +366,7 @@ ForChainStmt Parser::parse_for_chain_statement(const Token& keyword) {
         if (expr.empty()) {
             throw ParseError("Expected expression after 'next'");
         }
-        stmt.next_expression = std::move(expr);
+        stmt.next_expression = ::std::move(expr);
     }
 
     static_cast<void>(consume(TokenType::KeywordDo, "Expected 'do' in for-chain"));
@@ -375,12 +375,12 @@ ForChainStmt Parser::parse_for_chain_statement(const Token& keyword) {
 
     if (match(TokenType::LBrace)) {
         auto block = parse_block();
-        stmt.body = std::move(block);
+        stmt.body = ::std::move(block);
     } else {
-        auto block = std::make_unique<Block>();
+        auto block = ::std::make_unique<Block>();
         block->location = stmt.loop_parameter.location;
         block->statements.push_back(parse_statement());
-        stmt.body = std::move(*block);
+        stmt.body = ::std::move(*block);
     }
     return stmt;
 }
@@ -394,9 +394,9 @@ ExpressionStmt Parser::parse_expression_statement(const Token& start_token) {
     return stmt;
 }
 
-std::string Parser::collect_text_until(const std::vector<TokenType>& end_types, SourceLocation* span_location) {
+::std::string Parser::collect_text_until(const ::std::vector<TokenType>& end_types, SourceLocation* span_location) {
     auto is_end_type = [&](TokenType t) {
-        return std::find(end_types.begin(), end_types.end(), t) != end_types.end();
+        return ::std::find(end_types.begin(), end_types.end(), t) != end_types.end();
     };
 
     if (is_end_type(peek().type)) {
@@ -406,10 +406,10 @@ std::string Parser::collect_text_until(const std::vector<TokenType>& end_types, 
     const Token& first = peek();
     const Token* last = nullptr;
 
-    std::size_t paren_depth = 0;
-    std::size_t brace_depth = 0;
-    std::size_t bracket_depth = 0;
-    std::size_t angle_depth = 0;
+    ::std::size_t paren_depth = 0;
+    ::std::size_t brace_depth = 0;
+    ::std::size_t bracket_depth = 0;
+    ::std::size_t angle_depth = 0;
 
     while (!is_at_end()) {
         if (is_end_type(peek().type) && paren_depth == 0 && brace_depth == 0 && bracket_depth == 0 && angle_depth == 0) {
@@ -458,7 +458,7 @@ std::string Parser::collect_text_until(const std::vector<TokenType>& end_types, 
     return slice(first, *last);
 }
 
-std::string Parser::collect_text_until_semicolon() {
+::std::string Parser::collect_text_until_semicolon() {
     return collect_text_until({TokenType::Semicolon});
 }
 
@@ -467,14 +467,14 @@ IncludeDecl Parser::parse_include_directive(const Token& directive) {
     IncludeDecl include;
     include.location = directive.location;
 
-    auto remainder = trim_copy(text.substr(std::string("#include").size()));
+    auto remainder = trim_copy(text.substr(::std::string("#include").size()));
     if (!remainder.empty() && remainder.front() == '<' && remainder.back() == '>') {
         include.is_system = true;
         include.path = remainder.substr(1, remainder.size() - 2);
     } else if (!remainder.empty() && remainder.front() == '"' && remainder.back() == '"') {
         include.path = remainder.substr(1, remainder.size() - 2);
     } else {
-        include.path = std::move(remainder);
+        include.path = ::std::move(remainder);
     }
     return include;
 }
@@ -487,7 +487,7 @@ bool Parser::is_cpp_raw_declaration() const {
         return false;
     }
 
-    const std::string& lex = peek().lexeme;
+    const ::std::string& lex = peek().lexeme;
     return lex == "template" || lex == "struct" || lex == "class" || lex == "enum" || lex == "extern";
 }
 
@@ -495,10 +495,10 @@ RawDecl Parser::parse_raw_declaration() {
     const Token& first = advance();
     const Token* last = &first;
 
-    std::size_t brace_depth = 0;
-    std::size_t paren_depth = 0;
-    std::size_t bracket_depth = 0;
-    std::size_t angle_depth = 0;
+    ::std::size_t brace_depth = 0;
+    ::std::size_t paren_depth = 0;
+    ::std::size_t bracket_depth = 0;
+    ::std::size_t angle_depth = 0;
 
     auto update_depth = [&](const Token& token) {
         switch (token.type) {
@@ -553,32 +553,32 @@ RawDecl Parser::parse_raw_declaration() {
     return raw;
 }
 
-std::string Parser::slice(const Token& first, const Token& last) const {
+::std::string Parser::slice(const Token& first, const Token& last) const {
     auto start = first.offset;
     auto end = last.end_offset();
     if (start > end || end > m_source.size()) {
         throw ParseError("Invalid token span");
     }
-    std::string text = m_source.substr(start, end - start);
+    ::std::string text = m_source.substr(start, end - start);
 
-    auto view = std::string_view(text);
+    auto view = ::std::string_view(text);
     while (!view.empty() && is_whitespace(view.front())) {
         view.remove_prefix(1);
     }
     while (!view.empty() && is_whitespace(view.back())) {
         view.remove_suffix(1);
     }
-    return std::string(view);
+    return ::std::string(view);
 }
 
-std::string Parser::trim_copy(std::string_view text) {
+::std::string Parser::trim_copy(::std::string_view text) {
     while (!text.empty() && is_whitespace(text.front())) {
         text.remove_prefix(1);
     }
     while (!text.empty() && is_whitespace(text.back())) {
         text.remove_suffix(1);
     }
-    return std::string(text);
+    return ::std::string(text);
 }
 
 bool Parser::is_at_end() const {
@@ -625,11 +625,11 @@ const Token& Parser::advance() {
     return previous();
 }
 
-const Token& Parser::consume(TokenType type, const std::string& message) {
+const Token& Parser::consume(TokenType type, const ::std::string& message) {
     if (check(type)) {
         return advance();
     }
-    std::ostringstream oss;
+    ::std::ostringstream oss;
     const auto& token = peek();
     oss << message << " at " << token.location.line << ':' << token.location.column;
     throw ParseError(oss.str());

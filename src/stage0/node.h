@@ -37,7 +37,7 @@ class Node;
  * Global Value Numbering support - Following Simple compiler Chapter 9
  */
 struct NodeHash {
-    std::size_t operator()(const Node* n) const;
+    ::std::size_t operator()(const Node* n) const;
 };
 
 struct NodeEqual {
@@ -49,7 +49,7 @@ struct NodeEqual {
 public:
     MinusNode(Node* val);
 
-    std::string label() const override { return "-"; }
+    ::std::string label() const override { return "-"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::NEG; }
 };diate representation.
@@ -62,19 +62,19 @@ protected:
     static int UNIQUE_ID;  // Global counter for unique node IDs
 
     // Global Value Numbering table - Chapter 9
-    static std::unordered_set<Node*, NodeHash, NodeEqual> GVN;
+    static ::std::unordered_set<Node*, NodeHash, NodeEqual> GVN;
 
     /**
      * Cached hash code and edge lock for GVN.
      * If 0, node is unlocked and NOT in GVN.
      * If non-zero, node is edge-locked and IS in GVN.
      */
-    mutable std::size_t _hash = 0;
+    mutable ::std::size_t _hash = 0;
 
     /**
      * Dependencies for distant neighbor peepholes - Chapter 9
      */
-    std::vector<Node*> _deps;
+    ::std::vector<Node*> _deps;
 
 public:
     /**
@@ -83,7 +83,7 @@ public:
      * Ordering is required because e.g. "a/b" is different from "b/a".
      * The first input (offset 0) is often a Control node.
      */
-    std::vector<Node*> _inputs;
+    ::std::vector<Node*> _inputs;
 
     /**
      * Outputs reference Nodes that are not null and have this Node as an
@@ -93,7 +93,7 @@ public:
      * Outputs directly match inputs, making a directed graph that can be
      * walked in either direction.
      */
-    std::vector<Node*> _outputs;
+    ::std::vector<Node*> _outputs;
 
     /**
      * Unique dense integer ID assigned to each node.
@@ -150,12 +150,12 @@ public:
     /**
      * Get a string representation for debugging.
      */
-    virtual std::string toString() const;
+    virtual ::std::string toString() const;
 
     /**
      * Get the label for graph visualization.
      */
-    virtual std::string label() const = 0;
+    virtual ::std::string label() const = 0;
 
     /**
      * Compute the type for this node based on its inputs.
@@ -202,7 +202,7 @@ public:
      */
 
     // Compute hash code for this node
-    virtual std::size_t hashCode() const;
+    virtual ::std::size_t hashCode() const;
 
     // Check value equality for GVN
     virtual bool equals(const Node* other) const;
@@ -217,7 +217,7 @@ public:
     void addDep(Node* dep) { _deps.push_back(dep); }
 
     // Get dependencies
-    const std::vector<Node*>& deps() const { return _deps; }
+    const ::std::vector<Node*>& deps() const { return _deps; }
 
     // MLIR integration hooks (Band 1 premature integration)
     virtual bool hasSideEffects() const { return false; }
@@ -225,7 +225,7 @@ public:
     virtual int schedulePriority() const { return 0; }
 
     // MLIR type for this node (preparation for emission)
-    virtual std::string getMLIRType() const {
+    virtual ::std::string getMLIRType() const {
         if (_type) return "i32";  // Default to 32-bit integer
         return "unknown";
     }
@@ -330,7 +330,7 @@ public:
     StartNode();
 
     bool blockHead() const override { return true; }
-    std::string label() const override { return "Start"; }
+    ::std::string label() const override { return "Start"; }
     CFGNode* idom() override { return nullptr; }
     int idepth() override { return 0; }
     int loopDepth() override { return 1; }
@@ -347,8 +347,8 @@ public:
 
     ConstantNode(int value, Node* start);
 
-    std::string label() const override {
-        return std::to_string(_value);
+    ::std::string label() const override {
+        return ::std::to_string(_value);
     }
     NodeKind getKind() const override { return NodeKind::CONSTANT; }
 };
@@ -362,7 +362,7 @@ public:
     ReturnNode(Node* ctrl, Node* value);
 
     bool isCFG() const override { return true; }
-    std::string label() const override { return "Return"; }
+    ::std::string label() const override { return "Return"; }
     NodeKind getKind() const override { return NodeKind::RETURN; }
 
     /**
@@ -376,7 +376,7 @@ public:
 // INSTRUCTION: Add after ReturnNode
 class StopNode : public CFGNode {
     // Collects all Returns - has variable number of inputs
-    std::vector<ReturnNode*> _returns;
+    ::std::vector<ReturnNode*> _returns;
 public:
     void addReturn(ReturnNode* ret) {
         _inputs.push_back(ret);
@@ -385,7 +385,7 @@ public:
     }
     bool blockHead() const override { return true; }
     bool blockTail() const override { return true; }
-    std::string label() const override { return "Stop"; }
+    ::std::string label() const override { return "Stop"; }
     CFGNode* idom() override { return nullptr; }
     int idepth() override;
     int loopDepth() override { return 1; }
@@ -395,12 +395,12 @@ class PhiNode;
 
 class RegionNode : public CFGNode {
 protected:
-    std::vector<PhiNode*> _phis;  // Phis controlled by this region
+    ::std::vector<PhiNode*> _phis;  // Phis controlled by this region
 public:
     RegionNode(Node* ctrl1, Node* ctrl2) : CFGNode() { setInput(0, ctrl1); setInput(1, ctrl2); }
     void addPhi(PhiNode* phi);  // CRITICAL: Must set phi->_inputs[0] = this
     bool blockHead() const override { return true; }
-    std::string label() const override { return "Region"; }
+    ::std::string label() const override { return "Region"; }
     CFGNode* idom() override;
     int idepth() override;
     int loopDepth() override;
@@ -423,7 +423,7 @@ class LoopNode : public RegionNode {
 public:
     LoopNode(Node* entry) : RegionNode(entry, nullptr) {}
 
-    std::string label() const override { return "Loop"; }
+    ::std::string label() const override { return "Loop"; }
     CFGNode* idom() override;
     int idepth() override;
     int loopDepth() override;
@@ -448,10 +448,10 @@ public:
 
 class PhiNode : public Node {
 protected:
-    std::string _label;  // Variable name for debugging
+    ::std::string _label;  // Variable name for debugging
 public:
     // CRITICAL: Region can be nullptr at construction
-    PhiNode(const std::string& label, Node* region, Node* val1, Node* val2)
+    PhiNode(const ::std::string& label, Node* region, Node* val1, Node* val2)
         : Node(), _label(label) { setInput(0, region); setInput(1, val1); setInput(2, val2); }
 
     Node* region() const { return in(0); }
@@ -459,7 +459,7 @@ public:
 
     // CRITICAL: compute() must handle cycles
     Type* compute() override;
-    std::string label() const override { return "Phi[" + _label + "]"; }
+    ::std::string label() const override { return "Phi[" + _label + "]"; }
     NodeKind getKind() const override { return NodeKind::PHI; }
 };
 
@@ -467,7 +467,7 @@ class IfNode : public CFGNode {
 public:
     IfNode(Node* ctrl, Node* pred) : CFGNode() { setInput(0, ctrl); setInput(1, pred); }
     bool blockTail() const override { return true; }
-    std::string label() const override { return "If"; }
+    ::std::string label() const override { return "If"; }
     CFGNode* idom() override;
     NodeKind getKind() const override { return NodeKind::IF; }
 };
@@ -477,8 +477,8 @@ class ProjNode : public Node {
 public:
     ProjNode(Node* ctrl, int idx) : Node(), _idx(idx) { setInput(0, ctrl); }
     bool isCFG() const override { return in(0) && in(0)->isCFG(); }
-    std::string label() const override {
-        return std::string("Proj[") + (_idx ? "F" : "T") + "]";
+    ::std::string label() const override {
+        return ::std::string("Proj[") + (_idx ? "F" : "T") + "]";
     }
     int idx() const { return _idx; }
     NodeKind getKind() const override { return NodeKind::PROJ; }
@@ -490,10 +490,10 @@ public:
  */
 class CProjNode : public CFGNode {
     int _idx;  // 0 for true/ctrl, 1 for false
-    std::string _label;
+    ::std::string _label;
 
 public:
-    CProjNode(Node* ctrl, int idx, const std::string& label = "")
+    CProjNode(Node* ctrl, int idx, const ::std::string& label = "")
         : CFGNode(), _idx(idx), _label(label) {
         setInput(0, ctrl);
     }
@@ -505,9 +505,9 @@ public:
         return dynamic_cast<IfNode*>(in(0)) != nullptr;
     }
 
-    std::string label() const override {
+    ::std::string label() const override {
         if (!_label.empty()) return _label;
-        return std::string("CProj[") + (_idx ? "F" : "T") + "]";
+        return ::std::string("CProj[") + (_idx ? "F" : "T") + "]";
     }
 
     CFGNode* idom() override { return dynamic_cast<CFGNode*>(in(0)); }
@@ -540,7 +540,7 @@ class NeverNode : public IfNode {
 public:
     NeverNode(Node* ctrl) : IfNode(ctrl, nullptr) {}
 
-    std::string label() const override { return "Never"; }
+    ::std::string label() const override { return "Never"; }
 
     // Never executes, so predicate is always false
     Type* compute() override;
@@ -560,7 +560,7 @@ class EQNode : public BoolNode {
 public:
     EQNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
     Node* peephole() override; // fold if both constant
-    std::string label() const override { return "=="; }
+    ::std::string label() const override { return "=="; }
     NodeKind getKind() const override { return NodeKind::EQ; }
 };
 
@@ -568,7 +568,7 @@ class LTNode : public BoolNode {
 public:
     LTNode(Node* lhs, Node* rhs) : BoolNode(lhs, rhs) {}
     Node* peephole() override; // fold if both constant
-    std::string label() const override { return "<"; }
+    ::std::string label() const override { return "<"; }
     NodeKind getKind() const override { return NodeKind::LT; }
 };
 
@@ -580,7 +580,7 @@ class AddNode : public Node {
 public:
     AddNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "+"; }
+    ::std::string label() const override { return "+"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::ADD; }
 };
@@ -593,7 +593,7 @@ class SubNode : public Node {
 public:
     SubNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "-"; }
+    ::std::string label() const override { return "-"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::SUB; }
 };
@@ -606,7 +606,7 @@ class MulNode : public Node {
 public:
     MulNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "*"; }
+    ::std::string label() const override { return "*"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::MUL; }
 };
@@ -619,7 +619,7 @@ class DivNode : public Node {
 public:
     DivNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "/"; }
+    ::std::string label() const override { return "/"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::DIV; }
 };
@@ -636,7 +636,7 @@ class AndNode : public Node {
 public:
     AndNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "&"; }
+    ::std::string label() const override { return "&"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::AND; }
 };
@@ -648,7 +648,7 @@ class OrNode : public Node {
 public:
     OrNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "|"; }
+    ::std::string label() const override { return "|"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::OR; }
 };
@@ -660,7 +660,7 @@ class XorNode : public Node {
 public:
     XorNode(Node* lhs, Node* rhs);
 
-    std::string label() const override { return "^"; }
+    ::std::string label() const override { return "^"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::XOR; }
 };
@@ -672,7 +672,7 @@ class ShlNode : public Node {
 public:
     ShlNode(Node* value, Node* shift);
 
-    std::string label() const override { return "<<"; }
+    ::std::string label() const override { return "<<"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::SHL; }
 };
@@ -684,7 +684,7 @@ class AShrNode : public Node {
 public:
     AShrNode(Node* value, Node* shift);
 
-    std::string label() const override { return ">>>"; }
+    ::std::string label() const override { return ">>>"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::ASHR; }
 };
@@ -696,7 +696,7 @@ class LShrNode : public Node {
 public:
     LShrNode(Node* value, Node* shift);
 
-    std::string label() const override { return ">>"; }
+    ::std::string label() const override { return ">>"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::LSHR; }
 };
@@ -709,7 +709,7 @@ class MinusNode : public Node {
 public:
     MinusNode(Node* value);
 
-    std::string label() const override { return "-"; }
+    ::std::string label() const override { return "-"; }
     Type* compute() override;
     NodeKind getKind() const override { return NodeKind::NEG; }
 };
@@ -725,7 +725,7 @@ public:
     BreakNode(Node* ctrl) : Node() { setInput(0, ctrl); }
 
     bool isCFG() const override { return true; }
-    std::string label() const override { return "Break"; }
+    ::std::string label() const override { return "Break"; }
     NodeKind getKind() const override { return NodeKind::BREAK; }
 };
 
@@ -740,7 +740,7 @@ public:
     ContinueNode(Node* ctrl) : Node() { setInput(0, ctrl); }
 
     bool isCFG() const override { return true; }
-    std::string label() const override { return "Continue"; }
+    ::std::string label() const override { return "Continue"; }
     NodeKind getKind() const override { return NodeKind::CONTINUE; }
 };
 
@@ -770,32 +770,32 @@ public:
  * Returns a pointer to the newly allocated struct.
  */
 class NewNode : public Node {
-    std::string _structType;  // Name of struct type being allocated
+    ::std::string _structType;  // Name of struct type being allocated
     TypeStruct* _type;        // Chapter 16: Struct type metadata
-    std::unordered_map<std::string, Node*> _fieldInits;  // Chapter 16: Field initializers
+    ::std::unordered_map<::std::string, Node*> _fieldInits;  // Chapter 16: Field initializers
 
 public:
-    NewNode(Node* ctrl, const std::string& structType, TypeStruct* type = nullptr)
+    NewNode(Node* ctrl, const ::std::string& structType, TypeStruct* type = nullptr)
         : Node(), _structType(structType), _type(type) { setInput(0, ctrl); }
 
-    std::string label() const override { return "New[" + _structType + "]"; }
+    ::std::string label() const override { return "New[" + _structType + "]"; }
     bool hasSideEffects() const override { return true; }
     NodeKind getKind() const override { return NodeKind::ALLOC; }
 
-    const std::string& structType() const { return _structType; }
+    const ::std::string& structType() const { return _structType; }
 
     /**
      * Chapter 16: Add a field initializer.
      * Used during constructor parsing: new Point { x=3; y=4; }
      */
-    void setFieldInit(const std::string& fieldName, Node* value) {
+    void setFieldInit(const ::std::string& fieldName, Node* value) {
         _fieldInits[fieldName] = value;
     }
 
     /**
      * Chapter 16: Get field initializer (if any).
      */
-    Node* getFieldInit(const std::string& fieldName) const {
+    Node* getFieldInit(const ::std::string& fieldName) const {
         auto it = _fieldInits.find(fieldName);
         return it != _fieldInits.end() ? it->second : nullptr;
     }
@@ -803,7 +803,7 @@ public:
     /**
      * Chapter 16: Get all field initializers.
      */
-    const std::unordered_map<std::string, Node*>& fieldInits() const {
+    const ::std::unordered_map<::std::string, Node*>& fieldInits() const {
         return _fieldInits;
     }
 
@@ -829,17 +829,17 @@ public:
  * 2: Field offset (constant)
  */
 class LoadNode : public MemOpNode {
-    std::string _fieldName;  // For debugging
+    ::std::string _fieldName;  // For debugging
 
 public:
-    LoadNode(int alias, Node* mem, Node* ptr, Node* offset, const std::string& field)
+    LoadNode(int alias, Node* mem, Node* ptr, Node* offset, const ::std::string& field)
         : MemOpNode(alias), _fieldName(field) {
         setInput(0, mem);
         setInput(1, ptr);
         setInput(2, offset);
     }
 
-    std::string label() const override { return "Load[" + _fieldName + "]"; }
+    ::std::string label() const override { return "Load[" + _fieldName + "]"; }
 
     NodeKind getKind() const override { return NodeKind::LOAD; }
 
@@ -861,10 +861,10 @@ public:
  * Returns: Updated memory slice
  */
 class StoreNode : public MemOpNode {
-    std::string _fieldName;  // For debugging
+    ::std::string _fieldName;  // For debugging
 
 public:
-    StoreNode(int alias, Node* mem, Node* ptr, Node* offset, Node* value, const std::string& field)
+    StoreNode(int alias, Node* mem, Node* ptr, Node* offset, Node* value, const ::std::string& field)
         : MemOpNode(alias), _fieldName(field) {
         setInput(0, mem);
         setInput(1, ptr);
@@ -872,7 +872,7 @@ public:
         setInput(3, value);
     }
 
-    std::string label() const override { return "Store[" + _fieldName + "]"; }
+    ::std::string label() const override { return "Store[" + _fieldName + "]"; }
     bool hasSideEffects() const override { return true; }
 
     NodeKind getKind() const override { return NodeKind::STORE; }
@@ -895,7 +895,7 @@ class MemProjNode : public Node {
 public:
     MemProjNode(Node* ctrl, int alias) : Node(), _alias(alias) { setInput(0, ctrl); }
 
-    std::string label() const override { return "MemProj[" + std::to_string(_alias) + "]"; }
+    ::std::string label() const override { return "MemProj[" + ::std::to_string(_alias) + "]"; }
     int alias() const { return _alias; }
 
     NodeKind getKind() const override { return NodeKind::PROJ; }
@@ -917,7 +917,7 @@ public:
         setInput(1, value);
     }
 
-    std::string label() const override { return "Cast"; }
+    ::std::string label() const override { return "Cast"; }
 
     NodeKind getKind() const override { return NodeKind::CAST; }
     Type* toType() const { return _toType; }
@@ -939,7 +939,7 @@ public:
      * Stack of symbol tables. Each symbol table is a map from variable name
      * to an index into this ScopeNode's inputs.
      */
-    std::vector<std::unordered_map<std::string, int>> _scopes;
+    ::std::vector<::std::unordered_map<::std::string, int>> _scopes;
 
     /**
      * Track the next available input index for new variables.
@@ -948,7 +948,7 @@ public:
 
     ScopeNode();
 
-    std::string label() const override { return "Scope"; }
+    ::std::string label() const override { return "Scope"; }
     NodeKind getKind() const override { return NodeKind::CONSTANT; }  // Symbol table scope
 
     // Duplicate current scope bindings into a new ScopeNode
@@ -956,7 +956,7 @@ public:
     ScopeNode* duplicate(bool forLoop = false) const;
 
     // Expose a snapshot of current visible variables -> Nodes
-    std::unordered_map<std::string, Node*> currentBindings() const;
+    ::std::unordered_map<::std::string, Node*> currentBindings() const;
 
     // Merge two scopes at a region (for if/while)
     void mergeScopes(ScopeNode* that);
@@ -979,24 +979,24 @@ public:
      * Define a variable in the current scope.
      * Returns the input index where the value is stored.
      */
-    int define(const std::string& name, Node* value);
+    int define(const ::std::string& name, Node* value);
 
     /**
      * Update a variable's value.
      * Looks up the variable in the scope stack and updates its value.
      */
-    void update(const std::string& name, Node* value);
+    void update(const ::std::string& name, Node* value);
 
     /**
      * Lookup a variable in the scope stack.
      * Returns nullptr if not found.
      */
-    Node* lookup(const std::string& name) const;
+    Node* lookup(const ::std::string& name) const;
 
     /**
      * Check if a variable exists in any scope.
      */
-    bool contains(const std::string& name) const;
+    bool contains(const ::std::string& name) const;
 
     /**
      * Get the current scope level (depth of scope stack).
@@ -1040,7 +1040,7 @@ public:
 
     Type* elementType() const { return _element_type; }
 
-    std::string label() const override {
+    ::std::string label() const override {
         return "NewArray[" + _element_type->toString() + "]";
     }
 
@@ -1066,7 +1066,7 @@ public:
         setInput(2, index);
     }
 
-    std::string label() const override { return "ALoad"; }
+    ::std::string label() const override { return "ALoad"; }
 
     Node* mem() const { return in(0); }
     Node* array() const { return in(1); }
@@ -1095,7 +1095,7 @@ public:
         setInput(3, value);
     }
 
-    std::string label() const override { return "AStore"; }
+    ::std::string label() const override { return "AStore"; }
 
     bool hasSideEffects() const override { return true; }
 
@@ -1120,7 +1120,7 @@ public:
         setInput(0, array);
     }
 
-    std::string label() const override { return "ArrayLength"; }
+    ::std::string label() const override { return "ArrayLength"; }
 
     Node* array() const { return in(0); }
 
@@ -1145,7 +1145,7 @@ public:
     FunNode(Node* start, TypeFunPtr* sig)
         : RegionNode(start, nullptr), _sig(sig), _ret(nullptr), _folding(false) {}
 
-    std::string label() const override { return "Fun"; }
+    ::std::string label() const override { return "Fun"; }
     NodeKind getKind() const override { return NodeKind::FUNCTION; }
 
     TypeFunPtr* sig() const { return _sig; }
@@ -1174,12 +1174,12 @@ private:
     int _idx;  // Parameter index (0 = RPC, 1 = memory, 2+ = actual parameters)
 
 public:
-    ParmNode(const std::string& label, int idx, Type* declaredType, Node* fun)
+    ParmNode(const ::std::string& label, int idx, Type* declaredType, Node* fun)
         : PhiNode(label, nullptr, nullptr, nullptr), _idx(idx) {
         setInput(0, fun);
     }
 
-    std::string label() const override { return "Parm_" + _label; }
+    ::std::string label() const override { return "Parm_" + _label; }
     NodeKind getKind() const override { return NodeKind::PARAMETER; }
 
     int idx() const { return _idx; }
@@ -1206,7 +1206,7 @@ public:
         setInput(2, fptr);  // Function pointer is last input
     }
 
-    std::string label() const override { return "Call"; }
+    ::std::string label() const override { return "Call"; }
     NodeKind getKind() const override { return NodeKind::CALL; }
 
     Node* ctrl() const { return in(0); }
@@ -1240,7 +1240,7 @@ public:
         setInput(0, call);
     }
 
-    std::string label() const override { return "CEnd"; }
+    ::std::string label() const override { return "CEnd"; }
     NodeKind getKind() const override { return NodeKind::CALL_END; }
 
     CallNode* call() const { return static_cast<CallNode*>(in(0)); }

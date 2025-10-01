@@ -40,14 +40,14 @@ private:
     mlir::OpBuilder* builder;
 
     // Map from SoN nodes to MLIR values
-    std::unordered_map<Node*, mlir::Value*> valueMap;
+    ::std::unordered_map<Node*, mlir::Value*> valueMap;
 
     // Map from SoN nodes to MLIR blocks (for control nodes)
-    std::unordered_map<Node*, mlir::Block*> blockMap;
+    ::std::unordered_map<Node*, mlir::Block*> blockMap;
 
     // Track visited nodes during scheduling
-    std::unordered_set<Node*> visited;
-    std::unordered_set<Node*> scheduled;
+    ::std::unordered_set<Node*> visited;
+    ::std::unordered_set<Node*> scheduled;
 
 public:
     MLIREmitter();
@@ -64,7 +64,7 @@ private:
      * Schedule nodes in a region between control points.
      * Returns nodes in execution order.
      */
-    std::vector<Node*> scheduleRegion(Node* from, Node* to);
+    ::std::vector<Node*> scheduleRegion(Node* from, Node* to);
 
     /**
      * Emit MLIR operation for a single node.
@@ -103,15 +103,15 @@ private:
  */
 class SoNScheduler {
 private:
-    std::unordered_set<Node*> visited;
-    std::vector<Node*> schedule;
+    ::std::unordered_set<Node*> visited;
+    ::std::vector<Node*> schedule;
 
 public:
     /**
      * Schedule nodes between two control points.
      * Uses reverse postorder traversal of data dependencies.
      */
-    std::vector<Node*> scheduleBlock(Node* entry, Node* exit);
+    ::std::vector<Node*> scheduleBlock(Node* entry, Node* exit);
 
 private:
     void visitNode(Node* node);

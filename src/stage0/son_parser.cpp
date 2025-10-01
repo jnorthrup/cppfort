@@ -16,7 +16,7 @@ SoNParser::~SoNParser() {
     // In a real implementation, we'd have proper memory management
 }
 
-Node* SoNParser::parse(const std::string& source) {
+Node* SoNParser::parse(const ::std::string& source) {
     _source = source;
     _position = 0;
 
@@ -35,7 +35,7 @@ Node* SoNParser::parse(const std::string& source) {
 
     // Ensure we consumed all input
     if (!isEOF()) {
-        throw std::runtime_error("Expected EOF but found: " + std::string(1, peek()));
+        throw ::std::runtime_error("Expected EOF but found: " + ::std::string(1, peek()));
     }
 
     return ret;
@@ -98,13 +98,13 @@ Node* SoNParser::parseStatement() {
         return parseAssignment();
     }
 
-    throw std::runtime_error("Expected statement (declaration, block, assignment, or return)");
+    throw ::std::runtime_error("Expected statement (declaration, block, assignment, or return)");
 }
 
 Node* SoNParser::parseReturn() {
     // Consume "return"
     if (!consume("return")) {
-        throw std::runtime_error("Expected 'return' keyword");
+        throw ::std::runtime_error("Expected 'return' keyword");
     }
 
     skipWhitespace();
@@ -116,7 +116,7 @@ Node* SoNParser::parseReturn() {
 
     // Consume semicolon
     if (!consume(";")) {
-        throw std::runtime_error("Expected ';' after return statement");
+        throw ::std::runtime_error("Expected ';' after return statement");
     }
 
     // Create ReturnNode with current control and the value
@@ -303,14 +303,14 @@ Node* SoNParser::parsePrimary() {
         Node* expr = parseExpression();
         skipWhitespace();
         if (peek() != ')') {
-            throw std::runtime_error("Expected ')'");
+            throw ::std::runtime_error("Expected ')'");
         }
         advance();
         return expr;
     }
 
     // Handle integer literals
-    if (std::isdigit(peek()) || (peek() == '0')) {
+    if (::std::isdigit(peek()) || (peek() == '0')) {
         int value = parseInteger();
         // Create ConstantNode with START as input for graph walking
         return new ConstantNode(value, START);
@@ -318,15 +318,15 @@ Node* SoNParser::parsePrimary() {
 
     // Handle identifiers (Chapter 3)
     if (isAlpha(peek())) {
-        std::string name = parseIdentifier();
+        ::std::string name = parseIdentifier();
         Node* value = _scope->lookup(name);
         if (value == nullptr) {
-            throw std::runtime_error("Undefined variable: " + name);
+            throw ::std::runtime_error("Undefined variable: " + name);
         }
         return value;
     }
 
-    throw std::runtime_error("Expected integer literal, identifier, or '('");
+    throw ::std::runtime_error("Expected integer literal, identifier, or '('");
 }
 
 // INSTRUCTION: If statement parsing pattern
@@ -376,7 +376,7 @@ Node* SoNParser::parseIf() {
         (void)name; (void)node;
     }
     // Union
-    std::set<std::string> all;
+    ::std::set<::std::string> all;
     for (const auto& [k,_] : s1) all.insert(k);
     for (const auto& [k,_] : s2) all.insert(k);
     for (const auto& name : all) {
@@ -405,19 +405,19 @@ Node* SoNParser::parseIf() {
 Node* SoNParser::parseDeclaration() {
     // Consume "int"
     if (!consume("int")) {
-        throw std::runtime_error("Expected 'int' keyword");
+        throw ::std::runtime_error("Expected 'int' keyword");
     }
 
     skipWhitespace();
 
     // Parse identifier
-    std::string name = parseIdentifier();
+    ::std::string name = parseIdentifier();
 
     skipWhitespace();
 
     // Consume "="
     if (!consume("=")) {
-        throw std::runtime_error("Expected '=' in declaration");
+        throw ::std::runtime_error("Expected '=' in declaration");
     }
 
     skipWhitespace();
@@ -429,7 +429,7 @@ Node* SoNParser::parseDeclaration() {
 
     // Consume ";"
     if (!consume(";")) {
-        throw std::runtime_error("Expected ';' after declaration");
+        throw ::std::runtime_error("Expected ';' after declaration");
     }
 
     // Define the variable in the current scope
@@ -441,7 +441,7 @@ Node* SoNParser::parseDeclaration() {
 Node* SoNParser::parseBlock() {
     // Consume "{"
     if (!consume("{")) {
-        throw std::runtime_error("Expected '{'");
+        throw ::std::runtime_error("Expected '{'");
     }
 
     // Push a new scope
@@ -466,7 +466,7 @@ Node* SoNParser::parseBlock() {
 
     // Consume "}"
     if (!consume("}")) {
-        throw std::runtime_error("Expected '}'");
+        throw ::std::runtime_error("Expected '}'");
     }
 
     // Pop the scope
@@ -477,13 +477,13 @@ Node* SoNParser::parseBlock() {
 
 Node* SoNParser::parseAssignment() {
     // Parse identifier
-    std::string name = parseIdentifier();
+    ::std::string name = parseIdentifier();
 
     skipWhitespace();
 
     // Consume "="
     if (!consume("=")) {
-        throw std::runtime_error("Expected '=' in assignment");
+        throw ::std::runtime_error("Expected '=' in assignment");
     }
 
     skipWhitespace();
@@ -495,7 +495,7 @@ Node* SoNParser::parseAssignment() {
 
     // Consume ";"
     if (!consume(";")) {
-        throw std::runtime_error("Expected ';' after assignment");
+        throw ::std::runtime_error("Expected ';' after assignment");
     }
 
     // Update the variable
@@ -505,12 +505,12 @@ Node* SoNParser::parseAssignment() {
 }
 
 void SoNParser::skipWhitespace() {
-    while (!isEOF() && std::isspace(_source[_position])) {
+    while (!isEOF() && ::std::isspace(_source[_position])) {
         _position++;
     }
 }
 
-bool SoNParser::peek(const std::string& expected) {
+bool SoNParser::peek(const ::std::string& expected) {
     size_t pos = _position;
     for (char c : expected) {
         if (pos >= _source.length() || _source[pos] != c) {
@@ -519,13 +519,13 @@ bool SoNParser::peek(const std::string& expected) {
         pos++;
     }
     // Make sure it's not part of a larger identifier (only for alphabetic keywords)
-    if (std::isalpha(expected[0]) && pos < _source.length() && isAlphaNum(_source[pos])) {
+    if (::std::isalpha(expected[0]) && pos < _source.length() && isAlphaNum(_source[pos])) {
         return false;
     }
     return true;
 }
 
-bool SoNParser::consume(const std::string& expected) {
+bool SoNParser::consume(const ::std::string& expected) {
     if (peek(expected)) {
         _position += expected.length();
         return true;
@@ -534,7 +534,7 @@ bool SoNParser::consume(const std::string& expected) {
 }
 
 int SoNParser::parseInteger() {
-    std::string numStr;
+    ::std::string numStr;
     bool negative = false;
 
     if (peek() == '-') {
@@ -542,15 +542,15 @@ int SoNParser::parseInteger() {
         advance();
     }
 
-    if (!std::isdigit(peek())) {
-        throw std::runtime_error("Expected digit");
+    if (!::std::isdigit(peek())) {
+        throw ::std::runtime_error("Expected digit");
     }
 
-    while (!isEOF() && std::isdigit(peek())) {
+    while (!isEOF() && ::std::isdigit(peek())) {
         numStr += advance();
     }
 
-    int value = std::stoi(numStr);
+    int value = ::std::stoi(numStr);
     return negative ? -value : value;
 }
 
@@ -572,11 +572,11 @@ bool SoNParser::isEOF() const {
     return _position >= _source.length();
 }
 
-std::string SoNParser::parseIdentifier() {
-    std::string id;
+::std::string SoNParser::parseIdentifier() {
+    ::std::string id;
 
     if (!isAlpha(peek())) {
-        throw std::runtime_error("Expected identifier");
+        throw ::std::runtime_error("Expected identifier");
     }
 
     // First character must be alphabetic or underscore
@@ -602,8 +602,8 @@ bool SoNParser::isAlphaNum(char c) const {
     return isAlpha(c) || isDigit(c);
 }
 
-std::string SoNParser::visualize() const {
-    std::ostringstream ss;
+::std::string SoNParser::visualize() const {
+    ::std::ostringstream ss;
     ss << "Sea of Nodes Graph:\n";
     ss << "===================\n";
 
@@ -616,8 +616,8 @@ std::string SoNParser::visualize() const {
     ss << "Nodes:\n";
 
     // Walk from START
-    std::vector<Node*> visited;
-    std::vector<Node*> worklist;
+    ::std::vector<Node*> visited;
+    ::std::vector<Node*> worklist;
     worklist.push_back(START);
 
     while (!worklist.empty()) {
@@ -625,7 +625,7 @@ std::string SoNParser::visualize() const {
         worklist.pop_back();
 
         // Check if already visited
-        if (std::find(visited.begin(), visited.end(), n) != visited.end()) {
+        if (::std::find(visited.begin(), visited.end(), n) != visited.end()) {
             continue;
         }
         visited.push_back(n);

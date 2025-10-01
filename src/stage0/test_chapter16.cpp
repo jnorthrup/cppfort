@@ -17,7 +17,7 @@
 using namespace cppfort::ir;
 
 void test_struct_type_creation() {
-    std::cout << "Test: Struct type creation\n";
+    ::std::cout << "Test: Struct type creation\n";
 
     // Create a simple Point struct
     TypeStruct* pointType = TypeStruct::create("Point");
@@ -45,11 +45,11 @@ void test_struct_type_creation() {
     assert(!xField->isFinal);
     assert(!yField->isFinal);
 
-    std::cout << "  PASS: Struct type creation works\n";
+    ::std::cout << "  PASS: Struct type creation works\n";
 }
 
 void test_final_fields() {
-    std::cout << "Test: Final fields\n";
+    ::std::cout << "Test: Final fields\n";
 
     // Create struct with final fields
     TypeStruct* personType = TypeStruct::create("Person");
@@ -64,11 +64,11 @@ void test_final_fields() {
     assert(nameField->isFinal);
     assert(!ageField->isFinal);
 
-    std::cout << "  PASS: Final fields work\n";
+    ::std::cout << "  PASS: Final fields work\n";
 }
 
 void test_field_initialization_defaults() {
-    std::cout << "Test: Field initialization with defaults\n";
+    ::std::cout << "Test: Field initialization with defaults\n";
 
     // Create struct with default values
     TypeStruct* configType = TypeStruct::create("Config");
@@ -88,11 +88,11 @@ void test_field_initialization_defaults() {
     assert(portField->initialValue == defaultPort);
     assert(timeoutField->initialValue == defaultTimeout);
 
-    std::cout << "  PASS: Field initialization with defaults works\n";
+    ::std::cout << "  PASS: Field initialization with defaults works\n";
 }
 
 void test_constructor_validation_success() {
-    std::cout << "Test: Constructor validation - all required fields initialized\n";
+    ::std::cout << "Test: Constructor validation - all required fields initialized\n";
 
     // Create struct with final field
     TypeStruct* pointType = TypeStruct::create("PointFinal");
@@ -109,11 +109,11 @@ void test_constructor_validation_success() {
     bool valid = newPoint->validateInitialization();
     assert(valid);
 
-    std::cout << "  PASS: Constructor validation succeeds with defaults\n";
+    ::std::cout << "  PASS: Constructor validation succeeds with defaults\n";
 }
 
 void test_constructor_validation_failure() {
-    std::cout << "Test: Constructor validation - missing required field\n";
+    ::std::cout << "Test: Constructor validation - missing required field\n";
 
     // Create struct with final field WITHOUT default
     TypeStruct* personType = TypeStruct::create("PersonStrict");
@@ -127,11 +127,11 @@ void test_constructor_validation_failure() {
     bool valid = newPerson->validateInitialization();
     assert(!valid);  // Should fail
 
-    std::cout << "  PASS: Constructor validation fails when required fields missing\n";
+    ::std::cout << "  PASS: Constructor validation fails when required fields missing\n";
 }
 
 void test_constructor_with_field_inits() {
-    std::cout << "Test: Constructor with field initializers\n";
+    ::std::cout << "Test: Constructor with field initializers\n";
 
     // Create struct
     TypeStruct* pointType = TypeStruct::create("PointInit");
@@ -155,11 +155,11 @@ void test_constructor_with_field_inits() {
     assert(newPoint->getFieldInit("x") == xValue);
     assert(newPoint->getFieldInit("y") == yValue);
 
-    std::cout << "  PASS: Constructor with field initializers works\n";
+    ::std::cout << "  PASS: Constructor with field initializers works\n";
 }
 
 void test_nullable_struct_types() {
-    std::cout << "Test: Nullable struct types\n";
+    ::std::cout << "Test: Nullable struct types\n";
 
     TypeStruct* point = TypeStruct::create("PointNullable", false);
     TypeStruct* pointNullable = TypeStruct::create("PointNullable", true);
@@ -170,11 +170,11 @@ void test_nullable_struct_types() {
     assert(point->toString() == "PointNullable");
     assert(pointNullable->toString() == "PointNullable?");
 
-    std::cout << "  PASS: Nullable struct types work\n";
+    ::std::cout << "  PASS: Nullable struct types work\n";
 }
 
 void test_type_meet() {
-    std::cout << "Test: Type meet for structs\n";
+    ::std::cout << "Test: Type meet for structs\n";
 
     TypeStruct* point1 = TypeStruct::create("PointMeet", false);
     TypeStruct* point2 = TypeStruct::create("PointMeet", false);
@@ -195,11 +195,11 @@ void test_type_meet() {
     Type* meet3 = point1->meet(otherType);
     assert(meet3 == Type::BOTTOM);
 
-    std::cout << "  PASS: Type meet for structs works\n";
+    ::std::cout << "  PASS: Type meet for structs works\n";
 }
 
 void test_fully_initialized_check() {
-    std::cout << "Test: isFullyInitialized check\n";
+    ::std::cout << "Test: isFullyInitialized check\n";
 
     // Struct with all fields having defaults
     TypeStruct* fullyInit = TypeStruct::create("FullyInit");
@@ -217,7 +217,7 @@ void test_fully_initialized_check() {
 
     assert(!notInit->isFullyInitialized());
 
-    std::cout << "  PASS: isFullyInitialized check works\n";
+    ::std::cout << "  PASS: isFullyInitialized check works\n";
 }
 
 // ============================================================================
@@ -225,7 +225,7 @@ void test_fully_initialized_check() {
 // ============================================================================
 
 void test_function_pointer_fields() {
-    std::cout << "Test: REGRESSION - Function pointer fields in structs\n";
+    ::std::cout << "Test: REGRESSION - Function pointer fields in structs\n";
 
     // Create function type: {int->int}
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
@@ -243,11 +243,11 @@ void test_function_pointer_fields() {
     assert(callbackField != nullptr);
     assert(callbackField->type == funcType);
 
-    std::cout << "  PASS: Function pointer fields work\n";
+    ::std::cout << "  PASS: Function pointer fields work\n";
 }
 
 void test_final_function_pointer_field() {
-    std::cout << "Test: REGRESSION - Final function pointer field\n";
+    ::std::cout << "Test: REGRESSION - Final function pointer field\n";
 
     // Create function type: {int, int -> int}
     TypeTuple* twoInts = TypeTuple::create({TypeInteger::bottom(), TypeInteger::bottom()});
@@ -263,11 +263,11 @@ void test_final_function_pointer_field() {
     // Should not be fully initialized (final field without default)
     assert(!calcType->isFullyInitialized());
 
-    std::cout << "  PASS: Final function pointer fields work\n";
+    ::std::cout << "  PASS: Final function pointer fields work\n";
 }
 
 void test_nullable_function_pointer_field() {
-    std::cout << "Test: REGRESSION - Nullable function pointer field\n";
+    ::std::cout << "Test: REGRESSION - Nullable function pointer field\n";
 
     // Create nullable function type: {int->int}?
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
@@ -284,11 +284,11 @@ void test_nullable_function_pointer_field() {
     assert(fieldType != nullptr);
     assert(fieldType->isNullable() == true);
 
-    std::cout << "  PASS: Nullable function pointer fields work\n";
+    ::std::cout << "  PASS: Nullable function pointer fields work\n";
 }
 
 void test_multiple_function_pointer_fields() {
-    std::cout << "Test: REGRESSION - Multiple function pointer fields\n";
+    ::std::cout << "Test: REGRESSION - Multiple function pointer fields\n";
 
     // Create different function types
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
@@ -313,11 +313,11 @@ void test_multiple_function_pointer_fields() {
     assert(transform_type->args()->size() == 1);
     assert(source_type->args()->size() == 0);
 
-    std::cout << "  PASS: Multiple function pointer fields work\n";
+    ::std::cout << "  PASS: Multiple function pointer fields work\n";
 }
 
 void test_function_type_meet() {
-    std::cout << "Test: REGRESSION - Function type meet operations\n";
+    ::std::cout << "Test: REGRESSION - Function type meet operations\n";
 
     // Create two function types with same signature
     TypeTuple* intArg = TypeTuple::create({TypeInteger::bottom()});
@@ -340,11 +340,11 @@ void test_function_type_meet() {
     assert(meetNullableFunc != nullptr);
     assert(meetNullableFunc->isNullable() == true);
 
-    std::cout << "  PASS: Function type meet operations work\n";
+    ::std::cout << "  PASS: Function type meet operations work\n";
 }
 
 void test_tuple_type_basics() {
-    std::cout << "Test: REGRESSION - TypeTuple basics\n";
+    ::std::cout << "Test: REGRESSION - TypeTuple basics\n";
 
     // Create various tuples
     TypeTuple* empty = TypeTuple::create({});
@@ -375,11 +375,11 @@ void test_tuple_type_basics() {
     assert(meetTuple != nullptr);
     assert(meetTuple->size() == 3);
 
-    std::cout << "  PASS: TypeTuple basics work\n";
+    ::std::cout << "  PASS: TypeTuple basics work\n";
 }
 
 int main() {
-    std::cout << "=== Chapter 16: Constructors and Final Fields Test Suite ===\n\n";
+    ::std::cout << "=== Chapter 16: Constructors and Final Fields Test Suite ===\n\n";
 
     test_struct_type_creation();
     test_final_fields();
@@ -391,7 +391,7 @@ int main() {
     test_type_meet();
     test_fully_initialized_check();
 
-    std::cout << "\n=== REGRESSION TESTS: Chapter 18 Integration ===\n\n";
+    ::std::cout << "\n=== REGRESSION TESTS: Chapter 18 Integration ===\n\n";
 
     test_function_pointer_fields();
     test_final_function_pointer_field();
@@ -400,6 +400,6 @@ int main() {
     test_function_type_meet();
     test_tuple_type_basics();
 
-    std::cout << "\n=== All Chapter 16 tests passed! ===\n";
+    ::std::cout << "\n=== All Chapter 16 tests passed! ===\n";
     return 0;
 }

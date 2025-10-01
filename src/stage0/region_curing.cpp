@@ -6,15 +6,15 @@
 
 namespace cppfort::ir {
 
-std::unique_ptr<Region> RegionBuilder::buildRegions(Node* startNode) {
-    auto region = std::make_unique<Region>();
+::std::unique_ptr<Region> RegionBuilder::buildRegions(Node* startNode) {
+    auto region = ::std::make_unique<Region>();
 
     // Identify block boundaries in the Sea of Nodes graph
-    std::vector<Node*> blockLeaders;
+    ::std::vector<Node*> blockLeaders;
     identifyBlocks(startNode, blockLeaders);
 
     // Map nodes to their containing blocks
-    std::map<Node*, Block*> nodeToBlock;
+    ::std::map<Node*, Block*> nodeToBlock;
 
     // Create blocks and assign nodes
     assignNodesToBlocks(region.get(), blockLeaders, nodeToBlock);
@@ -28,9 +28,9 @@ std::unique_ptr<Region> RegionBuilder::buildRegions(Node* startNode) {
     return region;
 }
 
-void RegionBuilder::identifyBlocks(Node* startNode, std::vector<Node*>& blockLeaders) {
-    std::set<Node*> visited;
-    std::queue<Node*> worklist;
+void RegionBuilder::identifyBlocks(Node* startNode, ::std::vector<Node*>& blockLeaders) {
+    ::std::set<Node*> visited;
+    ::std::queue<Node*> worklist;
 
     worklist.push(startNode);
     visited.insert(startNode);
@@ -58,16 +58,16 @@ void RegionBuilder::identifyBlocks(Node* startNode, std::vector<Node*>& blockLea
     }
 }
 
-void RegionBuilder::assignNodesToBlocks(Region* region, const std::vector<Node*>& blockLeaders,
-                                       std::map<Node*, Block*>& nodeToBlock) {
+void RegionBuilder::assignNodesToBlocks(Region* region, const ::std::vector<Node*>& blockLeaders,
+                                       ::std::map<Node*, Block*>& nodeToBlock) {
     // For each block leader, create a block and assign reachable nodes
     for (size_t i = 0; i < blockLeaders.size(); ++i) {
         Node* leader = blockLeaders[i];
         Block* block = region->addBlock();
 
         // Start from leader and traverse until hitting another leader or terminator
-        std::set<Node*> visited;
-        std::queue<Node*> worklist;
+        ::std::set<Node*> visited;
+        ::std::queue<Node*> worklist;
 
         worklist.push(leader);
         visited.insert(leader);
@@ -88,7 +88,7 @@ void RegionBuilder::assignNodesToBlocks(Region* region, const std::vector<Node*>
             // Continue to non-CFG outputs
             for (Node* output : node->_outputs) {
                 if (visited.find(output) == visited.end() &&
-                    std::find(blockLeaders.begin(), blockLeaders.end(), output) == blockLeaders.end()) {
+                    ::std::find(blockLeaders.begin(), blockLeaders.end(), output) == blockLeaders.end()) {
                     visited.insert(output);
                     nodeToBlock[output] = block;
                     worklist.push(output);
@@ -98,7 +98,7 @@ void RegionBuilder::assignNodesToBlocks(Region* region, const std::vector<Node*>
     }
 }
 
-void RegionBuilder::establishControlFlow(std::map<Node*, Block*>& nodeToBlock) {
+void RegionBuilder::establishControlFlow(::std::map<Node*, Block*>& nodeToBlock) {
     // For each block, determine successors based on terminator
     for (auto& pair : nodeToBlock) {
         Block* block = pair.second;

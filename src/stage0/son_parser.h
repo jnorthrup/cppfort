@@ -14,7 +14,7 @@ namespace cppfort::ir {
  */
 class SoNParser {
 private:
-    std::string _source;
+    ::std::string _source;
     size_t _position;
 
     // Global START node (like Simple's Parser.START)
@@ -28,10 +28,10 @@ private:
 
     // Simple lexer functionality
     void skipWhitespace();
-    bool peek(const std::string& expected);
-    bool consume(const std::string& expected);
+    bool peek(const ::std::string& expected);
+    bool consume(const ::std::string& expected);
     int parseInteger();
-    std::string parseIdentifier();
+    ::std::string parseIdentifier();
     char peek();
     char advance();
     bool isEOF() const;
@@ -47,7 +47,7 @@ public:
      * Parse a program and return the graph's terminal node.
      * Chapter 3: supports declarations, blocks, assignments, returns.
      */
-    Node* parse(const std::string& source);
+    Node* parse(const ::std::string& source);
 
     /**
      * Parse a program: a sequence of statements.
@@ -144,7 +144,7 @@ public:
      * Visualize the graph (for debugging).
      * Returns a simple text representation.
      */
-    std::string visualize() const;
+    ::std::string visualize() const;
 };
 
 } // namespace cppfort::ir

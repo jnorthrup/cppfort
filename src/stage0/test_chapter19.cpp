@@ -10,7 +10,7 @@ namespace cppfort::ir {
 // Tests the MLIR dialect instruction selection patterns
 
 void test_mlir_arith_machine() {
-    std::cout << "Testing MLIR Arith Machine patterns...\n";
+    ::std::cout << "Testing MLIR Arith Machine patterns...\n";
 
     MachineRegistry registry;
     MLIRArithMachine* arithMachine = dynamic_cast<MLIRArithMachine*>(registry.getMachine("mlir-arith"));
@@ -31,11 +31,11 @@ void test_mlir_arith_machine() {
     // Test that it cannot handle control flow
     assert(!arithMachine->canHandle(NodeKind::IF));
 
-    std::cout << "✓ MLIR Arith Machine patterns work\n";
+    ::std::cout << "✓ MLIR Arith Machine patterns work\n";
 }
 
 void test_mlir_func_machine() {
-    std::cout << "Testing MLIR Func Machine patterns...\n";
+    ::std::cout << "Testing MLIR Func Machine patterns...\n";
 
     MachineRegistry registry;
     MLIRFuncMachine* funcMachine = dynamic_cast<MLIRFuncMachine*>(registry.getMachine("mlir-func"));
@@ -53,11 +53,11 @@ void test_mlir_func_machine() {
     // Test that it cannot handle arithmetic
     assert(!funcMachine->canHandle(NodeKind::ADD));
 
-    std::cout << "✓ MLIR Func Machine patterns work\n";
+    ::std::cout << "✓ MLIR Func Machine patterns work\n";
 }
 
 void test_machine_registry() {
-    std::cout << "Testing Machine Registry...\n";
+    ::std::cout << "Testing Machine Registry...\n";
 
     MachineRegistry registry;
 
@@ -75,11 +75,11 @@ void test_machine_registry() {
     // Test non-existent machine
     assert(registry.getMachine("non-existent") == nullptr);
 
-    std::cout << "✓ Machine Registry works\n";
+    ::std::cout << "✓ Machine Registry works\n";
 }
 
 void test_instruction_selection() {
-    std::cout << "Testing Instruction Selection...\n";
+    ::std::cout << "Testing Instruction Selection...\n";
 
     // Create a simple graph: constant + constant
     StartNode* start = new StartNode();
@@ -98,13 +98,13 @@ void test_instruction_selection() {
     assert(add->in(0) == c1);
     assert(add->in(1) == c2);
 
-    std::cout << "✓ Instruction Selection works\n";
+    ::std::cout << "✓ Instruction Selection works\n";
 }
 
 } // namespace cppfort::ir
 
 int main() {
-    std::cout << "=== Chapter 19: Instruction Selection Test Suite ===\n\n";
+    ::std::cout << "=== Chapter 19: Instruction Selection Test Suite ===\n\n";
 
     try {
         cppfort::ir::test_mlir_arith_machine();
@@ -112,10 +112,10 @@ int main() {
         cppfort::ir::test_machine_registry();
         cppfort::ir::test_instruction_selection();
 
-        std::cout << "\n=== All Chapter 19 tests passed! ===\n";
+        ::std::cout << "\n=== All Chapter 19 tests passed! ===\n";
         return 0;
-    } catch (const std::exception& ex) {
-        std::cerr << "Test failed: " << ex.what() << std::endl;
+    } catch (const ::std::exception& ex) {
+        ::std::cerr << "Test failed: " << ex.what() << ::std::endl;
         return 1;
     }
 }

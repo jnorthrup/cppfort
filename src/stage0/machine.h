@@ -22,7 +22,7 @@ public:
     /**
      * Get the name of this machine/dialect target.
      */
-    virtual std::string name() const = 0;
+    virtual ::std::string name() const = 0;
 
     /**
      * Get the target language this machine emits.
@@ -47,7 +47,7 @@ public:
  */
 class MLIRArithMachine : public Machine {
 public:
-    std::string name() const override { return "mlir-arith"; }
+    ::std::string name() const override { return "mlir-arith"; }
     TargetLanguage targetLanguage() const override { return TargetLanguage::MLIR_ARITH; }
 
     void registerPatterns(PatternMatcher& matcher) override;
@@ -61,7 +61,7 @@ public:
  */
 class MLIRCFMachine : public Machine {
 public:
-    std::string name() const override { return "mlir-cf"; }
+    ::std::string name() const override { return "mlir-cf"; }
     TargetLanguage targetLanguage() const override { return TargetLanguage::MLIR_CF; }
 
     void registerPatterns(PatternMatcher& matcher) override;
@@ -75,7 +75,7 @@ public:
  */
 class MLIRSCFMachine : public Machine {
 public:
-    std::string name() const override { return "mlir-scf"; }
+    ::std::string name() const override { return "mlir-scf"; }
     TargetLanguage targetLanguage() const override { return TargetLanguage::MLIR_SCF; }
 
     void registerPatterns(PatternMatcher& matcher) override;
@@ -89,7 +89,7 @@ public:
  */
 class MLIRMemRefMachine : public Machine {
 public:
-    std::string name() const override { return "mlir-memref"; }
+    ::std::string name() const override { return "mlir-memref"; }
     TargetLanguage targetLanguage() const override { return TargetLanguage::MLIR_MEMREF; }
 
     void registerPatterns(PatternMatcher& matcher) override;
@@ -103,7 +103,7 @@ public:
  */
 class MLIRFuncMachine : public Machine {
 public:
-    std::string name() const override { return "mlir-func"; }
+    ::std::string name() const override { return "mlir-func"; }
     TargetLanguage targetLanguage() const override { return TargetLanguage::MLIR_FUNC; }
 
     void registerPatterns(PatternMatcher& matcher) override;
@@ -117,7 +117,7 @@ public:
  */
 class MachineRegistry {
 private:
-    std::unordered_map<std::string, std::unique_ptr<Machine>> _machines;
+    ::std::unordered_map<::std::string, ::std::unique_ptr<Machine>> _machines;
 
 public:
     /**
@@ -129,12 +129,12 @@ public:
      * Get a machine by name.
      * Returns nullptr if no machine with that name exists.
      */
-    Machine* getMachine(const std::string& name) const;
+    Machine* getMachine(const ::std::string& name) const;
 
     /**
      * Register a new machine. Replaces any existing machine with the same name.
      */
-    void registerMachine(std::unique_ptr<Machine> machine);
+    void registerMachine(::std::unique_ptr<Machine> machine);
 
     /**
      * Register standard MLIR dialect machines.
@@ -145,12 +145,12 @@ public:
     /**
      * Get all available machine names.
      */
-    std::vector<std::string> availableMachines() const;
+    ::std::vector<::std::string> availableMachines() const;
 
     /**
      * Check if a specific dialect machine is registered.
      */
-    bool hasMachine(const std::string& name) const;
+    bool hasMachine(const ::std::string& name) const;
 };
 
 } // namespace cppfort::ir

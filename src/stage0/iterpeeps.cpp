@@ -58,7 +58,7 @@ bool IterPeeps::processNode(Node* n) {
         // If improved is different, subsume n with improved
         if (!n->isUnused()) {
             // Replace all uses of n with improved
-            std::vector<Node*> users = n->_outputs;  // Copy because we'll modify
+            ::std::vector<Node*> users = n->_outputs;  // Copy because we'll modify
             for (Node* user : users) {
                 for (int i = 0; i < user->nIns(); i++) {
                     if (user->in(i) == n) {
@@ -84,8 +84,8 @@ bool IterPeeps::progressOnList(Node* stop) const {
     // have no applicable peepholes
 
     // Collect all reachable nodes from stop
-    std::unordered_set<Node*> visited;
-    std::queue<Node*> toVisit;
+    ::std::unordered_set<Node*> visited;
+    ::std::queue<Node*> toVisit;
 
     toVisit.push(stop);
     visited.insert(stop);
@@ -128,8 +128,8 @@ int IterPeeps::iterate(Node* stop) {
     if (!stop) return 0;
 
     // Initialize worklist with all nodes reachable from stop
-    std::queue<Node*> toVisit;
-    std::unordered_set<Node*> visited;
+    ::std::queue<Node*> toVisit;
+    ::std::unordered_set<Node*> visited;
 
     toVisit.push(stop);
     visited.insert(stop);

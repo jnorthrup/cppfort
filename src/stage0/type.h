@@ -37,7 +37,7 @@ public:
     /**
      * Get string representation for debugging.
      */
-    virtual std::string toString() const = 0;
+    virtual ::std::string toString() const = 0;
 
     /**
      * Check if this is bottom type (not constant).
@@ -69,7 +69,7 @@ public:
      * @return A string representing the MLIR type for this object.
      * Default implementation returns "i32" as a fallback.
      */
-    virtual std::string emitMLIR() const { return "i32"; }
+    virtual ::std::string emitMLIR() const { return "i32"; }
 
     // Singleton BOTTOM instance
     static Type* BOTTOM;
@@ -94,7 +94,7 @@ protected:
 class TypeBottom : public Type {
 public:
     bool isBottom() const override { return true; }
-    std::string toString() const override { return "⊥"; }
+    ::std::string toString() const override { return "⊥"; }
     Type* meet(Type* t) override { (void)t; return this; }
 };
 
@@ -104,7 +104,7 @@ public:
 class TypeTop : public Type {
 public:
     bool isTop() const override { return true; }
-    std::string toString() const override { return "⊤"; }
+    ::std::string toString() const override { return "⊤"; }
     Type* meet(Type* t) override { return t ? t : this; }
 };
 
@@ -142,8 +142,8 @@ public:
 
     bool isConstant() const override { return _lo == _hi; }
     bool isBottom() const override {
-        return _lo == std::numeric_limits<long>::min() &&
-               _hi == std::numeric_limits<long>::max();
+        return _lo == ::std::numeric_limits<long>::min() &&
+               _hi == ::std::numeric_limits<long>::max();
     }
 
     /**
@@ -153,9 +153,9 @@ public:
         return _lo;
     }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         if (isConstant()) {
-            return std::to_string(_lo);
+            return ::std::to_string(_lo);
         }
         if (isBottom()) {
             return "int⊥";
@@ -163,7 +163,7 @@ public:
         if (_lo == 0 && _hi == 1) {
             return "bool";
         }
-        return "[" + std::to_string(_lo) + "," + std::to_string(_hi) + "]";
+        return "[" + ::std::to_string(_lo) + "," + ::std::to_string(_hi) + "]";
     }
 
     /**
@@ -172,12 +172,12 @@ public:
      * - Bottom type defaults to i32
      * - Booleans use i1
      */
-    std::string emitMLIR() const override {
+    ::std::string emitMLIR() const override {
         if (isBottom()) return "i32";
         if (_lo == 0 && _hi == 1) return "i1";
 
         // Otherwise, choose appropriate bit width
-        long absMax = std::max(std::abs(_lo), std::abs(_hi));
+        long absMax = ::std::max(::std::abs(_lo), ::std::abs(_hi));
         if (absMax <= 127) return "i8";
         if (absMax <= 32767) return "i16";
         return "i32";
@@ -233,9 +233,9 @@ public:
     double value() const { return _value; }
     Precision precision() const { return _precision; }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         if (isConstant()) {
-            return std::to_string(_value) + (_precision == F32 ? "f" : "d");
+            return ::std::to_string(_value) + (_precision == F32 ? "f" : "d");
         }
         return _precision == F32 ? "f32⊥" : "f64⊥";
     }
@@ -245,7 +245,7 @@ public:
      * - Maps float types to MLIR corresponding types
      * - Bottom type defaults to f64 (double precision)
      */
-    std::string emitMLIR() const override {
+    ::std::string emitMLIR() const override {
         if (isBottom()) return _precision == F32 ? "f32" : "f64";
         return _precision == F32 ? "f32" : "f64";
     }
@@ -262,24 +262,24 @@ public:
  */
 class TypePointer : public Type {
 private:
-    std::string _target_name;  // Name of the struct/type being referenced
+    ::std::string _target_name;  // Name of the struct/type being referenced
     bool _nullable;            // Can be null?
     bool _is_null;             // Is definitely null?
     bool _mutable;             // Chapter 17: Is this reference mutable?
 
-    TypePointer(const std::string& name, bool nullable, bool is_null, bool mutable_ref = true)
+    TypePointer(const ::std::string& name, bool nullable, bool is_null, bool mutable_ref = true)
         : _target_name(name), _nullable(nullable), _is_null(is_null), _mutable(mutable_ref) {}
 
 public:
     /**
      * Create a nullable reference type (Struct?)
      */
-    static TypePointer* nullable(const std::string& struct_name, bool mutable_ref = true);
+    static TypePointer* nullable(const ::std::string& struct_name, bool mutable_ref = true);
 
     /**
      * Create a non-nullable reference type (Struct)
      */
-    static TypePointer* nonNullable(const std::string& struct_name, bool mutable_ref = true);
+    static TypePointer* nonNullable(const ::std::string& struct_name, bool mutable_ref = true);
 
     /**
      * Create a null constant reference
@@ -289,23 +289,23 @@ public:
     /**
      * Chapter 17: Create an immutable reference (val semantics)
      */
-    static TypePointer* immutable(const std::string& struct_name, bool nullable = false);
+    static TypePointer* immutable(const ::std::string& struct_name, bool nullable = false);
 
     /**
      * Chapter 17: Create a mutable reference (var or ! semantics)
      */
-    static TypePointer* mutable_(const std::string& struct_name, bool nullable = false);
+    static TypePointer* mutable_(const ::std::string& struct_name, bool nullable = false);
 
     bool isConstant() const override { return _is_null; }
     bool isNullable() const { return _nullable; }
     bool isNull() const { return _is_null; }
     bool isMutable() const { return _mutable; }
 
-    const std::string& targetName() const { return _target_name; }
+    const ::std::string& targetName() const { return _target_name; }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         if (_is_null) return "null";
-        std::string result;
+        ::std::string result;
         if (!_mutable) result = "val ";
         result += _target_name + (_nullable ? "?" : "");
         return result;
@@ -316,8 +316,8 @@ public:
      * - Emit as memref type for structs and arrays
      * - Nullable types get wrapped in optional
      */
-    std::string emitMLIR() const override {
-        std::string baseType = "memref<" + _target_name + ">";
+    ::std::string emitMLIR() const override {
+        ::std::string baseType = "memref<" + _target_name + ">";
         if (_nullable) return "!llvm.ptr<" + baseType + ">";
         return baseType;
     }
@@ -379,7 +379,7 @@ public:
         return 32;
     }
 
-    std::string toString() const override;
+    ::std::string toString() const override;
 
     Type* meet(Type* t) override;
 };
@@ -420,12 +420,12 @@ public:
     bool isDynamic() const { return _length < 0; }
     bool isNullable() const { return _nullable; }
 
-    std::string toString() const override {
-        std::string result = _element_type->toString();
+    ::std::string toString() const override {
+        ::std::string result = _element_type->toString();
         if (_nullable) result += "?";
         result += "[]";
         if (!isDynamic()) {
-            result += "[" + std::to_string(_length) + "]";
+            result += "[" + ::std::to_string(_length) + "]";
         }
         return result;
     }
@@ -452,14 +452,14 @@ struct Field {
         VAL_INFERRED   // Marked with 'val' keyword (always immutable)
     };
 
-    std::string name;                // Field name
+    ::std::string name;                // Field name
     Type* type;                      // Field type
     bool isFinal;                    // Is this field final (immutable)?
     Node* initialValue;              // Initial value expression (may be null)
     int offset;                      // Byte offset in struct layout
     MutabilityQualifier mutability;  // Chapter 17: Mutability qualifier
 
-    Field(const std::string& n, Type* t, bool final = false, Node* init = nullptr, int off = 0,
+    Field(const ::std::string& n, Type* t, bool final = false, Node* init = nullptr, int off = 0,
           MutabilityQualifier mut = MUTABLE)
         : name(n), type(t), isFinal(final), initialValue(init), offset(off), mutability(mut) {}
 
@@ -493,33 +493,33 @@ struct Field {
  */
 class TypeStruct : public Type {
 private:
-    std::string _name;                  // Struct name
-    std::vector<Field> _fields;         // Ordered list of fields
-    std::unordered_map<std::string, int> _fieldMap;  // Name -> index mapping
+    ::std::string _name;                  // Struct name
+    ::std::vector<Field> _fields;         // Ordered list of fields
+    ::std::unordered_map<::std::string, int> _fieldMap;  // Name -> index mapping
     bool _nullable;                     // Can struct reference be null?
     int _totalSize;                     // Total size in bytes
 
-    TypeStruct(const std::string& name, bool nullable = false)
+    TypeStruct(const ::std::string& name, bool nullable = false)
         : _name(name), _nullable(nullable), _totalSize(0) {}
 
 public:
     /**
      * Create a new struct type.
      */
-    static TypeStruct* create(const std::string& name, bool nullable = false);
+    static TypeStruct* create(const ::std::string& name, bool nullable = false);
 
     /**
      * Add a field to this struct.
      * Returns the field's index.
      */
-    int addField(const std::string& name, Type* type, bool isFinal = false, Node* initVal = nullptr,
+    int addField(const ::std::string& name, Type* type, bool isFinal = false, Node* initVal = nullptr,
                  Field::MutabilityQualifier mutability = Field::MUTABLE);
 
     /**
      * Lookup a field by name.
      * Returns nullptr if not found.
      */
-    const Field* getField(const std::string& name) const;
+    const Field* getField(const ::std::string& name) const;
 
     /**
      * Get field by index.
@@ -529,12 +529,12 @@ public:
     /**
      * Get all fields.
      */
-    const std::vector<Field>& fields() const { return _fields; }
+    const ::std::vector<Field>& fields() const { return _fields; }
 
     /**
      * Check if a field exists.
      */
-    bool hasField(const std::string& name) const {
+    bool hasField(const ::std::string& name) const {
         return _fieldMap.find(name) != _fieldMap.end();
     }
 
@@ -551,7 +551,7 @@ public:
     /**
      * Get struct name.
      */
-    const std::string& name() const { return _name; }
+    const ::std::string& name() const { return _name; }
 
     /**
      * Check if nullable.
@@ -563,7 +563,7 @@ public:
      */
     int totalSize() const { return _totalSize; }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         return _name + (_nullable ? "?" : "");
     }
 
@@ -573,7 +573,7 @@ public:
      * - Always use memref for consistency with other types
      * - Track nullable and field information
      */
-    std::string emitMLIR() const override {
+    ::std::string emitMLIR() const override {
         if (_nullable) return "!llvm.ptr<memref<" + _name + ">>";
         return "memref<" + _name + ">";
     }
@@ -589,20 +589,20 @@ public:
  */
 class TypeTuple : public Type {
 private:
-    std::vector<Type*> _types;
+    ::std::vector<Type*> _types;
 
-    TypeTuple(const std::vector<Type*>& types) : _types(types) {}
+    TypeTuple(const ::std::vector<Type*>& types) : _types(types) {}
 
 public:
     /**
      * Create a tuple type from a list of types.
      */
-    static TypeTuple* create(const std::vector<Type*>& types);
+    static TypeTuple* create(const ::std::vector<Type*>& types);
 
     /**
      * Get the types in this tuple.
      */
-    const std::vector<Type*>& types() const { return _types; }
+    const ::std::vector<Type*>& types() const { return _types; }
 
     /**
      * Get the number of types in this tuple.
@@ -616,8 +616,8 @@ public:
         return index < _types.size() ? _types[index] : nullptr;
     }
 
-    std::string toString() const override {
-        std::string result = "(";
+    ::std::string toString() const override {
+        ::std::string result = "(";
         for (size_t i = 0; i < _types.size(); ++i) {
             if (i > 0) result += ",";
             result += _types[i]->toString();
@@ -641,12 +641,12 @@ public:
      * - Single element tuples map to their contained type
      * - Composite tuples use MLIR tuple type: tuple<...>
      */
-    std::string emitMLIR() const override {
+    ::std::string emitMLIR() const override {
         if (_types.empty()) return "()";  // Unit type
         if (_types.size() == 1) return _types[0]->emitMLIR();
 
         // Create a tuple type by emitting each type
-        std::string result = "tuple<";
+        ::std::string result = "tuple<";
         for (size_t i = 0; i < _types.size(); ++i) {
             if (i > 0) result += ", ";
             result += _types[i]->emitMLIR();
@@ -674,7 +674,7 @@ private:
     int _fidx;              // Function index (-1 for multiple/unknown)
     bool _nullable;         // Can be null?
     bool _mutable;          // Is this reference mutable?
-    std::vector<int> _fidxs; // Bit set of possible function indices
+    ::std::vector<int> _fidxs; // Bit set of possible function indices
 
     TypeFunPtr(TypeTuple* args, Type* ret, int fidx = -1, bool nullable = false, bool mutable_ref = true)
         : _args(args), _ret(ret), _fidx(fidx), _nullable(nullable), _mutable(mutable_ref) {
@@ -712,13 +712,13 @@ public:
     int fidx() const { return _fidx; }
     bool isNullable() const { return _nullable; }
     bool isMutable() const { return _mutable; }
-    const std::vector<int>& fidxs() const { return _fidxs; }
+    const ::std::vector<int>& fidxs() const { return _fidxs; }
 
     /**
      * Add a function index to the set.
      */
     void addFidx(int fidx) {
-        if (std::find(_fidxs.begin(), _fidxs.end(), fidx) == _fidxs.end()) {
+        if (::std::find(_fidxs.begin(), _fidxs.end(), fidx) == _fidxs.end()) {
             _fidxs.push_back(fidx);
         }
     }
@@ -728,14 +728,14 @@ public:
         return _fidx >= 0 || (_nullable && _fidxs.empty());
     }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         if (_fidx < 0 && _fidxs.empty() && _nullable) return "null";
 
-        std::string result;
+        ::std::string result;
         if (!_mutable) result = "val ";
         result += "{" + _args->toString() + "->" + _ret->toString() + "}";
         if (_nullable) result += "?";
-        if (_fidx >= 0) result += "[fidx=" + std::to_string(_fidx) + "]";
+        if (_fidx >= 0) result += "[fidx=" + ::std::to_string(_fidx) + "]";
         return result;
     }
 
@@ -745,9 +745,9 @@ public:
      * - Nullable types wrapped in !llvm.ptr
      * - Map argument and return types to their MLIR representation
      */
-    std::string emitMLIR() const override {
+    ::std::string emitMLIR() const override {
         // Construct the function signature
-        std::string signature = "(" +
+        ::std::string signature = "(" +
             (_args ? _args->emitMLIR() : "()") +
             " -> " +
             (_ret ? _ret->emitMLIR() : "void") +
@@ -803,10 +803,10 @@ public:
         return _rpc >= 0 || (_nullable && _rpc < 0);
     }
 
-    std::string toString() const override {
+    ::std::string toString() const override {
         if (_rpc < 0 && _nullable) return "null";
-        std::string result = "RPC";
-        if (_rpc >= 0) result += "[" + std::to_string(_rpc) + "]";
+        ::std::string result = "RPC";
+        if (_rpc >= 0) result += "[" + ::std::to_string(_rpc) + "]";
         if (_nullable) result += "?";
         return result;
     }

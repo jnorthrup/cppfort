@@ -1,0 +1,66 @@
+name: c_stdio
+orbit_id: 0
+weight: 0.9
+signature_patterns:
+  - "#include <stdio.h>"
+  - "printf("
+  - "scanf("
+  - "fprintf("
+  - "fscanf("
+protocol_indicators:
+  - "stdio.h"
+  - "cstdio"
+version_patterns:
+  - "C89"
+  - "C99"
+  - "C11"
+
+---
+name: c_memory
+orbit_id: 0
+weight: 0.8
+signature_patterns:
+  - "malloc("
+  - "free("
+  - "calloc("
+  - "realloc("
+  - "#include <stdlib.h>"
+protocol_indicators:
+  - "stdlib.h"
+  - "cstdlib"
+version_patterns:
+  - "C89"
+  - "C99"
+
+---
+name: c_strings
+orbit_id: 0
+weight: 0.7
+signature_patterns:
+  - "strcpy("
+  - "strlen("
+  - "strcmp("
+  - "#include <string.h>"
+protocol_indicators:
+  - "string.h"
+  - "cstring"
+version_patterns:
+  - "C89"
+  - "C99"
+
+---
+name: c_pointers
+orbit_id: 0
+weight: 0.6
+signature_patterns:
+  - "int*"
+  - "char*"
+  - "void*"
+  - "->"
+  - "&"
+protocol_indicators:
+  - "pointer"
+  - "address"
+version_patterns:
+  - "C89"
+  - "C99"

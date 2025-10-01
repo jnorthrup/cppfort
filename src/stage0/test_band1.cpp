@@ -45,11 +45,11 @@ static void test_if_no_else() {
 }
 
 int main() {
-    try { test_comparisons(); std::cout << "comparisons ok\n"; } catch (const std::exception& e) { std::cerr << "comparisons fail: " << e.what() << "\n"; return 1; }
-    try { test_simple_if(); std::cout << "simple_if ok\n"; } catch (const std::exception& e) { std::cerr << "simple_if fail: " << e.what() << "\n"; return 1; }
-    try { test_if_with_vars(); std::cout << "if_with_vars ok\n"; } catch (const std::exception& e) { std::cerr << "if_with_vars fail: " << e.what() << "\n"; return 1; }
-    try { test_nested_if(); std::cout << "nested_if ok\n"; } catch (const std::exception& e) { std::cerr << "nested_if fail: " << e.what() << "\n"; return 1; }
-    try { test_if_no_else(); std::cout << "if_no_else ok\n"; } catch (const std::exception& e) { std::cerr << "if_no_else fail: " << e.what() << "\n"; return 1; }
-    std::cout << "Band 1 tests passed\n";
+    try { test_comparisons(); ::std::cout << "comparisons ok\n"; } catch (const ::std::exception& e) { ::std::cerr << "comparisons fail: " << e.what() << "\n"; return 1; }
+    try { test_simple_if(); ::std::cout << "simple_if ok\n"; } catch (const ::std::exception& e) { ::std::cerr << "simple_if fail: " << e.what() << "\n"; return 1; }
+    try { test_if_with_vars(); ::std::cout << "if_with_vars ok\n"; } catch (const ::std::exception& e) { ::std::cerr << "if_with_vars fail: " << e.what() << "\n"; return 1; }
+    try { test_nested_if(); ::std::cout << "nested_if ok\n"; } catch (const ::std::exception& e) { ::std::cerr << "nested_if fail: " << e.what() << "\n"; return 1; }
+    try { test_if_no_else(); ::std::cout << "if_no_else ok\n"; } catch (const ::std::exception& e) { ::std::cerr << "if_no_else fail: " << e.what() << "\n"; return 1; }
+    ::std::cout << "Band 1 tests passed\n";
     return 0;
 }
