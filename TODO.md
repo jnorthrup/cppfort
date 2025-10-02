@@ -127,4 +127,4 @@ These checklist items are intentionally annotated for the BMAD fan-out extractor
 - hello.cpp2 transpiles correctly: `std::string{"Hello, "} + std::string{name}` → valid C++
 - IR backend produces mock output with proper graph structure
 - Build system compiles all components successfully
-- No regressions in existing functionality
+- No regressions in existing functionality 
