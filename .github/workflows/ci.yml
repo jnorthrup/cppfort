@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake clang libc++-dev libc++abi-dev llvm-dev libmlir-dev
+
+    - name: Set up LLVM/MLIR path
+      run: |
+        # Find LLVM installation path
+        LLVM_PATH=$(find /usr -name "llvm-config" -type f 2>/dev/null | head -1 | xargs dirname | xargs dirname)
+        if [ -z "$LLVM_PATH" ]; then
+          LLVM_PATH="/usr"
+        fi
+        echo "CMAKE_PREFIX_PATH=$LLVM_PATH" >> $GITHUB_ENV
+
+    - name: Build project
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++
+        cmake --build .
+
+    - name: Run regression tests
+      run: |
+        chmod +x regression-tests/run_tests.sh
+        ./regression-tests/run_tests.sh
+
+    - name: Run attestation (if available)
+      run: |
+        if [ -f build/anticheat ]; then
+          # Run attestation on a test binary if it exists
+          if [ -f test_binary ]; then
+            ./build/anticheat ./test_binary || true
+          fi
+        fi
