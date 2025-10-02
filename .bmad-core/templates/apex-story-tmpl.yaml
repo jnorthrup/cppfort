@@ -1,40 +1,188 @@
-filename_template: "{{swimlane}}-{{slug}}.story.md"
+filename_template: "{{slug}}.story.md"
 body_template: |
-  # {{title}}
+  # Story: {{title}}
 
-  Status: Draft
+  ## Status: Draft
 
   ## Story
 
-  As a developer,
+  As a cpp2 transpiler developer,
   I want {{title}},
-  so that the apex feature in swimlane {{swimlane}} is implemented.
+  So that the compiler pipeline is complete and functional.
 
   ## Context Source
 
-  - Source Document: TODO.md
-  - Extracted from TODO: {{todo}}
+  - Source Document: TODO.md (APEX item)
+  - Enhancement Type: Pipeline completion
+  - Existing System Impact: Extends current implementation
 
   ## Acceptance Criteria
 
-  1. Implementation compiles and passes unit tests.
-  2. Integration tests for swimlane {{swimlane}} pass.
-  3. Regression tests remain green.
+  **Functional Requirements:**
 
-  ## Dev Notes
+  1. Implementation complete and integrated
+  2. Tests pass for new functionality
+  3. Code follows project standards
 
-  - Swimlane: {{swimlane}}
-  - Suggested branch: apex/{{swimlane}}/{{slug}}
+  **Integration Requirements:**
+
+  4. Existing regression tests continue to pass
+  5. Build system integration remains functional
+  6. No breaking changes to existing APIs
+
+  **Quality Requirements:**
+
+  7. Code is well-documented
+  8. Edge cases are handled
+  9. Error messages are clear
+
+  ## Dev Technical Guidance
+
+  ### Existing System Context
+
+  Based on current architecture (swimlane: {{swimlane}}), this enhancement builds on existing infrastructure.
+  The system uses a three-stage pipeline (Stage0/Stage1/Stage2) with Sea of Nodes IR.
+
+  ### Integration Approach
+
+  - Work within existing framework in src/{{swimlane}}/
+  - Maintain compatibility with current structure
+  - Follow established patterns
+
+  ### Technical Constraints
+
+  - Must work with current AST structure
+  - Cannot break existing build system
+  - Must maintain LLVM/MLIR integration compatibility
+
+  ### Key Files to Modify
+
+  - src/{{swimlane}}/*.cpp - Core implementation
+  - include/{{swimlane}}/*.h - Headers
+  - regression-tests/*.sh - Test harness
 
   ## Tasks / Subtasks
 
-  - [ ] Analyze existing code for integration points
-  - [ ] Implement feature
-  - [ ] Add unit tests
-  - [ ] Add integration tests
-  - [ ] Run benchmarks (if applicable)
+  - [ ] Task 1: Analyze current implementation
+    - [ ] Review existing code in src/{{swimlane}}/
+    - [ ] Identify gaps and incomplete sections
+    - [ ] Document current state
 
-  ## Story meta
+  - [ ] Task 2: Implement missing functionality
+    - [ ] Complete core implementation
+    - [ ] Add necessary tests
+    - [ ] Update documentation
 
-  slug: {{slug}}
-  swimlane: {{swimlane}}
+  - [ ] Task 3: Validate implementation
+    - [ ] Run regression tests
+    - [ ] Verify integration works
+    - [ ] Fix any breaking changes
+
+  - [ ] Task 4: Code review and cleanup
+    - [ ] Ensure code follows standards
+    - [ ] Add proper error handling
+    - [ ] Update documentation
+
+  ## Testing
+
+  ### Unit Tests
+  - Test individual components in swimlane
+  - Validate core functionality
+  - Test error conditions
+
+  ### Integration Tests
+  - End-to-end pipeline validation
+  - Cross-stage integration
+  - Regression test suite
+
+  ### Manual Testing
+  - Complex scenarios and edge cases
+  - Performance validation
+  - Error message clarity
+
+  ## Definition of Done
+
+  - [ ] All acceptance criteria met
+  - [ ] Implementation complete for {{title}}
+  - [ ] Regression tests pass
+  - [ ] Code follows project standards
+  - [ ] Documentation updated
+
+user_story: |
+  As a cpp2 transpiler developer,
+  I want {{description}},
+  So that the compiler pipeline is complete and functional.
+
+context:
+  source_document: "TODO.md (APEX item)"
+  enhancement_type: "Pipeline completion"
+  existing_system_impact: "Extends current mock/stub implementation"
+
+acceptance_criteria:
+  functional:
+    - "Implementation complete and integrated"
+    - "Tests pass for new functionality"
+    - "Code follows project standards"
+
+  integration:
+    - "Existing regression tests continue to pass"
+    - "Build system integration remains functional"
+    - "No breaking changes to existing APIs"
+
+  quality:
+    - "Code is well-documented"
+    - "Edge cases are handled"
+    - "Error messages are clear"
+
+dev_guidance:
+  existing_system_context: |
+    Based on current architecture, this enhancement builds on existing infrastructure.
+    The system uses a three-stage pipeline (Stage0/Stage1/Stage2) with Sea of Nodes IR.
+
+  integration_approach:
+    - "Work within existing framework"
+    - "Maintain compatibility with current structure"
+    - "Follow established patterns"
+
+  technical_constraints:
+    - "Must work with current AST structure"
+    - "Cannot break existing build system"
+    - "Must maintain LLVM/MLIR integration compatibility"
+
+  key_files_to_modify: "{{key_files}}"
+
+tasks:
+  - task: "Analyze current implementation"
+    subtasks:
+      - "Review existing code in swimlane area"
+      - "Identify gaps and incomplete sections"
+      - "Document current state"
+
+  - task: "Implement missing functionality"
+    subtasks:
+      - "Complete core implementation"
+      - "Add necessary tests"
+      - "Update documentation"
+
+  - task: "Validate implementation"
+    subtasks:
+      - "Run regression tests"
+      - "Verify integration works"
+      - "Fix any breaking changes"
+
+  - task: "Code review and cleanup"
+    subtasks:
+      - "Ensure code follows standards"
+      - "Add proper error handling"
+      - "Update documentation"
+
+testing:
+  unit_tests: "Test individual components"
+  integration_tests: "End-to-end pipeline validation"
+  manual_testing: "Complex scenarios and edge cases"
+
+definition_of_done:
+  - "All acceptance criteria met"
+  - "Regression tests pass"
+  - "Code follows project standards"
+  - "Documentation updated"

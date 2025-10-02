@@ -19,9 +19,21 @@ using u64 = ::std::uint64_t;
 
 // Forward declarations
 auto main() -> int;
+auto name() -> std::string;
+auto decorate(std::string& s) -> void;
 
 
 auto main() -> int /*kinds:*/{
-    return 42;
+    std::cout << "Hello " << name() << "\n";
     return 0;
+}
+
+auto name() -> std::string /*kinds:*/{
+    std::string s = "world";
+    decorate(s);
+    return s;
+}
+
+auto decorate(std::string& s) -> void /*kinds:InOut*/{
+    s = "[" + s + "]";
 }

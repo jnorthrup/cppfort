@@ -87,13 +87,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          pip install requests
+
       - name: Setup Build Environment
         run: |
           # Install dependencies
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build g++-12
-          # BNFC if needed
-          # cargo install bnfc
 
       - name: Load Story Context
         id: story
@@ -158,11 +165,12 @@ jobs:
           - Test command: ./regression-tests/run_regression_stage0.sh
           PROMPT
 
-          # Call agent via API (simplified - actual implementation would use anthropic SDK)
+          # Execute task via GitHub Copilot API
           python3 scripts/bmad_agent_executor.py \
             --agent "$AGENT_TYPE" \
             --prompt agent_prompt.md \
-            --output implementation_log.txt
+            --output implementation_log.txt \
+            --mode api
 
           # Check if agent completed successfully
           if [ $? -eq 0 ]; then
@@ -284,6 +292,29 @@ jobs:
             gh issue close ${{ github.event.issue.number }} \
               --reason completed \
               --comment "✅ Task completed successfully by BMAD agent"
+          fi
+
+      - name: Auto-retry on failure
+        if: steps.validate.outputs.status == 'failed' || steps.validate.outputs.status == 'build_failed'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check retry count (max 3 retries)
+          RETRY_LABEL="bmad-retry"
+          RETRY_COUNT=$(gh issue view ${{ github.event.issue.number }} --json labels --jq '.labels | map(select(.name | startswith("bmad-retry-"))) | length' || echo "0")
+
+          if [ "$RETRY_COUNT" -lt 3 ]; then
+            NEW_COUNT=$((RETRY_COUNT + 1))
+            gh issue edit ${{ github.event.issue.number }} --add-label "bmad-retry-$NEW_COUNT"
+
+            # Re-trigger executor with enhanced prompt
+            gh workflow run bmad-executor.yml \
+              -f "story_path=${{ needs.route-to-agent.outputs.story_file }}"
+
+            gh issue comment ${{ github.event.issue.number }} --body "🔄 Auto-retrying (attempt $NEW_COUNT/3) with enhanced context from previous failure"
+          else
+            gh issue comment ${{ github.event.issue.number }} --body "❌ Max retries (3) reached. Manual intervention required."
+            gh issue edit ${{ github.event.issue.number }} --add-label "bmad-manual-required"
           fi
 
       - name: Upload Execution Artifacts

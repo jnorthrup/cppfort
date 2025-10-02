@@ -5944,6 +5944,7 @@ REPEAT by Asking the user if they would like to perform another Reflective, Elic
 
 <!-- END: BMAD-AGENTS -->
 
+
 <!-- BEGIN: BMAD-AGENTS-OPENCODE -->
 # BMAD-METHOD Agents and Tasks (OpenCode)
 

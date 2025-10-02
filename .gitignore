@@ -44,3 +44,6 @@ Makefile
 # Local encrypted audits and manifests
 .bmad-core/audit/
 manifests/
+# BMAD (local only)
+.bmad-core/
+.bmad-*/

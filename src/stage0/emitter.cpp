@@ -1237,7 +1237,7 @@ void Emitter::append_line(::std::string& out, ::std::string_view text, int inden
 
     try {
         // Convert AST to IR graph using mock implementation
-        auto graph = cppfort::ir::astToIR(unit);
+        auto graph = cppfort::ir::astToIR(std::any(unit));
 
         if (!graph) {
             os << "// Error: Failed to create IR graph\n";

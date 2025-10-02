@@ -11,6 +11,12 @@ target_include_directories(cppfort_ir_mock PUBLIC
     ${CMAKE_SOURCE_DIR}/include/ir
 )
 
+# Force libc++ for ABI compatibility
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(cppfort_ir_mock PRIVATE -stdlib=libc++)
+    target_link_options(cppfort_ir_mock PRIVATE -stdlib=libc++)
+endif()
+
 target_link_libraries(cppfort_ir_mock PUBLIC
     cppfort_compat
 )
