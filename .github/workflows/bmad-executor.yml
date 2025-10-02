@@ -69,6 +69,18 @@ jobs:
             ux|docs)
               AGENT="ux-expert"  # Documentation & UX
               ;;
+            ci-refinement)
+              # Intelligent dispatch based on refinement type from story
+              if grep -q "build-failure" "$STORY_FILE"; then
+                AGENT="dev"
+              elif grep -q "test-failure" "$STORY_FILE"; then
+                AGENT="qa"
+              elif grep -q "code-quality" "$STORY_FILE"; then
+                AGENT="dev"
+              else
+                AGENT="dev"  # Default for unknown refinement types
+              fi
+              ;;
             *)
               AGENT="dev"  # Default to dev for unknown swimlanes
               ;;
@@ -165,12 +177,12 @@ jobs:
           - Test command: ./regression-tests/run_regression_stage0.sh
           PROMPT
 
-          # Execute task via GitHub Copilot API
+          # Execute task via local commands (GitHub Copilot API not available)
           python3 scripts/bmad_agent_executor.py \
             --agent "$AGENT_TYPE" \
             --prompt agent_prompt.md \
             --output implementation_log.txt \
-            --mode api
+            --mode local
 
           # Check if agent completed successfully
           if [ $? -eq 0 ]; then
@@ -315,6 +327,33 @@ jobs:
           else
             gh issue comment ${{ github.event.issue.number }} --body "❌ Max retries (3) reached. Manual intervention required."
             gh issue edit ${{ github.event.issue.number }} --add-label "bmad-manual-required"
+          fi
+
+      - name: Ensure Artifact Files Exist
+        if: always()
+        run: |
+          # Ensure agent_prompt.md exists
+          if [ ! -f agent_prompt.md ]; then
+            echo "# Agent Prompt Not Created
+
+          The agent prompt file was not generated during execution.
+          This may indicate an issue with the workflow setup." > agent_prompt.md
+          fi
+
+          # Ensure implementation_log.txt exists
+          if [ ! -f implementation_log.txt ]; then
+            echo "# Implementation Log Not Created
+
+          The implementation log was not generated.
+          Check the agent execution step for errors." > implementation_log.txt
+          fi
+
+          # Ensure test_results.txt exists
+          if [ ! -f regression-tests/test_results.txt ]; then
+            echo "# Test Results Not Generated
+
+          Regression tests did not run or failed to create output.
+          Check build and test execution steps." > regression-tests/test_results.txt
           fi
 
       - name: Upload Execution Artifacts
