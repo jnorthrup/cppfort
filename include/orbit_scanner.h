@@ -7,6 +7,7 @@
 #include <memory>
 #include <filesystem>
 
+#include "multi_grammar_loader.h"
 #include "orbit_mask.h"
 #include "tblgen_patterns.h"
 
@@ -16,7 +17,7 @@ namespace ir {
 // Forward declarations
 class RabinKarp;
 class OrbitContext;
-class MultiGrammarLoader;
+class IMultiGrammarLoader;
 struct OrbitPattern;
 struct OrbitMatch;
 
@@ -51,8 +52,9 @@ struct DetectionResult {
 // Main orbit scanner class
 class OrbitScanner {
 public:
-  // Constructor
-  OrbitScanner(const OrbitScannerConfig& config = OrbitScannerConfig{});
+  // Constructor with optional custom grammar loader (primarily for testing/mocking)
+  OrbitScanner(const OrbitScannerConfig& config = OrbitScannerConfig{},
+               ::std::unique_ptr<IMultiGrammarLoader> loader = nullptr);
 
   // Destructor
   ~OrbitScanner();
@@ -85,7 +87,7 @@ private:
   // Core components
   ::std::unique_ptr<RabinKarp> m_rabinKarp;
   ::std::unique_ptr<OrbitContext> m_context;
-  ::std::unique_ptr<MultiGrammarLoader> m_loader;
+  ::std::unique_ptr<IMultiGrammarLoader> m_loader;
 
   // Helper methods
   ::std::vector<OrbitMatch> findMatches(const ::std::string& code,

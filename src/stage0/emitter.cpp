@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "ir/sea_of_nodes.h"
+
 namespace cppfort::stage0 {
 namespace {
 ::std::string normalize_space(::std::string text) {
@@ -91,7 +93,7 @@ bool looks_like_initializer_list(const ::std::string& expr) {
 }
 
 ::std::string fix_expression_tokens(::std::string expr) {
-    // Simple postfix deref: identifier* -> *identifier
+    // Simple postfix deref: identifier* -> cpp2::impl::deref(identifier)
     // Use a manual scan to avoid regex dependency
     for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
         if (::std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_') {
@@ -100,13 +102,378 @@ bool looks_like_initializer_list(const ::std::string& expr) {
             while (pos < expr.size() && (::std::isalnum(static_cast<unsigned char>(expr[pos])) || expr[pos] == '_')) ++pos;
             if (pos < expr.size() && expr[pos] == '*') {
                 ::std::string ident = expr.substr(start, pos - start);
-                // replace ident* with *ident
-                expr.replace(start, ident.size() + 1, ::std::string("*") + ident);
+                // replace ident* with cpp2::impl::deref(ident)
+                ::std::string replacement = "cpp2::impl::deref(" + ident + ")";
+                expr.replace(start, ident.size() + 1, replacement);
                 // continue after the inserted sequence
-                pos = start + 1 + ident.size();
+                pos = start + replacement.size();
             }
         }
     }
+
+    auto normalize_prefix_marker = [&](char marker) {
+        size_t pos = 0;
+        while ((pos = expr.find(marker, pos)) != ::std::string::npos) {
+            // Find the previous non-space character to determine context.
+            char prev = '\0';
+            for (size_t i = pos; i > 0; --i) {
+                char c = expr[i - 1];
+                if (!::std::isspace(static_cast<unsigned char>(c))) {
+                    prev = c;
+                    break;
+                }
+            }
+
+            if (!(prev == '<' || prev == '(' || prev == ',' || prev == '=' || prev == ':')) {
+                ++pos;
+                continue;
+            }
+
+            size_t type_start = pos + 1;
+            while (type_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[type_start]))) {
+                ++type_start;
+            }
+
+            if (type_start >= expr.size()) {
+                break;
+            }
+
+            size_t type_end = type_start;
+            int angle_depth = 0;
+            while (type_end < expr.size()) {
+                char c = expr[type_end];
+                if (c == '<') {
+                    ++angle_depth;
+                } else if (c == '>') {
+                    if (angle_depth == 0) {
+                        break;
+                    }
+                    --angle_depth;
+                } else if ((c == ',' || c == ')') && angle_depth == 0) {
+                    break;
+                } else if (::std::isspace(static_cast<unsigned char>(c)) && angle_depth == 0) {
+                    break;
+                }
+                ++type_end;
+            }
+
+            if (type_end == type_start) {
+                ++pos;
+                continue;
+            }
+
+            ::std::string raw_type = expr.substr(type_start, type_end - type_start);
+            ::std::string trimmed = trim_copy(raw_type);
+            if (trimmed.empty()) {
+                ++pos;
+                continue;
+            }
+
+            ::std::string replacement = fix_prefix_type(::std::string(1, marker) + trimmed);
+            expr.replace(pos, type_end - pos, replacement);
+            pos += replacement.size();
+        }
+    };
+
+    normalize_prefix_marker('*');
+    normalize_prefix_marker('&');
+
+    auto replace_move_tokens = [&]() {
+        size_t pos = 0;
+        auto is_delim = [](char c) {
+            return ::std::isspace(static_cast<unsigned char>(c)) || c == '(' || c == ')' || c == '{' ||
+                   c == '}' || c == ';' || c == ',' || c == '[' || c == ']';
+        };
+
+        while ((pos = expr.find("move", pos)) != ::std::string::npos) {
+            size_t token_start = pos;
+            size_t token_end = pos + 4;
+
+            char prev = token_start == 0 ? '\0' : expr[token_start - 1];
+            char next = token_end < expr.size() ? expr[token_end] : '\0';
+            bool prev_ok = token_start == 0 || is_delim(prev);
+            bool next_ok = token_end >= expr.size() || is_delim(next);
+            if (!prev_ok || !next_ok) {
+                pos = token_end;
+                continue;
+            }
+
+            size_t expr_start = token_end;
+            while (expr_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[expr_start]))) {
+                ++expr_start;
+            }
+            if (expr_start >= expr.size()) {
+                break;
+            }
+
+            ::std::string inner;
+            size_t replace_end = expr_start;
+            if (expr[expr_start] == '(') {
+                int depth = 1;
+                size_t i = expr_start + 1;
+                while (i < expr.size() && depth > 0) {
+                    if (expr[i] == '(') {
+                        ++depth;
+                    } else if (expr[i] == ')') {
+                        --depth;
+                    }
+                    ++i;
+                }
+                if (depth != 0) {
+                    pos = expr_start;
+                    continue;
+                }
+                inner = expr.substr(expr_start + 1, i - expr_start - 2);
+                replace_end = i;
+            } else {
+                size_t i = expr_start;
+                while (i < expr.size() && ( ::std::isalnum(static_cast<unsigned char>(expr[i])) || expr[i] == '_' )) {
+                    ++i;
+                }
+                if (i == expr_start) {
+                    pos = expr_start;
+                    continue;
+                }
+                inner = expr.substr(expr_start, i - expr_start);
+                replace_end = i;
+            }
+
+            ::std::string trimmed = trim_copy(inner);
+            if (trimmed.empty()) {
+                pos = replace_end;
+                continue;
+            }
+
+            ::std::string replacement = "std::move(" + trimmed + ")";
+            expr.replace(token_start, replace_end - token_start, replacement);
+            pos = token_start + replacement.size();
+        }
+    };
+
+    replace_move_tokens();
+
+    auto replace_assignment_parens = [&]() {
+        size_t pos = 0;
+        while ((pos = expr.find('=', pos)) != ::std::string::npos) {
+            if (pos > 0 && expr[pos - 1] == '=') {
+                ++pos;
+                continue; // skip equality operators
+            }
+
+            size_t open = pos + 1;
+            while (open < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[open]))) {
+                ++open;
+            }
+            if (open >= expr.size() || expr[open] != '(') {
+                ++pos;
+                continue;
+            }
+
+            size_t close = open + 1;
+            int depth = 1;
+            while (close < expr.size() && depth > 0) {
+                char c = expr[close];
+                if (c == '(') {
+                    ++depth;
+                } else if (c == ')') {
+                    --depth;
+                }
+                ++close;
+            }
+
+            if (depth != 0) {
+                break; // unbalanced
+            }
+
+            size_t content_start = open + 1;
+            size_t inner_length = close > open + 1 && (close - open) > 2
+                ? (close - open - 2)
+                : 0;
+            ::std::string inside = inner_length > 0
+                ? expr.substr(content_start, inner_length)
+                : ::std::string{};
+
+            ::std::string trimmed = trim_copy(inside);
+
+            expr.replace(open, close - open, ::std::string("{") + trimmed + "}");
+            pos = open + trimmed.size() + 2; // account for braces
+        }
+    };
+
+    replace_assignment_parens();
+
+    auto replace_type_literal_initializers = [&]() {
+        size_t pos = 0;
+        while ((pos = expr.find(':', pos)) != ::std::string::npos) {
+            size_t type_start = pos + 1;
+            while (type_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[type_start]))) {
+                ++type_start;
+            }
+            if (type_start >= expr.size()) {
+                break;
+            }
+
+            size_t type_end = type_start;
+            while (type_end < expr.size()) {
+                char c = expr[type_end];
+                if (::std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == ':' || c == '<' || c == '>') {
+                    ++type_end;
+                    continue;
+                }
+                break;
+            }
+
+            ::std::string type_name = trim_copy(expr.substr(type_start, type_end - type_start));
+            if (type_name.empty()) {
+                ++pos;
+                continue;
+            }
+
+            size_t assign = type_end;
+            while (assign < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[assign]))) {
+                ++assign;
+            }
+            if (assign >= expr.size() || expr[assign] != '=') {
+                ++pos;
+                continue;
+            }
+
+            size_t brace_start = assign + 1;
+            while (brace_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[brace_start]))) {
+                ++brace_start;
+            }
+            if (brace_start >= expr.size() || expr[brace_start] != '{') {
+                ++pos;
+                continue;
+            }
+
+            size_t brace_end = brace_start;
+            int depth = 0;
+            while (brace_end < expr.size()) {
+                char c = expr[brace_end];
+                if (c == '{') {
+                    ++depth;
+                } else if (c == '}') {
+                    --depth;
+                    if (depth == 0) {
+                        break;
+                    }
+                }
+                ++brace_end;
+            }
+
+            if (brace_end >= expr.size()) {
+                break;
+            }
+
+            ::std::string braces = expr.substr(brace_start, brace_end - brace_start + 1);
+            ::std::string replacement = type_name + braces;
+            expr.replace(pos, brace_end - pos + 1, replacement);
+            pos += replacement.size();
+        }
+    };
+
+    replace_type_literal_initializers();
+
+    auto replace_as_expressions = [&]() {
+        size_t search_pos = 0;
+        while ((search_pos = expr.find(" as ", search_pos)) != ::std::string::npos) {
+            size_t as_pos = search_pos + 1; // position of 'a'
+
+            // Determine left expression bounds
+            size_t left_end = search_pos; // space before 'as'
+            while (left_end > 0 && ::std::isspace(static_cast<unsigned char>(expr[left_end - 1]))) {
+                --left_end;
+            }
+            if (left_end == 0) {
+                search_pos += 4;
+                continue;
+            }
+
+            size_t left_start = left_end;
+            if (expr[left_end - 1] == ')' || expr[left_end - 1] == ']') {
+                char closing = expr[left_end - 1];
+                char opening = closing == ')' ? '(' : '[';
+                int depth = 1;
+                size_t i = left_end - 2;
+                while (i < expr.size()) {
+                    if (expr[i] == closing) {
+                        ++depth;
+                    } else if (expr[i] == opening) {
+                        --depth;
+                        if (depth == 0) {
+                            left_start = i;
+                            break;
+                        }
+                    }
+                    if (i == 0) {
+                        break;
+                    }
+                    --i;
+                }
+                if (depth != 0) {
+                    search_pos += 4;
+                    continue;
+                }
+            } else {
+                while (left_start > 0) {
+                    char c = expr[left_start - 1];
+                    if (::std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == ':' || c == '.') {
+                        --left_start;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            ::std::string left_expr = trim_copy(expr.substr(left_start, left_end - left_start));
+            if (left_expr.empty()) {
+                search_pos += 4;
+                continue;
+            }
+
+            size_t type_start = search_pos + 4; // skip " as "
+            while (type_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[type_start]))) {
+                ++type_start;
+            }
+            if (type_start >= expr.size()) {
+                break;
+            }
+
+            size_t type_end = type_start;
+            int angle_depth = 0;
+            while (type_end < expr.size()) {
+                char c = expr[type_end];
+                if (c == '<') {
+                    ++angle_depth;
+                } else if (c == '>') {
+                    if (angle_depth == 0) {
+                        ++type_end;
+                        break;
+                    }
+                    --angle_depth;
+                } else if (::std::isspace(static_cast<unsigned char>(c)) || c == ')' || c == ',' || c == ';') {
+                    if (angle_depth == 0) {
+                        break;
+                    }
+                }
+                ++type_end;
+            }
+
+            ::std::string type_expr = trim_copy(expr.substr(type_start, type_end - type_start));
+            if (type_expr.empty()) {
+                search_pos = type_end;
+                continue;
+            }
+
+            size_t replace_end = type_end;
+            ::std::string replacement = "cpp2::impl::as_<" + type_expr + ">(" + left_expr + ")";
+            expr.replace(left_start, replace_end - left_start, replacement);
+            search_pos = left_start + replacement.size();
+        }
+    };
+
+    replace_as_expressions();
 
     // Simple address-of suffix: something& -> &something (only for simple tokens)
     for (size_t pos = 0; pos + 1 < expr.size(); ++pos) {
@@ -119,26 +486,6 @@ bool looks_like_initializer_list(const ::std::string& expr) {
             // replace ident& with &ident
             expr.replace(start, ident.size() + 1, ::std::string("&") + ident);
             pos = start + 1 + ident.size();
-        }
-    }
-
-    // Simple UFCS pattern: find a ' std' token and a preceding ':id'
-    size_t std_pos = expr.find(" std");
-    if (std_pos != ::std::string::npos) {
-        // find last ':' before std_pos
-        size_t col_pos = expr.rfind(':', std_pos);
-        if (col_pos != ::std::string::npos && col_pos + 1 < expr.size()) {
-            // read identifier after ':'
-            size_t id_start = col_pos + 1;
-            size_t id_end = id_start;
-            while (id_end < expr.size() && (::std::isalnum(static_cast<unsigned char>(expr[id_end])) || expr[id_end] == '_')) ++id_end;
-            if (id_end > id_start) {
-                ::std::string id = expr.substr(id_start, id_end - id_start);
-                // remove the ':id' and the ' std' and replace with 'std.id'
-                expr.erase(std_pos, 4); // remove " std"
-                expr.erase(col_pos, id.size() + 1); // remove ":id"
-                expr.insert(col_pos, ::std::string("::std::") + id);
-            }
         }
     }
 
@@ -233,8 +580,9 @@ bool looks_like_initializer_list(const ::std::string& expr) {
     // Pattern: identifier* → *identifier
     // Match identifier followed by * at end or before operators/punctuation
     // But not multiplication (identifier * identifier)
-    ::std::regex suffix_deref(R"((\w+)\*(?=\s*(?:[+\-;,\)\]\}]|$)))");
-    expr = ::std::regex_replace(expr, suffix_deref, "*$1");
+    // TEMPORARILY DISABLED: Only match simple identifiers (not qualified names starting with ::)
+    // ::std::regex suffix_deref(R"(([a-zA-Z_]\w+)\*(?=\s*(?:[+\-;,\)\]\}]|$)))");
+    // expr = ::std::regex_replace(expr, suffix_deref, "*$1");
 
     // Handle discard pattern: _ = expr -> (void)expr
     if (expr.size() >= 4 && expr.substr(0, 4) == "_ = ") {
@@ -278,6 +626,8 @@ bool looks_like_initializer_list(const ::std::string& expr) {
             return emit_cpp(unit, options);
         case EmitBackend::Mlir:
             return emit_mlir(unit);
+        case EmitBackend::IR:
+            return emit_ir(unit);
     }
     return {};
 }
@@ -287,6 +637,7 @@ bool looks_like_initializer_list(const ::std::string& expr) {
     
     // Detect required headers by scanning the code
     bool needs_cstdio = false;
+    bool needs_cassert = false;
     
     // Scan all expressions for C stdio functions
     auto scan_for_stdio = [&](const ::std::string& expr) {
@@ -322,6 +673,7 @@ bool looks_like_initializer_list(const ::std::string& expr) {
                     scan_statement(inner);
                 }
             } else if constexpr (::std::is_same_v<T, AssertStmt>) {
+                needs_cassert = true;
                 scan_for_stdio(node.condition);
                 if (node.category) {
                     scan_for_stdio(*node.category);
@@ -353,6 +705,11 @@ bool looks_like_initializer_list(const ::std::string& expr) {
         output += "#include <string>\n";
         output += "#include <string_view>\n";
         output += "#include <vector>\n";
+        output += "#include <utility>\n";
+        output += "#include \"cpp2.h\"\n";
+        if (needs_cassert) {
+            output += "#include <cassert>\n";
+        }
         if (needs_cstdio) {
             output += "#include <cstdio>\n";
         }
@@ -404,7 +761,7 @@ bool looks_like_initializer_list(const ::std::string& expr) {
 
 ::std::string Emitter::get_param_type(const Parameter& param) const {
     auto type = normalize_space(param.type);
-    if (type.empty()) {
+    if (type.empty() || type == "_") {
         type = "auto";
     }
     // canonicalize prefix pointer styles like '*T'
@@ -431,6 +788,10 @@ void Emitter::emit_forward_declaration(const FunctionDecl& fn, ::std::string& ou
     auto return_type = fn.return_type.has_value() && !fn.return_type->empty()
         ? normalize_space(*fn.return_type)
         : ::std::string{"void"};
+    if (return_type == "_") {
+        return_type = "auto";
+    }
+    return_type = fix_prefix_type(return_type);
 
     // Special handling for main: must return int
     bool is_main = fn.name == "main";
@@ -457,6 +818,10 @@ void Emitter::emit_function(const FunctionDecl& fn, ::std::string& out, int inde
     auto return_type = fn.return_type.has_value() && !fn.return_type->empty()
         ? normalize_space(*fn.return_type)
         : ::std::string {"void"};
+    if (return_type == "_") {
+        return_type = "auto";
+    }
+    return_type = fix_prefix_type(return_type);
 
     // Special handling for main: must return int
     bool is_main = fn.name == "main";
@@ -547,13 +912,43 @@ void Emitter::emit_statement(const Statement& stmt, ::std::string& out, int inde
             if (type.empty()) {
                 type = "auto";
             }
+            type = fix_prefix_type(type);
+
+            if (type == "type") {
+                ::std::string alias = node.initializer.has_value()
+                    ? normalize_space(*node.initializer)
+                    : ::std::string{};
+                while (!alias.empty() && alias.front() == '=') {
+                    alias.erase(alias.begin());
+                }
+                alias = trim_copy(alias);
+                alias = fix_prefix_type(alias);
+
+                if (alias.empty()) {
+                    alias = "auto"; // Fallback to keep generated code valid
+                }
+
+                ::std::string line = "using " + node.name + " = " + alias + ';';
+                Emitter::append_line(out, line, indent);
+                return;
+            }
+
             ::std::string line = type + ' ' + node.name;
             if (node.initializer.has_value() && !node.initializer->empty()) {
-                auto init = fix_expression_tokens(normalize_space(*node.initializer));
-                if (looks_like_initializer_list(init)) {
+                auto raw_init = normalize_space(*node.initializer);
+                bool paren_wrapped = raw_init.size() >= 2 && raw_init.front() == '(' && raw_init.back() == ')';
+                if (paren_wrapped) {
+                    raw_init.front() = '{';
+                    raw_init.back() = '}';
+                }
+
+                auto init = fix_expression_tokens(raw_init);
+
+                if (!paren_wrapped && looks_like_initializer_list(init)) {
                     init.front() = '{';
                     init.back() = '}';
                 }
+
                 line += " = " + init;
             }
             line += ';';
@@ -567,7 +962,9 @@ void Emitter::emit_statement(const Statement& stmt, ::std::string& out, int inde
                 Emitter::append_line(out, "return;", indent);
             }
         } else if constexpr (::std::is_same_v<T, AssertStmt>) {
-            ::std::string line = "assert(" + normalize_space(node.condition) + ");";
+            auto condition = fix_expression_tokens(normalize_space(node.condition));
+            ::std::string line = "assert((" + condition + "))";
+            line.push_back(';');
             if (node.category && !node.category->empty()) {
                 line += " // " + *node.category;
             }
@@ -642,6 +1039,54 @@ void Emitter::append_line(::std::string& out, ::std::string_view text, int inden
     }
 
     os << "}\n";
+    return os.str();
+}
+
+::std::string Emitter::emit_ir(const TranslationUnit& unit) const {
+    // Chapter 19: Sea of Nodes IR emission
+    // Convert AST to IR graph and emit target code
+
+    ::std::ostringstream os;
+
+    try {
+        // Convert AST to IR graph using mock implementation
+        auto graph = cppfort::ir::astToIR(unit);
+
+        if (!graph) {
+            os << "// Error: Failed to create IR graph\n";
+            return os.str();
+        }
+
+        // Validate the graph
+        if (!cppfort::ir::validateGraph(graph.get())) {
+            os << "// Error: IR graph validation failed\n";
+            return os.str();
+        }
+
+        // Apply optimization passes
+        graph->optimize();
+
+        // Create target lowering for C++
+        auto target_lowering = cppfort::ir::createTargetLowering(cppfort::ir::Target::Cpp);
+
+        // Apply lowering passes
+        for (auto* pass : target_lowering->passes()) {
+            graph->applyPass(pass);
+        }
+
+        // Emit target code
+        os << "// Generated from Sea of Nodes IR\n";
+        os << "// Graph nodes: " << graph->nodes().size() << "\n\n";
+        os << target_lowering->emit(graph.get());
+
+        // Optional: dump graph for debugging
+        os << "\n// IR Graph dump:\n";
+        cppfort::ir::dumpGraph(graph.get(), os);
+
+    } catch (const std::exception& e) {
+        os << "// Error during IR emission: " << e.what() << "\n";
+    }
+
     return os.str();
 }
 

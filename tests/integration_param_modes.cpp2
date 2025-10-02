@@ -1,0 +1,11 @@
+// Test parameter modes at correct depth
+increment: (inout x: i32) = {
+    x = x + 1;
+}
+
+main: () -> int = {
+    val: i32 = 10;
+    increment(val);
+    std::cout << val;
+    return 0;
+}

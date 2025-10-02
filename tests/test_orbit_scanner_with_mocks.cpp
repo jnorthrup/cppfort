@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "mock_multi_grammar_loader.h"
 #include "orbit_scanner_mock.h"
 
 namespace cppfort::ir {
@@ -307,6 +308,145 @@ TEST_F(OrbitScannerMockTest, DeeplyNestedStructures) {
 
     EXPECT_TRUE(MockScannerValidator::validateBasicResult(result));
     EXPECT_NE(result.detectedGrammar, GrammarType::UNKNOWN);
+}
+
+TEST(OrbitScannerInjectedMockTest, InitializeAndScanWithMockLoader) {
+    OrbitScannerConfig config;
+    config.patternThreshold = 0.05;
+    config.minConfidence = 0.0;
+
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+
+    OrbitPattern cPattern("mock_c", static_cast<uint32_t>(GrammarType::C), 1.0);
+    cPattern.signature_patterns = {"printf"};
+    cPattern.protocol_indicators = {"C"};
+    cPattern.version_patterns = {"1.0"};
+    loader->setPatterns(GrammarType::C, {cPattern});
+
+    OrbitScanner scanner(config, ::std::move(loader));
+
+    ASSERT_TRUE(scanner.initialize());
+    auto loaded = scanner.getLoadedGrammars();
+    ASSERT_EQ(loaded.size(), 1u);
+    EXPECT_EQ(loaded.front(), GrammarType::C);
+
+    auto result = scanner.scan("int main() { printf(\"hi\"); }");
+    EXPECT_NE(result.detectedGrammar, GrammarType::UNKNOWN);
+    EXPECT_FALSE(result.matches.empty());
+}
+
+TEST(OrbitScannerInjectedMockTest, InitializationFailsWhenMockLoaderFails) {
+    OrbitScannerConfig config;
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+    loader->setLoadAllSuccess(false);
+
+    OrbitScanner scanner(config, ::std::move(loader));
+    EXPECT_FALSE(scanner.initialize());
+}
+
+// TRUTH-BASED DEPTH FILTERING TESTS
+
+TEST(OrbitScannerDepthFiltering, OperatorDeclOnlyMatchesInClassBody) {
+    OrbitScannerConfig config;
+    config.patternThreshold = 0.05;
+
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+
+    // Pattern should only match inside braces (class body depth)
+    OrbitPattern pattern("cpp2_operator", static_cast<uint32_t>(GrammarType::CPP2), 1.0);
+    pattern.signature_patterns = {"operator=:"};
+    pattern.expected_depth = 1;  // Inside one level of braces
+    pattern.required_confix = "{";
+    loader->setPatterns(GrammarType::CPP2, {pattern});
+
+    OrbitScanner scanner(config, ::std::move(loader));
+    ASSERT_TRUE(scanner.initialize());
+
+    // Should NOT match at top level (depth 0)
+    auto result1 = scanner.scan("operator=: bad");
+    EXPECT_TRUE(result1.matches.empty());
+
+    // SHOULD match inside class body (depth 1)
+    auto result2 = scanner.scan("myclass { operator=: (out this) = {} }");
+    EXPECT_FALSE(result2.matches.empty());
+    bool foundOp = false;
+    for (const auto& m : result2.matches) {
+        if (m.signature == "operator=:") foundOp = true;
+    }
+    EXPECT_TRUE(foundOp);
+
+    // Should NOT match inside nested function body (depth 2)
+    auto result3 = scanner.scan("class { func { operator=: bad } }");
+    EXPECT_TRUE(result3.matches.empty());
+}
+
+TEST(OrbitScannerDepthFiltering, ParamModesOnlyMatchInParentheses) {
+    OrbitScannerConfig config;
+    config.patternThreshold = 0.05;
+
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+
+    OrbitPattern pattern("cpp2_param_mode", static_cast<uint32_t>(GrammarType::CPP2), 1.0);
+    pattern.signature_patterns = {"out ", "inout "};
+    pattern.required_confix = "(";  // Must be inside parameter list
+    loader->setPatterns(GrammarType::CPP2, {pattern});
+
+    OrbitScanner scanner(config, ::std::move(loader));
+    ASSERT_TRUE(scanner.initialize());
+
+    // Should NOT match at top level
+    auto result1 = scanner.scan("out bad");
+    EXPECT_TRUE(result1.matches.empty());
+
+    // SHOULD match inside parameter list
+    auto result2 = scanner.scan("func: (out this, inout x) = {}");
+    EXPECT_FALSE(result2.matches.empty());
+}
+
+TEST(OrbitScannerDepthFiltering, NoMatchInsideStringLiterals) {
+    OrbitScannerConfig config;
+    config.patternThreshold = 0.05;
+
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+
+    OrbitPattern pattern("cpp2_operator", static_cast<uint32_t>(GrammarType::CPP2), 1.0);
+    pattern.signature_patterns = {"operator=:"};
+    loader->setPatterns(GrammarType::CPP2, {pattern});
+
+    OrbitScanner scanner(config, ::std::move(loader));
+    ASSERT_TRUE(scanner.initialize());
+
+    // Should NOT match inside string literal
+    auto result = scanner.scan("std::cout << \"operator=: fake\";");
+
+    // If matches exist, none should be from inside the string
+    for (const auto& m : result.matches) {
+        // Match positions should not be inside the quotes
+        EXPECT_TRUE(m.startPos < 13 || m.startPos > 29);  // Outside "..." range
+    }
+}
+
+TEST(OrbitScannerDepthFiltering, TopLevelFunctionDeclMatchesAtDepthZero) {
+    OrbitScannerConfig config;
+    config.patternThreshold = 0.05;
+
+    auto loader = ::std::make_unique<MockMultiGrammarLoader>();
+
+    OrbitPattern pattern("cpp2_function", static_cast<uint32_t>(GrammarType::CPP2), 1.0);
+    pattern.signature_patterns = {": ("};
+    pattern.expected_depth = 0;  // Only at top level
+    loader->setPatterns(GrammarType::CPP2, {pattern});
+
+    OrbitScanner scanner(config, ::std::move(loader));
+    ASSERT_TRUE(scanner.initialize());
+
+    // SHOULD match at top level
+    auto result1 = scanner.scan("main: () = {}");
+    EXPECT_FALSE(result1.matches.empty());
+
+    // Should NOT match inside braces
+    auto result2 = scanner.scan("class { member: () = {} }");
+    EXPECT_TRUE(result2.matches.empty());
 }
 
 } // namespace cppfort::ir

@@ -8,7 +8,8 @@
 #include <cctype>
 #include <cassert>
 
-#include "../stage0/bidirectional.h"
+#include "../stage0/transpiler.h"
+#include "../stage0/emitter.h"
 
 int main(int argc, char* argv[]) {
     // Support two invocation styles:
@@ -42,12 +43,15 @@ int main(int argc, char* argv[]) {
     }
     in.close();
 
-    // Use stage0 BidirectionalTranspiler to actually transpile cpp2 to C++
-    cppfort::stage0::BidirectionalTranspiler transpiler;
+    // Use stage0 Transpiler pipeline to transpile cpp2 to C++
+    cppfort::stage0::Transpiler transpiler;
+    cppfort::stage0::Emitter emitter;
+    cppfort::stage0::EmitOptions emit_options;
+    emit_options.include_headers = true;
     std::string transformed;
     try {
         // Parse cpp2 source to AST
-        auto ast = transpiler.parse_cpp2(src, input_path);
+        auto ast = transpiler.parse(src, input_path);
         std::cout << "Parsed AST with " << ast.functions.size() << " functions\n";
         // Debug: print parameter kinds for each function
         for (const auto& fn : ast.functions) {
@@ -59,10 +63,7 @@ int main(int argc, char* argv[]) {
         }
         
         // Emit AST as C++ source
-        cppfort::stage0::TransformOptions options;
-        options.target_cpp2 = false;  // emit C++
-        options.include_preamble = true;
-        transformed = transpiler.emit_cpp(ast, options);
+        transformed = emitter.emit(ast, emit_options);
         std::cout << "Emitted C++ code, length: " << transformed.size() << "\n";
     } catch (const std::exception& e) {
         std::cerr << "Transpilation failed: " << e.what() << "\n";

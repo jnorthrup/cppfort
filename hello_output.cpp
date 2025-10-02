@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
+#include "cpp2.h"
 
 using i8 = ::std::int8_t;
 using i16 = ::std::int16_t;
@@ -17,21 +19,18 @@ using u64 = ::std::uint64_t;
 
 // Forward declarations
 auto main() -> int;
-auto name() -> std::string;
-auto decorate(std::string& s) -> void;
+auto hello_user(std::string_view name) -> void;
 
 
 auto main() -> int /*kinds:*/{
-    std::cout << "Hello " << name() << "\n";
+    std::string greeting = "Hello, world!";
+    std::string shout = greeting + "!!!";
+    std::cout << greeting << "\n";
+    std::cout << shout << "\n";
     return 0;
 }
 
-auto name() -> std::string /*kinds:*/{
-    std::string s = "world";
-    decorate(s);
-    return s;
-}
-
-auto decorate(std::string& s) -> void /*kinds:InOut*/{
-    s = "[" + s + "]";
+auto hello_user(std::string_view name) -> void /*kinds:Default*/{
+    std::string message = std:::std::string{"Hello, "} +::string{name};
+    std::cout << message << "\n";
 }

@@ -43,7 +43,7 @@ for file in pure2-*.cpp2; do
     if $CPPFRONT "$file" "${base}.cpp" >> "$LOG" 2>&1; then
       echo "  Transpile OK" >> "$LOG"
       # Compile
-      if g++ -std=c++23 -O0 -g -I../../stage0_clean/include -o "$base" "${base}.cpp" >> "$LOG" 2>&1; then
+      if g++ -std=c++23 -O0 -g -I../../stage0_clean/include -I../include -o "$base" "${base}.cpp" >> "$LOG" 2>&1; then
         echo "  Compile OK" >> "$LOG"
         # Run
         output_file="output_${base}.txt"

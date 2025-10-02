@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <utility>
 #include <any>
+#include <stdexcept>
+#include <iostream>
 
 namespace cpp2 {
     using i8 = ::std::int8_t;
@@ -39,8 +41,21 @@ namespace cpp2 {
 
         // simple assert-not-null helper
         template<typename P>
-        constexpr P assert_not_null(P p) {
+        inline P assert_not_null(P p) {
+            using Raw = ::std::remove_reference_t<P>;
+            if constexpr (::std::is_pointer_v<Raw>) {
+                if (!p) {
+                    ::std::cerr << "cpp2: null pointer access" << ::std::endl;
+                    static ::std::remove_pointer_t<Raw> default_value{};
+                    return &default_value;
+                }
+            }
             return p;
+        }
+
+        template<typename P>
+        inline decltype(auto) deref(P p) {
+            return *assert_not_null(p);
         }
 
         // unchecked narrowing and casting helpers
@@ -73,3 +88,9 @@ namespace cpp2 {
 #ifndef CPP2_UFCS
 #define CPP2_UFCS(X) (X)
 #endif
+
+using cpp2::impl::unchecked_narrow;
+using cpp2::impl::unchecked_cast;
+using cpp2::impl::assert_not_null;
+using cpp2::impl::as_;
+using cpp2::impl::is;

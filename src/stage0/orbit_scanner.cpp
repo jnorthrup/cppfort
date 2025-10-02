@@ -16,11 +16,15 @@
 namespace cppfort {
 namespace ir {
 
-OrbitScanner::OrbitScanner(const OrbitScannerConfig& config)
-  : m_config(config) {
-  m_rabinKarp = ::std::make_unique<RabinKarp>();
-  m_context = ::std::make_unique<OrbitContext>(m_config.maxDepth);
-  m_loader = ::std::make_unique<MultiGrammarLoader>();
+OrbitScanner::OrbitScanner(const OrbitScannerConfig& config,
+                           ::std::unique_ptr<IMultiGrammarLoader> loader)
+  : m_config(config),
+    m_rabinKarp(::std::make_unique<RabinKarp>()),
+    m_context(::std::make_unique<OrbitContext>(m_config.maxDepth)),
+    m_loader(::std::move(loader)) {
+  if (!m_loader) {
+    m_loader = ::std::unique_ptr<IMultiGrammarLoader>(new MultiGrammarLoader());
+  }
 }
 
 OrbitScanner::~OrbitScanner() = default;
@@ -129,18 +133,41 @@ size_t OrbitScanner::getPatternCount() const {
         continue;
       }
 
+      // Validate depth context
+      int currentDepth = scanContext.getDepth();
+      if (pattern.expected_depth >= 0 && currentDepth != pattern.expected_depth) {
+        continue;
+      }
+
+      // Never match inside string literals (unless pattern specifically requires it)
+      if (scanContext.depth(OrbitType::Quote) > 0 && pattern.required_confix != "\"") {
+        continue;
+      }
+
+      // Validate required confix
+      if (!pattern.required_confix.empty()) {
+        bool confixActive = false;
+        if (pattern.required_confix == "{" && scanContext.depth(OrbitType::OpenBrace) > 0) confixActive = true;
+        else if (pattern.required_confix == "(" && scanContext.depth(OrbitType::OpenParen) > 0) confixActive = true;
+        else if (pattern.required_confix == "[" && scanContext.depth(OrbitType::OpenBracket) > 0) confixActive = true;
+        else if (pattern.required_confix == "<" && scanContext.depth(OrbitType::OpenAngle) > 0) confixActive = true;
+        else if (pattern.required_confix == "\"" && scanContext.depth(OrbitType::Quote) > 0) confixActive = true;
+        if (!confixActive) continue;
+      }
+
       if (matchedSignature.empty()) {
         matchedSignature = ::std::string(1, ch);
       }
 
-      double confidence = detectOrbitPattern(grammar, orbitCounts, pos, code);
-      if (signatureMatched) {
-        confidence = (::std::max)(confidence, 0.25);
-      }
-      if (confidence < m_config.patternThreshold) {
-        confidence = m_config.patternThreshold;
+      // Signature match + valid depth/confix = high confidence truth
+      double confidence = signatureMatched ? 0.95 : detectOrbitPattern(grammar, orbitCounts, pos, code);
+
+      // Boost non-signature matches slightly if heuristics support them
+      if (!signatureMatched && confidence > 0.0 && confidence < 0.25) {
+        confidence = 0.25;
       }
 
+      // Report matches that meet threshold (signature matches always do)
       if (confidence >= m_config.patternThreshold) {
         OrbitMatch match;
         match.patternName = pattern.name;
@@ -155,11 +182,6 @@ size_t OrbitScanner::getPatternCount() const {
         match.orbitCounts = orbitCounts;
 
         matches.push_back(match);
-
-        if (matches.size() < 5) {  // Limit debug output
-          ::std::cout << "Added match: grammar=" << static_cast<int>(grammar)
-                      << " confidence=" << match.confidence << ::std::endl;
-        }
 
         // Update grammar confidence tracking
         grammarConfidences[grammar] += match.confidence;
@@ -178,16 +200,9 @@ size_t OrbitScanner::getPatternCount() const {
 
 double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<size_t, 6>& orbitCounts,
                                        size_t pos, const ::std::string& code) const {
-  // Orbit-based pattern detection for different grammar types
-  // This is a simplified heuristic based on characteristic orbit structures
-
-  // Debug output
-  static int callCount = 0;
-  if (callCount++ < 10) {  // Limit debug output
-    ::std::cout << "detectOrbitPattern: grammar=" << static_cast<int>(grammar)
-                << " counts=[" << orbitCounts[0] << "," << orbitCounts[1] << "," << orbitCounts[2] << ","
-                << orbitCounts[3] << "," << orbitCounts[4] << "," << orbitCounts[5] << "]" << ::std::endl;
-  }
+  // FALLBACK HEURISTIC: Used only when signature patterns don't provide confidence
+  // Returns delimiter-based score as weak signal - NOT ground truth
+  // Prefer adding actual signature patterns (keywords) for truth-based detection
 
   switch (grammar) {
     case GrammarType::C: {
@@ -195,11 +210,7 @@ double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<
       // Look for moderate use of braces, parentheses, and minimal templates
       size_t totalDelimiters = orbitCounts[0] + orbitCounts[1] + orbitCounts[3];  // braces, brackets, parens
       if (totalDelimiters > 0) {
-        double conf = ::std::min(1.0, static_cast<double>(totalDelimiters) / 2.0);
-        if (callCount < 10) {
-          ::std::cout << "C pattern detected: totalDelimiters=" << totalDelimiters << " confidence=" << conf << ::std::endl;
-        }
-        return conf;
+        return ::std::min(1.0, static_cast<double>(totalDelimiters) / 2.0);
       }
       break;
     }
@@ -208,11 +219,7 @@ double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<
       // C++ has more complex structures, more parentheses for function calls
       size_t complexity = orbitCounts[0] * 2 + orbitCounts[1] + orbitCounts[3] + orbitCounts[2];
       if (complexity > 2) {
-        double conf = ::std::min(1.0, static_cast<double>(complexity) / 5.0);
-        if (callCount < 10) {
-          ::std::cout << "CPP pattern detected: complexity=" << complexity << " confidence=" << conf << ::std::endl;
-        }
-        return conf;
+        return ::std::min(1.0, static_cast<double>(complexity) / 5.0);
       }
       break;
     }
@@ -221,11 +228,7 @@ double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<
       // CPP2 might have different patterns - for now, similar to C++ but with different weighting
       size_t cpp2Score = orbitCounts[0] + orbitCounts[3] * 2 + orbitCounts[4];  // braces, parens, quotes
       if (cpp2Score > 1) {
-        double conf = ::std::min(1.0, static_cast<double>(cpp2Score) / 3.0);
-        if (callCount < 10) {
-          ::std::cout << "CPP2 pattern detected: cpp2Score=" << cpp2Score << " confidence=" << conf << ::std::endl;
-        }
-        return conf;
+        return ::std::min(1.0, static_cast<double>(cpp2Score) / 3.0);
       }
       break;
     }

@@ -139,17 +139,18 @@ for test_file in "${SCRIPT_DIR}"/simple_*.cpp2 \
     fi
 done
 
-# Sample a few more complex tests
-TEST_COUNT=0
+# Analyze ALL regression tests for complete feedback
+# Disable pipefail temporarily to collect all errors
+set +e
 for test_file in "${SCRIPT_DIR}"/*.cpp2; do
-    if [[ -f "${test_file}" && ${TEST_COUNT} -lt 10 ]]; then
+    if [[ -f "${test_file}" ]]; then
         ((TOTAL++))
-        if analyze_file "${test_file}"; then
+        if analyze_file "${test_file}" 2>/dev/null; then
             ((PASSED++))
         fi
-        ((TEST_COUNT++))
     fi
 done
+set -e
 
 # Generate Stage 0 improvement recommendations
 echo ""

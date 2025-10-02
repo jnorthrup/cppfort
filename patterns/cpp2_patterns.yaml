@@ -112,3 +112,35 @@ protocol_indicators:
   - "RAII"
 version_patterns:
   - "CPP2"
+
+---
+name: cpp2_function_syntax
+orbit_id: 2
+weight: 0.98
+signature_patterns:
+  - ": ("
+  - ") ="
+  - "operator=:"
+  - "operator+:"
+  - "operator-:"
+protocol_indicators:
+  - "CPP2"
+  - "postfix function syntax"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_type_syntax
+orbit_id: 2
+weight: 0.92
+signature_patterns:
+  - ": i32"
+  - ": i64"
+  - ": u32"
+  - ": u64"
+  - " as "
+protocol_indicators:
+  - "CPP2"
+  - "type syntax"
+version_patterns:
+  - "CPP2"

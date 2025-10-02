@@ -3,6 +3,7 @@ add_subdirectory(stage0)
 # Include Stage 1 (transpiler) and Stage 2 (anticheat) directories
 add_subdirectory(stage1)
 add_subdirectory(stage2)
+add_subdirectory(ir)
 add_subdirectory(mlir_bridge)
 add_subdirectory(compat)
 
@@ -21,7 +22,7 @@ target_include_directories(orbit_scanner PUBLIC
 )
 
 target_link_libraries(orbit_scanner PUBLIC
-    # Add any necessary dependencies here
+    cppfort_compat
 )
 
 # Tests

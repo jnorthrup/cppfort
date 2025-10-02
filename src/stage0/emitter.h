@@ -10,6 +10,7 @@ namespace cppfort::stage0 {
 enum class EmitBackend {
     Cpp,
     Mlir,
+    IR,  // Sea of Nodes IR
 };
 
 struct EmitOptions {
@@ -24,6 +25,7 @@ class Emitter {
   private:
     ::std::string emit_cpp(const TranslationUnit& unit, const EmitOptions& options) const;
     ::std::string emit_mlir(const TranslationUnit& unit) const;
+    ::std::string emit_ir(const TranslationUnit& unit) const;  // New IR backend
 
     void emit_forward_declaration(const FunctionDecl& fn, ::std::string& out, int indent) const;
     void emit_function(const FunctionDecl& fn, ::std::string& out, int indent) const;

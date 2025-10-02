@@ -11,7 +11,6 @@ set(STAGE0_SOURCES
     transpiler.cpp
     documentation.cpp
     pipeline.cpp
-    bidirectional.cpp
     node.cpp
     type.cpp
     son_parser.cpp
@@ -29,6 +28,7 @@ add_library(stage0 STATIC ${STAGE0_SOURCES})
 
 target_include_directories(stage0 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR} # For generated headers
     ${MLIR_INCLUDE_DIRS}
     ${LLVM_INCLUDE_DIRS}
@@ -40,6 +40,7 @@ target_link_libraries(stage0
     c++abi
     PRIVATE
     cppfort::compat
+    cppfort_ir
     MLIRIR
     MLIRDialect
     MLIRSupport
@@ -50,7 +51,7 @@ target_link_libraries(stage0
 target_compile_features(stage0 PUBLIC cxx_std_20)
 
 add_executable(stage0_cli main.cpp)
-target_link_libraries(stage0_cli PRIVATE stage0)
+target_link_libraries(stage0_cli PRIVATE stage0 orbit_scanner)
 
 # Test executable for Chapter 1 Sea of Nodes
 add_executable(test_chapter1 test_chapter1.cpp)

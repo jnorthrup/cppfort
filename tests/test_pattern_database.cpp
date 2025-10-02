@@ -1,4 +1,5 @@
 #include "tblgen_patterns.h"
+#include <algorithm>
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>

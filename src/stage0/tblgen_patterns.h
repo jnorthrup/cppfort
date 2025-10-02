@@ -23,6 +23,11 @@ struct OrbitPattern {
     ::std::vector<::std::string> version_patterns;   // Version strings
     double weight;                              // Pattern importance (0.0-1.0)
 
+    // Depth context for match validity: -1 = any depth, >=0 = specific total depth
+    int expected_depth = -1;
+    // Required confix context: which delimiter must be active (empty = none)
+    ::std::string required_confix;  // "{", "(", "[", "<", "\"" or ""
+
     OrbitPattern() = default;
     OrbitPattern(const ::std::string& n, uint32_t id, double w = 1.0)
         : name(n), orbit_id(id), weight(w) {}
