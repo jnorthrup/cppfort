@@ -16,8 +16,13 @@ endif()
 # --- MLIR Integration ---
 # Use Homebrew LLVM/MLIR on macOS, system packages elsewhere
 if(APPLE)
-  # Using Homebrew LLVM/MLIR 21.1.2 on macOS
-  set(CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/llvm/21.1.2" ${CMAKE_PREFIX_PATH})
+  # Use Homebrew llvm@21 on macOS (handles Intel and Apple Silicon prefixes)
+  if(DEFINED ENV{HOMEBREW_PREFIX})
+    set(_BREW_PREFIX $ENV{HOMEBREW_PREFIX})
+  else()
+    set(_BREW_PREFIX "/usr/local")
+  endif()
+  set(CMAKE_PREFIX_PATH "${_BREW_PREFIX}/opt/llvm@21" ${CMAKE_PREFIX_PATH})
 elseif(UNIX AND NOT APPLE)
   # Using system LLVM/MLIR on Linux (Ubuntu)
   set(CMAKE_PREFIX_PATH "/usr/lib/llvm-18" ${CMAKE_PREFIX_PATH})

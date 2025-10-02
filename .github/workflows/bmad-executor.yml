@@ -43,36 +43,8 @@ jobs:
             SWIMLANE=$(grep "^swimlane:" "$STORY_FILE" 2>/dev/null | cut -d: -f2 | xargs || echo "unspecified")
           fi
 
-          # Map swimlane to BMAD agent (.bmad-core/agents/)
-          case "$SWIMLANE" in
-            ir|patterns|backend)
-              AGENT="architect"  # System architecture & design
-              ;;
-            stage0|emitter|parser)
-              AGENT="dev"  # Implementation & coding
-              ;;
-            orbit|scanner)
-              AGENT="architect"  # Structural design
-              ;;
-            testing|validation)
-              AGENT="qa"  # Quality assurance & testing
-              ;;
-            optimization|performance)
-              AGENT="analyst"  # Performance analysis
-              ;;
-            persistence|storage)
-              AGENT="architect"  # Data architecture
-              ;;
-            build|ci)
-              AGENT="sm"  # Scrum master for process
-              ;;
-            ux|docs)
-              AGENT="ux-expert"  # Documentation & UX
-              ;;
-            *)
-              AGENT="dev"  # Default to dev for unknown swimlanes
-              ;;
-          esac
+          # Use the most capable agent for maximum production value (gap erosion)
+          AGENT="dev"
 
           echo "agent=$AGENT" >> $GITHUB_OUTPUT
           echo "swimlane=$SWIMLANE" >> $GITHUB_OUTPUT
@@ -138,6 +110,9 @@ jobs:
           STORY_TITLE: ${{ steps.story.outputs.title }}
           ACCEPTANCE_CRITERIA: ${{ steps.story.outputs.acceptance }}
           TASK_LIST: ${{ steps.story.outputs.tasks }}
+          # LLM API credentials for remote invocation
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           # Create agent prompt
           cat > agent_prompt.md <<'PROMPT'
@@ -165,16 +140,14 @@ jobs:
           - Test command: ./regression-tests/run_regression_stage0.sh
           PROMPT
 
-          # BMAD executor disabled - requires Anthropic API key or local Claude Code
-          # Until API integration complete, executor creates stub responses
-          echo "⚠️  BMAD executor in stub mode - no actual implementation" >> $GITHUB_STEP_SUMMARY
-          echo "Manual implementation required for: ${{ steps.story.outputs.title }}" >> $GITHUB_STEP_SUMMARY
+          # BMAD executor now uses remote LLM via API key
+          # Remove stub mode warnings
 
           python3 scripts/bmad_agent_executor.py \
             --agent "$AGENT_TYPE" \
             --prompt agent_prompt.md \
             --output implementation_log.txt \
-            --mode local
+            --mode remote
 
           # Check if agent completed successfully
           if [ $? -eq 0 ]; then

@@ -27,3 +27,4 @@ f4738916,betanet,implement-mixnode-routing-for-module-distribution,docs/stories/
 b39073e7,betanet,add-cashu-voucher-integration-for-bandwidth-payment,docs/stories/add-cashu-voucher-integration-for-bandwidth-payment.story-1.md,,
 dacefa15,betanet,implement-multi-chain-finality-verification,docs/stories/implement-multi-chain-finality-verification.story-1.md,,
 924cbab7,docs,add-documentation-generation-from-source-comments,docs/stories/add-documentation-generation-from-source-comments.story-1.md,,
+60bf0b44,ci,refinement-build-failure,docs/stories/refinement-build-failure.story.md,,
