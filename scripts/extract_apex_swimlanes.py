@@ -42,6 +42,8 @@ def parse_todo(path):
     kv_re = re.compile(r'\s*([^=]+)\s*=\s*(.+)\s*')
 
     swimlanes = collections.OrderedDict()
+    # map of text -> inference metadata when auto-promote used
+    inference_map = {}
 
     with open(path, 'r', encoding='utf-8') as f:
         for ln in f:
@@ -89,7 +91,13 @@ def parse_todo(path):
                     apex = True
                     text = text[len('[apex]'):].strip()
 
+            # if not apex, skip for now — auto-promote handled elsewhere
             if not apex:
+                # leave non-apex items; the caller may request auto-promote
+                # store them under a special key for possible later promotion
+                if '_unmarked' not in swimlanes:
+                    swimlanes['_unmarked'] = []
+                swimlanes['_unmarked'].append(text)
                 continue
 
             swimlane = meta.get('swimlane', 'unspecified')
@@ -97,7 +105,37 @@ def parse_todo(path):
                 swimlanes[swimlane] = []
             swimlanes[swimlane].append(text)
 
-    return swimlanes
+    return swimlanes, inference_map
+
+
+def infer_swimlane(text):
+    """Heuristic keyword-based swimlane inference. Returns (swimlane, confidence).
+    Confidence is a float between 0.0 and 1.0.
+    """
+    t = text.lower()
+    # Mapping of swimlane -> keywords (ordered roughly by importance)
+    kws = {
+        'ir': ['sea-of-nodes', 'sea of nodes', 'seaofnodes', 'ir backend', 'ir backend', 'band', 'sea', 'nodes', 'sea-of-nodes', 'ir'],
+        'stage0': ['stage0', 'emitter', 'transpile', 'transpiler', 'stage0_cli', 'emitter.cpp', 'emitter'],
+        'patterns': ['pattern', 'lowering', 'tblgen', 'n-way', 'nway', 'lowering', 'pattern-matching'],
+        'tests': ['test', 'regression', 'harness', 'integration', 'unit test', 'regression-suite'],
+        'build': ['cmake', 'build', 'ci', 'workflow', 'build system']
+    }
+    scores = {}
+    for lane, words in kws.items():
+        score = 0
+        for w in words:
+            if w in t:
+                score += 1
+        scores[lane] = score
+    # pick best
+    best = max(scores.items(), key=lambda kv: kv[1])
+    if best[1] == 0:
+        return ('unspecified', 0.0)
+    # confidence heuristic: normalize by number of words checked (clamped)
+    total_keywords = sum(len(v) for v in kws.values())
+    conf = min(0.95, 0.4 + (best[1] / max(1, total_keywords)))
+    return (best[0], round(conf, 2))
 
 
 def emit_markdown(swimlanes):
@@ -296,6 +334,7 @@ def main(argv):
     ap.add_argument('--manifest', default=None, help='Path to write CSV manifest of created tasks')
     ap.add_argument('--quiet', action='store_true', help='Suppress non-error informational logging')
     ap.add_argument('--echo', action='store_true', help='Allow echoing raw TODO text into created issues (opt-in). Default: do not echo')
+    ap.add_argument('--auto-promote', action='store_true', help='Auto-promote unmarked checklist items to APEX using heuristic inference')
     args = ap.parse_args(argv[1:])
 
     QUIET = args.quiet
@@ -309,7 +348,28 @@ def main(argv):
         h = hashlib.sha1(s.encode('utf-8')).hexdigest()
         return h[:8]
 
-    swimlanes = parse_todo(args.todo)
+    swimlanes, inference_map = parse_todo(args.todo)
+
+    # Auto-promote unmarked tasks if requested
+    if args.auto_promote and '_unmarked' in swimlanes:
+        unmarked = swimlanes.pop('_unmarked')
+        promoted = []
+        for text in unmarked:
+            lane, conf = infer_swimlane(text)
+            # require minimal confidence threshold to avoid noise
+            if conf >= 0.2:
+                if lane not in swimlanes:
+                    swimlanes[lane] = []
+                swimlanes[lane].append(text)
+                promoted.append({'text': text, 'swimlane': lane, 'confidence': conf})
+            else:
+                # low confidence: put under 'unspecified' so it's visible
+                if 'unspecified' not in swimlanes:
+                    swimlanes['unspecified'] = []
+                swimlanes['unspecified'].append(text)
+        if promoted:
+            info(f'Auto-promoted {len(promoted)} unmarked items to APEX (use --auto-promote to enable)')
+
     md = emit_markdown(swimlanes)
 
     created_items = []
