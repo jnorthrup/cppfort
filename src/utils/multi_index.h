@@ -206,6 +206,95 @@ enum class NodeKind {
     CONSTANT_END = 899,
 
     // ============================================================================
+    // C Language-Specific Nodes - Range: 900-999
+    // ============================================================================
+    C_START = 900,
+
+    POINTER_DEREF = C_START,
+    ADDRESS_OF,
+    ARRAY_SUBSCRIPT,
+    COMPOUND_LITERAL,
+    DESIGNATED_INIT,
+    STRUCT_MEMBER,
+    UNION_MEMBER,
+    SIZEOF_EXPR,
+    ALIGNOF_EXPR,
+    OFFSETOF_EXPR,
+    VA_START,
+    VA_ARG,
+    VA_END,
+    FLEXIBLE_ARRAY,
+
+    C_END = 999,
+
+    // ============================================================================
+    // C++ Language-Specific Nodes - Range: 1000-1099
+    // ============================================================================
+    CPP_START = 1000,
+
+    VIRTUAL_CALL = CPP_START,
+    MEMBER_ACCESS,
+    NEW_EXPR,
+    DELETE_EXPR,
+    DELETE_ARRAY_EXPR,
+    THROW_EXPR,
+    CATCH_HANDLER,
+    TRY_BLOCK,
+    DYNAMIC_CAST,
+    STATIC_CAST,
+    REINTERPRET_CAST,
+    CONST_CAST,
+    TYPEID_EXPR,
+    THIS_EXPR,
+    LAMBDA_EXPR,
+    TEMPLATE_INSTANTIATION,
+    OPERATOR_OVERLOAD,
+    RVALUE_REF,
+    MOVE_EXPR,
+    PERFECT_FORWARD,
+
+    CPP_END = 1099,
+
+    // ============================================================================
+    // CPP2 Safety/Contract Nodes - Range: 1100-1199
+    // ============================================================================
+    CPP2_START = 1100,
+
+    CONTRACT_PRE = CPP2_START,
+    CONTRACT_POST,
+    CONTRACT_ASSERT,
+    BOUNDS_CHECK,
+    NULL_CHECK,
+    DEFINITE_INIT_CHECK,
+    PARAM_IN,
+    PARAM_OUT,
+    PARAM_INOUT,
+    PARAM_MOVE,
+    PARAM_FORWARD,
+    LIFETIME_CAPTURE,
+    LIFETIME_EXTEND,
+    UNSAFE_REGION,
+    INSPECT_EXPR,
+    IS_EXPR,
+    AS_EXPR,
+
+    CPP2_END = 1199,
+
+    // ============================================================================
+    // Attestation & Security Nodes - Range: 1200-1299
+    // ============================================================================
+    ATTESTATION_START = 1200,
+
+    MERKLE_CHECKPOINT = ATTESTATION_START,
+    HASH_WITNESS,
+    SIGNATURE_POINT,
+    TAMPER_GUARD,
+    INJECTION_BARRIER,
+    DETERMINISM_FENCE,
+
+    ATTESTATION_END = 1299,
+
+    // ============================================================================
     // Sentinel - Must be last
     // ============================================================================
     Count
@@ -316,6 +405,71 @@ inline const char* nodeKindToString(NodeKind kind) {
         case NodeKind::GLOBAL_VAR: return "GLOBAL_VAR";
         case NodeKind::STRING_LITERAL: return "STRING_LITERAL";
         case NodeKind::NULL_PTR: return "NULL_PTR";
+
+        // C-specific
+        case NodeKind::POINTER_DEREF: return "POINTER_DEREF";
+        case NodeKind::ADDRESS_OF: return "ADDRESS_OF";
+        case NodeKind::ARRAY_SUBSCRIPT: return "ARRAY_SUBSCRIPT";
+        case NodeKind::COMPOUND_LITERAL: return "COMPOUND_LITERAL";
+        case NodeKind::DESIGNATED_INIT: return "DESIGNATED_INIT";
+        case NodeKind::STRUCT_MEMBER: return "STRUCT_MEMBER";
+        case NodeKind::UNION_MEMBER: return "UNION_MEMBER";
+        case NodeKind::SIZEOF_EXPR: return "SIZEOF_EXPR";
+        case NodeKind::ALIGNOF_EXPR: return "ALIGNOF_EXPR";
+        case NodeKind::OFFSETOF_EXPR: return "OFFSETOF_EXPR";
+        case NodeKind::VA_START: return "VA_START";
+        case NodeKind::VA_ARG: return "VA_ARG";
+        case NodeKind::VA_END: return "VA_END";
+        case NodeKind::FLEXIBLE_ARRAY: return "FLEXIBLE_ARRAY";
+
+        // C++-specific
+        case NodeKind::VIRTUAL_CALL: return "VIRTUAL_CALL";
+        case NodeKind::MEMBER_ACCESS: return "MEMBER_ACCESS";
+        case NodeKind::NEW_EXPR: return "NEW_EXPR";
+        case NodeKind::DELETE_EXPR: return "DELETE_EXPR";
+        case NodeKind::DELETE_ARRAY_EXPR: return "DELETE_ARRAY_EXPR";
+        case NodeKind::THROW_EXPR: return "THROW_EXPR";
+        case NodeKind::CATCH_HANDLER: return "CATCH_HANDLER";
+        case NodeKind::TRY_BLOCK: return "TRY_BLOCK";
+        case NodeKind::DYNAMIC_CAST: return "DYNAMIC_CAST";
+        case NodeKind::STATIC_CAST: return "STATIC_CAST";
+        case NodeKind::REINTERPRET_CAST: return "REINTERPRET_CAST";
+        case NodeKind::CONST_CAST: return "CONST_CAST";
+        case NodeKind::TYPEID_EXPR: return "TYPEID_EXPR";
+        case NodeKind::THIS_EXPR: return "THIS_EXPR";
+        case NodeKind::LAMBDA_EXPR: return "LAMBDA_EXPR";
+        case NodeKind::TEMPLATE_INSTANTIATION: return "TEMPLATE_INSTANTIATION";
+        case NodeKind::OPERATOR_OVERLOAD: return "OPERATOR_OVERLOAD";
+        case NodeKind::RVALUE_REF: return "RVALUE_REF";
+        case NodeKind::MOVE_EXPR: return "MOVE_EXPR";
+        case NodeKind::PERFECT_FORWARD: return "PERFECT_FORWARD";
+
+        // CPP2 safety/contracts
+        case NodeKind::CONTRACT_PRE: return "CONTRACT_PRE";
+        case NodeKind::CONTRACT_POST: return "CONTRACT_POST";
+        case NodeKind::CONTRACT_ASSERT: return "CONTRACT_ASSERT";
+        case NodeKind::BOUNDS_CHECK: return "BOUNDS_CHECK";
+        case NodeKind::NULL_CHECK: return "NULL_CHECK";
+        case NodeKind::DEFINITE_INIT_CHECK: return "DEFINITE_INIT_CHECK";
+        case NodeKind::PARAM_IN: return "PARAM_IN";
+        case NodeKind::PARAM_OUT: return "PARAM_OUT";
+        case NodeKind::PARAM_INOUT: return "PARAM_INOUT";
+        case NodeKind::PARAM_MOVE: return "PARAM_MOVE";
+        case NodeKind::PARAM_FORWARD: return "PARAM_FORWARD";
+        case NodeKind::LIFETIME_CAPTURE: return "LIFETIME_CAPTURE";
+        case NodeKind::LIFETIME_EXTEND: return "LIFETIME_EXTEND";
+        case NodeKind::UNSAFE_REGION: return "UNSAFE_REGION";
+        case NodeKind::INSPECT_EXPR: return "INSPECT_EXPR";
+        case NodeKind::IS_EXPR: return "IS_EXPR";
+        case NodeKind::AS_EXPR: return "AS_EXPR";
+
+        // Attestation
+        case NodeKind::MERKLE_CHECKPOINT: return "MERKLE_CHECKPOINT";
+        case NodeKind::HASH_WITNESS: return "HASH_WITNESS";
+        case NodeKind::SIGNATURE_POINT: return "SIGNATURE_POINT";
+        case NodeKind::TAMPER_GUARD: return "TAMPER_GUARD";
+        case NodeKind::INJECTION_BARRIER: return "INJECTION_BARRIER";
+        case NodeKind::DETERMINISM_FENCE: return "DETERMINISM_FENCE";
 
         default: return "UNKNOWN";
     }

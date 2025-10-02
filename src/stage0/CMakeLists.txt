@@ -21,6 +21,9 @@ set(STAGE0_SOURCES
     machine.cpp  # Chapter 19: Machine abstraction for MLIR dialects
     instruction_selection.cpp  # Chapter 19: Instruction selection phase
     # region_curing.cpp # MLIR Region Curing - temporarily disabled
+    attestation_nodes.cpp  # N-way compiler: attestation & anticheat infrastructure
+    c_lexer.cpp  # N-way compiler: C11/C17 lexer
+    c_preprocessor.cpp  # N-way compiler: C preprocessor
     ${MyDialect_generated_sources}
 )
 
@@ -92,6 +95,18 @@ target_link_libraries(test_chapter17 PRIVATE stage0)
 # Chapter 19 instruction selection test
 add_executable(test_chapter19 test_chapter19.cpp)
 target_link_libraries(test_chapter19 PRIVATE stage0)
+
+# N-way compiler attestation & anticheat tests
+add_executable(test_attestation test_attestation.cpp)
+target_link_libraries(test_attestation PRIVATE stage0)
+
+# N-way compiler C lexer tests
+add_executable(test_c_lexer test_c_lexer.cpp)
+target_link_libraries(test_c_lexer PRIVATE stage0)
+
+# N-way compiler C preprocessor tests
+add_executable(test_c_preprocessor test_c_preprocessor.cpp)
+target_link_libraries(test_c_preprocessor PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES

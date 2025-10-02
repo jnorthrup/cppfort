@@ -302,6 +302,163 @@ bool looks_like_initializer_list(const ::std::string& expr) {
 
     replace_assignment_parens();
 
+    // Convert CPP2 lambda syntax :(params) = body to C++ lambda syntax
+    auto convert_lambdas = [&]() {
+        size_t pos = 0;
+        while ((pos = expr.find(':', pos)) != ::std::string::npos) {
+            // Check if next char is '('
+            size_t paren_pos = pos + 1;
+            while (paren_pos < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[paren_pos]))) {
+                ++paren_pos;
+            }
+            if (paren_pos >= expr.size() || expr[paren_pos] != '(') {
+                ++pos;
+                continue;
+            }
+
+            // Find matching ')'
+            size_t close_paren = paren_pos + 1;
+            int depth = 1;
+            while (close_paren < expr.size() && depth > 0) {
+                if (expr[close_paren] == '(') ++depth;
+                else if (expr[close_paren] == ')') --depth;
+                ++close_paren;
+            }
+            if (depth != 0) {
+                ++pos;
+                continue;
+            }
+
+            // Look for '=' after params
+            size_t eq_pos = close_paren;
+            while (eq_pos < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[eq_pos]))) {
+                ++eq_pos;
+            }
+            if (eq_pos >= expr.size() || expr[eq_pos] != '=') {
+                ++pos;
+                continue;
+            }
+
+            // Extract params and body
+            ::std::string params = expr.substr(paren_pos + 1, close_paren - paren_pos - 2);
+
+            // Find body bounds - could be expression or {...} block
+            size_t body_start = eq_pos + 1;
+            while (body_start < expr.size() && ::std::isspace(static_cast<unsigned char>(expr[body_start]))) {
+                ++body_start;
+            }
+
+            size_t body_end = body_start;
+            if (body_start < expr.size() && expr[body_start] == '{') {
+                // Block body
+                int brace_depth = 0;
+                while (body_end < expr.size()) {
+                    if (expr[body_end] == '{') ++brace_depth;
+                    else if (expr[body_end] == '}') {
+                        --brace_depth;
+                        if (brace_depth == 0) {
+                            ++body_end;
+                            break;
+                        }
+                    }
+                    ++body_end;
+                }
+            } else {
+                // Expression body - find end (comma, semicolon, or closing paren/bracket)
+                int paren_depth = 0;
+                int bracket_depth = 0;
+                while (body_end < expr.size()) {
+                    char c = expr[body_end];
+                    if (c == '(') ++paren_depth;
+                    else if (c == ')') {
+                        if (paren_depth == 0) break;
+                        --paren_depth;
+                    }
+                    else if (c == '[') ++bracket_depth;
+                    else if (c == ']') {
+                        if (bracket_depth == 0) break;
+                        --bracket_depth;
+                    }
+                    else if ((c == ',' || c == ';') && paren_depth == 0 && bracket_depth == 0) {
+                        break;
+                    }
+                    ++body_end;
+                }
+            }
+
+            ::std::string body = trim_copy(expr.substr(body_start, body_end - body_start));
+
+            // Process params - handle 'in', 'out', 'inout', 'move' qualifiers
+            ::std::string processed_params;
+            if (!params.empty()) {
+                // Split params by comma
+                ::std::vector<::std::string> param_list;
+                size_t param_start = 0;
+                int depth = 0;
+                for (size_t i = 0; i < params.size(); ++i) {
+                    if (params[i] == '(' || params[i] == '<') ++depth;
+                    else if (params[i] == ')' || params[i] == '>') --depth;
+                    else if (params[i] == ',' && depth == 0) {
+                        param_list.push_back(params.substr(param_start, i - param_start));
+                        param_start = i + 1;
+                    }
+                }
+                param_list.push_back(params.substr(param_start));
+
+                for (size_t i = 0; i < param_list.size(); ++i) {
+                    ::std::string param = trim_copy(param_list[i]);
+                    // Handle 'in', 'out', 'inout', 'move' qualifiers
+                    // Each modifier affects how the parameter is captured/passed
+                    if (param.starts_with("in ")) {
+                        param = "const auto& " + param.substr(3);  // in = pass by const ref
+                    } else if (param.starts_with("out ")) {
+                        param = "auto& " + param.substr(4);        // out = pass by ref
+                    } else if (param.starts_with("inout ")) {
+                        param = "auto& " + param.substr(6);        // inout = pass by ref
+                    } else if (param.starts_with("move ")) {
+                        param = "auto&& " + param.substr(5);       // move = pass by rvalue ref
+                    } else if (param.find(' ') == ::std::string::npos) {
+                        // No type specified, just a name
+                        param = "auto " + param;
+                    }
+                    // else: param already has a type specified, leave as-is
+
+                    if (i > 0) processed_params += ", ";
+                    processed_params += param;
+                }
+            }
+
+            // Build C++ lambda
+            ::std::string lambda = "[](";
+            lambda += processed_params;
+            lambda += ")";
+
+            if (body[0] == '{') {
+                // Block body
+                lambda += " " + body;
+            } else {
+                // Expression body - check if it's a void expression (e.g., output statement)
+                // Simple heuristic: if it contains << or starts with std::cout, it's likely void
+                if (body.find("<<") != ::std::string::npos || body.find("std::cout") != ::std::string::npos ||
+                    body.find("printf") != ::std::string::npos || body.find("+=") != ::std::string::npos ||
+                    body.find("-=") != ::std::string::npos || body.find("*=") != ::std::string::npos ||
+                    body.find("/=") != ::std::string::npos) {
+                    // Void expression - no return
+                    lambda += " { " + body + "; }";
+                } else {
+                    // Value expression - add return
+                    lambda += " { return " + body + "; }";
+                }
+            }
+
+            // Replace CPP2 lambda with C++ lambda
+            expr.replace(pos, body_end - pos, lambda);
+            pos += lambda.size();
+        }
+    };
+
+    convert_lambdas();
+
     auto replace_type_literal_initializers = [&]() {
         size_t pos = 0;
         while ((pos = expr.find(':', pos)) != ::std::string::npos) {
@@ -621,15 +778,39 @@ bool looks_like_initializer_list(const ::std::string& expr) {
 }
 
 ::std::string Emitter::emit(const TranslationUnit& unit, const EmitOptions& options) const {
+    ::std::string result;
     switch (options.backend) {
         case EmitBackend::Cpp:
-            return emit_cpp(unit, options);
+            result = emit_cpp(unit, options);
+            break;
         case EmitBackend::Mlir:
-            return emit_mlir(unit);
+            result = emit_mlir(unit);
+            break;
         case EmitBackend::IR:
-            return emit_ir(unit);
+            result = emit_ir(unit);
+            break;
+        default:
+            return {};
     }
-    return {};
+
+    // GLOBAL HACK: Force lambda conversion on the entire output
+    // Process the result line by line to convert any remaining CPP2 lambdas
+    ::std::istringstream stream(result);
+    ::std::string line;
+    ::std::string processed_result;
+    while (::std::getline(stream, line)) {
+        if (line.find(":(") != ::std::string::npos) {
+            line = fix_expression_tokens(line);
+        }
+        // ALSO fix any bad lambda param patterns that slipped through
+        size_t pos = 0;
+        while ((pos = line.find("](&auto ", pos)) != ::std::string::npos) {
+            line.replace(pos + 2, 6, "auto& ");
+            pos += 8;
+        }
+        processed_result += line + "\n";
+    }
+    return processed_result;
 }
 
 ::std::string Emitter::emit_cpp(const TranslationUnit& unit, const EmitOptions& options) const {
@@ -1005,7 +1186,13 @@ void Emitter::emit_statement(const Statement& stmt, ::std::string& out, int inde
             }
             Emitter::append_line(out, "}", indent);
         } else if constexpr (::std::is_same_v<T, RawStmt>) {
-            Emitter::append_line(out, node.text, indent);
+            // Process raw statements through fix_expression_tokens if they might contain lambdas
+            ::std::string processed = node.text;
+            if (processed.find(":(") != ::std::string::npos) {
+                // This is likely an expression with lambdas - process it
+                processed = fix_expression_tokens(processed);
+            }
+            Emitter::append_line(out, processed, indent);
         }
     }, stmt);
 }
