@@ -14,6 +14,8 @@ add_library(orbit_scanner
     stage0/orbit_mask.cpp
     stage0/tblgen_patterns.cpp
     stage0/multi_grammar_loader.cpp
+    stage0/wide_scanner.cpp
+    stage0/confix_fishy_detector.cpp
 )
 
 target_include_directories(orbit_scanner PUBLIC

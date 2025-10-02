@@ -1,0 +1,47 @@
+name: "Fan-out: Extract APEX swimlanes and optionally create issues"
+
+on:
+  push:
+    paths:
+      - 'TODO.md'
+      - 'scripts/extract_apex_swimlanes.py'
+      - '.bmad-core/templates/apex-story-tmpl.yaml'
+
+jobs:
+  extract-and-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install Python requirements
+        run: python -m pip install -r requirements.txt
+      - name: Run extractor (emit stories, manifest; do not store local audit on runner)
+        env:
+          BMAD_DISABLE_LOCAL_AUDIT: '1'
+        run: |
+          python3 scripts/extract_apex_swimlanes.py TODO.md --emit-stories --story-dir docs/stories --manifest manifests/apex_manifest.csv --quiet > APEX_SWIMLANES.md
+      - name: Commit APEX_SWIMLANES.md if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add APEX_SWIMLANES.md || true
+          # add any emitted story files
+          git add docs/stories || true
+          # add manifest CSVs if present
+          git add manifests || true
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update APEX_SWIMLANES.md and emitted stories (fan-out extractor)"
+            git push
+          else
+            echo "No changes to APEX_SWIMLANES.md"
+          fi
+      - name: Create issues (live)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BMAD_DISABLE_LOCAL_AUDIT: '1'
+        run: |
+          # Create real issues for apex tasks. Privacy: script defaults to not echoing raw TODO text.
+          python3 scripts/extract_apex_swimlanes.py TODO.md --create-issues --repo ${{ github.repository }} --labels apex --quiet
