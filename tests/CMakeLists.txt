@@ -1,0 +1,34 @@
+find_package(GTest REQUIRED)
+
+# Test executables
+add_executable(test_rabin_karp test_rabin_karp.cpp)
+target_link_libraries(test_rabin_karp PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME RabinKarpTest COMMAND test_rabin_karp)
+
+# add_executable(test_orbit_mask test_orbit_mask.cpp)
+# target_link_libraries(test_orbit_mask PRIVATE orbit_scanner GTest::gtest_main)
+# add_test(NAME OrbitMaskTest COMMAND test_orbit_mask)
+
+add_executable(test_pattern_database test_pattern_database.cpp)
+target_link_libraries(test_pattern_database PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME PatternDatabaseTest COMMAND test_pattern_database)
+
+add_executable(test_multi_grammar_loader test_multi_grammar_loader.cpp)
+target_link_libraries(test_multi_grammar_loader PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME MultiGrammarLoaderTest COMMAND test_multi_grammar_loader)
+
+add_executable(test_orbit_scanner test_orbit_scanner.cpp)
+target_link_libraries(test_orbit_scanner PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME OrbitScannerTest COMMAND test_orbit_scanner)
+
+add_executable(test_orbit_mock_scanning test_orbit_mock_scanning.cpp)
+target_link_libraries(test_orbit_mock_scanning PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME OrbitMockScanningTest COMMAND test_orbit_mock_scanning)
+
+add_executable(test_orbit_scanner_with_mocks test_orbit_scanner_with_mocks.cpp)
+target_link_libraries(test_orbit_scanner_with_mocks PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME OrbitScannerWithMocksTest COMMAND test_orbit_scanner_with_mocks)
+
+add_executable(test_orbit_scanner_extended test_orbit_scanner_extended.cpp)
+target_link_libraries(test_orbit_scanner_extended PRIVATE orbit_scanner GTest::gtest_main)
+add_test(NAME OrbitScannerExtendedTest COMMAND test_orbit_scanner_extended)

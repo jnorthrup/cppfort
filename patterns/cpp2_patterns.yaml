@@ -1,0 +1,146 @@
+name: cpp2_ufcs
+orbit_id: 2
+weight: 0.99
+signature_patterns:
+  - "obj.method("
+  - "-> "
+  - "std::vector.size()"
+  - "std::string.length()"
+protocol_indicators:
+  - "CPP2"
+  - "UFCS"
+  - "uniform function call syntax"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_inspect
+orbit_id: 2
+weight: 0.95
+signature_patterns:
+  - "inspect "
+  - "inspect ("
+  - "=> "
+protocol_indicators:
+  - "CPP2"
+  - "inspect expression"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_out_parameters
+orbit_id: 2
+weight: 0.9
+signature_patterns:
+  - "out "
+  - "inout "
+  - "move "
+protocol_indicators:
+  - "CPP2"
+  - "parameter directions"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_guaranteed_copy_elision
+orbit_id: 2
+weight: 0.85
+signature_patterns:
+  - "[[cpp2::ensures]]"
+  - "[[cpp2::requires]]"
+  - "ensures"
+  - "requires"
+protocol_indicators:
+  - "CPP2"
+  - "contracts"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_null_safety
+orbit_id: 2
+weight: 0.9
+signature_patterns:
+  - "not_null<"
+  - "maybe_null<"
+  - "[[cpp2::nullable]]"
+protocol_indicators:
+  - "CPP2"
+  - "null safety"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_type_safety
+orbit_id: 2
+weight: 0.95
+signature_patterns:
+  - "[[cpp2::pure]]"
+  - "[[cpp2::noexcept]]"
+  - "[[cpp2::nodiscard]]"
+protocol_indicators:
+  - "CPP2"
+  - "type safety"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_pattern_matching
+orbit_id: 2
+weight: 0.98
+signature_patterns:
+  - "match "
+  - "when "
+  - "_ "
+  - "otherwise"
+protocol_indicators:
+  - "CPP2"
+  - "pattern matching"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_raii_guarantees
+orbit_id: 2
+weight: 0.9
+signature_patterns:
+  - "[[cpp2::raii]]"
+  - "[[cpp2::noexcept]]"
+  - "finally"
+protocol_indicators:
+  - "CPP2"
+  - "RAII"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_function_syntax
+orbit_id: 2
+weight: 0.98
+signature_patterns:
+  - ": ("
+  - ") ="
+  - "operator=:"
+  - "operator+:"
+  - "operator-:"
+protocol_indicators:
+  - "CPP2"
+  - "postfix function syntax"
+version_patterns:
+  - "CPP2"
+
+---
+name: cpp2_type_syntax
+orbit_id: 2
+weight: 0.92
+signature_patterns:
+  - ": i32"
+  - ": i64"
+  - ": u32"
+  - ": u64"
+  - " as "
+protocol_indicators:
+  - "CPP2"
+  - "type syntax"
+version_patterns:
+  - "CPP2"

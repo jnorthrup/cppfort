@@ -32,14 +32,13 @@ if [[ ! -x "${BUILD_DIR}/stage1_cli" ]]; then
 fi
 
 # Counters for different error categories
-declare -A ERROR_CATEGORIES=(
-    ["ast_generation"]=0
-    ["type_conversion"]=0
-    ["syntax_generation"]=0
-    ["identifier_resolution"]=0
-    ["template_instantiation"]=0
-    ["unknown"]=0
-)
+declare -A ERROR_CATEGORIES
+ERROR_CATEGORIES["ast_generation"]=0
+ERROR_CATEGORIES["type_conversion"]=0
+ERROR_CATEGORIES["syntax_generation"]=0
+ERROR_CATEGORIES["identifier_resolution"]=0
+ERROR_CATEGORIES["template_instantiation"]=0
+ERROR_CATEGORIES["unknown"]=0
 
 declare -A CATEGORY_EXAMPLES
 
@@ -89,8 +88,10 @@ analyze_file() {
     local cpp_output="${ANALYSIS_DIR}/${test_name}.cpp"
     local error_file="${ANALYSIS_DIR}/${test_name}.err"
 
-    # Stage 1: Try to transpile
-    if ! "${BUILD_DIR}/stage1_cli" "${cpp2_file}" "${cpp_output}" 2>"${error_file}.transpile"; then
+    echo -n "  Testing ${test_name}... "
+
+    # Stage 1: Try to transpile (with timeout)
+    if ! timeout 5 "${BUILD_DIR}/stage1_cli" "${cpp2_file}" "${cpp_output}" >"${error_file}.transpile.out" 2>"${error_file}.transpile"; then
         # Transpilation failed - analyze transpiler errors
         if [[ -f "${error_file}.transpile" ]]; then
             while IFS= read -r line; do
@@ -99,11 +100,12 @@ analyze_file() {
                 fi
             done < "${error_file}.transpile"
         fi
+        echo "FAILED (transpile)"
         return 1
     fi
 
-    # Stage 1 succeeded, try compiling the output
-    if ! g++ -std=c++20 -c "${cpp_output}" -o "${ANALYSIS_DIR}/${test_name}.o" 2>"${error_file}.compile"; then
+    # Stage 1 succeeded, try compiling the output (with timeout)
+    if ! timeout 5 g++ -std=c++20 -I"${PROJECT_ROOT}/include" -c "${cpp_output}" -o "${ANALYSIS_DIR}/${test_name}.o" 2>"${error_file}.compile"; then
         # Compilation failed - analyze C++ compiler errors
         if [[ -f "${error_file}.compile" ]]; then
             while IFS= read -r line; do
@@ -114,9 +116,11 @@ analyze_file() {
                 fi
             done < "${error_file}.compile"
         fi
+        echo "FAILED (compile)"
         return 1
     fi
 
+    echo "PASSED"
     return 0
 }
 
@@ -139,17 +143,45 @@ for test_file in "${SCRIPT_DIR}"/simple_*.cpp2 \
     fi
 done
 
-# Sample a few more complex tests
-TEST_COUNT=0
+# Analyze ALL regression tests for complete feedback
+echo ""
+echo "Phase 2: Analyzing ALL regression tests..."
+echo "──────────────────────────────────────────"
+
+# Disable pipefail temporarily to collect all errors
+set +e
+
+# Count total files first
+TOTAL_FILES=$(ls -1 "${SCRIPT_DIR}"/*.cpp2 2>/dev/null | wc -l)
+echo "Found ${TOTAL_FILES} cpp2 files to analyze"
+
+PHASE2_ANALYZED=0
 for test_file in "${SCRIPT_DIR}"/*.cpp2; do
-    if [[ -f "${test_file}" && ${TEST_COUNT} -lt 10 ]]; then
-        ((TOTAL++))
+    if [[ -f "${test_file}" ]]; then
+        # Skip files already analyzed in phase 1
+        base_name=$(basename "${test_file}")
+        if [[ "${base_name}" == simple_*.cpp2 ]] || \
+           [[ "${base_name}" == "mixed-hello.cpp2" ]] || \
+           [[ "${base_name}" == "pure2-hello.cpp2" ]] || \
+           [[ "${base_name}" == "pure2-stdio.cpp2" ]]; then
+            continue
+        fi
+
+        ((PHASE2_ANALYZED++))
         if analyze_file "${test_file}"; then
             ((PASSED++))
         fi
-        ((TEST_COUNT++))
+        ((TOTAL++))
+
+        # Show progress every 10 files
+        if [[ $((PHASE2_ANALYZED % 10)) -eq 0 ]]; then
+            echo "  Progress: ${PHASE2_ANALYZED} files analyzed..."
+        fi
     fi
 done
+
+echo "Phase 2 complete: Analyzed ${PHASE2_ANALYZED} additional files"
+set -e
 
 # Generate Stage 0 improvement recommendations
 echo ""

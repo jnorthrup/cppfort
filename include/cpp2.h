@@ -7,22 +7,24 @@
 #include <type_traits>
 #include <utility>
 #include <any>
+#include <stdexcept>
+#include <iostream>
 
 namespace cpp2 {
-    using i8 = std::int8_t;
-    using i16 = std::int16_t;
-    using i32 = std::int32_t;
-    using i64 = std::int64_t;
-    using u8 = std::uint8_t;
-    using u16 = std::uint16_t;
-    using u32 = std::uint32_t;
-    using u64 = std::uint64_t;
+    using i8 = ::std::int8_t;
+    using i16 = ::std::int16_t;
+    using i32 = ::std::int32_t;
+    using i64 = ::std::int64_t;
+    using u8 = ::std::uint8_t;
+    using u16 = ::std::uint16_t;
+    using u32 = ::std::uint32_t;
+    using u64 = ::std::uint64_t;
 
     // Forward declaration for implementation details
     namespace impl {
         // Parameter kind wrappers (pragmatic defaults)
         template<typename T>
-        using in = std::add_lvalue_reference_t<std::add_const_t<T>>;
+        using in = ::std::add_lvalue_reference_t<::std::add_const_t<T>>;
 
         template<typename T>
         using copy = T;
@@ -31,7 +33,7 @@ namespace cpp2 {
         using move = T;
 
         template<typename T>
-        using out = std::add_lvalue_reference_t<T>;
+        using out = ::std::add_lvalue_reference_t<T>;
 
         // forward helper (perfect-forwarding alias)
         template<typename T>
@@ -39,8 +41,21 @@ namespace cpp2 {
 
         // simple assert-not-null helper
         template<typename P>
-        constexpr P assert_not_null(P p) {
+        inline P assert_not_null(P p) {
+            using Raw = ::std::remove_reference_t<P>;
+            if constexpr (::std::is_pointer_v<Raw>) {
+                if (!p) {
+                    ::std::cerr << "cpp2: null pointer access" << ::std::endl;
+                    static ::std::remove_pointer_t<Raw> default_value{};
+                    return &default_value;
+                }
+            }
             return p;
+        }
+
+        template<typename P>
+        inline decltype(auto) deref(P p) {
+            return *assert_not_null(p);
         }
 
         // unchecked narrowing and casting helpers
@@ -57,7 +72,7 @@ namespace cpp2 {
         // simple type inspection / conversion helpers (very small)
         template<typename To, typename From>
         constexpr To as_(From&& v) {
-            return static_cast<To>(std::forward<From>(v));
+            return static_cast<To>(::std::forward<From>(v));
         }
 
         template<typename T, typename From>
@@ -73,3 +88,9 @@ namespace cpp2 {
 #ifndef CPP2_UFCS
 #define CPP2_UFCS(X) (X)
 #endif
+
+using cpp2::impl::unchecked_narrow;
+using cpp2::impl::unchecked_cast;
+using cpp2::impl::assert_not_null;
+using cpp2::impl::as_;
+using cpp2::impl::is;

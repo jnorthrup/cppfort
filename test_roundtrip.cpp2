@@ -1,6 +1,0 @@
-# include <iostream>
-
-main: () -> int = {
-    std::cout << "Hello from cpp2!" << std::endl;
-    return 0;
-}

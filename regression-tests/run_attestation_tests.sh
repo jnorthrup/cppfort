@@ -23,7 +23,7 @@ echo ""
 echo "Building transpiler and attestation tools..."
 pushd "${BUILD_DIR}" >/dev/null
 cmake .. -DCMAKE_BUILD_TYPE=Debug 2>&1 | grep -E "(^--|Error|Warning)" || true
-cmake --build . --target stage1_cli anticheat_cli 2>&1 | grep -E "(^--|\[.*%\]|Error|Warning)" || true
+cmake --build . --target anticheat_cli 2>&1 | grep -E "(^--|\[.*%\]|Error|Warning)" || true
 popd >/dev/null
 
 if [[ ! -x "${BUILD_DIR}/stage1_cli" ]]; then
@@ -31,8 +31,8 @@ if [[ ! -x "${BUILD_DIR}/stage1_cli" ]]; then
     exit 1
 fi
 
-if [[ ! -x "${BUILD_DIR}/anticheat_cli" ]]; then
-    echo "❌ anticheat_cli not built"
+if [[ ! -x "${BUILD_DIR}/src/stage2/anticheat" ]]; then
+    echo "❌ anticheat not built"
     exit 1
 fi
 
@@ -66,14 +66,14 @@ test_attestation() {
     ((TRANSPILE_PASS++))
 
     # Compile debug build (-O0 -g)
-    if ! g++ -std=c++20 -O0 -g "${cpp_output}" -o "${binary_debug}" 2>/dev/null; then
+    if ! g++ -std=gnu++17 -I"${PROJECT_ROOT}/include" -O0 -g "${cpp_output}" -o "${binary_debug}" 2>/dev/null; then
         echo "  ❌ Debug compilation failed"
         return 1
     fi
     echo "  ✓ Compiled debug binary"
 
     # Compile optimized build (-O2)
-    if ! g++ -std=c++20 -O2 "${cpp_output}" -o "${binary_opt}" 2>/dev/null; then
+    if ! g++ -std=gnu++17 -I"${PROJECT_ROOT}/include" -O2 "${cpp_output}" -o "${binary_opt}" 2>/dev/null; then
         echo "  ❌ Optimized compilation failed"
         return 1
     fi
@@ -81,8 +81,8 @@ test_attestation() {
     ((COMPILE_PASS++))
 
     # Stage 2: Attest both binaries
-    local attest_debug=$("${BUILD_DIR}/anticheat_cli" "${binary_debug}" 2>/dev/null | grep -oE '[0-9a-f]{64}' || echo "FAIL")
-    local attest_opt=$("${BUILD_DIR}/anticheat_cli" "${binary_opt}" 2>/dev/null | grep -oE '[0-9a-f]{64}' || echo "FAIL")
+    local attest_debug=$("${BUILD_DIR}/src/stage2/anticheat" "${binary_debug}" 2>/dev/null | grep -oE '[0-9a-f]{64}' || echo "FAIL")
+    local attest_opt=$("${BUILD_DIR}/src/stage2/anticheat" "${binary_opt}" 2>/dev/null | grep -oE '[0-9a-f]{64}' || echo "FAIL")
 
     if [[ "${attest_debug}" == "FAIL" || "${attest_opt}" == "FAIL" ]]; then
         echo "  ❌ Attestation failed"

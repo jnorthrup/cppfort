@@ -1,74 +1,37 @@
-# Build directories
-build/
-cmake-build-*/
-out/
-bin/
-obj/
-
-# CMake generated files
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
-
-# Executables and binaries
-*.exe
-*.out
+# C++ build artifacts (turds)
 *.o
 *.a
 *.so
 *.dylib
-*.dll
+*.exe
+*.out
+*.app
+*.dSYM/
 
-# Test results and artifacts
-regression-tests/test-results/
-*.execution
-*.output
-*.cpp2.output
+!.claude
 
-# macOS
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+docs/**/*.java
+pom.xml
+target/
+
+# Build directories
+/build/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
 
 # IDE and editor files
-.vscode/
+!.vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
 
-# Temporary files
+# Temporary and backup files
 *.tmp
-*.temp
+*.bak
 *.log
-*.cache
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-
-# Node.js
-node_modules/
-npm-debug.log*
-
-# Regression test artifacts
-memvid_temp/
-tools/stage1/tools/
-
-# Build artifacts that may escape build directory
-*.dSYM/
-*stage*_*.cpp
-comprehensive_test_*
-Testing/
-bounds_binary*
+.bmad-*

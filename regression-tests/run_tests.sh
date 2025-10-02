@@ -15,7 +15,7 @@ PROJECT_ROOT="${SCRIPT_DIR}/.."
 # Default to g++ with C++17 and reasonable warnings. Users can override
 # by exporting CXX or CXXFLAGS in their environment.
 CXX="${CXX:-g++}"
-CXXFLAGS="${CXXFLAGS:--std=gnu++17 -Wall -Wextra}"
+CXXFLAGS="${CXXFLAGS:--std=gnu++17 -Wall -Wextra -I${PROJECT_ROOT}/include}"
 
 # Build all stages
 BUILD_DIR="${PROJECT_ROOT}/build"
@@ -141,11 +141,11 @@ run_test "Stage 0 vs Stage 1 comparison (colon syntax)" "
 \"${BUILD_DIR}/stage0_cli\" transpile \"${TEST_FILE}\" \"${BUILD_DIR}/stage0_emit.cpp\" &&
 \"${BUILD_DIR}/stage1_cli\" \"${TEST_FILE}\" \"${BUILD_DIR}/stage1_transpile.cpp\" &&
 echo 'Checking if stage0 output compiles...' &&
-g++ -c \"${BUILD_DIR}/stage0_emit.cpp\" -o /tmp/stage0_test.o 2>/dev/null &&
+${CXX} ${CXXFLAGS} -c \"${BUILD_DIR}/stage0_emit.cpp\" -o /tmp/stage0_test.o 2>/dev/null &&
 echo '✓ Stage 0 output compiles successfully.' &&
 rm -f /tmp/stage0_test.o &&
 echo 'Checking if stage1 output compiles...' &&
-g++ -c \"${BUILD_DIR}/stage1_transpile.cpp\" -o /tmp/stage1_test.o 2>/dev/null &&
+${CXX} ${CXXFLAGS} -c \"${BUILD_DIR}/stage1_transpile.cpp\" -o /tmp/stage1_test.o 2>/dev/null &&
 echo '✓ Stage 1 output compiles successfully.' &&
 rm -f /tmp/stage1_test.o
 "
@@ -173,7 +173,7 @@ BROKEN_TEST_FILE="${SCRIPT_DIR}/test_broken_syntax.cpp2"
 if [[ -f "${BROKEN_TEST_FILE}" ]]; then
     run_test "Stage 1 error handling test" "
     \"${BUILD_DIR}/stage1_cli\" \"${BROKEN_TEST_FILE}\" \"${BUILD_DIR}/stage1_broken_transpile.cpp\" &&
-    g++ -c \"${BUILD_DIR}/stage1_broken_transpile.cpp\" -o /tmp/broken_test.o 2>&1
+    ${CXX} ${CXXFLAGS} -c \"${BUILD_DIR}/stage1_broken_transpile.cpp\" -o /tmp/broken_test.o 2>&1
     " ""  # This test is expected to fail to demonstrate error analysis
 fi
 

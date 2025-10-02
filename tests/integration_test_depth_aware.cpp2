@@ -1,0 +1,6 @@
+// Test depth-aware orbit scanner + parser + emitter
+main: () -> int = {
+    x: i32 = 42;
+    std::cout << x;
+    return 0;
+}
