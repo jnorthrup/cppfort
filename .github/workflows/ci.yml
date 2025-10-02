@@ -19,15 +19,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake clang libc++-dev libc++abi-dev llvm-dev libmlir-18-dev
 
-    - name: Set up LLVM/MLIR path
-      run: |
-        # Find LLVM installation path
-        LLVM_PATH=$(find /usr -name "llvm-config" -type f 2>/dev/null | head -1 | xargs dirname | xargs dirname)
-        if [ -z "$LLVM_PATH" ]; then
-          LLVM_PATH="/usr"
-        fi
-        echo "CMAKE_PREFIX_PATH=$LLVM_PATH" >> $GITHUB_ENV
-
     - name: Build project
       run: |
         mkdir -p build
