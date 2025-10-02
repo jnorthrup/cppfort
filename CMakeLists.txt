@@ -14,9 +14,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "^AppleClang$" OR CMAKE_CXX_COMPILER_ID MATCHE
 endif()
 
 # --- MLIR Integration ---
-# Using Homebrew LLVM/MLIR 21.1.2
-# Set CMAKE_PREFIX_PATH to Homebrew LLVM installation
-set(CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/llvm/21.1.2" ${CMAKE_PREFIX_PATH})
+# Use Homebrew LLVM/MLIR on macOS, system packages elsewhere
+if(APPLE)
+  # Using Homebrew LLVM/MLIR 21.1.2 on macOS
+  set(CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/llvm/21.1.2" ${CMAKE_PREFIX_PATH})
+endif()
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(MLIR REQUIRED CONFIG)

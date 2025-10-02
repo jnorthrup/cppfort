@@ -17,7 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake clang libc++-dev libc++abi-dev llvm-dev libmlir-dev
+        sudo apt-get install -y cmake clang libc++-dev libc++abi-dev llvm-dev libmlir-18-dev
 
     - name: Set up LLVM/MLIR path
       run: |
