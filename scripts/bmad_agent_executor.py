@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-BMAD Agent Executor - Execute agent tasks via Anthropic API
+BMAD Agent Executor - Execute agent tasks via GitHub Copilot
 
-Reads a prompt file, calls the appropriate agent, outputs results.
+Reads a prompt file, calls GitHub Copilot agent, outputs results.
 """
 import argparse
 import os
 import sys
-import anthropic
+import subprocess
+import json
 
 def main():
     parser = argparse.ArgumentParser(description='Execute BMAD agent task')
@@ -20,14 +21,11 @@ def main():
     with open(args.prompt, 'r') as f:
         prompt = f.read()
 
-    # Get API key
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)
+    # Get GitHub token
+    github_token = os.environ.get('GITHUB_TOKEN')
+    if not github_token:
+        print("ERROR: GITHUB_TOKEN not set", file=sys.stderr)
         sys.exit(1)
-
-    # Initialize client
-    client = anthropic.Anthropic(api_key=api_key)
 
     # Agent system prompts
     agent_prompts = {
@@ -40,22 +38,22 @@ def main():
 
     system_prompt = agent_prompts.get(args.agent, "You are a helpful assistant.")
 
-    print(f"Executing {args.agent} agent...", file=sys.stderr)
+    print(f"Executing {args.agent} agent via GitHub Copilot...", file=sys.stderr)
 
     try:
-        # Call Claude API
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=8192,
-            system=system_prompt,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
+        # Call GitHub Copilot Chat API
+        # https://docs.github.com/en/rest/copilot/copilot-chat
+        full_prompt = f"{system_prompt}\n\n{prompt}"
+
+        # Use gh CLI to call Copilot API
+        result = subprocess.run(
+            ['gh', 'copilot', 'suggest', '--prompt', full_prompt],
+            capture_output=True,
+            text=True,
+            check=True
         )
 
-        # Extract response
-        response_text = message.content[0].text
+        response_text = result.stdout
 
         # Write output
         with open(args.output, 'w') as f:
@@ -64,6 +62,9 @@ def main():
         print(f"Agent execution complete. Output: {args.output}", file=sys.stderr)
         sys.exit(0)
 
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: GitHub Copilot execution failed: {e.stderr}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"ERROR: Agent execution failed: {e}", file=sys.stderr)
         sys.exit(1)

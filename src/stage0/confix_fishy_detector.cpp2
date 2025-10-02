@@ -1,0 +1,105 @@
+initializeTrackers: () -> ConfixContext = {
+    context: ConfixContext = ();
+
+    context.trackers[0] = ConfixTracker(ConfixType::PARENTHESES, '(', ')');
+    context.trackers[1] = ConfixTracker(ConfixType::BRACKETS, '[', ']');
+    context.trackers[2] = ConfixTracker(ConfixType::BRACES, '{', '}');
+    context.trackers[3] = ConfixTracker(ConfixType::ANGLE_BRACKETS, '<', '>');
+    context.trackers[4] = ConfixTracker(ConfixType::STRINGS, '"', '"');
+    context.trackers[5] = ConfixTracker(ConfixType::CHAR_LITERALS, '\'', '\'');
+    context.trackers[6] = ConfixTracker(ConfixType::COMMENTS, '/', '/');
+    context.trackers[7] = ConfixTracker(ConfixType::TEMPLATE_ARGS, '<', '>');
+
+    return context;
+}
+
+trackConfixPairs: (inout context: ConfixContext, source: std::string) = {
+    line: size_t = 1;
+    column: size_t = 1;
+
+    i: size_t = 0;
+    while i < source.size() {
+        ch: char = source[i];
+
+        if ch == '\n' {
+            line++;
+            column = 1;
+        } else {
+            column++;
+        }
+
+        for context.trackers do (inout tracker) {
+            if tracker.confixType == ConfixType::PARENTHESES ||
+               tracker.confixType == ConfixType::BRACKETS ||
+               tracker.confixType == ConfixType::BRACES ||
+               tracker.confixType == ConfixType::ANGLE_BRACKETS {
+                if ch == tracker.openChar {
+                    tracker.openCount++;
+                    tracker.currentDepth++;
+                    tracker.maxDepth = std::max(tracker.maxDepth, tracker.currentDepth);
+                } else if ch == tracker.closeChar {
+                    tracker.closeCount++;
+                    if tracker.currentDepth > 0 {
+                        tracker.currentDepth--;
+                    } else {
+                        tracker.mismatchCount++;
+                        context.totalMismatches++;
+
+                        fishy: FishyPattern = ();
+                        fishy.fishyType = FishyType::UNMATCHED_BRACKET;
+                        fishy.position = i;
+                        fishy.line = line;
+                        fishy.column = column;
+                        fishy.severity = 8;
+                        fishy.description = "Unmatched closing bracket";
+                        fishy.contextSnippet = getContext(source, i, 20);
+                        fishy.confidence = 0.95;
+                        context.fishyPatterns.push_back(fishy);
+                    }
+                }
+            }
+        }
+
+        i++;
+    }
+
+    for context.trackers do (inout tracker) {
+        if tracker.currentDepth > 0 {
+            tracker.mismatchCount++;
+            context.totalMismatches++;
+
+            fishy: FishyPattern = ();
+            fishy.fishyType = FishyType::UNMATCHED_BRACKET;
+            fishy.position = source.size() - 1;
+            fishy.line = line;
+            fishy.column = column;
+            fishy.severity = 7;
+            fishy.description = "Unclosed confix";
+            fishy.contextSnippet = "End of file";
+            fishy.confidence = 0.9;
+            context.fishyPatterns.push_back(fishy);
+        }
+    }
+}
+
+confixTypeToString: (type: ConfixType) -> std::string = {
+    if type == ConfixType::PARENTHESES { return "parentheses"; }
+    if type == ConfixType::BRACKETS { return "brackets"; }
+    if type == ConfixType::BRACES { return "braces"; }
+    if type == ConfixType::ANGLE_BRACKETS { return "angle brackets"; }
+    if type == ConfixType::STRINGS { return "string literal"; }
+    if type == ConfixType::CHAR_LITERALS { return "character literal"; }
+    if type == ConfixType::COMMENTS { return "comment"; }
+    if type == ConfixType::TEMPLATE_ARGS { return "template arguments"; }
+    return "unknown";
+}
+
+getContext: (source: std::string, pos: size_t, window: size_t) -> std::string = {
+    start: size_t = 0;
+    if pos > window { start = pos - window; }
+
+    end: size_t = source.size();
+    if pos + window < source.size() { end = pos + window; }
+
+    return source.substr(start, end - start);
+}

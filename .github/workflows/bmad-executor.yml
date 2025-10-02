@@ -126,7 +126,7 @@ jobs:
       - name: Execute via Agent
         id: agent_exec
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AGENT_TYPE: ${{ needs.route-to-agent.outputs.agent_type }}
           STORY_TITLE: ${{ steps.story.outputs.title }}
           ACCEPTANCE_CRITERIA: ${{ steps.story.outputs.acceptance }}
