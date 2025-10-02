@@ -1,0 +1,286 @@
+name: "BMAD: LLM Task Executor"
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      story_path:
+        description: 'Path to story file to execute'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  route-to-agent:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'apex') || github.event_name == 'workflow_dispatch'
+    outputs:
+      agent_type: ${{ steps.dispatch.outputs.agent }}
+      swimlane: ${{ steps.dispatch.outputs.swimlane }}
+      story_file: ${{ steps.dispatch.outputs.story_file }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dispatch to Agent
+        id: dispatch
+        run: |
+          # Extract swimlane from issue labels or story path
+          SWIMLANE=""
+          STORY_FILE=""
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            STORY_FILE="${{ github.event.inputs.story_path }}"
+            SWIMLANE=$(grep "^swimlane:" "$STORY_FILE" | cut -d: -f2 | xargs)
+          else
+            # Extract from issue body (BMAD embeds story path)
+            STORY_FILE=$(echo "${{ github.event.issue.body }}" | grep -o 'docs/stories/[^[:space:]]*\.story[^[:space:]]*\.md' | head -1)
+            SWIMLANE=$(grep "^swimlane:" "$STORY_FILE" 2>/dev/null | cut -d: -f2 | xargs || echo "unspecified")
+          fi
+
+          # Map swimlane to BMAD agent (.bmad-core/agents/)
+          case "$SWIMLANE" in
+            ir|patterns|backend)
+              AGENT="architect"  # System architecture & design
+              ;;
+            stage0|emitter|parser)
+              AGENT="dev"  # Implementation & coding
+              ;;
+            orbit|scanner)
+              AGENT="architect"  # Structural design
+              ;;
+            testing|validation)
+              AGENT="qa"  # Quality assurance & testing
+              ;;
+            optimization|performance)
+              AGENT="analyst"  # Performance analysis
+              ;;
+            persistence|storage)
+              AGENT="architect"  # Data architecture
+              ;;
+            build|ci)
+              AGENT="sm"  # Scrum master for process
+              ;;
+            ux|docs)
+              AGENT="ux-expert"  # Documentation & UX
+              ;;
+            *)
+              AGENT="dev"  # Default to dev for unknown swimlanes
+              ;;
+          esac
+
+          echo "agent=$AGENT" >> $GITHUB_OUTPUT
+          echo "swimlane=$SWIMLANE" >> $GITHUB_OUTPUT
+          echo "story_file=$STORY_FILE" >> $GITHUB_OUTPUT
+
+          echo "📍 Routing to agent: $AGENT (swimlane: $SWIMLANE)"
+
+  execute-task:
+    needs: route-to-agent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        run: |
+          # Install dependencies
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++-12
+          # BNFC if needed
+          # cargo install bnfc
+
+      - name: Load Story Context
+        id: story
+        run: |
+          STORY_FILE="${{ needs.route-to-agent.outputs.story_file }}"
+
+          if [ ! -f "$STORY_FILE" ]; then
+            echo "❌ Story file not found: $STORY_FILE"
+            exit 1
+          fi
+
+          # Extract story details
+          TITLE=$(head -1 "$STORY_FILE" | sed 's/^# //')
+          ACCEPTANCE=$(sed -n '/## Acceptance Criteria/,/## /p' "$STORY_FILE" | sed '1d;$d')
+          TASKS=$(sed -n '/## Tasks \/ Subtasks/,/## /p' "$STORY_FILE" | sed '1d;$d')
+
+          # Create multi-line output
+          echo "title<<EOF" >> $GITHUB_OUTPUT
+          echo "$TITLE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "acceptance<<EOF" >> $GITHUB_OUTPUT
+          echo "$ACCEPTANCE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "tasks<<EOF" >> $GITHUB_OUTPUT
+          echo "$TASKS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Execute via Agent
+        id: agent_exec
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AGENT_TYPE: ${{ needs.route-to-agent.outputs.agent_type }}
+          STORY_TITLE: ${{ steps.story.outputs.title }}
+          ACCEPTANCE_CRITERIA: ${{ steps.story.outputs.acceptance }}
+          TASK_LIST: ${{ steps.story.outputs.tasks }}
+        run: |
+          # Create agent prompt
+          cat > agent_prompt.md <<'PROMPT'
+          # Task: ${{ steps.story.outputs.title }}
+
+          ## Context
+          You are the **${{ needs.route-to-agent.outputs.agent_type }}** agent executing a BMAD-extracted task.
+
+          ## Acceptance Criteria
+          ${{ steps.story.outputs.acceptance }}
+
+          ## Tasks to Complete
+          ${{ steps.story.outputs.tasks }}
+
+          ## Instructions
+          1. Implement all tasks following acceptance criteria
+          2. Run tests to validate implementation
+          3. If tests fail, iterate until passing
+          4. Commit changes with descriptive message
+          5. Output summary of changes made
+
+          ## Repository Context
+          - Working directory: /github/workspace
+          - Build system: CMake + Ninja
+          - Test command: ./regression-tests/run_regression_stage0.sh
+          PROMPT
+
+          # Call agent via API (simplified - actual implementation would use anthropic SDK)
+          python3 scripts/bmad_agent_executor.py \
+            --agent "$AGENT_TYPE" \
+            --prompt agent_prompt.md \
+            --output implementation_log.txt
+
+          # Check if agent completed successfully
+          if [ $? -eq 0 ]; then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Validation Tests
+        id: validate
+        run: |
+          # Build project
+          cmake -B build -G Ninja
+          cmake --build build
+
+          # Run regression tests
+          cd regression-tests
+          ./run_regression_stage0.sh > test_results.txt 2>&1
+
+          # Extract pass rate
+          PASS_RATE=$(grep -o '[0-9]*% pass' test_results.txt || echo "0% pass")
+          echo "pass_rate=$PASS_RATE" >> $GITHUB_OUTPUT
+
+          # Check if acceptance criteria met
+          if grep -q "PASS" test_results.txt; then
+            echo "status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Implementation PR
+        if: steps.agent_exec.outputs.result == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "bmad-executor[bot]"
+          git config user.email "bmad-executor[bot]@users.noreply.github.com"
+
+          # Create branch
+          BRANCH="bmad/auto-impl-$(date +%s)"
+          git checkout -b "$BRANCH"
+
+          # Commit changes
+          git add -A
+          git commit -m "feat: implement ${{ steps.story.outputs.title }}
+
+          Executed by BMAD agent: ${{ needs.route-to-agent.outputs.agent_type }}
+          Swimlane: ${{ needs.route-to-agent.outputs.swimlane }}
+
+          Acceptance Criteria:
+          ${{ steps.story.outputs.acceptance }}
+
+          Test Results: ${{ steps.validate.outputs.pass_rate }}
+
+          🤖 Auto-implemented via BMAD LLM Executor"
+
+          git push origin "$BRANCH"
+
+          # Create PR
+          gh pr create \
+            --title "🤖 BMAD: ${{ steps.story.outputs.title }}" \
+            --body "$(cat <<'EOF'
+          ## Auto-Implementation via BMAD
+
+          **Agent:** ${{ needs.route-to-agent.outputs.agent_type }}
+          **Swimlane:** ${{ needs.route-to-agent.outputs.swimlane }}
+          **Story:** ${{ needs.route-to-agent.outputs.story_file }}
+
+          ### Acceptance Criteria
+          ${{ steps.story.outputs.acceptance }}
+
+          ### Validation Results
+          - Test Pass Rate: ${{ steps.validate.outputs.pass_rate }}
+          - Status: ${{ steps.validate.outputs.status }}
+
+          ### Implementation Log
+          See job artifacts for detailed execution trace.
+
+          ---
+          🤖 Generated with BMAD LLM Executor
+          Closes #${{ github.event.issue.number }}
+          EOF
+          )" \
+            --label "bmad-auto,apex" \
+            --assignee "${{ github.actor }}"
+
+      - name: Update Issue with Results
+        if: github.event_name == 'issues'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT="## 🤖 BMAD Execution Results
+
+          **Agent:** ${{ needs.route-to-agent.outputs.agent_type }}
+          **Status:** ${{ steps.agent_exec.outputs.result }}
+          **Test Results:** ${{ steps.validate.outputs.pass_rate }}
+
+          Implementation PR: Will be auto-created if successful.
+
+          Run ID: ${{ github.run_id }}"
+
+          gh issue comment ${{ github.event.issue.number }} --body "$COMMENT"
+
+          # Close issue if successful
+          if [ "${{ steps.validate.outputs.status }}" = "passed" ]; then
+            gh issue close ${{ github.event.issue.number }} \
+              --reason completed \
+              --comment "✅ Task completed successfully by BMAD agent"
+          fi
+
+      - name: Upload Execution Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmad-execution-${{ github.run_id }}
+          path: |
+            agent_prompt.md
+            implementation_log.txt
+            regression-tests/test_results.txt
+          retention-days: 30
