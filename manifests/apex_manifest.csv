@@ -1,0 +1,4 @@
+task_id,swimlane,slug,story_path,issue,labels
+5e020215,ir,implement-real-sea-of-nodes-ir,docs/stories/ir-implement-real-sea-of-nodes-ir.story-3.md,,
+bcb05ebf,stage0,fix-remaining-stage0-emitter-regressions-affecting-regression-suite,docs/stories/stage0-fix-remaining-stage0-emitter-regressions-affecting-regression-suite.story-3.md,,
+a27b208a,patterns,add-n-way-lowering-pattern-tests-and-integration-harness,docs/stories/patterns-add-n-way-lowering-pattern-tests-and-integration-harness.story-3.md,,

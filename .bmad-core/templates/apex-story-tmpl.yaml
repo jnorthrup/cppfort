@@ -1,0 +1,40 @@
+filename_template: "{{swimlane}}-{{slug}}.story.md"
+body_template: |
+  # {{title}}
+
+  Status: Draft
+
+  ## Story
+
+  As a developer,
+  I want {{title}},
+  so that the apex feature in swimlane {{swimlane}} is implemented.
+
+  ## Context Source
+
+  - Source Document: TODO.md
+  - Extracted from TODO: {{todo}}
+
+  ## Acceptance Criteria
+
+  1. Implementation compiles and passes unit tests.
+  2. Integration tests for swimlane {{swimlane}} pass.
+  3. Regression tests remain green.
+
+  ## Dev Notes
+
+  - Swimlane: {{swimlane}}
+  - Suggested branch: apex/{{swimlane}}/{{slug}}
+
+  ## Tasks / Subtasks
+
+  - [ ] Analyze existing code for integration points
+  - [ ] Implement feature
+  - [ ] Add unit tests
+  - [ ] Add integration tests
+  - [ ] Run benchmarks (if applicable)
+
+  ## Story meta
+
+  slug: {{slug}}
+  swimlane: {{swimlane}}

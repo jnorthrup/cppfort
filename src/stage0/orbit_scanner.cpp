@@ -12,6 +12,7 @@
 #include "multi_grammar_loader.h"
 #include "orbit_scanner.h"
 #include "rabin_karp.h"
+#include "wide_scanner.h"
 
 namespace cppfort {
 namespace ir {
@@ -90,8 +91,27 @@ size_t OrbitScanner::getPatternCount() const {
   ::std::unordered_map<GrammarType, double> grammarConfidences;
   ::std::unordered_map<GrammarType, size_t> grammarMatchCounts;
 
-  // Scan code character by character, updating orbit context and detecting patterns
-  for (size_t pos = 0; pos < code.length(); ++pos) {
+  // Generate alternating anchor points at UTF-8 boundaries (64/32 byte spacing)
+  auto anchors = WideScanner::generateAlternatingAnchors(code, 64);
+
+  // SIMD-accelerated boundary detection between anchors
+  auto boundaries = WideScanner::scanAnchorsSIMD(code, anchors);
+
+  // Build scan positions: anchor points + boundaries
+  ::std::vector<size_t> scanPositions;
+  scanPositions.reserve(anchors.size() + boundaries.size());
+  for (const auto& anchor : anchors) {
+    scanPositions.push_back(anchor.position);
+  }
+  for (const auto& boundary : boundaries) {
+    scanPositions.push_back(boundary.position);
+  }
+  ::std::sort(scanPositions.begin(), scanPositions.end());
+  scanPositions.erase(::std::unique(scanPositions.begin(), scanPositions.end()), scanPositions.end());
+
+  // Scan at each anchor/boundary position
+  for (size_t pos : scanPositions) {
+    if (pos >= code.length()) continue;
     char ch = code[pos];
 
     // Update orbit context with current character

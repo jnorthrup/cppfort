@@ -34,4 +34,13 @@ Makefile
 *.tmp
 *.bak
 *.log
-.bmad-*
+
+# BMAD: allow source templates and tracked files under .bmad-core but ignore runtime/cache and local secrets
+# Keep templates and configs (commitable); ignore caches and local secrets
+.bmad-core/cache/
+.bmad-core/tmp/
+.bmad-core/*.local
+.bmad-core/*.secret
+# Local encrypted audits and manifests
+.bmad-core/audit/
+manifests/
