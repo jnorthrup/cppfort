@@ -18,6 +18,9 @@ endif()
 if(APPLE)
   # Using Homebrew LLVM/MLIR 21.1.2 on macOS
   set(CMAKE_PREFIX_PATH "/opt/homebrew/Cellar/llvm/21.1.2" ${CMAKE_PREFIX_PATH})
+elseif(UNIX AND NOT APPLE)
+  # Using system LLVM/MLIR on Linux (Ubuntu)
+  set(CMAKE_PREFIX_PATH "/usr/lib/llvm-18" ${CMAKE_PREFIX_PATH})
 endif()
 
 find_package(LLVM REQUIRED CONFIG)
