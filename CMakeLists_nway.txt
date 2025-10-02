@@ -1,0 +1,158 @@
+cmake_minimum_required(VERSION 3.20)
+project(nway_compiler VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Find required packages
+find_package(Threads REQUIRED)
+
+# Include directories
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+# Source files
+set(NWAY_SOURCES
+    src/nway_compiler.cpp
+    src/ir/ir.cpp
+    src/parsers/c_parser.cpp
+    src/attestation/attestation.cpp
+)
+
+# Existing stage0 sources for CPP2 support
+set(STAGE0_SOURCES
+    src/stage0/parser.cpp
+    src/stage0/lexer.cpp
+    src/stage0/ast.cpp
+    src/stage0/emitter.cpp
+)
+
+# Create n-way compiler executable
+add_executable(nway_compiler
+    ${NWAY_SOURCES}
+    ${STAGE0_SOURCES}
+)
+
+# Compiler flags
+target_compile_options(nway_compiler PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror=return-type
+    -Werror=unused-result
+    $<$<CONFIG:Debug>:-g -O0 -fsanitize=address,undefined>
+    $<$<CONFIG:Release>:-O3 -march=native>
+)
+
+# Link flags
+target_link_options(nway_compiler PRIVATE
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+)
+
+# Link libraries
+target_link_libraries(nway_compiler
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+)
+
+# For cryptography (simplified - would use OpenSSL or libsodium in production)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(nway_compiler crypt)
+endif()
+
+# Install targets
+install(TARGETS nway_compiler
+    RUNTIME DESTINATION bin
+)
+
+# Create test executable for round-trip testing
+add_executable(nway_test
+    tests/test_roundtrip.cpp
+    ${NWAY_SOURCES}
+    ${STAGE0_SOURCES}
+)
+
+target_compile_options(nway_test PRIVATE
+    -Wall -Wextra -g
+)
+
+target_link_libraries(nway_test
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+)
+
+# Enable testing
+enable_testing()
+
+# Add tests
+add_test(NAME roundtrip_c_to_cpp
+    COMMAND nway_test --test c_to_cpp)
+
+add_test(NAME roundtrip_cpp2_to_c
+    COMMAND nway_test --test cpp2_to_c)
+
+add_test(NAME attestation_verify
+    COMMAND nway_compiler --verify test_binary)
+
+add_test(NAME deterministic_build
+    COMMAND ${CMAKE_SOURCE_DIR}/tests/test_deterministic.sh)
+
+# Fuzzing targets (if AFL++ available)
+find_program(AFL_FUZZ afl-fuzz)
+if(AFL_FUZZ)
+    add_executable(nway_fuzz
+        tests/fuzz_target.cpp
+        ${NWAY_SOURCES}
+        ${STAGE0_SOURCES}
+    )
+
+    target_compile_options(nway_fuzz PRIVATE
+        -fsanitize=address,undefined
+    )
+
+    set_target_properties(nway_fuzz PROPERTIES
+        COMPILE_FLAGS "-fsanitize-coverage=trace-pc-guard"
+        LINK_FLAGS "-fsanitize=address,undefined"
+    )
+endif()
+
+# Documentation
+add_custom_target(docs
+    COMMAND doxygen ${CMAKE_SOURCE_DIR}/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Generating documentation with Doxygen"
+)
+
+# Performance benchmarks
+add_executable(nway_bench
+    benchmarks/bench_transpilation.cpp
+    ${NWAY_SOURCES}
+    ${STAGE0_SOURCES}
+)
+
+target_link_libraries(nway_bench
+    Threads::Threads
+)
+
+# Static analysis
+add_custom_target(analyze
+    COMMAND clang-tidy ${NWAY_SOURCES} -- -std=c++20 -I${CMAKE_SOURCE_DIR}/src
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Running static analysis with clang-tidy"
+)
+
+# Format check
+add_custom_target(format
+    COMMAND clang-format -i ${NWAY_SOURCES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Formatting code with clang-format"
+)
+
+# Package configuration
+set(CPACK_PACKAGE_NAME "nway-compiler")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION "N-way C/C++/CPP2 compiler with attestation")
+set(CPACK_PACKAGE_CONTACT "compiler-team@example.com")
+
+include(CPack)

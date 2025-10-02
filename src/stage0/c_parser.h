@@ -158,7 +158,7 @@ private:
     bool expect(CTokenType type);
     void error(const std::string& message);
 
-    // Recursive descent parsing
+    // Recursive descent parsing - declarations
     std::unique_ptr<CASTNode> parseTranslationUnit();
     std::unique_ptr<CASTNode> parseFunctionDecl();
     std::unique_ptr<CASTNode> parseVarDecl();
@@ -166,6 +166,8 @@ private:
     std::unique_ptr<CASTNode> parseUnionDecl();
     std::unique_ptr<CASTNode> parseEnumDecl();
     std::unique_ptr<CASTNode> parseTypedefDecl();
+
+    // Statement parsing
     std::unique_ptr<CASTNode> parseStatement();
     std::unique_ptr<CASTNode> parseCompoundStatement();
     std::unique_ptr<CASTNode> parseIfStatement();
@@ -173,6 +175,20 @@ private:
     std::unique_ptr<CASTNode> parseDoStatement();
     std::unique_ptr<CASTNode> parseForStatement();
     std::unique_ptr<CASTNode> parseSwitchStatement();
+
+    // Type parsing
+    ir::Type* parseTypeSpecifier();
+    ir::Type* parseDeclarator(ir::Type* baseType);
+
+public:
+    CParser(const std::vector<CToken>& tokens, CPreprocessor* preprocessor = nullptr)
+        : _tokens(tokens), _pos(0), _preprocessor(preprocessor),
+          _currentFunction(nullptr), _currentBlock(nullptr) {}
+
+    // Parse C source into AST
+    std::unique_ptr<CASTNode> parse();
+
+    // Expression parsing (public for testing)
     std::unique_ptr<CASTNode> parseExpression();
     std::unique_ptr<CASTNode> parseAssignmentExpression();
     std::unique_ptr<CASTNode> parseConditionalExpression();
@@ -190,18 +206,6 @@ private:
     std::unique_ptr<CASTNode> parseUnaryExpression();
     std::unique_ptr<CASTNode> parsePostfixExpression();
     std::unique_ptr<CASTNode> parsePrimaryExpression();
-
-    // Type parsing
-    ir::Type* parseTypeSpecifier();
-    ir::Type* parseDeclarator(ir::Type* baseType);
-
-public:
-    CParser(const std::vector<CToken>& tokens, CPreprocessor* preprocessor = nullptr)
-        : _tokens(tokens), _pos(0), _preprocessor(preprocessor),
-          _currentFunction(nullptr), _currentBlock(nullptr) {}
-
-    // Parse C source into AST
-    std::unique_ptr<CASTNode> parse();
 
     // Convert AST to Sea of Nodes IR
     ir::Node* emit(const CASTNode* ast);

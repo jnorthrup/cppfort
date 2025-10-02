@@ -74,7 +74,6 @@ pure2-more-wildcards.cpp2,OK,FAILED,,0
 pure2-print.cpp2,FAILED,,,0
 pure2-range-operators.cpp2,FAILED,,,0
 pure2-raw-string-literal-and-interpolation.cpp2,OK,FAILED,,0
-pure2-regex-general.cpp2,FAILED,,,0
 pure2-regex_01_char_matcher.cpp2,FAILED,,,0
 pure2-regex_02_ranges.cpp2,FAILED,,,0
 pure2-regex_03_wildcard.cpp2,FAILED,,,0
@@ -95,7 +94,8 @@ pure2-regex_17_comments.cpp2,FAILED,,,0
 pure2-regex_18_branch_reset.cpp2,FAILED,,,0
 pure2-regex_19_lookahead.cpp2,FAILED,,,0
 pure2-regex_21_atomic_patterns.cpp2,FAILED,,,0
-pure2-repeated-call.cpp2,OK,FAILED,,0
+pure2-regex-general.cpp2,FAILED,,,0
+pure2-repeated-call.cpp2,OK,OK,OK,0
 pure2-requires-clauses.cpp2,FAILED,,,0
 pure2-return-tuple-no-identifier-error.cpp2,FAILED,,,0
 pure2-return-tuple-no-type-error.cpp2,FAILED,,,0

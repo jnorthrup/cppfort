@@ -144,16 +144,43 @@ for test_file in "${SCRIPT_DIR}"/simple_*.cpp2 \
 done
 
 # Analyze ALL regression tests for complete feedback
+echo ""
+echo "Phase 2: Analyzing ALL regression tests..."
+echo "──────────────────────────────────────────"
+
 # Disable pipefail temporarily to collect all errors
 set +e
+
+# Count total files first
+TOTAL_FILES=$(ls -1 "${SCRIPT_DIR}"/*.cpp2 2>/dev/null | wc -l)
+echo "Found ${TOTAL_FILES} cpp2 files to analyze"
+
+PHASE2_ANALYZED=0
 for test_file in "${SCRIPT_DIR}"/*.cpp2; do
     if [[ -f "${test_file}" ]]; then
-        ((TOTAL++))
-        if analyze_file "${test_file}" 2>/dev/null; then
+        # Skip files already analyzed in phase 1
+        base_name=$(basename "${test_file}")
+        if [[ "${base_name}" == simple_*.cpp2 ]] || \
+           [[ "${base_name}" == "mixed-hello.cpp2" ]] || \
+           [[ "${base_name}" == "pure2-hello.cpp2" ]] || \
+           [[ "${base_name}" == "pure2-stdio.cpp2" ]]; then
+            continue
+        fi
+
+        ((PHASE2_ANALYZED++))
+        if analyze_file "${test_file}"; then
             ((PASSED++))
+        fi
+        ((TOTAL++))
+
+        # Show progress every 10 files
+        if [[ $((PHASE2_ANALYZED % 10)) -eq 0 ]]; then
+            echo "  Progress: ${PHASE2_ANALYZED} files analyzed..."
         fi
     fi
 done
+
+echo "Phase 2 complete: Analyzed ${PHASE2_ANALYZED} additional files"
 set -e
 
 # Generate Stage 0 improvement recommendations

@@ -24,6 +24,7 @@ set(STAGE0_SOURCES
     attestation_nodes.cpp  # N-way compiler: attestation & anticheat infrastructure
     c_lexer.cpp  # N-way compiler: C11/C17 lexer
     c_preprocessor.cpp  # N-way compiler: C preprocessor
+    c_parser.cpp  # N-way compiler: C parser (expressions + statements + declarations)
     ${MyDialect_generated_sources}
 )
 
@@ -107,6 +108,10 @@ target_link_libraries(test_c_lexer PRIVATE stage0)
 # N-way compiler C preprocessor tests
 add_executable(test_c_preprocessor test_c_preprocessor.cpp)
 target_link_libraries(test_c_preprocessor PRIVATE stage0)
+
+# N-way compiler C parser expression tests
+add_executable(test_c_parser_expr test_c_parser_expr.cpp)
+target_link_libraries(test_c_parser_expr PRIVATE stage0)
 
 # Ensure binary is named `stage0_cli` and placed in the top‑level build directory
 set_target_properties(stage0_cli PROPERTIES
