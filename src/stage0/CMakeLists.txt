@@ -5,7 +5,6 @@ add_mlir_dialect(MyDialect
 )
 
 set(STAGE0_SOURCES
-    lexer.cpp
     parser.cpp
     emitter.cpp
     transpiler.cpp
@@ -22,7 +21,6 @@ set(STAGE0_SOURCES
     instruction_selection.cpp  # Chapter 19: Instruction selection phase
     # region_curing.cpp # MLIR Region Curing - temporarily disabled
     attestation_nodes.cpp  # N-way compiler: attestation & anticheat infrastructure
-    c_lexer.cpp  # N-way compiler: C11/C17 lexer
     c_preprocessor.cpp  # N-way compiler: C preprocessor
     c_parser.cpp  # N-way compiler: C parser (expressions + statements + declarations)
     ${MyDialect_generated_sources}
@@ -100,10 +98,6 @@ target_link_libraries(test_chapter19 PRIVATE stage0)
 # N-way compiler attestation & anticheat tests
 add_executable(test_attestation test_attestation.cpp)
 target_link_libraries(test_attestation PRIVATE stage0)
-
-# N-way compiler C lexer tests
-add_executable(test_c_lexer test_c_lexer.cpp)
-target_link_libraries(test_c_lexer PRIVATE stage0)
 
 # N-way compiler C preprocessor tests
 add_executable(test_c_preprocessor test_c_preprocessor.cpp)

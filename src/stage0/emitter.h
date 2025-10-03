@@ -17,6 +17,7 @@ struct EmitOptions {
     EmitBackend backend = EmitBackend::Cpp;
     bool include_headers = true;
     bool inline_cpp2_header = false;  // Inline cpp2.h contents instead of including it
+    bool bundle_headers = false;      // Bundle cpp2.h contents at the beginning of output
 };
 
 class Emitter {
