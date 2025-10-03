@@ -901,7 +901,9 @@ bool looks_like_initializer_list(const ::std::string& expr) {
             output += "    using i32 = ::std::int32_t;\n";
             output += "    using i64 = ::std::int64_t;\n";
             output += "    using u8 = ::std::uint8_t;\n";
-            output += "    using u16 = ::std::uint16_t;\n            output += \"    using u32 = ::std::uint32_t;\\n\";\n            output += \"    using u64 = ::std::uint64_t;\\n\";\n            output += "\n";
+            output += "    using u16 = ::std::uint16_t;\n";
+            output += "    using u32 = ::std::uint32_t;\n";
+            output += "    using u64 = ::std::uint64_t;\n";
             output += "    // Forward declaration for implementation details\n";
             output += "    namespace impl {\n";
             output += "        // Parameter kind wrappers (pragmatic defaults)\n";

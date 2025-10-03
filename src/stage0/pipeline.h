@@ -38,6 +38,7 @@ struct Pipeline {
     ::std::shared_ptr<LexerPass> lexer;
     ::std::shared_ptr<ParserPass> parser;
     ::std::shared_ptr<EmitterPass> emitter;
+    ::std::shared_ptr<LexerPass> preprocessor; // C preprocessor pass
 };
 
 Pipeline make_default_pipeline();

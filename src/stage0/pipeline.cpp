@@ -4,49 +4,30 @@
 
 #include "emitter.h"
 #include "parser.h"
-#include "pattern_scanner.h"
 #include "wide_scanner.h"
-#include "orbit_scanner.h"
-#include "confix_fishy_detector.h"
 
 namespace cppfort::stage0 {
 namespace {
 
-// Scanner-based lexer pass with speculative lookahead
+// Scanner-based lexer pass - minimal viable implementation
 class ScannerLexerPass final : public LexerPass {
-  private:
-    mutable PatternScanner m_pattern_scanner;
-    mutable cppfort::ir::OrbitScanner m_orbit_scanner;
-
   public:
-    ScannerLexerPass() : m_orbit_scanner(cppfort::ir::OrbitScannerConfig{}) {
-        // Initialize orbit scanner
-        if (!m_orbit_scanner.initialize()) {
-            // Handle initialization failure - for now, continue
-        }
-    }
     LexResult run(const ::std::string& source, const ::std::string& filename) const override {
         // Step 1: Wide scanner - get alternating anchors with SIMD
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
         auto boundaries = cppfort::ir::WideScanner::scanAnchorsSIMD(source, anchors);
 
-        // Step 2: Pattern scanner - detect grammar and patterns speculatively
-        auto pattern_results = m_pattern_scanner.scanWindowed(source);
-
-        // Step 3: Bracket validation using ConfixFishyDetector
-        auto confix_context = cppfort::ir::ConfixFishyDetector::initializeTrackers();
-        cppfort::ir::ConfixFishyDetector::trackConfixPairs(confix_context, source);
-
-        // Step 4: Convert boundaries and patterns into tokens
+        // Step 2: Convert boundaries into tokens
         LexResult result;
         result.source = source;
         result.filename = filename;
 
-        // Generate tokens from boundaries (speculative tokenization)
+        // Generate tokens from boundaries
         for (const auto& boundary : boundaries) {
             Token tok;
-            tok.location.offset = boundary.position;
-            tok.location.filename = filename;
+            tok.offset = boundary.position;
+            tok.length = 1;
+            tok.location = SourceLocation(filename, 0, 0); // TODO: calculate line/col
 
             if (boundary.is_delimiter) {
                 // Map delimiter to token type
@@ -59,21 +40,19 @@ class ScannerLexerPass final : public LexerPass {
                     case ')': tok.type = TokenType::RParen; break;
                     case '[': tok.type = TokenType::LBracket; break;
                     case ']': tok.type = TokenType::RBracket; break;
-                    // Common punctuation that we don't yet have dedicated token types for -
-                    // keep them as Unknown for now but explicitly handle them so it's clear.
-                    case '.': tok.type = TokenType::Unknown; break;
-                    case ':': tok.type = TokenType::Unknown; break;
-                    case '+': tok.type = TokenType::Unknown; break;
-                    case '-': tok.type = TokenType::Unknown; break;
-                    default: tok.type = TokenType::Unknown; break;
+                    default: continue; // Skip unknown delimiters
                 }
-                tok.value = ::std::string(1, boundary.delimiter);
-            } else {
-                tok.type = TokenType::Unknown;
+                tok.lexeme = ::std::string(1, boundary.delimiter);
+                result.tokens.push_back(tok);
             }
-
-            result.tokens.push_back(tok);
         }
+
+        // Add EOF token
+        Token eof;
+        eof.type = TokenType::EndOfFile;
+        eof.offset = source.size();
+        eof.location = SourceLocation(filename, 0, 0);
+        result.tokens.push_back(eof);
 
         return result;
     }

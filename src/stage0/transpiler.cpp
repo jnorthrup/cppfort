@@ -74,7 +74,9 @@ OrbitTranslationUnit Transpiler::parseWithOrbits(const ::std::string& source, co
     orbit_unit.source_grammar = "CPP2";  // Assume CPP2 for now
 
     return orbit_unit;
-}::std::string Transpiler::transpile(const ::std::string& source, const ::std::string& filename,
+}
+
+::std::string Transpiler::transpile(const ::std::string& source, const ::std::string& filename,
     const TranspileOptions& options) const {
     auto unit = parse(source, filename);
     if (!m_pipeline.emitter) {
