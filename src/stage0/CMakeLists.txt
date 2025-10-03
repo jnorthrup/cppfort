@@ -25,6 +25,7 @@ set(STAGE0_SOURCES
     c_lexer.cpp  # N-way compiler: C11/C17 lexer
     c_preprocessor.cpp  # N-way compiler: C preprocessor
     c_parser.cpp  # N-way compiler: C parser (expressions + statements + declarations)
+    ir_serializer.cpp  # IR serialization for stage0->stage1 communication
     ${MyDialect_generated_sources}
 )
 
