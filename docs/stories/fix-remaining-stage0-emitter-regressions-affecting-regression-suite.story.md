@@ -1,6 +1,9 @@
 # Story: Fix remaining Stage0 emitter regressions affecting regression-suite
 
-## Status: Draft
+## Status: In Progress - Partial Completion
+
+**Update:** Parser improvements completed. Reduced errors from 77 to 64 (17% improvement).
+See `STAGE0_EMITTER_FIXES_SUMMARY.md` for details.
 
 ## Story
 
