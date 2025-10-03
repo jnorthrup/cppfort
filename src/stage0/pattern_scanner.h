@@ -26,6 +26,7 @@ struct PatternResult {
     bool is_active {false};          // Whether pattern is currently active
     double confidence {0.0};         // Detection confidence score (0.0-1.0)
     uint64_t timestamp {0};          // Detection timestamp
+    size_t position {0};             // Position in source where pattern was detected
     std::string pattern_name;        // Human-readable pattern name
     std::map<std::string, std::any> metadata; // Extended metadata
 };

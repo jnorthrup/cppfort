@@ -6,7 +6,8 @@
 #include "parser.h"
 #include "pattern_scanner.h"
 #include "wide_scanner.h"
-#include "../orbit_scanner.h"
+#include "orbit_scanner.h"
+#include "confix_fishy_detector.h"
 
 namespace cppfort::stage0 {
 namespace {
@@ -15,8 +16,15 @@ namespace {
 class ScannerLexerPass final : public LexerPass {
   private:
     mutable PatternScanner m_pattern_scanner;
+    mutable cppfort::ir::OrbitScanner m_orbit_scanner;
 
   public:
+    ScannerLexerPass() : m_orbit_scanner(cppfort::ir::OrbitScannerConfig{}) {
+        // Initialize orbit scanner
+        if (!m_orbit_scanner.initialize()) {
+            // Handle initialization failure - for now, continue
+        }
+    }
     LexResult run(const ::std::string& source, const ::std::string& filename) const override {
         // Step 1: Wide scanner - get alternating anchors with SIMD
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
@@ -25,7 +33,11 @@ class ScannerLexerPass final : public LexerPass {
         // Step 2: Pattern scanner - detect grammar and patterns speculatively
         auto pattern_results = m_pattern_scanner.scanWindowed(source);
 
-        // Step 3: Convert boundaries and patterns into tokens
+        // Step 3: Bracket validation using ConfixFishyDetector
+        auto confix_context = cppfort::ir::ConfixFishyDetector::initializeTrackers();
+        cppfort::ir::ConfixFishyDetector::trackConfixPairs(confix_context, source);
+
+        // Step 4: Convert boundaries and patterns into tokens
         LexResult result;
         result.source = source;
         result.filename = filename;
@@ -47,6 +59,12 @@ class ScannerLexerPass final : public LexerPass {
                     case ')': tok.type = TokenType::RParen; break;
                     case '[': tok.type = TokenType::LBracket; break;
                     case ']': tok.type = TokenType::RBracket; break;
+                    // Common punctuation that we don't yet have dedicated token types for -
+                    // keep them as Unknown for now but explicitly handle them so it's clear.
+                    case '.': tok.type = TokenType::Unknown; break;
+                    case ':': tok.type = TokenType::Unknown; break;
+                    case '+': tok.type = TokenType::Unknown; break;
+                    case '-': tok.type = TokenType::Unknown; break;
                     default: tok.type = TokenType::Unknown; break;
                 }
                 tok.value = ::std::string(1, boundary.delimiter);
@@ -81,7 +99,7 @@ class DefaultEmitterPass final : public EmitterPass {
 
 Pipeline make_default_pipeline() {
     Pipeline pipeline;
-    pipeline.lexer = ::std::make_shared<DefaultLexerPass>();
+    pipeline.lexer = ::std::make_shared<ScannerLexerPass>();
     pipeline.parser = ::std::make_shared<DefaultParserPass>();
     pipeline.emitter = ::std::make_shared<DefaultEmitterPass>();
     return pipeline;
