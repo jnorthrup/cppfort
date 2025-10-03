@@ -167,6 +167,16 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
         parameters = parse_parameter_list();
     }
 
+    // Skip optional 'requires' clause if present
+    // Format: requires <expression>
+    if (check(TokenType::Identifier) && peek().lexeme == "requires") {
+        static_cast<void>(advance()); // consume 'requires'
+        // Skip until we hit '=' or '{'
+        while (!is_at_end() && !check(TokenType::Equals) && !check(TokenType::LBrace) && !check(TokenType::Arrow)) {
+            static_cast<void>(advance());
+        }
+    }
+
     ::std::optional<::std::string> return_type;
     if (match(TokenType::Arrow)) {
         SourceLocation span_location;

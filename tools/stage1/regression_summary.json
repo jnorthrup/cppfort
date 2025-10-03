@@ -484,7 +484,7 @@
     {
       "test_file": "pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2",
       "raw": [
-        "Error: Expected '=' or '{' before function body",
+        "Error: Expected identifier at start of declaration at 1:44",
         "  Transpile FAILED",
         ""
       ],
