@@ -32,3 +32,16 @@ add_test(NAME OrbitScannerWithMocksTest COMMAND test_orbit_scanner_with_mocks)
 add_executable(test_orbit_scanner_extended test_orbit_scanner_extended.cpp)
 target_link_libraries(test_orbit_scanner_extended PRIVATE orbit_scanner GTest::gtest_main)
 add_test(NAME OrbitScannerExtendedTest COMMAND test_orbit_scanner_extended)
+
+# Pattern Matcher Tests (Band 5)
+add_executable(test_pattern_matcher test_pattern_matcher.cpp)
+target_link_libraries(test_pattern_matcher PRIVATE stage0_lib GTest::gtest_main)
+add_test(NAME PatternMatcherTest COMMAND test_pattern_matcher)
+
+add_executable(test_pattern_integration test_pattern_integration.cpp)
+target_link_libraries(test_pattern_integration PRIVATE stage0_lib GTest::gtest_main)
+add_test(NAME PatternIntegrationTest COMMAND test_pattern_integration)
+
+add_executable(test_machine_patterns test_machine_patterns.cpp)
+target_link_libraries(test_machine_patterns PRIVATE stage0_lib GTest::gtest_main)
+add_test(NAME MachinePatternTest COMMAND test_machine_patterns)
