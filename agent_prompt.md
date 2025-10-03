@@ -1,12 +1,12 @@
-# Task: Fix remaining Stage0 emitter regressions affecting regression-suite
+# Task: Implement real Sea-of-Nodes IR
 
 ## Context
-You are the **dev** agent executing a BMAD-extracted task.
+You are the **architect** agent executing a BMAD-extracted task.
 
 ## Acceptance Criteria
 
 1. Implementation compiles and passes unit tests.
-2. Integration tests for swimlane stage0 pass.
+2. Integration tests for swimlane ir pass.
 3. Regression tests remain green.
 
 ## Tasks to Complete
