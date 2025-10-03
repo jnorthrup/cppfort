@@ -68,6 +68,51 @@ TranslationUnit Parser::parse_translation_unit() {
     }
     const Token& name = *name_tok;
 
+    // Skip optional template parameter list: <T>, <T, U>, etc.
+    if (check(TokenType::Less)) {
+        // Consume template parameters
+        ::std::size_t angle_depth = 0;
+        while (!is_at_end()) {
+            if (peek().type == TokenType::Less) {
+                ++angle_depth;
+            } else if (peek().type == TokenType::Greater) {
+                --angle_depth;
+                static_cast<void>(advance());
+                if (angle_depth == 0) {
+                    break;
+                }
+                continue;
+            }
+            static_cast<void>(advance());
+        }
+    }
+
+    // Skip optional metafunction annotations: @enum, @struct, @flag_enum<T>, etc.
+    if (check(TokenType::At)) {
+        static_cast<void>(advance()); // consume '@'
+        // Consume metafunction name
+        if (check(TokenType::Identifier)) {
+            static_cast<void>(advance());
+        }
+        // Handle optional template arguments for metafunctions like @flag_enum<u8>
+        if (check(TokenType::Less)) {
+            ::std::size_t angle_depth = 0;
+            while (!is_at_end()) {
+                if (peek().type == TokenType::Less) {
+                    ++angle_depth;
+                } else if (peek().type == TokenType::Greater) {
+                    --angle_depth;
+                    static_cast<void>(advance());
+                    if (angle_depth == 0) {
+                        break;
+                    }
+                    continue;
+                }
+                static_cast<void>(advance());
+            }
+        }
+    }
+
     // Check if it's a type declaration
     if (check(TokenType::KeywordType)) {
         static_cast<void>(advance()); // consume 'type'
@@ -76,9 +121,29 @@ TranslationUnit Parser::parse_translation_unit() {
         auto body = collect_text_until({TokenType::RBrace});
         static_cast<void>(consume(TokenType::RBrace, "Expected '}' to close type body"));
         return TypeDecl {name.lexeme, trim_copy(body), name.location};
-    } else {
+    }
+
+    // Check if it's a function (has parameter list) vs variable template (no parameter list)
+    // A function will have '(' immediately or after return type spec
+    // Variable templates go straight to '=' or '==' without '('
+    if (check(TokenType::LParen) || check(TokenType::Arrow)) {
         // Function declaration
         return parse_function_after_name(name);
+    } else {
+        // Variable template or variable declaration - treat as raw statement for now
+        // Collect everything until semicolon and emit as-is
+        auto init_expr = collect_text_until_semicolon();
+        static_cast<void>(consume(TokenType::Semicolon, "Expected ';' after declaration"));
+
+        // Create a minimal function that returns this expression
+        // This is a workaround - proper support needs AST changes
+        FunctionDecl decl;
+        decl.name = name.lexeme;
+        decl.parameters = {};
+        decl.return_type = "auto";
+        decl.body = ExpressionBody{trim_copy(init_expr), name.location};
+        decl.location = name.location;
+        return decl;
     }
 }
 
@@ -96,7 +161,11 @@ FunctionDecl Parser::parse_function() {
 
 FunctionDecl Parser::parse_function_after_name(const Token& name) {
     // 'name' and the ':' have already been consumed by the caller.
-    auto parameters = parse_parameter_list();
+    // Check for optional parameter list - if not present, assume empty parameter list
+    ::std::vector<Parameter> parameters;
+    if (check(TokenType::LParen)) {
+        parameters = parse_parameter_list();
+    }
 
     ::std::optional<::std::string> return_type;
     if (match(TokenType::Arrow)) {
@@ -147,6 +216,12 @@ FunctionDecl Parser::parse_function_after_name(const Token& name) {
     }
 
     while (true) {
+        // Handle trailing comma: if we see ')' right after ',', we're done
+        if (check(TokenType::RParen)) {
+            static_cast<void>(advance());
+            break;
+        }
+
         // Check for optional parameter kind
         cppfort::stage0::ParameterKind pkind = cppfort::stage0::ParameterKind::Default;
         if (check(TokenType::KeywordIn)) {
