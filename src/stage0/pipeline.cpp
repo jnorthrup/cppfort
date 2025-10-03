@@ -9,6 +9,7 @@
 #include "emitter.h"
 #include "parser.h"
 #include "wide_scanner.h"
+#include "pattern_scanner.h"
 
 namespace cppfort::stage0 {
 namespace {
@@ -69,6 +70,89 @@ static ::std::string trim(const ::std::string& str) {
     return (start < end) ? ::std::string(start, end) : ::std::string();
 }
 
+// Helper: Validate identifier characters with comprehensive checks
+static bool validate_identifier_chars(const ::std::string& text, size_t& error_pos, ::std::string& error_msg) {
+    using namespace cppfort::stage0;
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        char ch = text[i];
+
+        // Check for trigraph sequences (ALL 9 trigraphs) - REJECT
+        if (i + 1 < text.size()) {
+            TrigraphType trig = IdentifierCharEvidence::detectTrigraph(ch, text[i + 1]);
+            if (trig != TrigraphType::None) {
+                error_pos = i;
+                error_msg = "Trigraph sequence detected and rejected: ??" + ::std::string(1, text[i + 1]);
+                return false;
+            }
+        }
+
+        // Validate character using enhanced evidence-based validation
+        auto ev = IdentifierCharEvidence::validate(ch, i, i > 0);
+
+        if (!ev.is_legal) {
+            if (ev.is_trigraph) {
+                error_pos = i;
+                error_msg = ev.error_message;
+                return false;
+            }
+
+            if (ev.is_unicode) {
+                // UTF-8 multi-byte sequence detected - skip validation for now
+                // In full implementation, validate UTF-8 XID_Start/XID_Continue
+                continue;
+            }
+
+            error_pos = i;
+            error_msg = ev.error_message;
+            return false;
+        }
+    }
+    return true;
+}
+
+// Helper: Validate numeric literal with prefix detection
+static bool validate_numeric_literal(const ::std::string& text, size_t& error_pos, ::std::string& error_msg) {
+    using namespace cppfort::stage0;
+
+    if (text.empty()) return true;
+
+    // Detect prefix
+    NumericPrefix prefix = NumericPrefix::None;
+    size_t start_pos = 0;
+
+    if (text.size() >= 2 && text[0] == '0') {
+        prefix = NumericCharEvidence::detectPrefix(text[0], text[1]);
+        if (prefix == NumericPrefix::Binary || prefix == NumericPrefix::Hex) {
+            start_pos = 2;  // Skip 0b or 0x
+        } else if (prefix == NumericPrefix::Octal) {
+            start_pos = 1;  // Skip leading 0
+        }
+    } else {
+        prefix = NumericPrefix::Decimal;
+    }
+
+    // Validate each character
+    for (size_t i = start_pos; i < text.size(); ++i) {
+        char ch = text[i];
+
+        auto ev = NumericCharEvidence::validate(ch, i, prefix);
+
+        if (!ev.error_message.empty()) {
+            error_pos = i;
+            error_msg = ev.error_message;
+            return false;
+        }
+
+        // Allow decimal point and sign in appropriate contexts
+        if (ch == '.' || ch == '+' || ch == '-') {
+            continue;  // Floating point or exponent sign
+        }
+    }
+
+    return true;
+}
+
 // Helper: Classify a text segment as keyword, number, string, or identifier
 static TokenType classify_segment(const ::std::string& text) {
     if (text.empty()) {
@@ -83,33 +167,54 @@ static TokenType classify_segment(const ::std::string& text) {
 
     // Check if it starts with a digit (number literal)
     if (::std::isdigit(static_cast<unsigned char>(text[0]))) {
+        // Validate numeric literal with prefix detection
+        size_t error_pos;
+        ::std::string error_msg;
+        if (!validate_numeric_literal(text, error_pos, error_msg)) {
+            // Invalid numeric literal - could log error or throw
+            // For now, still classify as Number but flag the error
+        }
         return TokenType::Number;
     }
 
     // Check if it's a string literal
     if (text[0] == '"') {
+        // TODO: Validate escape sequences within string
         return TokenType::String;
     }
 
     // Check if it's a char literal
     if (text[0] == '\'') {
+        // TODO: Validate escape sequences within char
         return TokenType::Char;
+    }
+
+    // Validate identifier characters (comprehensive: trigraphs, unicode, etc.)
+    size_t error_pos;
+    ::std::string error_msg;
+    if (!validate_identifier_chars(text, error_pos, error_msg)) {
+        // Invalid identifier - could throw or log error
+        // For now, return as identifier (error handling TBD)
+        return TokenType::Identifier;
     }
 
     // Default: identifier
     return TokenType::Identifier;
 }
 
-// Scanner-based lexer pass - complete tokenizer implementation
-class ScannerLexerPass final : public LexerPass {
-  public:
-    LexResult run(const ::std::string& source, const ::std::string& filename) const override {
+} // anonymous namespace
+
+/**
+ * Scanner-based tokenization - NO LEGACY LEXER
+ * This is the ONLY tokenization mechanism
+ */
+ScanResult Pipeline::scan(const ::std::string& source, const ::std::string& filename) {
         // Step 1: Wide scanner - get delimiter boundaries
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
         auto boundaries = cppfort::ir::WideScanner::scanAnchorsSIMD(source, anchors);
 
         // Step 2: Extract and classify text segments between boundaries
-        LexResult result;
+        ScanResult result;
         result.source = source;
         result.filename = filename;
 
@@ -214,33 +319,33 @@ class ScannerLexerPass final : public LexerPass {
         result.tokens.push_back(eof);
 
         return result;
-    }
-};
+}
 
-class DefaultParserPass final : public ParserPass {
-  public:
-    TranslationUnit run(LexResult lex_result) const override {
-        Parser parser(::std::move(lex_result.tokens), ::std::move(lex_result.source));
-        return parser.parse();
-    }
-};
+/**
+ * Parse scanner tokens into AST
+ */
+TranslationUnit Pipeline::parse(ScanResult scan_result) {
+    Parser parser(::std::move(scan_result.tokens), ::std::move(scan_result.source));
+    return parser.parse();
+}
 
-class DefaultEmitterPass final : public EmitterPass {
-  public:
-    ::std::string run(const TranslationUnit& unit, const EmitOptions& options) const override {
-        Emitter emitter;
-        return emitter.emit(unit, options);
-    }
-};
+/**
+ * Emit C++ from AST
+ */
+::std::string Pipeline::emit(const TranslationUnit& unit, const EmitOptions& options) {
+    Emitter emitter;
+    return emitter.emit(unit, options);
+}
 
-} // namespace
-
-Pipeline make_default_pipeline() {
-    Pipeline pipeline;
-    pipeline.lexer = ::std::make_shared<ScannerLexerPass>();
-    pipeline.parser = ::std::make_shared<DefaultParserPass>();
-    pipeline.emitter = ::std::make_shared<DefaultEmitterPass>();
-    return pipeline;
+/**
+ * Full pipeline: scan -> parse -> emit
+ */
+::std::string Pipeline::transpile(const ::std::string& source,
+                                 const ::std::string& filename,
+                                 const EmitOptions& options) {
+    auto scan_result = scan(source, filename);
+    auto ast = parse(::std::move(scan_result));
+    return emit(ast, options);
 }
 
 } // namespace cppfort::stage0

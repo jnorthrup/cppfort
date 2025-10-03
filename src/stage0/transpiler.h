@@ -17,10 +17,9 @@ struct TranspileOptions {
 
 class Transpiler {
   public:
-    Transpiler();
-    explicit Transpiler(Pipeline pipeline);
+    Transpiler() = default;
 
-    // Legacy AST-based parsing
+    // Scanner-based parsing (static Pipeline API)
     [[nodiscard]] TranslationUnit parse(const ::std::string& source, const ::std::string& filename) const;
 
     // Orbit ring-based parsing (speculative multi-grammar)
@@ -34,11 +33,6 @@ class Transpiler {
         const TranspileOptions& options = {}) const;
     [[nodiscard]] ::std::string transpileFromFile(const ::std::string& filepath,
         const TranspileOptions& options = {}) const;
-
-    [[nodiscard]] const Pipeline& pipeline() const noexcept { return m_pipeline; }
-
-  private:
-    Pipeline m_pipeline;
 };
 
 } // namespace cppfort::stage0
