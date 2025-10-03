@@ -60,7 +60,7 @@
 - [ ] Add direct MLIR anchoring for IR nodes <!-- bmad:apex=true;swimlane=mlir_bridge -->
 - [ ] Add comprehensive unit test suite <!-- bmad:apex=true;swimlane=testing -->
 - [ ] Implement CI/CD pipeline with automated regression testing <!-- bmad:apex=true;swimlane=ci -->
-- [ ] Implement Stage2 anticheat attestation integration <!-- bmad:apex=true;swimlane=stage2 -->
+- [x] Implement Stage2 decompilation and differential analysis pipeline <!-- bmad:apex=true;swimlane=stage2 -->
 - [ ] Add triple induction validation framework <!-- bmad:apex=true;swimlane=testing -->
 
 ### Parser & Frontend

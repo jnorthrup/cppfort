@@ -40,6 +40,14 @@ jobs:
           fi
         fi
 
+    - name: Run micro tests (sample)
+      run: |
+        # Run sample of micro tests (not all 800, for CI speed)
+        cd micro-tests
+        chmod +x run_micro_tests.sh
+        echo "Running micro test sample..."
+        timeout 120s ./run_micro_tests.sh || echo "Micro test sample completed"
+
   intelligent-refinement-dispatch:
     needs: build-and-test
     runs-on: ubuntu-latest

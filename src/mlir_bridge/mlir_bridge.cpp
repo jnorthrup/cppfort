@@ -1,24 +1,26 @@
 #include "mlir_bridge.h"
 
-#include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/IR/Attributes.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/OwningOpRef.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/Parser/Parser.h"
+#include "mlir_abstractions.h"
+#include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/IR/Attributes.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/OwningOpRef.h>
+#include <mlir/IR/OperationSupport.h>
+#include <mlir/Parser/Parser.h>
 
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/ErrorHandling.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <cassert>
 #include <stdexcept>
 
+using namespace mlir;
 using namespace mlir;
 
 namespace son {
@@ -70,68 +72,66 @@ Location unknownLoc(MLIRContext &ctx) { return UnknownLoc::get(&ctx); }
 void ensureDialectsLoaded(MLIRContext &ctx) {
   // Dialects will be loaded automatically when operations requiring them are created
   // This avoids API compatibility issues with getOrLoadDialect in MLIR 21.1.2
-}
-
 Value materializeNode(const son::Node &node, llvm::SmallVectorImpl<Value> &slot,
-                      mlir::OpBuilder &builder, Location loc) {
+                      cppfort::mlir::MLIRBuilder &builder) {
   switch (node.opcode) {
   case son::Opcode::Constant: {
     auto type = builder.getI64Type();
-    auto attr = builder.getIntegerAttr(type, node.value);
-    auto constant = builder.create<arith::ConstantOp>(loc, type, attr);
+    auto attr = builder.getBuilder().getIntegerAttr(type, node.value);
+    auto constant = builder.getBuilder().create<arith::ConstantOp>(builder.getLoc(), type, attr);
     slot.push_back(constant.getResult());
     return constant.getResult();
   }
   case son::Opcode::Add: {
     assert(node.lhs < slot.size() && node.rhs < slot.size());
-    auto add = builder.create<arith::AddIOp>(loc, slot[node.lhs], slot[node.rhs]);
-    slot.push_back(add.getResult());
-    return add.getResult();
+    auto add = builder.createAdd(slot[node.lhs], slot[node.rhs]);
+    slot.push_back(add);
+    return add;
   }
   case son::Opcode::Subtract: {
     assert(node.lhs < slot.size() && node.rhs < slot.size());
-    auto sub = builder.create<arith::SubIOp>(loc, slot[node.lhs], slot[node.rhs]);
-    slot.push_back(sub.getResult());
-    return sub.getResult();
+    auto sub = builder.createSub(slot[node.lhs], slot[node.rhs]);
+    slot.push_back(sub);
+    return sub;
   }
   case son::Opcode::Multiply: {
     assert(node.lhs < slot.size() && node.rhs < slot.size());
-    auto mul = builder.create<arith::MulIOp>(loc, slot[node.lhs], slot[node.rhs]);
-    slot.push_back(mul.getResult());
-    return mul.getResult();
+    auto mul = builder.createMul(slot[node.lhs], slot[node.rhs]);
+    slot.push_back(mul);
+    return mul;
   }
   case son::Opcode::Divide: {
     assert(node.lhs < slot.size() && node.rhs < slot.size());
-    auto div = builder.create<arith::DivSIOp>(loc, slot[node.lhs], slot[node.rhs]);
-    slot.push_back(div.getResult());
-    return div.getResult();
+    auto div = builder.createDiv(slot[node.lhs], slot[node.rhs]);
+    slot.push_back(div);
+    return div;
   }
   case son::Opcode::Compare: {
     assert(node.lhs < slot.size() && node.rhs < slot.size());
-    arith::CmpIPredicate pred;
-    if (node.predicate == "eq") pred = arith::CmpIPredicate::eq;
-    else if (node.predicate == "ne") pred = arith::CmpIPredicate::ne;
-    else if (node.predicate == "slt") pred = arith::CmpIPredicate::slt;
-    else if (node.predicate == "sle") pred = arith::CmpIPredicate::sle;
-    else if (node.predicate == "sgt") pred = arith::CmpIPredicate::sgt;
-    else if (node.predicate == "sge") pred = arith::CmpIPredicate::sge;
-    else if (node.predicate == "ult") pred = arith::CmpIPredicate::ult;
-    else if (node.predicate == "ule") pred = arith::CmpIPredicate::ule;
-    else if (node.predicate == "ugt") pred = arith::CmpIPredicate::ugt;
-    else if (node.predicate == "uge") pred = arith::CmpIPredicate::uge;
+    Value cmp;
+    if (node.predicate == "eq") cmp = builder.createCmpEQ(slot[node.lhs], slot[node.rhs]);
+    else if (node.predicate == "ne") cmp = builder.createCmpNE(slot[node.lhs], slot[node.rhs]);
+    else if (node.predicate == "slt") cmp = builder.createCmpLT(slot[node.lhs], slot[node.rhs]);
+    else if (node.predicate == "sle") cmp = builder.createCmpLE(slot[node.lhs], slot[node.rhs]);
+    else if (node.predicate == "sgt") cmp = builder.createCmpGT(slot[node.lhs], slot[node.rhs]);
+    else if (node.predicate == "sge") cmp = builder.createCmpGE(slot[node.lhs], slot[node.rhs]);
     else {
       throw std::runtime_error("Unsupported comparison predicate: " + node.predicate);
     }
-    auto cmp = builder.create<arith::CmpIOp>(loc, pred, slot[node.lhs], slot[node.rhs]);
-    slot.push_back(cmp.getResult());
-    return cmp.getResult();
+    slot.push_back(cmp);
+    return cmp;
   }
   }
   llvm_unreachable("unsupported opcode");
 }
+  llvm_unreachable("unsupported opcode");
+}
 
 } // namespace
-
+ModuleOp exportToMLIR(MLIRContext &context, const Graph &graph) {
+::mlir::ModuleOp exportToMLIR(::mlir::MLIRContext &context, const Graph &graph) {
+  if (graph.nodes().empty()) {
+    throw std::runtime_error("MLIR export failed: Cannot export empty graph. "
 ModuleOp exportToMLIR(MLIRContext &context, const Graph &graph) {
   if (graph.nodes().empty()) {
     throw std::runtime_error("MLIR export failed: Cannot export empty graph. "
@@ -152,19 +152,19 @@ ModuleOp exportToMLIR(MLIRContext &context, const Graph &graph) {
   auto funcType = rootBuilder.getFunctionType({}, rootBuilder.getI64Type());
   auto func = func::FuncOp::create(unknownLoc(context), kEntryName, funcType);
   module.getBody()->push_back(func);
-
   auto *block = func.addEntryBlock();
-  OpBuilder builder(block, block->begin());
+  cppfort::mlir::MLIRBuilder builder(rootBuilder, unknownLoc(context));
+  builder.getBuilder().setInsertionPointToStart(block);
   llvm::SmallVector<Value> valueSlots;
   valueSlots.reserve(graph.nodes().size());
 
   unsigned nodeIndex = 0;
   for (const auto &node : graph.nodes()) {
     try {
-      materializeNode(node, valueSlots, builder, unknownLoc(context));
+      materializeNode(node, valueSlots, builder);
       ++nodeIndex;
     } catch (const std::exception& e) {
-      throw std::runtime_error("MLIR export failed at node " + std::to_string(nodeIndex) + 
+      throw std::runtime_error("MLIR export failed at node " + std::to_string(nodeIndex) +
                              ": " + e.what());
     }
   }
@@ -174,15 +174,12 @@ ModuleOp exportToMLIR(MLIRContext &context, const Graph &graph) {
                            "This indicates an issue with the graph structure or node materialization.");
   }
 
-  builder.create<func::ReturnOp>(unknownLoc(context), valueSlots.back());
+  builder.createReturn(valueSlots.back());
 
   return module;
 }
 
-Graph importFromMLIR(ModuleOp module) {
-  Graph graph;
-
-  auto func = module.lookupSymbol<func::FuncOp>(kEntryName);
+Graph importFromMLIR(::mlir::ModuleOp module) {
   if (!func) {
     throw std::runtime_error("MLIR import failed: Expected func.func named 'graph_entry' in module, but none found. "
                            "Module may not have been created by exportToMLIR or has been modified.");

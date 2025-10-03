@@ -79,6 +79,7 @@ const ::std::vector<OrbitMatch>& OrbitContext::matches() const {
 
 void OrbitContext::reset() {
     _braceDepth = _bracketDepth = _angleDepth = _parenDepth = _quoteDepth = _numberDepth = 0;
+    _inNumber = false;
     _matches.clear();
 }
 
@@ -110,6 +111,26 @@ bool OrbitContext::wouldBeValid(const OrbitMatch& match) const {
 }
 
 void OrbitContext::update(char ch) {
+    // Check if character is a digit
+    bool isDigit = (ch >= '0' && ch <= '9');
+
+    // Handle numeric literal span tracking
+    if (isDigit) {
+        if (!_inNumber) {
+            // Start of new numeric literal
+            _numberDepth++;
+            _inNumber = true;
+        }
+        // Continue in same numeric literal, no depth change
+    } else {
+        if (_inNumber) {
+            // End of numeric literal
+            _numberDepth = (::std::max)(0, _numberDepth - 1);
+            _inNumber = false;
+        }
+    }
+
+    // Handle delimiter tracking
     switch (ch) {
         case '{': _braceDepth++; break;
         case '}': _braceDepth = (::std::max)(0, _braceDepth - 1); break;
@@ -120,11 +141,6 @@ void OrbitContext::update(char ch) {
         case '(': _parenDepth++; break;
         case ')': _parenDepth = (::std::max)(0, _parenDepth - 1); break;
         case '"': _quoteDepth = (_quoteDepth == 0) ? 1 : 0; break;
-        // For numbers, increment on any digit
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            _numberDepth++;
-            break;
         default: break;
     }
 }
@@ -138,6 +154,18 @@ void OrbitContext::update(char ch) {
         static_cast<size_t>(::std::max(0, _quoteDepth)),
         static_cast<size_t>(::std::max(0, _numberDepth))
     };
+}
+ 
+uint8_t OrbitContext::confixMask() const {
+    uint8_t mask = 0;
+    // TopLevel: no open delimiters
+    if (getDepth() == 0) mask |= (1 << 0);
+    if (depth(OrbitType::OpenBrace) > 0)   mask |= (1 << 1);
+    if (depth(OrbitType::OpenParen) > 0)   mask |= (1 << 2);
+    if (depth(OrbitType::OpenAngle) > 0)   mask |= (1 << 3);
+    if (depth(OrbitType::OpenBracket) > 0) mask |= (1 << 4);
+    if (depth(OrbitType::Quote) > 0)       mask |= (1 << 5);
+    return mask;
 }
 
 } // namespace cppfort::ir

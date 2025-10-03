@@ -19,9 +19,18 @@ using u64 = ::std::uint64_t;
 
 // Forward declarations
 auto main() -> int;
+auto hello_user(std::string_view name) -> void;
 
 
 auto main() -> int /*kinds:*/{
-    return 42;
+    std::string greeting = "Hello, world!";
+    std::string shout = greeting + "!!!";
+    std::cout << greeting << "\n";
+    std::cout << shout << "\n";
     return 0;
+}
+
+auto hello_user(std::string_view name) -> void /*kinds:Default*/{
+    std::string message = std::string{"Hello, "} + std::string{name};
+    std::cout << message << "\n";
 }

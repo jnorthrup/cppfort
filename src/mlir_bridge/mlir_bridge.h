@@ -1,13 +1,13 @@
-#pragma once
-
-#include <cstdint>
-#include <string>
-#include <vector>
-
-#include "mlir/IR/BuiltinOps.h"
+#include "mlir_abstractions.h"
+#include <mlir/IR/BuiltinOps.h>
 
 namespace mlir {
 class MLIRContext;
+} // namespace mlir
+
+namespace son {
+
+namespace son {
 } // namespace mlir
 
 namespace son {
@@ -55,12 +55,10 @@ namespace son::bridge {
 ///
 /// The resulting module contains a single `func.func` named `graph_entry`
 /// that returns the value produced by the final node in the graph.
-mlir::ModuleOp exportToMLIR(mlir::MLIRContext &context, const Graph &graph);
+::mlir::ModuleOp exportToMLIR(::mlir::MLIRContext &context, const Graph &graph);
 
 /// Import a previously exported MLIR module back into a Sea-of-Nodes graph.
 ///
 /// The function expects a module produced by `exportToMLIR` and reconstructs
 /// the minimal opcode set supported by this bridge.
-Graph importFromMLIR(mlir::ModuleOp module);
-
-} // namespace son::bridge
+Graph importFromMLIR(::mlir::ModuleOp module);

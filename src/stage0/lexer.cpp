@@ -123,11 +123,8 @@ Lexer::Lexer(::std::string source, ::std::string file)
             case '#':
                 lex_preprocessor();
                 break;
-            case '"':
+            case '\"':
                 lex_string();
-                break;
-            case '\'':
-                lex_char();
                 break;
             default:
                 if (::std::isalpha(static_cast<unsigned char>(c)) || c == '_') {
@@ -136,7 +133,7 @@ Lexer::Lexer(::std::string source, ::std::string file)
                     lex_number();
                 } else {
                     ::std::ostringstream oss;
-                    oss << "Unexpected character '" << c << "' at " << token_line << ':' << token_column;
+                    oss << "Unexpected character '" << c << "' at " << token_line << ":" << token_column;
                     throw LexError(oss.str());
                 }
                 break;
@@ -271,29 +268,55 @@ void Lexer::lex_identifier() {
         return;
     }
 
-    TokenType type = keyword_type(text);
-    if (type != TokenType::Identifier) {
-        add_token(type, start_offset, length, start_line, start_column);
-    } else {
-        add_token(TokenType::Identifier, start_offset, length, start_line, start_column);
+    // Check if this identifier is a string prefix followed by a quote
+    if ((text == \"u\" || text == \"U\" || text == \"L\" || text == \"R\" || text == \"u8\") && !is_at_end() && peek() == '\"') {
+        // Don't add the identifier token, let the string lexer handle it
+        return;
     }
-}
 
-void Lexer::lex_number() {
+    add_token(TokenType::Identifier, start_offset, length, start_line, start_column);
+void Lexer::lex_string() {
     auto start_offset = m_current - 1;
     auto start_line = m_line;
     auto start_column = m_column - 1;
 
-    while (!is_at_end() && ::std::isdigit(static_cast<unsigned char>(peek()))) {
-        advance();
+    // Check for prefixes before the quote
+    ::std::string prefix;
+    auto check_pos = m_current - 2;
+    while (check_pos >= m_source && (check_pos - m_source) >= 0) {
+        char c = *check_pos;
+        if (!::std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+            break;
+        }
+        prefix = c + prefix;
+        check_pos--;
     }
 
-    if (!is_at_end() && peek() == '.' && ::std::isdigit(static_cast<unsigned char>(peek_next()))) {
-        advance();
-        while (!is_at_end() && ::std::isdigit(static_cast<unsigned char>(peek()))) {
+    // Handle raw strings
+    if (!prefix.empty() && prefix.back() == 'R') {
+        lex_raw_string();
+        return;
+    }
+
+    bool terminated = false;
+    while (!is_at_end()) {
+        char c = advance();
+        if (c == '\"') {
+            terminated = true;
+            break;
+        }
+        if (c == '\\\\' && !is_at_end()) {
             advance();
         }
     }
+
+    if (!terminated) {
+        throw LexError(\"Unterminated string literal\");
+    }
+
+    auto length = m_current - start_offset;
+    add_token(TokenType::String, start_offset, length, start_line, start_column);
+}
 
     auto length = m_current - start_offset;
     add_token(TokenType::Number, start_offset, length, start_line, start_column);
@@ -304,7 +327,59 @@ void Lexer::lex_string() {
     auto start_line = m_line;
     auto start_column = m_column - 1;
 
-    bool terminated = false;
+void Lexer::lex_raw_string() {
+    auto start_offset = m_current - 2; // Include the 'R' prefix
+    auto start_line = m_line;
+    auto start_column = m_column - 2;
+
+    // Find the opening delimiter
+    ::std::string delimiter;
+    while (!is_at_end() && peek() != '(') {
+        delimiter += advance();
+    }
+    
+    if (is_at_end() || peek() != '(') {
+        throw LexError("Invalid raw string literal - missing opening parenthesis");
+    }
+    advance(); // consume '('
+    
+    // Find the closing delimiter
+    ::std::string content;
+    while (!is_at_end()) {
+        if (peek() == ')') {
+            // Check if followed by delimiter
+            advance(); // consume ')'
+            bool matches_delimiter = true;
+            for (size_t i = 0; i < delimiter.size(); ++i) {
+                if (is_at_end() || advance() != delimiter[i]) {
+                    matches_delimiter = false;
+                    // Put back the characters we consumed
+                    m_current -= (i + 1);
+                    content += ')';
+                    for (size_t j = 0; j < i; ++j) {
+                        content += delimiter[j];
+                    }
+                    break;
+                }
+            }
+            if (matches_delimiter) {
+                if (is_at_end() || advance() != '"') {
+                    throw LexError("Invalid raw string literal - missing closing quote");
+                }
+                break;
+            }
+        } else {
+            content += advance();
+        }
+    }
+    
+    if (is_at_end()) {
+        throw LexError("Unterminated raw string literal");
+    }
+
+    auto length = m_current - start_offset;
+    add_token(TokenType::String, start_offset, length, start_line, start_column);
+}
     while (!is_at_end()) {
         char c = advance();
         if (c == '"') {

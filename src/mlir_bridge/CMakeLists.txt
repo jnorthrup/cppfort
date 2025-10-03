@@ -1,7 +1,7 @@
 set(MLIR_BRIDGE_SOURCES
     mlir_bridge.cpp
+    mlir_abstractions.h
 )
-
 add_library(mlir_bridge STATIC ${MLIR_BRIDGE_SOURCES})
 target_compile_features(mlir_bridge PUBLIC cxx_std_20)
 
@@ -10,6 +10,9 @@ set(MLIR_BRIDGE_LINK_LIBS
     MLIRIR
     MLIRFuncDialect
     MLIRArithDialect
+    MLIRControlFlowDialect
+    MLIRSCFDialect
+    MLIRMemRefDialect
     MLIRSupport
     MLIRParser
     MLIRPass

@@ -5,7 +5,8 @@
 #include <vector>
 #include <array>
 
-namespace cppfort::ir {
+namespace cppfort {
+namespace ir {
 
 // Grammar types supported by the orbit scanner
 enum class GrammarType {
@@ -77,6 +78,7 @@ private:
     int _parenDepth = 0;       // ( ) balance
     int _quoteDepth = 0;       // " balance
     int _numberDepth = 0;      // Numeric literal balance
+    bool _inNumber = false;    // Currently inside numeric literal
     size_t _maxDepth = 100;    // Maximum allowed depth
 
   ::std::vector<OrbitMatch> _matches;
@@ -130,7 +132,23 @@ public:
      * Returns [brace_count, bracket_count, angle_count, paren_count, quote_count, number_count]
      */
     ::std::array<size_t, 6> getCounts() const;
-
+ 
+    /**
+     * Get current confix context as a bitmask.
+     *
+     * Bits:
+     *   0 -> TopLevel (no open delimiters)
+     *   1 -> InBrace
+     *   2 -> InParen
+     *   3 -> InAngle
+     *   4 -> InBracket
+     *   5 -> InQuote
+     *
+     * This helper provides a compact representation of which confix regions are
+     * currently active and should be used by pattern visibility checks.
+     */
+    uint8_t confixMask() const;
+ 
     /**
      * Get all processed matches.
      */
@@ -148,4 +166,5 @@ public:
     bool wouldBeValid(const OrbitMatch& match) const;
 };
 
-} // namespace cppfort::ir
+} // namespace ir
+} // namespace cppfort

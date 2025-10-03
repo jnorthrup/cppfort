@@ -13,7 +13,7 @@ The project implements a three‑stage pipeline for the **cpp2** language:
 |------|---------|-------------|
 | **0** | Core C++ infrastructure (AST, Emitter, documentation support). | `src/stage0` |
 | **1** | **cpp2 → C++ transpiler**. Reads a `.cpp2` file, builds a minimal `TranslationUnit`, and emits C++ using the Stage 0 emitter. | `src/stage1` |
-| **2** | **Anti‑cheat attestation**. Disassembles a compiled binary, hashes the output with SHA‑256, and returns a verifiable attestation. | `src/stage2` |
+| **2** | **Decompilation & differential analysis pipeline**. Disassembles binaries at multiple optimization levels, extracts assembly patterns, performs differential tracking to identify optimization transformations, and exports pattern databases for TableGen integration. | `src/stage2` |
 
 ## Building the Project
 
@@ -28,7 +28,7 @@ The above will build:
 
 * `stage0_cli` – emits C++ from a `.cpp2` file.
 * `stage1_cli` – transpiles a `.cpp2` file to C++ (wrapper around Stage 0).
-* `anticheat` – command‑line helper executing the attestation (`src/stage2/anticheat_cli`).
+* `anticheat` – command‑line helper for decompilation and differential analysis (`src/stage2/anticheat_cli`).
 
 ## Running the Transpiler (Stage 1)
 

@@ -1,0 +1,8 @@
+
+/Users/jim/work/cppfort/micro-tests/results/classes/cls113-operator/cls113-operator_O2.out:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000100000360 <_main>:
+100000360: 52800e40    	mov	w0, #0x72               ; =114
+100000364: d65f03c0    	ret

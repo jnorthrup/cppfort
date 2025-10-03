@@ -11,6 +11,7 @@ The Sea of Nodes implementation is organized into **Bands** - coherent implement
 **Critical Divergence:** Cppfort diverges from Simple compiler's single-target approach. Cppfort uses Sea of Nodes as **source IR** for **n-way conversion** to multiple targets via TableGen pattern matching.
 
 **Current Status:**
+
 - ✅ **Band 1** (Chapters 1-6): Foundation - SSA form, basic nodes
 - ✅ **Band 2** (Chapters 7-10): Loops + Memory - CFG, memory model
 - ⚠️ **Band 3** (Chapter 11): Scheduling - GCM implementation (partial)
@@ -19,6 +20,7 @@ The Sea of Nodes implementation is organized into **Bands** - coherent implement
 - ❌ **N-Way Lowering** (Post-optimization): Pattern-based conversion to MLIR/C/C++/Rust/WASM
 
 **See:**
+
 - [Band Structure](architecture/band-structure.md) - Implementation milestones
 - [Band-IR Alignment](architecture/band-ir-alignment.md) - Dovetailing with real-world IR concepts
 - **[Divergence: Simple vs N-Way](architecture/divergence-son-simple-n-way.md)** - Why cppfort needs pattern matching
@@ -28,18 +30,21 @@ The Sea of Nodes implementation is organized into **Bands** - coherent implement
 **Purpose**: Emit canonical C++ from internal AST representation.
 
 **Current State**:
+
 - AST definitions in `src/stage0/ast.h` (FunctionDecl, TypeDecl, etc.)
 - Partial emitter in `src/stage0/emitter.cpp` (missing complete implementations)
 - Token definitions in `src/stage0/token.h`
 - CMake build in `src/stage0/CMakeLists.txt`
 
 **Issues Identified**:
+
 - Emitter incomplete: missing implementations for `emit_function`, `emit_block`, `emit_statement`, `emit_type`
 - Generated C++ has syntax errors (e.g., `unique.new<int>(1)` instead of `std::make_unique<int>(1)`)
 - No canonical formatting guarantees
 - Missing unit tests
 
 **Improvements Needed**:
+
 - Complete emitter implementations with proper C++ syntax
 - Canonical formatting (consistent indentation, spacing)
 - Comprehensive unit tests
@@ -50,17 +55,20 @@ The Sea of Nodes implementation is organized into **Bands** - coherent implement
 **Purpose**: Parse Cpp2 syntax and transpile to Stage0 AST for emission.
 
 **Architecture**:
+
 ```
 Cpp2 Source → Lexer → Parser → Stage0 AST → Stage0 Emitter → Canonical C++
 ```
 
 **Components Needed**:
+
 - **Lexer**: Tokenize Cpp2 source (extend `src/stage0/token.h` with Cpp2 keywords)
 - **Parser**: Parse tokens into Stage0 AST (recursive descent or similar)
 - **AST Mapping**: Transform Cpp2 constructs to C++ equivalents
 - **Integration**: Use Stage0 emitter for final C++ output
 
 **Key Mappings**:
+
 - `main: () -> int = { ... }` → `int main() { ... }`
 - `unique.new<T>(args)` → `std::make_unique<T>(args)`
 - `shared.new<T>(args)` → `std::make_shared<T>(args)`
@@ -69,31 +77,68 @@ Cpp2 Source → Lexer → Parser → Stage0 AST → Stage0 Emitter → Canonical
 
 **Testing**: Integration with regression harness for side-by-side validation.
 
-## Stage2: Anticheat Disassembly & Attestation
+## Stage2: Decompilation & Differential Analysis Pipeline
 
-**Purpose**: Extract binary features for anticheat attestation and reverse-engineering validation.
+**Purpose**: Extract assembly patterns across optimization levels, perform differential tracking to identify optimization transformations, and generate TableGen pattern databases for compiler optimization research.
 
 **Architecture**:
+
 ```
-Compiled Binaries → Disassembler → Feature Extractor → Attestation Engine → Graph Nodes
+CPP2 Source → Multi-Level Compilation (-O0/-O1/-O2/-O3) → Disassembly → ASM Parser → Differential Tracker → Pattern Database → TableGen Integration
 ```
 
 **Components**:
-- **Disassembler**: Use `objdump` or `llvm-objdump` to extract assembly
-- **Feature Extractor**: Analyze instruction patterns, control flow, data sections
-- **Attestation Module**: Generate cryptographic attestations of binary properties
-- **Graph Node Generator**: Extract signals for inductive model
+
+- **Multi-Level Compiler**: Compile same source at different optimization levels
+- **Disassembler**: Extract assembly using `objdump` or `llvm-objdump`
+- **ASM Parser**: Parse assembly instructions into structured representation
+- **Differential Tracker**: Compare instruction sets across optimization levels to identify transformations
+- **Pattern Database**: Store optimization patterns and transformation rules
+- **TableGen Exporter**: Generate TableGen definitions for pattern matching
 
 **Features Extracted**:
-- Instruction counts by type (arithmetic, control flow, memory ops)
-- Basic block complexity metrics
-- Function call graphs
-- Data section analysis
-- Symbol table features
 
-**Integration**: Runs after successful compilation in regression harness.
+- Assembly instruction patterns and sequences
+- Optimization transformations (constant folding, dead code elimination, CSE)
+- Control flow changes across optimization levels
+- Memory access pattern optimizations
+- Loop transformations and unrolling detection
 
-**Late Stage2 Goal:** Disasm → TableGen pattern extraction with differential tracking. See [Stage2 Disasm→TableGen Differential](architecture/stage2-disasm-tblgen-differential.md) for stochastic pattern tracking and [Idempotent Pattern Optimization](architecture/idempotent-pattern-optimization.md) for recompute-vs-store tradeoffs.
+**Integration**: Connected to regression harness for automated pattern extraction during testing.
+
+**Status**: ⚠️ **Partially Implemented**
+
+- **Phase 1 (Differential Analysis)**: ✅ **Implemented** - ASM parsing, Merkle differential tracking, optimization-level pattern survival analysis, build attestation and reproducibility verification
+- **Phase 2 (Direct Decompilation)**: 🔄 **Redesigned** - Architecture-specific ASM→C++ lifting without Sea of Nodes IR complexity
+
+**Current Capabilities**:
+
+- Binary differential analysis across optimization levels
+- Optimization pattern survival tracking
+- Build reproducibility verification via Merkle roots
+- Security attestation through SHA-256 + Merkle proofs
+
+**Phase 2 Implementation (Corrected Architecture)**:
+
+- **Phase 2A (x86-64)**: Architecture detector, x86-64 instruction analyzer, CFG recovery, variable inference, direct C++ generation
+- **Phase 2B (ARM64)**: ARM64 instruction decoder, ARM-specific CFG recovery, ARM64 code generation
+- **Success Target**: 60-90% decompilation accuracy for supported architectures
+
+**Simplified Decompilation Architecture** (Revised Phase 2):
+
+```text
+Binary → Format Parser → Architecture Detector → ASM Analyzer → Control Flow Recovery → Data Flow Analysis → C++ Code Generator
+```
+
+**ARM/Intel-Focused Components Needed**:
+
+- **Architecture Detector**: Identify ARM64, x86-64, ARM32, x86 instruction sets
+- **ASM Analyzer**: Parse and categorize instructions by architecture (no IR lifting)
+- **Control Flow Recovery**: Reconstruct if/while/for structures from conditional jumps
+- **Data Flow Analysis**: Track register/memory usage, infer variable types
+- **C++ Code Generator**: Direct assembly-to-C++ translation with architecture-specific patterns
+
+See [Stage2 Disasm→TableGen Differential](architecture/stage2-disasm-tblgen-differential.md) for Phase 1 implementation details and [Idempotent Pattern Optimization](architecture/idempotent-pattern-optimization.md) for optimization strategies.
 
 ## Graph-Node Model for Inductive Learning
 
@@ -204,6 +249,7 @@ Prime Inductive Model
 **Status:** Design Phase | **ADR:** [ADR-001](architecture/decisions/ADR-001-multi-index-subsumption-engine.md)
 
 The subsumption engine provides unified query and projection capabilities for:
+
 - **MLIR integration** - Pattern matching and dialect conversions
 - **Sea of Nodes optimization** - Multi-criteria graph queries (type + CFG + data flow)
 - **N-way projections** - Graph transformations via hierarchical subsumption rules
@@ -224,6 +270,7 @@ The subsumption engine provides unified query and projection capabilities for:
 - **Future MLIR:** Dialect lowering, operation legality, multi-level optimization
 
 ### API Preview
+
 ```cpp
 // Loop-invariant code motion query
 auto hoistCandidates = engine.query()
@@ -241,6 +288,7 @@ Pattern addPattern = engine.createPattern()
 ```
 
 **See:**
+
 - [Subsumption Engine Architecture](architecture/subsumption-engine.md) for full details
 - [Subsumption-Based Densification Gains](architecture/subsumption-densification-gains.md) for optimization analysis
 - [Borrow Checking & Arena Allocators](architecture/borrow-checking-arenas.md) for memory safety and one-way drone allocation

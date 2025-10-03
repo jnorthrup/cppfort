@@ -43,7 +43,7 @@
 
 ## stage2
 
-- Implement Stage2 anticheat attestation integration
+- ✅ Implement Stage2 decompilation and differential analysis pipeline
 
 ## parser
 

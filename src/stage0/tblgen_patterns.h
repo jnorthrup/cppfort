@@ -7,7 +7,8 @@
 #include <optional>
 #include <filesystem>
 
-namespace cppfort::ir {
+namespace cppfort {
+namespace ir {
 
 /**
  * Chapter 19: Orbit Pattern Structure
@@ -17,16 +18,30 @@ namespace cppfort::ir {
  */
 struct OrbitPattern {
     ::std::string name;                           // Pattern name ("cpp20_concepts")
-    uint32_t orbit_id;                          // Orbit identifier
+    uint32_t orbit_id;                            // Orbit identifier
     ::std::vector<::std::string> signature_patterns; // Keywords/markers
     ::std::vector<::std::string> protocol_indicators; // Protocol hints
     ::std::vector<::std::string> version_patterns;   // Version strings
-    double weight;                              // Pattern importance (0.0-1.0)
+    double weight = 1.0;                          // Pattern importance (0.0-1.0)
 
     // Depth context for match validity: -1 = any depth, >=0 = specific total depth
     int expected_depth = -1;
-    // Required confix context: which delimiter must be active (empty = none)
-    ::std::string required_confix;  // "{", "(", "[", "<", "\"" or ""
+
+    // Legacy: Required confix context as simple string (keeps backward compatibility)
+    // Valid values: "{", "(", "[", "<", "\"" or empty = none
+    ::std::string required_confix;
+
+    // Confix visibility mask - controls where this pattern is allowed to match.
+    // Bitfield uses ConfixMask values below. Default allows all confixes (visible everywhere).
+    enum ConfixMask : uint8_t {
+        TopLevel  = 1 << 0,  // depth 0 (no open delimiters)
+        InBrace   = 1 << 1,  // inside {}
+        InParen   = 1 << 2,  // inside ()
+        InAngle   = 1 << 3,  // inside <>
+        InBracket = 1 << 4,  // inside []
+        InQuote   = 1 << 5,  // inside ""
+    };
+    uint8_t confix_mask = 0x3F; // Default: all six bits set
 
     OrbitPattern() = default;
     OrbitPattern(const ::std::string& n, uint32_t id, double w = 1.0)
@@ -108,4 +123,5 @@ public:
     void clear();
 };
 
-} // namespace cppfort::ir
+} // namespace ir
+} // namespace cppfort

@@ -16,6 +16,7 @@ enum class EmitBackend {
 struct EmitOptions {
     EmitBackend backend = EmitBackend::Cpp;
     bool include_headers = true;
+    bool inline_cpp2_header = false;  // Inline cpp2.h contents instead of including it
 };
 
 class Emitter {

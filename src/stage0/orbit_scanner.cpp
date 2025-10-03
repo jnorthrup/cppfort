@@ -7,12 +7,12 @@
 #include <memory>
 #include <filesystem>
 
-#include "orbit_mask.h"
 #include "tblgen_patterns.h"
 #include "multi_grammar_loader.h"
 #include "orbit_scanner.h"
 #include "rabin_karp.h"
 #include "wide_scanner.h"
+#include "projection_oracle.h"
 
 namespace cppfort {
 namespace ir {
@@ -75,14 +75,13 @@ void OrbitScanner::updateConfig(const OrbitScannerConfig& config) {
 size_t OrbitScanner::getPatternCount() const {
   return m_loader->getAllPatterns().size();
 }
-
 ::std::vector<GrammarType> OrbitScanner::getLoadedGrammars() const {
   return m_loader->getLoadedGrammars();
 }
 
-::std::vector<OrbitMatch> OrbitScanner::findMatches(const ::std::string& code,
-                                                 const ::std::vector<OrbitPattern>& patterns) const {
-  ::std::vector<OrbitMatch> matches;
+MatchResults OrbitScanner::findMatches(const ::std::string& code,
+                                     const ::std::vector<OrbitPattern>& patterns) const {
+  MatchResults results;
 
   // Create a temporary OrbitContext for scanning
   OrbitContext scanContext(m_config.maxDepth);
@@ -159,20 +158,24 @@ size_t OrbitScanner::getPatternCount() const {
         continue;
       }
 
-      // Never match inside string literals (unless pattern specifically requires it)
-      if (scanContext.depth(OrbitType::Quote) > 0 && pattern.required_confix != "\"") {
-        continue;
-      }
+      // Compute current confix context bitmask using helper
+      uint8_t ctxMask = scanContext.confixMask();
 
-      // Validate required confix
-      if (!pattern.required_confix.empty()) {
-        bool confixActive = false;
-        if (pattern.required_confix == "{" && scanContext.depth(OrbitType::OpenBrace) > 0) confixActive = true;
-        else if (pattern.required_confix == "(" && scanContext.depth(OrbitType::OpenParen) > 0) confixActive = true;
-        else if (pattern.required_confix == "[" && scanContext.depth(OrbitType::OpenBracket) > 0) confixActive = true;
-        else if (pattern.required_confix == "<" && scanContext.depth(OrbitType::OpenAngle) > 0) confixActive = true;
-        else if (pattern.required_confix == "\"" && scanContext.depth(OrbitType::Quote) > 0) confixActive = true;
-        if (!confixActive) continue;
+      // If the pattern declares a confix_mask, ensure at least one of the active
+      // context bits is allowed by the pattern. If no overlap, skip this pattern.
+      if ((pattern.confix_mask & ctxMask) == 0) {
+        // Legacy behavior: fall back to required_confix check if provided
+        if (!pattern.required_confix.empty()) {
+          bool confixActive = false;
+          if (pattern.required_confix == "{" && scanContext.depth(OrbitType::OpenBrace) > 0) confixActive = true;
+          else if (pattern.required_confix == "(" && scanContext.depth(OrbitType::OpenParen) > 0) confixActive = true;
+          else if (pattern.required_confix == "[" && scanContext.depth(OrbitType::OpenBracket) > 0) confixActive = true;
+          else if (pattern.required_confix == "<" && scanContext.depth(OrbitType::OpenAngle) > 0) confixActive = true;
+          else if (pattern.required_confix == "\"" && scanContext.depth(OrbitType::Quote) > 0) confixActive = true;
+          if (!confixActive) continue;
+        } else {
+          continue;
+        }
       }
 
       if (matchedSignature.empty()) {
@@ -201,7 +204,7 @@ size_t OrbitScanner::getPatternCount() const {
         match.orbitHashes = orbitHashes;
         match.orbitCounts = orbitCounts;
 
-        matches.push_back(match);
+        results.push_back(match);
 
         // Update grammar confidence tracking
         grammarConfidences[grammar] += match.confidence;
@@ -211,11 +214,11 @@ size_t OrbitScanner::getPatternCount() const {
   }
 
   // Limit matches to prevent excessive processing
-  if (matches.size() > m_config.maxMatches) {
-    matches.resize(m_config.maxMatches);
+  if (results.size() > m_config.maxMatches) {
+    results.resize(m_config.maxMatches);
   }
 
-  return matches;
+  return results;
 }
 
 double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<size_t, 6>& orbitCounts,
@@ -229,15 +232,7 @@ double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<
       // C code typically has balanced structures with some nesting
       // Look for moderate use of braces, parentheses, and minimal templates
       size_t totalDelimiters = orbitCounts[0] + orbitCounts[1] + orbitCounts[3];  // braces, brackets, parens
-      if (totalDelimiters > 0) {
-        return ::std::min(1.0, static_cast<double>(totalDelimiters) / 2.0);
-      }
-      break;
-    }
-
-    case GrammarType::CPP: {
-      // C++ has more complex structures, more parentheses for function calls
-      size_t complexity = orbitCounts[0] * 2 + orbitCounts[1] + orbitCounts[3] + orbitCounts[2];
+      size_t complexity = totalDelimiters;
       if (complexity > 2) {
         return ::std::min(1.0, static_cast<double>(complexity) / 5.0);
       }

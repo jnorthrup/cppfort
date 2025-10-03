@@ -1,38 +1,31 @@
-# Stage0 Transpiler Architecture
+# Stage 0: C++ AST Emitter - ACTUAL STATUS
 
-Stage0 provides the initial cpp2→C++ transpiler built directly from the
-reference material in `docs/**/*.md`. The implementation is intentionally
-small and explicit so that later stages can grow it into a production
-compiler while preserving transparent provenance.
+**Last Updated:** 2025-10-03  
+**Reality:** Partially working, 8.5% test pass rate
 
-## Pipeline overview
+## What It Actually Does
 
-1. **Documentation corpus** – scans the repository documentation for
-   fenced `cpp`/`cpp2` snippets and exposes them as structured examples.
-   Stage0 uses these examples as smoke tests and to seed future feature
-   induction steps.
-2. **Lexer** – converts cpp2 source text into a token stream. The lexer
-   currently understands identifiers, literals, punctuation required for
-   declarations, and a minimal keyword set (`return`).
-3. **Parser** – builds a lightweight AST featuring translation units,
-   function declarations, parameter lists, blocks, variable declarations,
-   and raw expression statements. Expression contents are preserved as
-   source slices to keep the parser simple while still enabling later
-   refinement.
-4. **Emitter** – lowers the AST to idiomatic C++20 syntax using the
-   `auto f(...) -> type` convention. Variable declarations are translated
-   into `type name = expr;` statements, with expression and return bodies
-   emitted verbatim.
+Emits C++ from AST. Sometimes works.
 
-Each stage is implemented as a dedicated component so that Stage1 and
-Stage2 can independently extend the lexer, parser, and emitter. The CLI
-(`src/stage0/main.cpp`) wires the pieces together and offers:
+**Output:** `libstage0.a`, `stage0_cli`
 
-- `transpile <input.cpp2> <output.cpp>` – lower a single source file
-  into C++.
-- `scan-docs` – enumerate documentation snippets and attempt to lex/parse
-  the ones compatible with the current feature set. This keeps Stage0
-  grounded in the written specification while providing a harness for
-  guided expansion ("three-way induction": docs ↔ parser ↔ emitter).
+## Current State
 
-The code is written in portable C++20 using only the standard library.
+✅ **Works:** Compiles, emits basic C++  
+❌ **Broken:** 8.5% test pass rate, incomplete emitter  
+🚧 **Untested:** orbit_scanner, projection_oracle (exist but never validated)
+
+## Known Issues
+
+1. **91.5% test failure rate**
+2. Missing emitter functions  
+3. Orbit scanner completely untested
+4. No unit tests
+
+## Priorities
+
+1. Test if orbit scanner actually works
+2. Fix emitter gaps  
+3. Get to 50% pass rate
+
+**Honest assessment:** Research code. Needs 2-3 months for production.

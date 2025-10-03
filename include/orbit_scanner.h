@@ -10,6 +10,7 @@
 #include "multi_grammar_loader.h"
 #include "orbit_mask.h"
 #include "tblgen_patterns.h"
+#include "projection_oracle.h"
 
 namespace cppfort {
 namespace ir {
@@ -48,6 +49,9 @@ struct DetectionResult {
   ::std::unordered_map<GrammarType, double> grammarScores;
   ::std::string reasoning;
 };
+
+// Type alias for match results
+using MatchResults = ::std::vector<OrbitMatch>;
 
 // Main orbit scanner class
 class OrbitScanner {
@@ -88,11 +92,11 @@ private:
   ::std::unique_ptr<RabinKarp> m_rabinKarp;
   ::std::unique_ptr<OrbitContext> m_context;
   ::std::unique_ptr<IMultiGrammarLoader> m_loader;
-
+  ::std::unique_ptr<ProjectionOracle> m_projectionOracle;
   // Helper methods
-  ::std::vector<OrbitMatch> findMatches(const ::std::string& code,
-                                     const ::std::vector<OrbitPattern>& patterns) const;
-
+  // Helper methods
+  MatchResults findMatches(const ::std::string& code,
+                          const ::std::vector<OrbitPattern>& patterns) const;
   DetectionResult analyzeMatches(const ::std::vector<OrbitMatch>& matches) const;
 
   double calculateGrammarConfidence(GrammarType grammar,

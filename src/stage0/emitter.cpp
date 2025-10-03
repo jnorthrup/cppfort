@@ -1020,27 +1020,11 @@ void Emitter::emit_function(const FunctionDecl& fn, ::std::string& out, int inde
         auto ptype = get_param_type(param);
         signature << ptype << ' ' << param.name;
     }
-    signature << ") -> " << return_type << ' ';
+    signature << ") -> " << return_type;
 
-    // Emit a debug comment with parameter kinds (helps validate parser wiring)
-    signature << "/*kinds:";
-    for (::std::size_t i = 0; i < fn.parameters.size(); ++i) {
-        if (i) signature << ",";
-        switch (fn.parameters[i].kind) {
-            case ParameterKind::In: signature << "In"; break;
-            case ParameterKind::InOut: signature << "InOut"; break;
-            case ParameterKind::Out: signature << "Out"; break;
-            case ParameterKind::Copy: signature << "Copy"; break;
-            case ParameterKind::Move: signature << "Move"; break;
-            case ParameterKind::Forward: signature << "Forward"; break;
-            default: signature << "Default"; break;
-        }
-    }
-    signature << "*/";
+    Emitter::append_line(out, signature.str() + " {", indent);
 
-    Emitter::append_line(out, signature.str() + "{", indent);
-
-        if (::std::holds_alternative<Block>(fn.body)) {
+    if (::std::holds_alternative<Block>(fn.body)) {
         emit_block(::std::get<Block>(fn.body), out, indent + 1, is_main && return_type == "int");
     } else {
         const auto& expr = ::std::get<ExpressionBody>(fn.body);
@@ -1056,6 +1040,7 @@ void Emitter::emit_function(const FunctionDecl& fn, ::std::string& out, int inde
 
     Emitter::append_line(out, "}", indent);
 }
+
 
 void Emitter::emit_type(const TypeDecl& type, ::std::string& out, int indent) const {
     ::std::ostringstream signature;
