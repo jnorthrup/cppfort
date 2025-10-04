@@ -5,14 +5,10 @@ add_mlir_dialect(MyDialect
 )
 
 set(STAGE0_SOURCES
-    parser.cpp
-    emitter.cpp
-    transpiler.cpp
+    wide_scanner.cpp  # XAI 4.2 orbit-based SIMD scanner
     documentation.cpp
-    pipeline.cpp
     node.cpp
     type.cpp
-    son_parser.cpp
     iterpeeps.cpp  # Chapter 9: Iterative peephole optimization
     gcm.cpp  # Band 3 Chapter 11: Global Code Motion - THE critical scheduling phase
     pattern_matcher.cpp  # Band 5: N-way pattern-based lowering

@@ -174,6 +174,7 @@ size_t WideScanner::findBoundarySIMD(
             // Check for delimiters
             uint8x16_t semicolon = vceqq_u8(chunk, vdupq_n_u8(';'));
             uint8x16_t comma = vceqq_u8(chunk, vdupq_n_u8(','));
+            uint8x16_t colon = vceqq_u8(chunk, vdupq_n_u8(':'));
             uint8x16_t lbrace = vceqq_u8(chunk, vdupq_n_u8('{'));
             uint8x16_t rbrace = vceqq_u8(chunk, vdupq_n_u8('}'));
             uint8x16_t lparen = vceqq_u8(chunk, vdupq_n_u8('('));
@@ -183,8 +184,8 @@ size_t WideScanner::findBoundarySIMD(
 
             // Combine all checks
             uint8x16_t delimiters = vorrq_u8(
-                vorrq_u8(vorrq_u8(semicolon, comma), vorrq_u8(lbrace, rbrace)),
-                vorrq_u8(vorrq_u8(lparen, rparen), vorrq_u8(lbracket, rbracket))
+                vorrq_u8(vorrq_u8(semicolon, comma), vorrq_u8(colon, lbrace)),
+                vorrq_u8(vorrq_u8(rbrace, lparen), vorrq_u8(vorrq_u8(rparen, lbracket), rbracket))
             );
             uint8x16_t combined = vorrq_u8(utf8_boundary, delimiters);
 
@@ -196,7 +197,7 @@ size_t WideScanner::findBoundarySIMD(
                 // Scan bytes to find exact position
                 for (size_t i = 0; i < 16 && (pos + i) < end_pos; ++i) {
                     char ch = static_cast<char>(data[pos + i]);
-                    bool is_delim = (ch == ';' || ch == ',' || ch == '{' || ch == '}' ||
+                    bool is_delim = (ch == ';' || ch == ',' || ch == ':' || ch == '{' || ch == '}' ||
                                      ch == '(' || ch == ')' || ch == '[' || ch == ']');
                     if (is_delim || isUTF8Boundary(data, pos + i)) {
                         Boundary boundary;
@@ -224,6 +225,7 @@ size_t WideScanner::findBoundarySIMD(
             // Check for common delimiters
             __m128i semicolon = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(';'));
             __m128i comma = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(','));
+            __m128i colon = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(':'));
             __m128i lbrace = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('{'));
             __m128i rbrace = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('}'));
             __m128i lparen = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('('));
@@ -235,11 +237,14 @@ size_t WideScanner::findBoundarySIMD(
             __m128i delimiters = _mm_or_si128(
                 _mm_or_si128(
                     _mm_or_si128(semicolon, comma),
-                    _mm_or_si128(lbrace, rbrace)
+                    _mm_or_si128(colon, lbrace)
                 ),
                 _mm_or_si128(
-                    _mm_or_si128(lparen, rparen),
-                    _mm_or_si128(lbracket, rbracket)
+                    _mm_or_si128(rbrace, lparen),
+                    _mm_or_si128(
+                        _mm_or_si128(rparen, lbracket),
+                        rbracket
+                    )
                 )
             );
 
@@ -258,6 +263,7 @@ size_t WideScanner::findBoundarySIMD(
                     boundary.is_delimiter = (
                         boundary.delimiter == ';' ||
                         boundary.delimiter == ',' ||
+                        boundary.delimiter == ':' ||
                         boundary.delimiter == '{' ||
                         boundary.delimiter == '}' ||
                         boundary.delimiter == '(' ||
@@ -279,7 +285,7 @@ size_t WideScanner::findBoundarySIMD(
         while (pos < end_pos) {
             char ch = static_cast<char>(data[pos]);
             bool is_delim = (
-                ch == ';' || ch == ',' ||
+                ch == ';' || ch == ',' || ch == ':' ||
                 ch == '{' || ch == '}' ||
                 ch == '(' || ch == ')' ||
                 ch == '[' || ch == ']'

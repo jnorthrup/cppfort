@@ -1,0 +1,285 @@
+[
+  {
+    "name": "InitDecl",
+    "lhs": "Init_declarator",
+    "rhs": [
+      "Declarator",
+      "=",
+      "Initializer"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "="
+    ]
+  },
+  {
+    "name": "Field",
+    "lhs": "Struct_declarator",
+    "rhs": [
+      ":",
+      "Constant_expression"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      ":"
+    ]
+  },
+  {
+    "name": "DecField",
+    "lhs": "Struct_declarator",
+    "rhs": [
+      "Declarator",
+      ":",
+      "Constant_expression"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      ":"
+    ]
+  },
+  {
+    "name": "EnumInit",
+    "lhs": "Enumerator",
+    "rhs": [
+      "Ident",
+      "=",
+      "Constant_expression"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "="
+    ]
+  },
+  {
+    "name": "Point",
+    "lhs": "Pointer",
+    "rhs": [
+      "*"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "PointQual",
+    "lhs": "Pointer",
+    "rhs": [
+      "*",
+      "[Type_qualifier]"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "PointPoint",
+    "lhs": "Pointer",
+    "rhs": [
+      "*",
+      "Pointer"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "PointQualPoint",
+    "lhs": "Pointer",
+    "rhs": [
+      "*",
+      "[Type_qualifier]",
+      "Pointer"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "SlabelOne",
+    "lhs": "Labeled_stm",
+    "rhs": [
+      "Ident",
+      ":",
+      "Stm"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      ":"
+    ]
+  },
+  {
+    "name": "SlabelTwo",
+    "lhs": "Labeled_stm",
+    "rhs": [
+      "case",
+      "Constant_expression",
+      ":",
+      "Stm"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      ":"
+    ]
+  },
+  {
+    "name": "SlabelThree",
+    "lhs": "Labeled_stm",
+    "rhs": [
+      "default",
+      ":",
+      "Stm"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      ":"
+    ]
+  },
+  {
+    "name": "Econdition",
+    "lhs": "Exp3",
+    "rhs": [
+      "Exp4",
+      "?",
+      "Exp",
+      ":",
+      "Exp3"
+    ],
+    "has_colon": true,
+    "has_double_colon": false,
+    "operators": [
+      "?",
+      ":"
+    ]
+  },
+  {
+    "name": "Ebitor",
+    "lhs": "Exp6",
+    "rhs": [
+      "Exp6",
+      "|",
+      "Exp7"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "|"
+    ]
+  },
+  {
+    "name": "Ebitand",
+    "lhs": "Exp8",
+    "rhs": [
+      "Exp8",
+      "&",
+      "Exp9"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "&"
+    ]
+  },
+  {
+    "name": "Elthen",
+    "lhs": "Exp10",
+    "rhs": [
+      "Exp10",
+      "<",
+      "Exp11"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": []
+  },
+  {
+    "name": "Egrthen",
+    "lhs": "Exp10",
+    "rhs": [
+      "Exp10",
+      ">",
+      "Exp11"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": []
+  },
+  {
+    "name": "Etimes",
+    "lhs": "Exp13",
+    "rhs": [
+      "Exp13",
+      "*",
+      "Exp14"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "Epoint",
+    "lhs": "Exp16",
+    "rhs": [
+      "Exp16",
+      "->",
+      "Ident"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "->"
+    ]
+  },
+  {
+    "name": "Address",
+    "lhs": "Unary_operator",
+    "rhs": [
+      "&"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "&"
+    ]
+  },
+  {
+    "name": "Indirection",
+    "lhs": "Unary_operator",
+    "rhs": [
+      "*"
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "*"
+    ]
+  },
+  {
+    "name": "Assign",
+    "lhs": "Assignment_op",
+    "rhs": [
+      "="
+    ],
+    "has_colon": false,
+    "has_double_colon": false,
+    "operators": [
+      "="
+    ]
+  }
+]

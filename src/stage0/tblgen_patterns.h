@@ -43,6 +43,24 @@ struct OrbitPattern {
     };
     uint8_t confix_mask = 0x3F; // Default: all six bits set
 
+    // N-way grammar support: multiple language modes for concurrent orbit detection
+    enum GrammarMode : uint8_t {
+        C     = 1 << 0,  // 0x01 - ANSI C / C99 / C11
+        CPP   = 1 << 1,  // 0x02 - C++ (any standard)
+        CPP2  = 1 << 2,  // 0x04 - CPP2 pure mode
+    };
+    uint8_t grammar_modes = 0x07;  // Default: all modes (C | CPP | CPP2)
+
+    // Lattice integration: byte-level class filter for pre-filtering
+    // Uses LatticeClasses bitmask (16-bit from lattice_classes.h)
+    // 0xFFFF = all classes (no filtering), 0x0000 = never matches
+    uint16_t lattice_filter = 0xFFFF;
+
+    // Context windows for disambiguation
+    ::std::vector<::std::string> prev_tokens;      // Lookbehind (token types expected before)
+    ::std::vector<::std::string> next_tokens;      // Lookahead (token types expected after)
+    ::std::string scope_requirement;               // Required scope: "function_body", "struct_body", "class_body", "global", "any"
+
     OrbitPattern() = default;
     OrbitPattern(const ::std::string& n, uint32_t id, double w = 1.0)
         : name(n), orbit_id(id), weight(w) {}

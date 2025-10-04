@@ -13,6 +13,7 @@
 #include "rabin_karp.h"
 #include "wide_scanner.h"
 #include "projection_oracle.h"
+#include "cpp2_key_resolver.h"
 
 namespace cppfort {
 namespace ir {
@@ -22,7 +23,8 @@ OrbitScanner::OrbitScanner(const OrbitScannerConfig& config,
   : m_config(config),
     m_rabinKarp(::std::make_unique<RabinKarp>()),
     m_context(::std::make_unique<OrbitContext>(m_config.maxDepth)),
-    m_loader(::std::move(loader)) {
+    m_loader(::std::move(loader)),
+    m_cpp2Resolver(::std::make_unique<cppfort::stage0::CPP2KeyResolver>()) {
   if (!m_loader) {
     m_loader = ::std::unique_ptr<IMultiGrammarLoader>(new MultiGrammarLoader());
   }
@@ -41,6 +43,9 @@ bool OrbitScanner::initialize() {
     ::std::cerr << "Failed to load grammar patterns" << ::std::endl;
     return false;
   }
+
+  // Initialize CPP2 key resolver
+  m_cpp2Resolver->build_key_database();
 
   return validateInitialization();
 }
@@ -70,6 +75,9 @@ void OrbitScanner::updateConfig(const OrbitScannerConfig& config) {
   // Reinitialize components with new config
   m_rabinKarp = ::std::make_unique<RabinKarp>();
   m_context = ::std::make_unique<OrbitContext>(m_config.maxDepth);
+  m_cpp2Resolver = ::std::make_unique<cppfort::stage0::CPP2KeyResolver>();
+  // Reinitialize CPP2 resolver
+  m_cpp2Resolver->build_key_database();
 }
 
 size_t OrbitScanner::getPatternCount() const {
@@ -218,7 +226,94 @@ MatchResults OrbitScanner::findMatches(const ::std::string& code,
     results.resize(m_config.maxMatches);
   }
 
+  // Phase 3-6: CPP2 Key Resolution with Backward Inference
+  // Apply CPP2 key-based disambiguation to refine matches
+  results = applyCPP2KeyResolution(code, results);
+
   return results;
+}
+
+MatchResults OrbitScanner::applyCPP2KeyResolution(const ::std::string& code,
+                                                 const MatchResults& candidates) const {
+  if (!m_cpp2Resolver || candidates.empty()) {
+    return candidates;
+  }
+
+  MatchResults refined_candidates = candidates;
+
+  // Phase 1: Lattice pre-filter (HeuristicGrid) - simplified for now
+  // In full implementation, this would use HeuristicGrid for initial filtering
+
+  // Phase 2: Forward pattern matching already completed - candidates are the results
+
+  // Phase 3: CPP2 Key Lookup - Process all candidates together for better context
+  std::string full_context = code;  // Use full code for context-aware resolution
+
+  // Get all CPP2 keys that might be relevant to this code segment
+  auto relevant_cpp2_keys = m_cpp2Resolver->find_relevant_cpp2_keys(full_context);
+
+  // Phase 4: Peer Activation - Apply similarity-based confidence adjustment
+  for (auto& candidate : refined_candidates) {
+    double max_confidence_boost = 1.0;  // Track maximum boost from peer activation
+
+    for (const auto& cpp2_key : relevant_cpp2_keys) {
+      // Extract local context around this candidate
+      size_t local_start = (candidate.startPos > 50) ? candidate.startPos - 50 : 0;
+      size_t local_end = std::min(candidate.endPos + 50, code.length());
+      std::string local_context = code.substr(local_start, local_end - local_start);
+
+      // Compute similarity score
+      double similarity = m_cpp2Resolver->compute_cpp2_similarity(
+          candidate.signature, cpp2_key.signature_pattern);
+
+      // Check similarity threshold
+      if (similarity >= cpp2_key.similarity_threshold) {
+        // Validate scope constraints
+        std::string current_scope = determine_scope_type(local_context);
+        if (current_scope == cpp2_key.scope_requirement || cpp2_key.scope_requirement == "any") {
+          // Validate lattice requirements
+          uint16_t current_lattice = determine_lattice_mask(local_context);
+          if ((current_lattice & cpp2_key.lattice_filter) != 0) {
+            // Apply confidence modifier - accumulate the best boost
+            max_confidence_boost = std::max(max_confidence_boost, cpp2_key.confidence_modifier);
+          }
+        }
+      }
+    }
+
+    // Apply the maximum confidence boost found
+    candidate.confidence *= max_confidence_boost;
+    candidate.confidence = std::max(0.0, std::min(1.0, candidate.confidence));
+  }
+
+  // Phase 5: Re-rank candidates based on updated confidences
+  std::sort(refined_candidates.begin(), refined_candidates.end(),
+            [](const OrbitMatch& a, const OrbitMatch& b) {
+              return a.confidence > b.confidence;
+            });
+
+  // Phase 6: Winner selection (OrbitRing::winner_index)
+  // Select top candidates, ensuring we maintain diversity across grammar modes
+  MatchResults final_candidates;
+  std::unordered_map<GrammarType, size_t> mode_counts;
+
+  for (const auto& candidate : refined_candidates) {
+    // Ensure we don't have too many candidates from the same grammar mode
+    if (mode_counts[candidate.grammarType] >= 5) {  // Max 5 per mode
+      continue;
+    }
+
+    if (candidate.confidence >= m_config.patternThreshold) {
+      final_candidates.push_back(candidate);
+      mode_counts[candidate.grammarType]++;
+
+      if (final_candidates.size() >= m_config.maxMatches) {
+        break;
+      }
+    }
+  }
+
+  return final_candidates;
 }
 
 double OrbitScanner::detectOrbitPattern(GrammarType grammar, const ::std::array<size_t, 6>& orbitCounts,
@@ -317,7 +412,7 @@ double OrbitScanner::calculateGrammarConfidence(GrammarType grammar,
 
 GrammarType OrbitScanner::determineBestGrammar(const ::std::unordered_map<GrammarType, double>& scores) const {
   GrammarType bestGrammar = GrammarType::UNKNOWN;
-  double bestScore = m_config.patternThreshold;
+  double bestScore = 0.0;
 
   for (const auto& [grammar, score] : scores) {
     if (score > bestScore) {
@@ -330,68 +425,60 @@ GrammarType OrbitScanner::determineBestGrammar(const ::std::unordered_map<Gramma
 }
 
 ::std::string OrbitScanner::generateReasoning(const DetectionResult& result) const {
-  if (result.detectedGrammar == GrammarType::UNKNOWN) {
-    return "No grammar detected with sufficient confidence";
-  }
+  ::std::stringstream ss;
 
-  ::std::string reasoning = "Detected " + grammarTypeToString(result.detectedGrammar) +
-                         " with " + ::std::to_string(result.confidence * 100) + "% confidence. ";
-
-  // Add details about matches
-  ::std::unordered_map<GrammarType, size_t> matchCounts;
-  for (const auto& match : result.matches) {
-    matchCounts[match.grammarType]++;
-  }
-
-  reasoning += "Found " + ::std::to_string(result.matches.size()) + " pattern matches across " +
-              ::std::to_string(matchCounts.size()) + " grammar types.";
-
-  return reasoning;
-}
-
-bool OrbitScanner::validateConfig() const {
-  if (m_config.patternThreshold < 0.0 || m_config.patternThreshold > 1.0) return false;
-  if (m_config.maxDepth == 0) return false;
-
-  return true;
-}
-
-bool OrbitScanner::validateInitialization() const {
-  if (!m_rabinKarp || !m_context || !m_loader) return false;
-
-  // Check if at least one grammar is loaded
-  auto loadedGrammars = m_loader->getLoadedGrammars();
-  if (loadedGrammars.empty()) return false;
-
-  // Check if patterns are loaded
-  size_t totalPatterns = 0;
-  for (auto grammar : loadedGrammars) {
-    totalPatterns += m_loader->getPatterns(grammar).size();
-  }
-
-  return totalPatterns > 0;
-}
-
-::std::string detectionResultToString(const DetectionResult& result) {
-  ::std::string output = "Detection Result:\n";
-  output += "  Grammar: " + grammarTypeToString(result.detectedGrammar) + "\n";
-  output += "  Confidence: " + ::std::to_string(result.confidence * 100) + "%\n";
-  output += "  Matches: " + ::std::to_string(result.matches.size()) + "\n";
-  output += "  Reasoning: " + result.reasoning + "\n";
+  ss << "Detected grammar: " << static_cast<int>(result.detectedGrammar)
+     << " with confidence " << result.confidence << ". ";
 
   if (!result.grammarScores.empty()) {
-    output += "  Grammar Scores:\n";
+    ss << "Grammar scores: ";
     for (const auto& [grammar, score] : result.grammarScores) {
-      output += "    " + grammarTypeToString(grammar) + ": " +
-               ::std::to_string(score * 100) + "%\n";
+      ss << static_cast<int>(grammar) << "=" << score << " ";
     }
   }
 
-  return output;
+  ss << "Matches found: " << result.matches.size();
+
+  return ss.str();
 }
 
-void printDetectionResult(const DetectionResult& result) {
-  ::std::cout << detectionResultToString(result) << ::std::endl;
+bool OrbitScanner::validateConfig() const {
+  return m_config.maxDepth > 0 &&
+         m_config.maxMatches > 0 &&
+         m_config.patternThreshold >= 0.0 &&
+         m_config.patternThreshold <= 1.0 &&
+         !m_config.patternsDir.empty();
+}
+
+bool OrbitScanner::validateInitialization() const {
+  return m_loader && m_loader->getAllPatterns().size() > 0;
+}
+
+// Helper methods for CPP2 key resolution
+std::string OrbitScanner::determine_scope_type(const std::string& context) const {
+  if (context.find("class ") != std::string::npos ||
+      context.find("struct ") != std::string::npos) {
+    return "class_body";
+  } else if (context.find("function") != std::string::npos ||
+             context.find("(") != std::string::npos) {
+    return "function_body";
+  }
+  return "global";
+}
+
+uint16_t OrbitScanner::determine_lattice_mask(const std::string& context) const {
+  // Simplified lattice mask determination
+  // In full implementation, this would analyze token types
+  uint16_t mask = 0;
+
+  if (context.find(":") != std::string::npos) {
+    mask |= (1 << 2);  // PUNCTUATION
+  }
+  if (context.find_first_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") != std::string::npos) {
+    mask |= (1 << 9);  // IDENTIFIER
+  }
+
+  return mask > 0 ? mask : 0xFFFF;  // Default: all classes
 }
 
 } // namespace ir
