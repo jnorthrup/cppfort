@@ -27,82 +27,164 @@ bool PatternDatabase::loadYamlFile(const ::std::string& filepath) {
                          ::std::istreambuf_iterator<char>());
     file.close();
 
-    auto pattern = parsePattern(content);
-    if (pattern) {
-        _patterns[pattern->name] = *pattern;
-        _patternsByOrbit[pattern->orbit_id].push_back(*pattern);
+    // Parse all patterns from the file
+    ::std::istringstream iss(content);
+    ::std::string line;
+    ::std::vector<::std::string> patternChunks;
+    ::std::string currentChunk;
+    bool inPatternList = false;
+
+    while (::std::getline(iss, line)) {
+        // Skip empty lines and comments
+        ::std::string trimmed = line;
+        while (!trimmed.empty() && ::std::isspace(trimmed.front())) {
+            trimmed = trimmed.substr(1);
+        }
+
+        if (trimmed.find("cpp2_canonical_patterns:") == 0) {
+            inPatternList = true;
+            continue;
+        }
+
+        if (!inPatternList) continue;
+
+        // Detect start of new pattern (line starting with "  -")
+        if (line.size() >= 3 && line[0] == ' ' && line[1] == ' ' && line[2] == '-') {
+            if (!currentChunk.empty()) {
+                patternChunks.push_back(currentChunk);
+            }
+            currentChunk = line + "\n";
+        } else if (!currentChunk.empty()) {
+            currentChunk += line + "\n";
+        }
+    }
+
+    // Add last chunk
+    if (!currentChunk.empty()) {
+        patternChunks.push_back(currentChunk);
+    }
+
+    // Parse each pattern chunk
+    int parsedCount = 0;
+    for (const auto& chunk : patternChunks) {
+        auto pattern = parsePattern(chunk);
+        if (pattern) {
+            _patterns[pattern->name] = *pattern;
+            _patternsByOrbit[pattern->orbit_id].push_back(*pattern);
+            parsedCount++;
+        }
+    }
+
+    if (parsedCount > 0) {
+        ::std::cerr << "Loaded " << parsedCount << " patterns from " << filepath << ::std::endl;
         return true;
     }
 
-    ::std::cerr << "Failed to parse pattern from file: " << filepath << ::std::endl;
+    ::std::cerr << "Failed to parse any patterns from file: " << filepath << ::std::endl;
     return false;
 }
 
 ::std::optional<OrbitPattern> PatternDatabase::parsePattern(const ::std::string& yamlContent) {
-    // Simple YAML-like parser for orbit patterns
-    // Format expected:
-    // name: pattern_name
-    // orbit_id: 123
-    // weight: 0.8
-    // signature_patterns:
-    //   - pattern1
-    //   - pattern2
-    // protocol_indicators:
-    //   - indicator1
-    // version_patterns:
-    //   - version1
+    // Parser for cpp2_canonical_patterns format:
+    // cpp2_canonical_patterns:
+    //   - name: pattern_name
+    //     canonical_form: "x: int = 5"
+    //     pattern_type: type_annotation
+    //     confidence: 1.0
+    //     scope_filter: [list]
 
     OrbitPattern pattern;
-
     ::std::istringstream iss(yamlContent);
     ::std::string line;
     ::std::string currentSection;
+    bool inPattern = false;
+    uint32_t autoOrbitId = 1;
 
     while (::std::getline(iss, line)) {
-        // Remove leading/trailing whitespace
-        line.erase(line.begin(), ::std::find_if(line.begin(), line.end(), [](unsigned char ch) {
-            return !::std::isspace(ch);
-        }));
-        line.erase(::std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) {
-            return !::std::isspace(ch);
-        }).base(), line.end());
+        // Remove trailing whitespace
+        while (!line.empty() && ::std::isspace(line.back())) {
+            line.pop_back();
+        }
 
         if (line.empty() || line[0] == '#') continue;
 
-        if (line.find("name:") == 0) {
-            pattern.name = line.substr(5);
-            pattern.name.erase(pattern.name.begin(), ::std::find_if(pattern.name.begin(), pattern.name.end(), [](unsigned char ch) {
-                return !::std::isspace(ch);
-            }));
-        } else if (line.find("orbit_id:") == 0) {
-            ::std::string value = line.substr(9);
-            pattern.orbit_id = ::std::stoul(value);
-        } else if (line.find("weight:") == 0) {
-            ::std::string value = line.substr(7);
-            pattern.weight = ::std::stod(value);
-        } else if (line.find("signature_patterns:") == 0) {
-            currentSection = "signature";
-        } else if (line.find("protocol_indicators:") == 0) {
-            currentSection = "protocol";
-        } else if (line.find("version_patterns:") == 0) {
-            currentSection = "version";
-        } else if (line[0] == '-' && !currentSection.empty()) {
-            ::std::string value = line.substr(1);
-            value.erase(value.begin(), ::std::find_if(value.begin(), value.end(), [](unsigned char ch) {
-                return !::std::isspace(ch);
-            }));
+        // Detect pattern start
+        size_t indent = 0;
+        while (indent < line.size() && ::std::isspace(line[indent])) {
+            ++indent;
+        }
+        ::std::string trimmed = line.substr(indent);
 
-            // Remove surrounding quotes if present
-            if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-                value = value.substr(1, value.size() - 2);
+        // Start of new pattern item
+        if (trimmed[0] == '-' && trimmed.find("name:") != ::std::string::npos) {
+            if (inPattern && !pattern.name.empty()) {
+                return pattern; // Return first pattern found
             }
+            inPattern = true;
+            currentSection.clear();
 
-            if (currentSection == "signature") {
+            // Extract name from same line if present
+            size_t namePos = trimmed.find("name:");
+            if (namePos != ::std::string::npos) {
+                ::std::string value = trimmed.substr(namePos + 5);
+                size_t valueStart = value.find_first_not_of(" \t");
+                if (valueStart != ::std::string::npos) {
+                    value = value.substr(valueStart);
+                    if (!value.empty() && value.front() == '"' && value.back() == '"') {
+                        value = value.substr(1, value.size() - 2);
+                    }
+                    pattern.name = value;
+                    // Generate orbit_id from name hash
+                    ::std::hash<::std::string> hasher;
+                    pattern.orbit_id = static_cast<uint32_t>(hasher(value) % 10000);
+                }
+            }
+            continue;
+        }
+
+        if (!inPattern) continue;
+
+        if (trimmed.find("name:") == 0 && trimmed[0] != '-') {
+            ::std::string value = trimmed.substr(5);
+            size_t valueStart = value.find_first_not_of(" \t");
+            if (valueStart != ::std::string::npos) {
+                value = value.substr(valueStart);
+                if (!value.empty() && value.front() == '"' && value.back() == '"') {
+                    value = value.substr(1, value.size() - 2);
+                }
+                pattern.name = value;
+                ::std::hash<::std::string> hasher;
+                pattern.orbit_id = static_cast<uint32_t>(hasher(value) % 10000);
+            }
+        } else if (trimmed.find("canonical_form:") == 0) {
+            ::std::string value = trimmed.substr(15);
+            size_t valueStart = value.find_first_not_of(" \t");
+            if (valueStart != ::std::string::npos) {
+                value = value.substr(valueStart);
+                if (!value.empty() && value.front() == '"' && value.back() == '"') {
+                    value = value.substr(1, value.size() - 2);
+                }
                 pattern.signature_patterns.push_back(value);
-            } else if (currentSection == "protocol") {
+            }
+        } else if (trimmed.find("confidence:") == 0) {
+            ::std::string value = trimmed.substr(11);
+            size_t valueStart = value.find_first_not_of(" \t");
+            if (valueStart != ::std::string::npos) {
+                value = value.substr(valueStart);
+                try {
+                    pattern.weight = ::std::stod(value);
+                } catch (...) {
+                    pattern.weight = 1.0;
+                }
+            }
+        } else if (trimmed.find("scope_filter:") == 0) {
+            currentSection = "scope";
+        } else if (trimmed[0] == '-' && currentSection == "scope") {
+            ::std::string value = trimmed.substr(1);
+            size_t valueStart = value.find_first_not_of(" \t");
+            if (valueStart != ::std::string::npos) {
+                value = value.substr(valueStart);
                 pattern.protocol_indicators.push_back(value);
-            } else if (currentSection == "version") {
-                pattern.version_patterns.push_back(value);
             }
         }
     }

@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
             ::std::cout << "Generated " << anchors.size() << " anchor points\n";
 
             // Scan with orbits
-            auto boundaries = cppfort::ir::WideScanner::scanAnchorsWithOrbits(source, anchors);
+            auto boundaries = cppfort::ir::WideScanner::scanAnchorsSIMD(source, anchors);
             ::std::cout << "Found " << boundaries.size() << " boundaries\n";
 
             // Show first 10 boundaries
