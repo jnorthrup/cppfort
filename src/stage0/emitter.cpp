@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "ir/sea_of_nodes.h"
+#include "ir_serializer.h"
 
 namespace cppfort::stage0 {
 namespace {
@@ -1409,51 +1410,9 @@ void Emitter::append_line(::std::string& out, ::std::string_view text, int inden
 }
 
 ::std::string Emitter::emit_ir(const TranslationUnit& unit) const {
-    // Chapter 19: Sea of Nodes IR emission
-    // Convert AST to IR graph and emit target code
-
-    ::std::ostringstream os;
-
-    try {
-        // Convert AST to IR graph using mock implementation
-        auto graph = cppfort::ir::astToIR(std::any(unit));
-
-        if (!graph) {
-            os << "// Error: Failed to create IR graph\n";
-            return os.str();
-        }
-
-        // Validate the graph
-        if (!cppfort::ir::validateGraph(graph.get())) {
-            os << "// Error: IR graph validation failed\n";
-            return os.str();
-        }
-
-        // Apply optimization passes
-        graph->optimize();
-
-        // Create target lowering for C++
-        auto target_lowering = cppfort::ir::createTargetLowering(cppfort::ir::Target::Cpp);
-
-        // Apply lowering passes
-        for (auto* pass : target_lowering->passes()) {
-            graph->applyPass(pass);
-        }
-
-        // Emit target code
-        os << "// Generated from Sea of Nodes IR\n";
-        os << "// Graph nodes: " << graph->nodes().size() << "\n\n";
-        os << target_lowering->emit(graph.get());
-
-        // Optional: dump graph for debugging
-        os << "\n// IR Graph dump:\n";
-        cppfort::ir::dumpGraph(graph.get(), os);
-
-    } catch (const std::exception& e) {
-        os << "// Error during IR emission: " << e.what() << "\n";
-    }
-
-    return os.str();
+    // Emit the AST in a serialized IR format that can be read by stage1
+    // This allows stage0 -> stage1 communication via IR instead of C++
+    return IRSerializer::serialize(unit);
 }
 
 } // namespace cppfort::stage0

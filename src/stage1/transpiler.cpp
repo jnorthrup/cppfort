@@ -10,57 +10,36 @@
 
 #include "../stage0/transpiler.h"
 #include "../stage0/emitter.h"
+#include "../stage0/ir_serializer.h"
 
 int main(int argc, char* argv[]) {
     // Support multiple invocation styles:
     // 1) transpiler <input.cpp2> <output.cpp>
     // 2) transpiler transpile <input.cpp2> <output.cpp> (used by regression scripts)
-    // 3) transpiler <input.cpp2> <output.cpp> --inline-cpp2 (inline cpp2.h)
-    // 4) transpiler <input.cpp2> <output.cpp> --bundle-cpp2 (bundle cpp2.h)
-
+    // 3) transpiler transpile <input.ir> <output.cpp> --input-format ir
     std::string input_path;
     std::string output_path;
-    bool inline_cpp2 = false;
-    bool bundle_cpp2 = false;
+    std::string input_format = "cpp2";  // default to cpp2 source
 
-    // Parse command line arguments
-    if (argc >= 3) {
-        // Check for flags at the end
-        int arg_count = argc;
-        while (arg_count > 3 && argv[arg_count - 1][0] == '-') {
-            std::string flag = argv[arg_count - 1];
-            if (flag == "--inline-cpp2") {
-                inline_cpp2 = true;
-                arg_count--;
-            } else if (flag == "--bundle-cpp2") {
-                bundle_cpp2 = true;
-                arg_count--;
-            } else {
-                break;
+    if (argc == 3) {
+        input_path = argv[1];
+        output_path = argv[2];
+    } else if (argc >= 4 && std::string(argv[1]) == "transpile") {
+        input_path = argv[2];
+        output_path = argv[3];
+
+        // Parse additional options
+        for (int i = 4; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "--input-format" && i + 1 < argc) {
+                input_format = argv[++i];
             }
         }
-
-        // Parse the basic arguments
-        if (arg_count == 3) {
-            input_path = argv[1];
-            output_path = argv[2];
-        } else if (arg_count == 4 && std::string(argv[1]) == "transpile") {
-            input_path = argv[2];
-            output_path = argv[3];
-        } else {
-            std::cerr << "Usage: transpiler <input.cpp2> <output.cpp> [options]\n";
-            std::cerr << "   or: transpiler transpile <input.cpp2> <output.cpp>\n";
-            std::cerr << "Options:\n";
-            std::cerr << "  --inline-cpp2   Inline cpp2.h contents in generated code\n";
-            std::cerr << "  --bundle-cpp2   Bundle cpp2.h contents at beginning of output\n";
-            return 1;
-        }
     } else {
-        std::cerr << "Usage: transpiler <input.cpp2> <output.cpp> [options]\n";
-        // Set up Stage0 (cpp2 -> C++) transpiler and emitter, honoring
-        // command-line flags for inlining/bundling cpp2.h.
-        std::string src;
-        std::string line;
+        std::cerr << "Usage: transpiler <input.cpp2> <output.cpp>\n";
+        std::cerr << "   or: transpiler transpile <input> <output.cpp> [--input-format <cpp2|ir>]\n";
+        return 1;
+    }
 
         cppfort::stage0::Transpiler transpiler;
         cppfort::stage0::Emitter emitter;
@@ -74,19 +53,30 @@ int main(int argc, char* argv[]) {
     }
     in.close();
 
-    // Use stage0 Transpiler pipeline to transpile cpp2 to C++
-    cppfort::stage0::Transpiler transpiler;
+    // Process based on input format
     cppfort::stage0::Emitter emitter;
     cppfort::stage0::EmitOptions emit_options;
     emit_options.include_headers = true;
     emit_options.inline_cpp2_header = false;  // Do not inline cpp2.h contents for standalone output
     emit_options.bundle_headers = false;       // Bundle cpp2.h contents at beginning of output
     std::string transformed;
+
     try {
-        // Parse cpp2 source to AST
-        auto ast = transpiler.parse(src, input_path);
-        std::cout << "Parsed AST with " << ast.functions.size() << " functions\n";
-        // Debug: print parameter kinds for each function
+        cppfort::stage0::TranslationUnit ast;
+
+        if (input_format == "ir") {
+            // Deserialize IR format directly to AST
+            std::cout << "Reading IR format input\n";
+            ast = cppfort::stage0::IRSerializer::deserialize(src);
+            std::cout << "Deserialized IR with " << ast.functions.size() << " functions\n";
+        } else {
+            // Parse cpp2 source to AST
+            cppfort::stage0::Transpiler transpiler;
+            ast = transpiler.parse(src, input_path);
+            std::cout << "Parsed AST with " << ast.functions.size() << " functions\n";
+        }
+
+        // Debug: print function info
         for (const auto& fn : ast.functions) {
             std::cout << "Function: " << fn.name << "\n";
             for (const auto& p : fn.parameters) {
@@ -94,7 +84,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "  param " << p.name << " kind=" << k << " type='" << p.type << "'\n";
             }
         }
-        
+
         // Emit AST as C++ source
         transformed = emitter.emit(ast, emit_options);
         std::cout << "Emitted C++ code, length: " << transformed.size() << "\n";

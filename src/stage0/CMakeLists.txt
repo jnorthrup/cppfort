@@ -23,6 +23,7 @@ set(STAGE0_SOURCES
     attestation_nodes.cpp  # N-way compiler: attestation & anticheat infrastructure
     c_preprocessor.cpp  # N-way compiler: C preprocessor
     c_parser.cpp  # N-way compiler: C parser (expressions + statements + declarations)
+    ir_serializer.cpp  # IR serialization for stage0->stage1 communication
     ${MyDialect_generated_sources}
 )
 
