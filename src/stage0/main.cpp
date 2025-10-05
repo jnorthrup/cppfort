@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "wide_scanner.h"
+#include "orbit_builder.h"
 
 namespace {
 void print_usage() {
@@ -148,6 +149,15 @@ int main(int argc, char* argv[]) {
             cppfort::ir::WideScanner scanner;
             auto boundaries = scanner.scanAnchorsWithOrbits(source, anchors);
 
+            // Build OrbitRing tree from boundaries
+            auto orbit_tree = cppfort::stage0::buildOrbitRing(source, boundaries);
+
+            // Parse into OrbitTranslationUnit
+            auto ast = cppfort::stage0::parseOrbitTree(source, orbit_tree);
+
+            // Emit C++ from AST
+            auto generated_cpp = cppfort::stage0::emitCpp(ast);
+
             // Build and trace rings
             struct Ring {
                 size_t open_pos;
@@ -211,26 +221,13 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            // Transpile: reconstruct C++ from orbit scan
+            // Transpile: emit C++ from AST
             ::std::ofstream output(output_path);
             if (!output) {
                 throw ::std::runtime_error("Failed to open output file: " + output_path.string());
             }
 
-            size_t last_pos = 0;
-            for (const auto& b : boundaries) {
-                // Write content between delimiters
-                if (b.position > last_pos) {
-                    output << source.substr(last_pos, b.position - last_pos);
-                }
-                // Write delimiter
-                output << b.delimiter;
-                last_pos = b.position + 1;
-            }
-            // Write remaining content
-            if (last_pos < source.size()) {
-                output << source.substr(last_pos);
-            }
+            output << generated_cpp;
 
             ::std::cout << "Transpiled " << input_path << " -> " << output_path << "\n";
             if (trace_rings) ::std::cout << "Total rings: " << rings.size() << "\n";
