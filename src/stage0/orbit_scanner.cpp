@@ -14,6 +14,7 @@
 #include "wide_scanner.h"
 #include "projection_oracle.h"
 #include "rbcursive.h"
+#include "rbcursive_combinators.h"
 
 namespace cppfort {
 namespace ir {

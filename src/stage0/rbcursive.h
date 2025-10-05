@@ -1,14 +1,29 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <regex>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace cppfort {
 namespace ir {
+
+class SimdScanner {
+public:
+    virtual ~SimdScanner() = default;
+    virtual std::vector<std::size_t> scanBytes(std::span<const std::uint8_t> data,
+                                               std::span<const std::uint8_t> targets) const = 0;
+};
+
+class ScalarScanner final : public SimdScanner {
+public:
+    std::vector<std::size_t> scanBytes(std::span<const std::uint8_t> data,
+                                       std::span<const std::uint8_t> targets) const override;
+};
 
 // Minimal, internal scanning facade inspired by Litebike rbcursive.
 // This is a private asset of the orbit scanner. It intentionally starts
@@ -43,11 +58,13 @@ public:
 
     Capabilities patternCapabilities() const { return {}; }
 
+    const SimdScanner& scalarScanner() const { return m_scalarScanner; }
+
 private:
+    ScalarScanner m_scalarScanner;
     // Simple glob matcher supporting '*', '?'
     static bool globMatch(std::string_view text, std::string_view pattern);
 };
 
 } // namespace ir
 } // namespace cppfort
-

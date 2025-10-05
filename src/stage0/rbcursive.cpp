@@ -1,9 +1,28 @@
 #include "rbcursive.h"
 
 #include <algorithm>
+#include <span>
 
 namespace cppfort {
 namespace ir {
+
+std::vector<std::size_t>
+ScalarScanner::scanBytes(std::span<const std::uint8_t> data,
+                         std::span<const std::uint8_t> targets) const {
+    std::vector<std::size_t> positions;
+    if (targets.empty()) {
+        return positions;
+    }
+
+    for (std::size_t idx = 0; idx < data.size(); ++idx) {
+        auto value = data[idx];
+        if (std::find(targets.begin(), targets.end(), value) != targets.end()) {
+            positions.push_back(idx);
+        }
+    }
+
+    return positions;
+}
 
 // Backtracking glob (supports '*' and '?').
 // Intentional simplicity for bootstrap; replace with SIMD later.
