@@ -28,14 +28,14 @@ elseif(UNIX AND NOT APPLE)
   set(CMAKE_PREFIX_PATH "/usr/lib/llvm-18" ${CMAKE_PREFIX_PATH})
 endif()
 
-find_package(LLVM REQUIRED CONFIG)
-find_package(MLIR REQUIRED CONFIG)
+# find_package(LLVM REQUIRED CONFIG)
+# find_package(MLIR REQUIRED CONFIG)
 
-list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+# list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+# list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 
-include(AddLLVM)
-include(AddMLIR)
+# include(AddLLVM)
+# include(AddMLIR)
 # --- End MLIR Integration ---
 
 # Include the src directory which contains the stage1 and stage2 sub‑folders

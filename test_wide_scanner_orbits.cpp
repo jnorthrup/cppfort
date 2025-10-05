@@ -103,6 +103,57 @@ void test_wide_scanner_basic() {
     std::cout << "\n";
 }
 
+void test_wide_scanner_orbit_integration() {
+    std::cout << "=== Test 5: WideScanner Orbit Integration ===\n";
+
+    std::string cpp2_code = R"(
+        x: int = 5;
+        func: (y: int) -> int = y * 2;
+        point: type = { x: double; y: double; }
+    )";
+
+    // Create WideScanner with orbit context
+    ir::WideScanner scanner;
+    std::span<const char> code_span(cpp2_code.data(), cpp2_code.size());
+
+    // Test the new orbit-aware scanning
+    auto boundaries = scanner.scanAnchorsWithOrbits(cpp2_code, {});
+
+    std::cout << "Orbit-aware boundaries detected: " << boundaries.size() << "\n";
+
+    bool has_nonzero_confidence = false;
+    bool has_lattice_mask = false;
+
+    for (size_t i = 0; i < std::min(boundaries.size(), size_t(10)); ++i) {
+        const auto& b = boundaries[i];
+        std::cout << "  Boundary " << i << ": pos=" << b.position
+                  << " lattice_mask=0x" << std::hex << b.lattice_mask << std::dec
+                  << " orbit_confidence=" << b.orbit_confidence << "\n";
+
+        if (b.orbit_confidence > 0.0f) {
+            has_nonzero_confidence = true;
+        }
+        if (b.lattice_mask != 0) {
+            has_lattice_mask = true;
+        }
+    }
+
+    // Verify orbit integration is working
+    if (has_nonzero_confidence) {
+        std::cout << "✓ PASS: Non-zero orbit confidence values detected\n";
+    } else {
+        std::cout << "✗ FAIL: No non-zero orbit confidence values found\n";
+    }
+
+    if (has_lattice_mask) {
+        std::cout << "✓ PASS: Lattice mask values populated\n";
+    } else {
+        std::cout << "✗ FAIL: No lattice mask values found\n";
+    }
+
+    std::cout << "\n";
+}
+
 void test_regression_file(const std::string& filepath) {
     std::cout << "=== Testing: " << std::filesystem::path(filepath).filename() << " ===\n";
 
@@ -147,6 +198,7 @@ int main() {
     test_heuristic_grid();
     test_anchor_tuple();
     test_wide_scanner_basic();
+    test_wide_scanner_orbit_integration();
 
     // Test on actual regression files
     std::vector<std::string> test_files = {

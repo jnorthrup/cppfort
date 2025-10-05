@@ -12,6 +12,9 @@
 #define CPPFORT_ARM_NEON 1
 #endif
 
+#include "heuristic_grid.h"
+#include "lattice_classes.h"
+
 namespace cppfort::ir {
 
 bool WideScanner::isUTF8Boundary(const uint8_t* data, size_t position) {
@@ -306,4 +309,228 @@ size_t WideScanner::findBoundarySIMD(
     return boundaries;
 }
 
+::std::vector<WideScanner::Boundary> WideScanner::scanAnchorsWithOrbits(
+    const ::std::string& source,
+    const ::std::vector<AnchorPoint>& anchors
+) {
+    ::std::vector<Boundary> boundaries;
+
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(source.data());
+    orbit_context_.reset();  // Reset context between scans
+
+    // Handle small files with single anchor: scan entire buffer
+    if (anchors.size() <= 1) {
+        for (size_t pos = 0; pos < source.size(); ++pos) {
+            char ch = static_cast<char>(data[pos]);
+            orbit_context_.update(ch);
+
+            bool is_delim = (
+                ch == ';' || ch == ',' || ch == ':' ||
+                ch == '{' || ch == '}' ||
+                ch == '(' || ch == ')' ||
+                ch == '[' || ch == ']'
+            );
+
+            if (is_delim) {
+                Boundary boundary;
+                boundary.position = pos;
+                boundary.delimiter = ch;
+                boundary.is_delimiter = true;
+                boundary.lattice_mask = stage0::classify_byte(ch);
+                boundary.orbit_confidence = orbit_context_.calculateConfidence();
+                boundaries.push_back(boundary);
+            }
+        }
+        return boundaries;
+    }
+
+    // Scan between consecutive anchor pairs
+    for (size_t i = 0; i < anchors.size() - 1; ++i) {
+        size_t start_pos = anchors[i].position;
+        size_t end_pos = anchors[i + 1].position;
+
+        if (end_pos <= start_pos) continue;
+
+        size_t pos = start_pos;
+        size_t remaining = end_pos - start_pos;
+
+        // Reset orbit context for each anchor span
+        orbit_context_.reset();
+
+        // SIMD scan within anchor range with orbit tracking
+#if defined(CPPFORT_ARM_NEON)
+        while (remaining >= 16 && pos < end_pos) {
+            uint8x16_t chunk = vld1q_u8(data + pos);
+
+            // Check for UTF-8 boundaries
+            uint8x16_t high_bits = vandq_u8(chunk, vdupq_n_u8(0xC0));
+            uint8x16_t utf8_boundary = vceqq_u8(high_bits, vdupq_n_u8(0x00));
+
+            // Check for delimiters
+            uint8x16_t semicolon = vceqq_u8(chunk, vdupq_n_u8(';'));
+            uint8x16_t comma = vceqq_u8(chunk, vdupq_n_u8(','));
+            uint8x16_t colon = vceqq_u8(chunk, vdupq_n_u8(':'));
+            uint8x16_t lbrace = vceqq_u8(chunk, vdupq_n_u8('{'));
+            uint8x16_t rbrace = vceqq_u8(chunk, vdupq_n_u8('}'));
+            uint8x16_t lparen = vceqq_u8(chunk, vdupq_n_u8('('));
+            uint8x16_t rparen = vceqq_u8(chunk, vdupq_n_u8(')'));
+            uint8x16_t lbracket = vceqq_u8(chunk, vdupq_n_u8('['));
+            uint8x16_t rbracket = vceqq_u8(chunk, vdupq_n_u8(']'));
+
+            // Combine all checks
+            uint8x16_t delimiters = vorrq_u8(
+                vorrq_u8(vorrq_u8(semicolon, comma), vorrq_u8(colon, lbrace)),
+                vorrq_u8(vorrq_u8(rbrace, lparen), vorrq_u8(vorrq_u8(rparen, lbracket), rbracket))
+            );
+            uint8x16_t combined = vorrq_u8(utf8_boundary, delimiters);
+
+            // Check if any matches
+            uint64_t mask_low = vgetq_lane_u64(vreinterpretq_u64_u8(combined), 0);
+            uint64_t mask_high = vgetq_lane_u64(vreinterpretq_u64_u8(combined), 1);
+
+            if (mask_low != 0 || mask_high != 0) {
+                // Scan bytes to find exact position
+                for (size_t i = 0; i < 16 && (pos + i) < end_pos; ++i) {
+                    char ch = static_cast<char>(data[pos + i]);
+                    bool is_delim = (ch == ';' || ch == ',' || ch == ':' || ch == '{' || ch == '}' ||
+                                     ch == '(' || ch == ')' || ch == '[' || ch == ']');
+                    if (is_delim) {
+                        // Update orbit context for each byte scanned
+                        for (size_t j = 0; j <= i; ++j) {
+                            orbit_context_.update(static_cast<char>(data[pos + j]));
+                        }
+
+                        Boundary boundary;
+                        boundary.position = pos + i;
+                        boundary.delimiter = ch;
+                        boundary.is_delimiter = true;
+
+                        // Populate lattice_mask using HeuristicGrid classification
+                        boundary.lattice_mask = stage0::classify_byte(ch);
+
+                        // Populate orbit_confidence using OrbitContext
+                        boundary.orbit_confidence = orbit_context_.calculateConfidence();
+
+                        boundaries.push_back(boundary);
+                        break;
+                    }
+                }
+            }
+
+            size_t advance = ::std::min(size_t(16), remaining);
+            pos += advance;
+            remaining -= advance;
+        }
+#elif defined(CPPFORT_X86_SIMD)
+        while (remaining >= 16 && pos < end_pos) {
+            __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + pos));
+
+            // Check for UTF-8 boundaries
+            __m128i high_bits = _mm_and_si128(chunk, _mm_set1_epi8(0xC0));
+            __m128i utf8_boundary = _mm_cmpeq_epi8(high_bits, _mm_set1_epi8(0x00));
+
+            // Check for common delimiters
+            __m128i semicolon = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(';'));
+            __m128i comma = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(','));
+            __m128i colon = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(':'));
+            __m128i lbrace = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('{'));
+            __m128i rbrace = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('}'));
+            __m128i lparen = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('('));
+            __m128i rparen = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(')'));
+            __m128i lbracket = _mm_cmpeq_epi8(chunk, _mm_set1_epi8('['));
+            __m128i rbracket = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(']'));
+
+            // Combine all delimiter checks
+            __m128i delimiters = _mm_or_si128(
+                _mm_or_si128(
+                    _mm_or_si128(semicolon, comma),
+                    _mm_or_si128(colon, lbrace)
+                ),
+                _mm_or_si128(
+                    _mm_or_si128(rbrace, lparen),
+                    _mm_or_si128(
+                        _mm_or_si128(rparen, lbracket),
+                        rbracket
+                    )
+                )
+            );
+
+            __m128i combined = _mm_or_si128(utf8_boundary, delimiters);
+            int mask = _mm_movemask_epi8(combined);
+
+            if (mask != 0) {
+                // Find first match
+                int bit_pos = __builtin_ctz(mask);
+                size_t boundary_pos = pos + bit_pos;
+
+                if (boundary_pos < end_pos) {
+                    char ch = static_cast<char>(data[boundary_pos]);
+                    bool is_delim = (
+                        ch == ';' || ch == ',' || ch == ':' || ch == '{' || ch == '}' ||
+                        ch == '(' || ch == ')' || ch == '[' || ch == ']'
+                    );
+
+                    if (is_delim) {
+                        // Update orbit context for each byte up to this boundary
+                        for (size_t j = 0; j <= bit_pos; ++j) {
+                            orbit_context_.update(static_cast<char>(data[pos + j]));
+                        }
+
+                        Boundary boundary;
+                        boundary.position = boundary_pos;
+                        boundary.delimiter = ch;
+                        boundary.is_delimiter = true;
+
+                        // Populate lattice_mask using HeuristicGrid classification
+                        boundary.lattice_mask = stage0::classify_byte(ch);
+
+                        // Populate orbit_confidence using OrbitContext
+                        boundary.orbit_confidence = orbit_context_.calculateConfidence();
+
+                        boundaries.push_back(boundary);
+                    }
+                }
+            }
+
+            size_t advance = ::std::min(size_t(16), remaining);
+            pos += advance;
+            remaining -= advance;
+        }
+#endif
+
+        // Scalar fallback for remaining bytes in this range
+        while (pos < end_pos) {
+            char ch = static_cast<char>(data[pos]);
+
+            // Always update orbit context
+            orbit_context_.update(ch);
+
+            bool is_delim = (
+                ch == ';' || ch == ',' || ch == ':' ||
+                ch == '{' || ch == '}' ||
+                ch == '(' || ch == ')' ||
+                ch == '[' || ch == ']'
+            );
+
+            if (is_delim) {
+                Boundary boundary;
+                boundary.position = pos;
+                boundary.delimiter = ch;
+                boundary.is_delimiter = true;
+
+                // Populate lattice_mask using HeuristicGrid classification
+                boundary.lattice_mask = stage0::classify_byte(ch);
+
+                // Populate orbit_confidence using OrbitContext
+                boundary.orbit_confidence = orbit_context_.calculateConfidence();
+
+                boundaries.push_back(boundary);
+            }
+
+            pos++;
+        }
+    }
+
+    return boundaries;
+}
 } // namespace cppfort::ir

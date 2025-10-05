@@ -1,10 +1,3 @@
-add_subdirectory(stage0)
-
-# Include Stage 1 (transpiler) and Stage 2 (anticheat) directories
-add_subdirectory(stage1)
-add_subdirectory(stage2)
-add_subdirectory(ir)
-add_subdirectory(mlir_bridge)
 add_subdirectory(compat)
 
 # Orbit scanner components
@@ -25,6 +18,12 @@ target_include_directories(orbit_scanner PUBLIC
 
 target_link_libraries(orbit_scanner PUBLIC
     cppfort_compat
+)
+
+add_executable(stage0_cli stage0/main.cpp)
+target_link_libraries(stage0_cli PRIVATE orbit_scanner)
+set_target_properties(stage0_cli PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
 )
 
 # Tests

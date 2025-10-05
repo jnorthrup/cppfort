@@ -1,4 +1,4 @@
-Regression test log - Sat Oct  4 03:16:43 CDT 2025
+Regression test log - Sat Oct  4 14:08:25 CDT 2025
 Using cppfront: ../build/stage0_cli transpile
 Skipping pure2-assert-expected-not-null.cpp2 (requires unimplemented safety features)
 Skipping pure2-assert-optional-not-null.cpp2 (requires unimplemented safety features)
@@ -7,1304 +7,654 @@ Skipping pure2-assert-unique-ptr-not-null.cpp2 (requires unimplemented safety fe
 Skipping pure2-bounds-safety-pointer-arithmetic-error.cpp2 (requires unimplemented safety features)
 Skipping pure2-bounds-safety-span.cpp2 (requires unimplemented safety features)
 Testing pure2-break-continue.cpp2
-Wrote "pure2-break-continue.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-assert-capture-error.cpp2
-Wrote "pure2-bugfix-for-assert-capture-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-assign-expression-list.cpp2
-Wrote "pure2-bugfix-for-assign-expression-list.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-bad-capture-error.cpp2
-Wrote "pure2-bugfix-for-bad-capture-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-bad-decltype-error.cpp2
-Wrote "pure2-bugfix-for-bad-decltype-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-bad-parameter-error.cpp2
-Wrote "pure2-bugfix-for-bad-parameter-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-bad-using-error.cpp2
-Wrote "pure2-bugfix-for-bad-using-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-declaration-equal-error.cpp2
-Wrote "pure2-bugfix-for-declaration-equal-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-discard-precedence.cpp2
-Wrote "pure2-bugfix-for-discard-precedence.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-functions-before-superclasses-error.cpp2
-Wrote "pure2-bugfix-for-functions-before-superclasses-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-indexed-call.cpp2
-Wrote "pure2-bugfix-for-indexed-call.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-invalid-alias-error.cpp2
-Wrote "pure2-bugfix-for-invalid-alias-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-late-comments.cpp2
-Wrote "pure2-bugfix-for-late-comments.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-max-munch.cpp2
-Wrote "pure2-bugfix-for-max-munch.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-memberwise-base-assignment.cpp2
-Wrote "pure2-bugfix-for-memberwise-base-assignment.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-naked-unsigned-char-error.cpp2
-Wrote "pure2-bugfix-for-naked-unsigned-char-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-name-lookup-and-value-decoration.cpp2
-Wrote "pure2-bugfix-for-name-lookup-and-value-decoration.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-namespace-error.cpp2
-Wrote "pure2-bugfix-for-namespace-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-non-local-function-expression.cpp2
-Wrote "pure2-bugfix-for-non-local-function-expression.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-non-local-initialization.cpp2
-Wrote "pure2-bugfix-for-non-local-initialization.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-optional-template-argument-list.cpp2
-Wrote "pure2-bugfix-for-optional-template-argument-list.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-out-this-nonconstructor-error.cpp2
-Wrote "pure2-bugfix-for-out-this-nonconstructor-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2
-Wrote "pure2-bugfix-for-requires-clause-in-forward-declaration.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2
-Wrote "pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-template-argument.cpp2
-Wrote "pure2-bugfix-for-template-argument.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-ufcs-arguments.cpp2
-Wrote "pure2-bugfix-for-ufcs-arguments.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-ufcs-name-lookup.cpp2
-Wrote "pure2-bugfix-for-ufcs-name-lookup.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-ufcs-noexcept.cpp2
-Wrote "pure2-bugfix-for-ufcs-noexcept.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-ufcs-sfinae.cpp2
-Wrote "pure2-bugfix-for-ufcs-sfinae.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-unbraced-function-expression.cpp2
-Wrote "pure2-bugfix-for-unbraced-function-expression.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-bugfix-for-variable-template.cpp2
-Wrote "pure2-bugfix-for-variable-template.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-chained-comparisons.cpp2
-Wrote "pure2-chained-comparisons.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-concept-definition.cpp2
-Wrote "pure2-concept-definition.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-contracts.cpp2
-Wrote "pure2-contracts.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-cpp1-multitoken-fundamental-types-error.cpp2
-Wrote "pure2-cpp1-multitoken-fundamental-types-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-cpp1-prefix-expression-error.cpp2
-Wrote "pure2-cpp1-prefix-expression-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-deducing-pointers-error.cpp2
-Wrote "pure2-deducing-pointers-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-deduction-1-error.cpp2
-Wrote "pure2-deduction-1-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-deduction-2-error.cpp2
-Wrote "pure2-deduction-2-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-default-arguments.cpp2
-Wrote "pure2-default-arguments.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-defaulted-comparisons-and-final-types.cpp2
-Wrote "pure2-defaulted-comparisons-and-final-types.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-enum.cpp2
-Wrote "pure2-enum.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-expected-is-as.cpp2
-Wrote "pure2-expected-is-as.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-for-loop-range-with-lambda.cpp2
-Wrote "pure2-for-loop-range-with-lambda.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-forward-return-diagnostics-error.cpp2
-Wrote "pure2-forward-return-diagnostics-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-forward-return.cpp2
-Wrote "pure2-forward-return.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-function-body-reflection.cpp2
-Wrote "pure2-function-body-reflection.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-function-multiple-forward-arguments.cpp2
-Wrote "pure2-function-multiple-forward-arguments.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-function-single-expression-body-default-return.cpp2
-Wrote "pure2-function-single-expression-body-default-return.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-function-typeids.cpp2
-Wrote "pure2-function-typeids.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-hashable.cpp2
-Wrote "pure2-hashable.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-hello.cpp2
-Wrote "pure2-hello.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-initialization-loop-2-error.cpp2
-Wrote "pure2-initialization-loop-2-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-initialization-loop-error.cpp2
-Wrote "pure2-initialization-loop-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-initialization-safety-with-else-if.cpp2
-Wrote "pure2-initialization-safety-with-else-if.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-inspect-expression-in-generic-function-multiple-types.cpp2
-Wrote "pure2-inspect-expression-in-generic-function-multiple-types.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-inspect-expression-with-as-in-generic-function.cpp2
-Wrote "pure2-inspect-expression-with-as-in-generic-function.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-inspect-fallback-with-variant-any-optional.cpp2
-Wrote "pure2-inspect-fallback-with-variant-any-optional.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2
-Wrote "pure2-inspect-generic-void-empty-with-variant-any-optional.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-interpolation.cpp2
-Wrote "pure2-interpolation.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-intro-example-hello-2022.cpp2
-Wrote "pure2-intro-example-hello-2022.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-intro-example-three-loops.cpp2
-Wrote "pure2-intro-example-three-loops.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-is-with-free-functions-predicate.cpp2
-Wrote "pure2-is-with-free-functions-predicate.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-is-with-polymorphic-types.cpp2
-Wrote "pure2-is-with-polymorphic-types.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-is-with-unnamed-predicates.cpp2
-Wrote "pure2-is-with-unnamed-predicates.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-is-with-variable-and-value.cpp2
-Wrote "pure2-is-with-variable-and-value.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-last-use.cpp2
-Wrote "pure2-last-use.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-lifetime-safety-pointer-init-1-error.cpp2
-Wrote "pure2-lifetime-safety-pointer-init-1-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-lifetime-safety-reject-null-error.cpp2
-Wrote "pure2-lifetime-safety-reject-null-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-look-up-parameter-across-unnamed-function.cpp2
-Wrote "pure2-look-up-parameter-across-unnamed-function.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-main-args.cpp2
-Wrote "pure2-main-args.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-more-wildcards.cpp2
-Wrote "pure2-more-wildcards.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-print.cpp2
-Wrote "pure2-print.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-range-operators.cpp2
-Wrote "pure2-range-operators.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-raw-string-literal-and-interpolation.cpp2
-Wrote "pure2-raw-string-literal-and-interpolation.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
-
-Testing pure2-regex-general.cpp2
-Wrote "pure2-regex-general.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_01_char_matcher.cpp2
-Wrote "pure2-regex_01_char_matcher.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_02_ranges.cpp2
-Wrote "pure2-regex_02_ranges.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_03_wildcard.cpp2
-Wrote "pure2-regex_03_wildcard.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_04_start_end.cpp2
-Wrote "pure2-regex_04_start_end.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_05_classes.cpp2
-Wrote "pure2-regex_05_classes.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_06_boundaries.cpp2
-Wrote "pure2-regex_06_boundaries.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_07_short_classes.cpp2
-Wrote "pure2-regex_07_short_classes.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_08_alternatives.cpp2
-Wrote "pure2-regex_08_alternatives.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_09_groups.cpp2
-Wrote "pure2-regex_09_groups.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_10_escapes.cpp2
-Wrote "pure2-regex_10_escapes.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_11_group_references.cpp2
-Wrote "pure2-regex_11_group_references.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_12_case_insensitive.cpp2
-Wrote "pure2-regex_12_case_insensitive.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_13_possessive_modifier.cpp2
-Wrote "pure2-regex_13_possessive_modifier.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_14_multiline_modifier.cpp2
-Wrote "pure2-regex_14_multiline_modifier.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_15_group_modifiers.cpp2
-Wrote "pure2-regex_15_group_modifiers.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_16_perl_syntax_modifier.cpp2
-Wrote "pure2-regex_16_perl_syntax_modifier.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_17_comments.cpp2
-Wrote "pure2-regex_17_comments.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_18_branch_reset.cpp2
-Wrote "pure2-regex_18_branch_reset.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_19_lookahead.cpp2
-Wrote "pure2-regex_19_lookahead.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-regex_21_atomic_patterns.cpp2
-Wrote "pure2-regex_21_atomic_patterns.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
+
+Testing pure2-regex-general.cpp2
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-repeated-call.cpp2
-Wrote "pure2-repeated-call.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-requires-clauses.cpp2
-Wrote "pure2-requires-clauses.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-return-tuple-no-identifier-error.cpp2
-Wrote "pure2-return-tuple-no-identifier-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-return-tuple-no-type-error.cpp2
-Wrote "pure2-return-tuple-no-type-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-return-tuple-operator.cpp2
-Wrote "pure2-return-tuple-operator.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-statement-parse-error.cpp2
-Wrote "pure2-statement-parse-error.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-statement-scope-parameters.cpp2
-Wrote "pure2-statement-scope-parameters.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-stdio-with-raii.cpp2
-Wrote "pure2-stdio-with-raii.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-stdio.cpp2
-Wrote "pure2-stdio.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-synthesize-rightshift-and-rightshifteq.cpp2
-Wrote "pure2-synthesize-rightshift-and-rightshifteq.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-template-parameter-lists.cpp2
-Wrote "pure2-template-parameter-lists.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-trailing-comma-assert.cpp2
-Wrote "pure2-trailing-comma-assert.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-trailing-commas.cpp2
-Wrote "pure2-trailing-commas.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-type-and-namespace-aliases.cpp2
-Wrote "pure2-type-and-namespace-aliases.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-type-constraints.cpp2
-Wrote "pure2-type-constraints.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-type-safety-1.cpp2
-Wrote "pure2-type-safety-1.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-type-safety-2-with-inspect-expression.cpp2
-Wrote "pure2-type-safety-2-with-inspect-expression.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-basics.cpp2
-Wrote "pure2-types-basics.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-down-upcast.cpp2
-Wrote "pure2-types-down-upcast.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-inheritance.cpp2
-Wrote "pure2-types-inheritance.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-order-independence-and-nesting.cpp2
-Wrote "pure2-types-order-independence-and-nesting.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-ordering-via-meta-functions.cpp2
-Wrote "pure2-types-ordering-via-meta-functions.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-smf-and-that-1-provide-everything.cpp2
-Wrote "pure2-types-smf-and-that-1-provide-everything.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2
-Wrote "pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2
-Wrote "pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2
-Wrote "pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2
-Wrote "pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-that-parameters.cpp2
-Wrote "pure2-types-that-parameters.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-types-value-types-via-meta-functions.cpp2
-Wrote "pure2-types-value-types-via-meta-functions.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-ufcs-member-access-and-chaining.cpp2
-Wrote "pure2-ufcs-member-access-and-chaining.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-union.cpp2
-Wrote "pure2-union.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-unsafe.cpp2
-Wrote "pure2-unsafe.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-variadics.cpp2
-Wrote "pure2-variadics.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Testing pure2-various-string-literals.cpp2
-Wrote "pure2-various-string-literals.cpp" using C++ backend
-  Transpile OK
-Undefined symbols for architecture arm64:
-  "_main", referenced from:
-      <initial-undefines>
-ld: symbol(s) not found for architecture arm64
-clang++: error: linker command failed with exit code 1 (use -v to see invocation)
-  Compile FAILED
+Usage:
+  stage0 scan <input>
+  Transpile FAILED
 
 Total tests: 130
 Failures: 130

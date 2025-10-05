@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "orbit_mask.h"  // For OrbitContext
+
 namespace cppfort {
 namespace stage0 {
     struct AnchorTuple;  // Forward declaration
@@ -51,7 +53,7 @@ public:
 
     // XAI 4.2 orbit-aware scanning with 5-anchor tuple detection
     // Returns boundaries with orbit metadata (lattice mask + confidence)
-    static ::std::vector<Boundary> scanAnchorsWithOrbits(
+    ::std::vector<Boundary> scanAnchorsWithOrbits(
         const ::std::string& source,
         const ::std::vector<AnchorPoint>& anchors
     );
@@ -74,7 +76,13 @@ public:
     // Check if position is at UTF-8 boundary (not a continuation byte)
     static bool isUTF8Boundary(const uint8_t* data, size_t position);
 
+    // Constructor to initialize OrbitContext
+    WideScanner(size_t max_orbit_depth = 100) : orbit_context_(max_orbit_depth) {}
+
 private:
+    // Orbit context for tracking structural balance during scanning
+    OrbitContext orbit_context_;
+
     // SIMD delimiter detection helpers
     static bool hasDelimiter(const uint8_t* data, size_t len, char delim);
     static int findDelimiterMask(const uint8_t* data, size_t len);

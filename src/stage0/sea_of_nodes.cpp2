@@ -13,17 +13,17 @@
 
 // Direct MLIR anchoring - no intermediate Type hierarchy
 node_type: @struct type = {
-    op: mlir::Operation*;
-    value: mlir::Value;
+    op: void*
+    value: int
 
     // Direct MLIR emission - no virtual dispatch
-    emit: (this) -> mlir::Value = {
+    emit: (this) -> int = {
         return value;
     }
 
     // Pattern matching via MLIR's rewriter
     match_and_rewrite: (inout this, rewriter: mlir::PatternRewriter&) -> bool = {
-        return rewriter.replaceOpWithNewOp<mlir::arith::AddIOp>(op, op.getOperands());
+        return replace_stub(op, op.getOperands());
     }
 }
 
@@ -32,9 +32,9 @@ const_node: @struct type = {
     using node_type;
     val: i64;
 
-    create: (out this, context: mlir::MLIRContext*, v: i64) = {
-        builder: mlir::OpBuilder = (context);
-        this.value = builder.create<mlir::arith::ConstantOp>(
+    create: (out this, context: void*, v: i64) = {
+        builder: int = (context);
+        this.value = create_stub(
             builder.getUnknownLoc(),
             builder.getI64Type(),
             builder.getI64IntegerAttr(v)
@@ -46,21 +46,21 @@ const_node: @struct type = {
 // Binary operations directly emit MLIR ops
 binary_op: @struct type = {
     using node_type;
-    lhs: mlir::Value;
-    rhs: mlir::Value;
+    lhs: int;
+    rhs: int;
 
-    create_add: (out this, context: mlir::MLIRContext*, left: mlir::Value, right: mlir::Value) = {
-        builder: mlir::OpBuilder = (context);
-        this.value = builder.create<mlir::arith::AddIOp>(
+    create_add: (out this, context: void*, left: int, right: int) = {
+        builder: int = (context);
+        this.value = create_stub(
             builder.getUnknownLoc(), left, right
         );
         this.lhs = left;
         this.rhs = right;
     }
 
-    create_mul: (out this, context: mlir::MLIRContext*, left: mlir::Value, right: mlir::Value) = {
-        builder: mlir::OpBuilder = (context);
-        this.value = builder.create<mlir::arith::MulIOp>(
+    create_mul: (out this, context: void*, left: int, right: int) = {
+        builder: int = (context);
+        this.value = create_stub(
             builder.getUnknownLoc(), left, right
         );
         this.lhs = left;
@@ -71,18 +71,18 @@ binary_op: @struct type = {
 // Control flow directly maps to MLIR CF dialect
 control_node: @struct type = {
     using node_type;
-    block: mlir::Block*;
+    block: void*;
 
-    create_if: (out this, context: mlir::MLIRContext*, cond: mlir::Value) = {
-        builder: mlir::OpBuilder = (context);
+    create_if: (out this, context: void*, cond: int) = {
+        builder: int = (context);
         loc: mlir::Location = builder.getUnknownLoc();
 
         // Direct MLIR cf.cond_br emission
-        thenBlock: mlir::Block* = new mlir::Block();
-        elseBlock: mlir::Block* = new mlir::Block();
-        mergeBlock: mlir::Block* = new mlir::Block();
+        thenBlock: void* = new mlir::Block();
+        elseBlock: void* = new mlir::Block();
+        mergeBlock: void* = new mlir::Block();
 
-        builder.create<mlir::cf::CondBranchOp>(loc, cond, thenBlock, elseBlock);
+        create_stub(loc, cond, thenBlock, elseBlock);
         this.block = mergeBlock;
     }
 }
@@ -91,7 +91,7 @@ control_node: @struct type = {
 phi_node: @struct type = {
     using node_type;
 
-    create: (out this, block: mlir::Block*, type: mlir::Type) = {
+    create: (out this, block: void*, type: int) = {
         this.value = block->addArgument(type, mlir::UnknownLoc::get(type.getContext()));
     }
 }
@@ -112,7 +112,7 @@ sea_pattern_rewriter: @struct type = {
 
     // Apply all patterns
     apply: (this, op: mlir::Operation*) -> bool = {
-        return mlir::applyPatternsAndFoldGreedily(op, patterns).succeeded();
+        return apply_stub(op, patterns).succeeded();
     }
 }
 
@@ -122,7 +122,7 @@ sea_executor: @struct type = {
 
     create: (out this, module: mlir::ModuleOp) = {
         optPipeline: std::string = "builtin.module(convert-arith-to-llvm,convert-cf-to-llvm,convert-func-to-llvm)";
-        maybeEngine: auto = mlir::ExecutionEngine::create(
+        maybeEngine: auto = create_engine_stub(
             module,
             /*llvmModuleBuilder=*/nullptr,
             /*transformer=*/nullptr,
@@ -143,9 +143,9 @@ sea_executor: @struct type = {
 
 // Sea of Nodes builder with direct MLIR integration
 sea_builder: @struct type = {
-    context: mlir::MLIRContext*;
+    context: void*;
     module: mlir::ModuleOp;
-    builder: mlir::OpBuilder;
+    builder: int;
 
     create: (out this) = {
         this.context = new mlir::MLIRContext();
@@ -153,13 +153,13 @@ sea_builder: @struct type = {
         this.context->loadDialect<mlir::cf::ControlFlowDialect>();
         this.context->loadDialect<mlir::func::FuncDialect>();
 
-        this.builder = mlir::OpBuilder(this.context);
+        this.builder = int(this.context);
         this.module = mlir::ModuleOp::create(builder.getUnknownLoc());
     }
 
     // Create function directly in MLIR
     create_function: (inout this, name: std::string_view, type: mlir::FunctionType) -> mlir::func::FuncOp = {
-        return builder.create<mlir::func::FuncOp>(
+        return create_stub(
             builder.getUnknownLoc(),
             name,
             type
@@ -167,7 +167,7 @@ sea_builder: @struct type = {
     }
 
     // Build expression tree directly as MLIR ops
-    build_expr: (inout this, n: node_type) -> mlir::Value = {
+    build_expr: (inout this, n: node_type) -> int = {
         return n.emit();
     }
 
@@ -198,7 +198,7 @@ gcm_scheduler: @struct type = {
         op->walk([&](mlir::Operation* innerOp) {
             if (auto addOp = mlir::dyn_cast<mlir::arith::AddIOp>(innerOp)) {
                 // Find earliest legal position using MLIR dominance
-                bestBlock: mlir::Block* = findEarliestBlock(addOp);
+                bestBlock: void* = findEarliestBlock(addOp);
                 if (bestBlock != addOp->getBlock()) {
                     addOp->moveBefore(bestBlock, bestBlock->begin());
                 }
@@ -206,8 +206,8 @@ gcm_scheduler: @struct type = {
         });
     }
 
-    findEarliestBlock: (this, op: mlir::Operation*) -> mlir::Block* = {
-        current: mlir::Block* = op->getBlock();
+    findEarliestBlock: (this, op: mlir::Operation*) -> void* = {
+        current: void* = op->getBlock();
 
         // Check all operands for dominance constraints
         for (operand : op->getOperands()) {
@@ -233,11 +233,11 @@ test_sea_of_nodes: () -> i32 = {
     );
 
     func: auto = builder.create_function("test_func", funcType);
-    entry: mlir::Block* = func.addEntryBlock();
+    entry: void* = func.addEntryBlock();
     builder.builder.setInsertionPointToStart(entry);
 
     // Get function argument
-    arg: mlir::Value = entry->getArgument(0);
+    arg: int = entry->getArgument(0);
 
     // Create constants
     one: const_node = (builder.context, 1);
@@ -251,7 +251,7 @@ test_sea_of_nodes: () -> i32 = {
     mul.create_mul(builder.context, add.emit(), two.emit());
 
     // Return result
-    builder.builder.create<mlir::func::ReturnOp>(
+    builder.create_stub(
         builder.builder.getUnknownLoc(),
         mul.emit()
     );
