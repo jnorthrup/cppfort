@@ -1,0 +1,8 @@
+@ir_version 1.0
+@translation_unit
+  @function main -> "int"
+    @block
+      @return "0"
+    @endblock
+  @endfunction
+@end_translation_unit

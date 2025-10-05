@@ -1,0 +1,8 @@
+add: (in x: int, in y: int) -> int = {
+    return x + y;
+}
+
+main: () -> int = {
+    result: int = add(10, 20);
+    return result;
+}

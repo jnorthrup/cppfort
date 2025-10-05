@@ -1,0 +1,5 @@
+modify: (in x: int, out y: int, inout z: int) -> int = {
+    y = x + 1;
+    z = z * 2;
+    return x + y + z;
+}

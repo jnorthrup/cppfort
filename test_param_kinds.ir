@@ -1,0 +1,13 @@
+@ir_version 1.0
+@translation_unit
+  @function modify -> "int"
+    @param x in "int"
+    @param y out "int"
+    @param z inout "int"
+    @block
+      @expr "y = x + 1"
+      @expr "z = z * 2"
+      @return "x + y + z"
+    @endblock
+  @endfunction
+@end_translation_unit

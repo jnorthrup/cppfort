@@ -1,0 +1,16 @@
+@ir_version 1.0
+@translation_unit
+  @function add -> "int"
+    @param x in "int"
+    @param y in "int"
+    @block
+      @return "x + y"
+    @endblock
+  @endfunction
+  @function main -> "int"
+    @block
+      @var result "int" = "add(10, 20)"
+      @return "result"
+    @endblock
+  @endfunction
+@end_translation_unit
