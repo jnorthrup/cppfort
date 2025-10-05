@@ -41,13 +41,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-        cppfort::stage0::Transpiler transpiler;
-        cppfort::stage0::Emitter emitter;
-        cppfort::stage0::EmitOptions emit_options;
-        emit_options.include_headers = true;
-        emit_options.inline_cpp2_header = inline_cpp2;  // Inline cpp2.h contents for standalone output
-        emit_options.bundle_headers = bundle_cpp2;       // Bundle cpp2.h contents at beginning of output
-        std::string transformed;
+    // Read input file
+    std::ifstream in(input_path);
+    if (!in) {
+        std::cerr << "Failed to open input file: " << input_path << "\n";
+        return 1;
+    }
+
+    std::string src;
+    std::string line;
     while (std::getline(in, line)) {
         src += line + "\n";
     }

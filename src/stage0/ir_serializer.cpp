@@ -96,43 +96,43 @@ void IRSerializer::serializeParameter(::std::ostringstream& out, const Parameter
         << escape(param.type) << "\"\n";
 }
 
-void IRSerializer::serializeStatement(::std::ostringstream& out, const Statement& stmt, int ind) {
+void IRSerializer::serializeStatement(::std::ostringstream& out, const OrbitStatement& stmt, int ind) {
     ::std::visit([&](const auto& s) {
         using T = ::std::decay_t<decltype(s)>;
-        if constexpr (::std::is_same_v<T, VariableDecl>) {
+        if constexpr (::std::is_same_v<T, OrbitVariableDecl>) {
             out << indent(ind) << "@var " << s.name << " \"" << escape(s.type) << "\"";
             if (s.initializer) {
                 out << " = \"" << escape(*s.initializer) << "\"";
             }
             out << "\n";
-        } else if constexpr (::std::is_same_v<T, ExpressionStmt>) {
+        } else if constexpr (::std::is_same_v<T, OrbitExpressionStmt>) {
             out << indent(ind) << "@expr \"" << escape(s.expression) << "\"\n";
-        } else if constexpr (::std::is_same_v<T, ReturnStmt>) {
+        } else if constexpr (::std::is_same_v<T, OrbitReturnStmt>) {
             out << indent(ind) << "@return";
             if (s.expression) {
                 out << " \"" << escape(*s.expression) << "\"";
             }
             out << "\n";
-        } else if constexpr (::std::is_same_v<T, AssertStmt>) {
+        } else if constexpr (::std::is_same_v<T, OrbitAssertStmt>) {
             out << indent(ind) << "@assert \"" << escape(s.condition) << "\"";
             if (s.category) {
                 out << " category=\"" << escape(*s.category) << "\"";
             }
             out << "\n";
-        } else if constexpr (::std::is_same_v<T, ForChainStmt>) {
+        } else if constexpr (::std::is_same_v<T, OrbitForChainStmt>) {
             out << indent(ind) << "@for \"" << escape(s.range_expression) << "\"\n";
             serializeParameter(out, s.loop_parameter, ind + 1);
             if (s.next_expression) {
                 out << indent(ind + 1) << "@next \"" << escape(*s.next_expression) << "\"\n";
             }
             serializeBlock(out, s.body, ind + 1);
-        } else if constexpr (::std::is_same_v<T, RawStmt>) {
+        } else if constexpr (::std::is_same_v<T, OrbitRawStmt>) {
             out << indent(ind) << "@raw \"" << escape(s.text) << "\"\n";
         }
     }, stmt);
 }
 
-void IRSerializer::serializeBlock(::std::ostringstream& out, const Block& block, int ind) {
+void IRSerializer::serializeBlock(::std::ostringstream& out, const OrbitBlock& block, int ind) {
     out << indent(ind) << "@block\n";
     for (const auto& stmt : block.statements) {
         serializeStatement(out, stmt, ind + 1);
@@ -153,10 +153,10 @@ void IRSerializer::serializeFunction(::std::ostringstream& out, const FunctionDe
     }
 
     // Serialize body
-    if (::std::holds_alternative<Block>(fn.body)) {
-        serializeBlock(out, ::std::get<Block>(fn.body), ind + 1);
+    if (::std::holds_alternative<OrbitBlock>(fn.body)) {
+        serializeBlock(out, ::std::get<OrbitBlock>(fn.body), ind + 1);
     } else {
-        const auto& expr_body = ::std::get<ExpressionBody>(fn.body);
+        const auto& expr_body = ::std::get<OrbitExpressionBody>(fn.body);
         out << indent(ind + 1) << "@expr_body \"" << escape(expr_body.expression) << "\"\n";
     }
 
@@ -204,10 +204,10 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
     auto lines = split(ir_text, '\n');
 
     ::std::vector<::std::string> context_stack;
-    Block* current_block = nullptr;
-    FunctionDecl* current_function = nullptr;
-    TypeDecl* current_type = nullptr;
-    ForChainStmt* current_for = nullptr;
+    OrbitBlock* current_block = nullptr;
+    OrbitFunctionDecl* current_function = nullptr;
+    OrbitTypeDecl* current_type = nullptr;
+    OrbitForChainStmt* current_for = nullptr;
 
     for (size_t line_num = 0; line_num < lines.size(); ++line_num) {
         const auto& line = lines[line_num];
@@ -227,7 +227,7 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
         if (directive == "ir_version" || directive == "translation_unit") {
             continue;
         } else if (directive == "include") {
-            IncludeDecl inc;
+            OrbitIncludeDecl inc;
             if (args.size() >= 2 && args[0] == '<') {
                 inc.is_system = true;
                 auto end = args.find('>');
@@ -272,22 +272,22 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
 
             current_function->parameters.push_back(param);
         } else if (directive == "block") {
-            Block block;
+            OrbitBlock block;
             if (current_function) {
                 current_function->body = block;
-                current_block = &::std::get<Block>(current_function->body);
+                current_block = &::std::get<OrbitBlock>(current_function->body);
             } else if (current_for) {
                 current_for->body = block;
                 current_block = &current_for->body;
             }
         } else if (directive == "expr_body" && current_function) {
-            ExpressionBody expr_body;
+            OrbitExpressionBody expr_body;
             if (args.size() >= 2 && args.front() == '"' && args.back() == '"') {
                 expr_body.expression = unescape(args.substr(1, args.size() - 2));
             }
             current_function->body = expr_body;
         } else if (directive == "var" && current_block) {
-            VariableDecl var;
+            OrbitVariableDecl var;
 
             // Parse: name "type" = "init"
             auto first_quote = args.find('"');
@@ -307,19 +307,19 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
 
             current_block->statements.push_back(var);
         } else if (directive == "expr" && current_block) {
-            ExpressionStmt expr;
+            OrbitExpressionStmt expr;
             if (args.size() >= 2 && args.front() == '"' && args.back() == '"') {
                 expr.expression = unescape(args.substr(1, args.size() - 2));
             }
             current_block->statements.push_back(expr);
         } else if (directive == "return" && current_block) {
-            ReturnStmt ret;
+            OrbitReturnStmt ret;
             if (!args.empty() && args.front() == '"' && args.back() == '"') {
                 ret.expression = unescape(args.substr(1, args.size() - 2));
             }
             current_block->statements.push_back(ret);
         } else if (directive == "assert" && current_block) {
-            AssertStmt assert_stmt;
+            OrbitAssertStmt assert_stmt;
 
             auto first_quote = args.find('"');
             auto second_quote = args.find('"', first_quote + 1);
@@ -336,7 +336,7 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
 
             current_block->statements.push_back(assert_stmt);
         } else if (directive == "raw" && current_block) {
-            RawStmt raw;
+            OrbitRawStmt raw;
             if (args.size() >= 2 && args.front() == '"' && args.back() == '"') {
                 raw.text = unescape(args.substr(1, args.size() - 2));
             }
@@ -356,7 +356,7 @@ TranslationUnit IRSerializer::deserialize(const ::std::string& ir_text) {
         } else if (directive == "endtype") {
             current_type = nullptr;
         } else if (directive == "raw_decl") {
-            RawDecl raw;
+            OrbitRawDecl raw;
             if (args.size() >= 2 && args.front() == '"' && args.back() == '"') {
                 raw.text = unescape(args.substr(1, args.size() - 2));
             }

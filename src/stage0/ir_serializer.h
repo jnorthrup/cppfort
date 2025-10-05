@@ -17,8 +17,8 @@ public:
 
 private:
     static void serializeParameter(::std::ostringstream& out, const Parameter& param, int indent);
-    static void serializeStatement(::std::ostringstream& out, const Statement& stmt, int indent);
-    static void serializeBlock(::std::ostringstream& out, const Block& block, int indent);
+    static void serializeStatement(::std::ostringstream& out, const OrbitStatement& stmt, int indent);
+    static void serializeBlock(::std::ostringstream& out, const OrbitBlock& block, int indent);
     static void serializeFunction(::std::ostringstream& out, const FunctionDecl& fn, int indent);
     static void serializeType(::std::ostringstream& out, const TypeDecl& type, int indent);
 

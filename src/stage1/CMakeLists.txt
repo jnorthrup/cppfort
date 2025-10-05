@@ -10,7 +10,10 @@ add_executable(stage1 transpiler.cpp)
 target_compile_features(stage1 PUBLIC cxx_std_20)
 
 # Include Stage 0 headers for access to the AST and Emitter if needed
-target_include_directories(stage1 PUBLIC ${CMAKE_SOURCE_DIR}/src/stage0)
+target_include_directories(stage1 PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/stage0
+)
 
 # Link Stage 0 library (provides the emitter implementation)
 target_link_libraries(stage1 PRIVATE stage0)

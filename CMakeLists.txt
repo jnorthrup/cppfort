@@ -1,4 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Force C++11 ABI to match Homebrew libraries - only when using Homebrew clang
+if (CMAKE_CXX_COMPILER_ID MATCHES "^AppleClang$" AND CMAKE_CXX_COMPILER MATCHES "/opt/homebrew")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -D_GLIBCXX_USE_CXX11_ABI=1 -I/opt/homebrew/Cellar/llvm/21.1.2/include/c++/v1")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -D_GLIBCXX_USE_CXX11_ABI=1")
+endif()
+if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+    message(FATAL_ERROR "Stage0 requires Ninja. Use: cmake -G Ninja ...")
+endif()
+
 project(cppfort LANGUAGES CXX C)
 
 include(CTest)
@@ -9,8 +19,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Force libc++ only when using Clang to keep Homebrew GTest ABI aligned.
 if (CMAKE_CXX_COMPILER_ID MATCHES "^AppleClang$" OR CMAKE_CXX_COMPILER_ID MATCHES "^Clang$")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+  # Remove forced libc++ to avoid ABI mismatch with Homebrew libraries
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+  # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
 endif()
 
 # --- MLIR Integration ---
@@ -40,3 +51,17 @@ endif()
 
 # Include the src directory which contains the stage1 and stage2 sub‑folders
 add_subdirectory(src)
+
+# Find yaml-cpp for unified orbit patterns
+if(APPLE)
+  if(DEFINED ENV{HOMEBREW_PREFIX})
+    set(_BREW_PREFIX $ENV{HOMEBREW_PREFIX})
+  else()
+    set(_BREW_PREFIX "/opt/homebrew")
+  endif()
+  set(CMAKE_PREFIX_PATH "${_BREW_PREFIX}" ${CMAKE_PREFIX_PATH})
+endif()
+find_package(yaml-cpp REQUIRED)
+
+# Find GTest
+find_package(GTest REQUIRED)

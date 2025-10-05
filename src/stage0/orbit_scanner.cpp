@@ -22,7 +22,8 @@ OrbitScanner::OrbitScanner(const OrbitScannerConfig& config,
   : m_config(config),
     m_rabinKarp(::std::make_unique<RabinKarp>()),
     m_context(::std::make_unique<OrbitContext>(m_config.maxDepth)),
-    m_loader(::std::move(loader)) {
+    m_loader(::std::move(loader)),
+    m_unifiedDatabase(::std::make_unique<UnifiedOrbitDatabase>()) {
   if (!m_loader) {
     m_loader = ::std::unique_ptr<IMultiGrammarLoader>(new MultiGrammarLoader());
   }
@@ -42,6 +43,23 @@ bool OrbitScanner::initialize() {
     return false;
   }
 
+  // Load unified orbit patterns
+  ::std::filesystem::path unifiedPatternsPath = m_config.patternsDir / "bnfc_cpp2_complete.yaml";
+  if (::std::filesystem::exists(unifiedPatternsPath)) {
+    if (!m_unifiedDatabase->loadUnifiedPatterns(unifiedPatternsPath.string())) {
+      ::std::cerr << "Warning: Failed to load unified orbit patterns from " << unifiedPatternsPath << ::std::endl;
+      // Continue without unified patterns - not a fatal error
+    } else {
+      auto stats = m_unifiedDatabase->getUnificationStats();
+      ::std::cout << "Loaded unified orbit patterns: " << stats.total_patterns
+                  << " total, " << stats.unified_patterns << " unified ("
+                  << (stats.unification_ratio * 100.0) << "% unification ratio)" << ::std::endl;
+    }
+  } else {
+    ::std::cout << "Unified orbit patterns file not found at " << unifiedPatternsPath
+                << " - continuing with legacy patterns only" << ::std::endl;
+  }
+
   return validateInitialization();
 }
 
@@ -49,16 +67,188 @@ DetectionResult OrbitScanner::scan(const ::std::string& code) const {
   // Get all patterns from loaded grammars
   auto allPatterns = m_loader->getAllPatterns();
 
-  return scan(code, allPatterns);
+  // Get unified patterns for all grammars
+  ::std::vector<UnifiedOrbitPattern> unifiedPatterns;
+  if (m_unifiedDatabase) {
+    // Get patterns for all supported grammars
+    auto cPatterns = m_unifiedDatabase->getPatternsForGrammar(0x01); // C
+    auto cppPatterns = m_unifiedDatabase->getPatternsForGrammar(0x02); // CPP
+    auto cpp2Patterns = m_unifiedDatabase->getPatternsForGrammar(0x04); // CPP2
+
+    unifiedPatterns.insert(unifiedPatterns.end(), cPatterns.begin(), cPatterns.end());
+    unifiedPatterns.insert(unifiedPatterns.end(), cppPatterns.begin(), cppPatterns.end());
+    unifiedPatterns.insert(unifiedPatterns.end(), cpp2Patterns.begin(), cpp2Patterns.end());
+  }
+
+  return scan(code, allPatterns, unifiedPatterns);
 }
 
 DetectionResult OrbitScanner::scan(const ::std::string& code,
                                   const ::std::vector<OrbitPattern>& patterns) const {
-  // Find all matches in the code
-  auto matches = findMatches(code, patterns);
+  // Convert legacy patterns to unified format for consistency
+  ::std::vector<UnifiedOrbitPattern> unifiedPatterns;
+  return scan(code, patterns, unifiedPatterns);
+}
 
-  // Analyze matches to determine grammar
-  return analyzeMatches(matches);
+MatchResults OrbitScanner::findUnifiedMatches(const ::std::string& code,
+                                            const ::std::vector<UnifiedOrbitPattern>& patterns) const {
+  MatchResults results;
+
+  // Create a temporary OrbitContext for scanning
+  OrbitContext scanContext(m_config.maxDepth);
+
+  // Generate alternating anchor points at UTF-8 boundaries (64/32 byte spacing)
+  auto anchors = WideScanner::generateAlternatingAnchors(code, 64);
+
+  // SIMD-accelerated boundary detection between anchors
+  auto boundaries = WideScanner::scanAnchorsSIMD(code, anchors);
+
+  // Build scan positions: anchor points + boundaries
+  ::std::vector<size_t> scanPositions;
+  scanPositions.reserve(anchors.size() + boundaries.size());
+  for (const auto& anchor : anchors) {
+    scanPositions.push_back(anchor.position);
+  }
+  for (const auto& boundary : boundaries) {
+    scanPositions.push_back(boundary.position);
+  }
+  ::std::sort(scanPositions.begin(), scanPositions.end());
+  scanPositions.erase(::std::unique(scanPositions.begin(), scanPositions.end()), scanPositions.end());
+
+  // Scan at each anchor/boundary position
+  for (size_t pos : scanPositions) {
+    if (pos >= code.length()) continue;
+    char ch = code[pos];
+
+    // Update orbit context with current character
+    scanContext.update(ch);
+
+    // Get current orbit counts for pattern detection
+    auto orbitCounts = scanContext.getCounts();
+
+    // Get current orbit hashes for this position
+    auto orbitHashes = m_rabinKarp->processOrbitContext(scanContext);
+
+    // Detect unified grammar patterns
+    for (const auto& pattern : patterns) {
+      // Determine grammar type from pattern category
+      GrammarType grammar = GrammarType::UNKNOWN;
+      if (pattern.category >= UnifiedOrbitCategory::CPP2_Only) {
+        if (pattern.category == UnifiedOrbitCategory::CPP2_Only) {
+          grammar = GrammarType::CPP2;
+        } else if (pattern.category == UnifiedOrbitCategory::CPP_Only) {
+          grammar = GrammarType::CPP;
+        } else {
+          grammar = GrammarType::C;
+        }
+      } else {
+        // Common trunk patterns - determine from context or use multi-grammar
+        // For now, default to CPP2 for common patterns (can be refined)
+        grammar = GrammarType::CPP2;
+      }
+
+      // Get signatures for this grammar
+      auto signatures = pattern.getSignaturesForGrammar(static_cast<uint8_t>(grammar));
+
+      bool signatureMatched = signatures.empty();
+      ::std::string matchedSignature;
+
+      if (!signatureMatched) {
+        for (const auto& signature : signatures) {
+          if (signature.empty()) continue;
+
+          if (pos + signature.size() <= code.size() &&
+              code.compare(pos, signature.size(), signature) == 0) {
+            signatureMatched = true;
+            matchedSignature = signature;
+            break;
+          }
+
+          if (pos + 1 >= signature.size() &&
+              code.compare(pos + 1 - signature.size(), signature.size(), signature) == 0) {
+            signatureMatched = true;
+            matchedSignature = signature;
+            break;
+          }
+        }
+      }
+
+      if (!signatureMatched) {
+        continue;
+      }
+
+      // Validate depth context (using pattern's expected depth if specified)
+      int currentDepth = scanContext.getDepth();
+      // Note: Unified patterns don't have expected_depth field, could be added later
+
+      // Compute current confix context bitmask
+      uint8_t ctxMask = scanContext.confixMask();
+
+      // Check confix mask requirements
+      if ((pattern.confix_mask & ctxMask) == 0) {
+        continue;
+      }
+
+      if (matchedSignature.empty()) {
+        matchedSignature = ::std::string(1, ch);
+      }
+
+      // Signature match + valid confix = high confidence
+      double confidence = signatureMatched ? 0.95 : 0.25;
+
+      // Apply pattern weight
+      confidence *= pattern.weight;
+
+      // Report matches that meet threshold
+      if (confidence >= m_config.patternThreshold) {
+        OrbitMatch match;
+        match.patternName = pattern.name;
+        match.grammarType = grammar;
+        match.startPos = pos;
+        match.endPos = pos + matchedSignature.size();
+        match.signature = matchedSignature;
+        match.confidence = confidence;
+        match.orbitCounts = orbitCounts;
+        match.orbitHashes = orbitHashes;
+
+        results.push_back(match);
+
+        // Limit results to prevent excessive memory usage
+        if (results.size() >= m_config.maxMatches) {
+          break;
+        }
+      }
+    }
+
+    if (results.size() >= m_config.maxMatches) {
+      break;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Scan code with both legacy and unified patterns
+ * @param code Source code to scan
+ * @param legacyPatterns Legacy orbit patterns
+ * @param unifiedPatterns Unified orbit patterns
+ * @return Detection result
+ */
+DetectionResult OrbitScanner::scan(const ::std::string& code,
+                                  const ::std::vector<OrbitPattern>& legacyPatterns,
+                                  const ::std::vector<UnifiedOrbitPattern>& unifiedPatterns) const {
+  // Find all matches using both pattern types
+  auto legacyMatches = findMatches(code, legacyPatterns);
+  auto unifiedMatches = findUnifiedMatches(code, unifiedPatterns);
+
+  // Combine matches
+  MatchResults allMatches;
+  allMatches.insert(allMatches.end(), legacyMatches.begin(), legacyMatches.end());
+  allMatches.insert(allMatches.end(), unifiedMatches.begin(), unifiedMatches.end());
+
+  // Analyze combined matches to determine grammar
+  return analyzeMatches(allMatches);
 }
 
 const OrbitScannerConfig& OrbitScanner::getConfig() const {

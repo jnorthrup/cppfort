@@ -10,6 +10,7 @@
 #include "orbit_mask.h"
 #include "tblgen_patterns.h"
 #include "cpp2_key_resolver.h"
+#include "unified_orbit_patterns.h"
 
 namespace cppfort {
 namespace ir {
@@ -64,6 +65,7 @@ private:
     std::unique_ptr<OrbitContext> m_context;
     std::unique_ptr<IMultiGrammarLoader> m_loader;
     std::unique_ptr<cppfort::stage0::CPP2KeyResolver> m_cpp2Resolver;
+    std::unique_ptr<UnifiedOrbitDatabase> m_unifiedDatabase;
 
     // Validation methods
     bool validateConfig() const;
@@ -72,6 +74,8 @@ private:
     // Core scanning methods
     MatchResults findMatches(const std::string& code,
                            const std::vector<OrbitPattern>& patterns) const;
+    MatchResults findUnifiedMatches(const std::string& code,
+                                   const std::vector<UnifiedOrbitPattern>& patterns) const;
     MatchResults applyCPP2KeyResolution(const std::string& code,
                                        const MatchResults& candidates) const;
     double detectOrbitPattern(GrammarType grammar,
@@ -123,6 +127,17 @@ public:
      */
     DetectionResult scan(const std::string& code,
                         const std::vector<OrbitPattern>& patterns) const;
+
+    /**
+     * Scan code with both legacy and unified patterns
+     * @param code Source code to scan
+     * @param legacyPatterns Legacy orbit patterns
+     * @param unifiedPatterns Unified orbit patterns
+     * @return Detection result
+     */
+    DetectionResult scan(const std::string& code,
+                        const std::vector<OrbitPattern>& legacyPatterns,
+                        const std::vector<UnifiedOrbitPattern>& unifiedPatterns) const;
 
     /**
      * Get current configuration
