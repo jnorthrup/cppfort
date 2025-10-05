@@ -13,6 +13,7 @@
 #include "rabin_karp.h"
 #include "wide_scanner.h"
 #include "projection_oracle.h"
+#include "rbcursive.h"
 
 namespace cppfort {
 namespace ir {
@@ -27,6 +28,8 @@ OrbitScanner::OrbitScanner(const OrbitScannerConfig& config,
   if (!m_loader) {
     m_loader = ::std::unique_ptr<IMultiGrammarLoader>(new MultiGrammarLoader());
   }
+  // Initialize private rbcursive scanner asset
+  m_rbcursive = ::std::make_unique<RBCursiveScanner>();
 }
 
 OrbitScanner::~OrbitScanner() = default;

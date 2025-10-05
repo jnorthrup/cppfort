@@ -10,6 +10,7 @@ add_library(orbit_scanner
     stage0/wide_scanner.cpp
     stage0/confix_fishy_detector.cpp
     stage0/unified_orbit_patterns.cpp
+    stage0/rbcursive.cpp
 )
 
 target_include_directories(orbit_scanner PUBLIC
@@ -30,6 +31,7 @@ add_library(stage0
     stage0/ir_serializer.cpp
     stage0/node.cpp
     stage0/type.cpp
+    stage0/stream_parser.cpp
 )
 
 target_include_directories(stage0 PUBLIC

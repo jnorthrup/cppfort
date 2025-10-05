@@ -19,6 +19,7 @@ namespace ir {
 class IMultiGrammarLoader;
 class RabinKarp;
 class OrbitContext;
+class RBCursiveScanner;
 
 /**
  * Configuration for the orbit scanner
@@ -66,6 +67,8 @@ private:
     std::unique_ptr<IMultiGrammarLoader> m_loader;
     std::unique_ptr<cppfort::stage0::CPP2KeyResolver> m_cpp2Resolver;
     std::unique_ptr<UnifiedOrbitDatabase> m_unifiedDatabase;
+    // Centralized scanner/lexer utility (private asset, replacing ad-hoc scanners)
+    std::unique_ptr<RBCursiveScanner> m_rbcursive;
 
     // Validation methods
     bool validateConfig() const;
