@@ -109,5 +109,45 @@ RBCursiveScanner::scanWithPattern(std::string_view data,
     return out;
 }
 
+
+CombinatorPool::CombinatorPool(std::size_t initial_size) {
+    pool_.resize(initial_size);
+    used_.assign(initial_size, false);
+}
+
+RBCursiveScanner* CombinatorPool::allocate() {
+    for (std::size_t idx = 0; idx < pool_.size(); ++idx) {
+        if (!used_[idx]) {
+            used_[idx] = true;
+            return &pool_[idx];
+        }
+    }
+    pool_.emplace_back();
+    used_.push_back(true);
+    return &pool_.back();
+}
+
+void CombinatorPool::release(RBCursiveScanner* scanner) {
+    if (!scanner || pool_.empty()) {
+        return;
+    }
+    auto* begin = pool_.data();
+    auto* end = begin + pool_.size();
+    if (scanner >= begin && scanner < end) {
+        std::size_t idx = static_cast<std::size_t>(scanner - begin);
+        used_[idx] = false;
+    }
+}
+
+std::size_t CombinatorPool::available() const {
+    std::size_t count = 0;
+    for (bool used : used_) {
+        if (!used) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 } // namespace ir
 } // namespace cppfort

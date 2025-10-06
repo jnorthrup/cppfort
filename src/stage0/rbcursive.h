@@ -66,5 +66,18 @@ private:
     static bool globMatch(std::string_view text, std::string_view pattern);
 };
 
+class CombinatorPool {
+public:
+    explicit CombinatorPool(std::size_t initial_size = 0);
+
+    RBCursiveScanner* allocate();
+    void release(RBCursiveScanner* scanner);
+    std::size_t available() const;
+
+private:
+    std::vector<RBCursiveScanner> pool_;
+    std::vector<bool> used_;
+};
+
 } // namespace ir
 } // namespace cppfort

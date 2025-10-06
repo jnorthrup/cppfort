@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "orbit_mask.h"  // For OrbitContext
+#include "orbit_ring.h"
+#include "packrat_cache.h"
 
 namespace cppfort {
 namespace stage0 {
@@ -27,6 +29,12 @@ public:
     };
 
     // Boundary detection result with XAI 4.2 orbit data
+    struct FanoutStats {
+        size_t processed_bytes = 0;
+        size_t vector_iterations = 0;
+        size_t scalar_iterations = 0;
+    };
+
     struct Boundary {
         size_t position;
         char delimiter;  // Character at boundary (if delimiter)
@@ -58,6 +66,9 @@ public:
         const ::std::vector<AnchorPoint>& anchors
     );
 
+    const ::std::vector<::cppfort::stage0::OrbitFragment>& fragments() const { return fragments_; }
+    const FanoutStats& stats() const { return stats_; }
+
     // Generate XAI 4.2 AnchorTuple for a given span
     // All 5 anchor types fire concurrently
     static ::std::vector<stage0::AnchorTuple> generateOrbitTuples(
@@ -82,10 +93,14 @@ public:
 private:
     // Orbit context for tracking structural balance during scanning
     OrbitContext orbit_context_;
+    ::cppfort::stage0::PackratCache packrat_cache_;
+    FanoutStats stats_;
+    ::std::vector<::cppfort::stage0::OrbitFragment> fragments_;
 
     // SIMD delimiter detection helpers
     static bool hasDelimiter(const uint8_t* data, size_t len, char delim);
     static int findDelimiterMask(const uint8_t* data, size_t len);
+    void reset_stats();
 };
 
 } // namespace cppfort::ir

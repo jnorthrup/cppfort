@@ -1,158 +1,152 @@
 # TODO: Self-Hosting Path
 
+code standards:
+cmake, 1 ninja per dir, no shell scripts, no python, no makefiles.
+
+this project current enforces the orbits holding the recursive combinators to stress the purpose built design simplicity of the data driven orbit tree configuration.
+
 ## Phase 1: Core Orbit Infrastructure
 
 ### 1.1 Create Orbit base class with grammar children
 
-- [ ] Add class Orbit to orbit_ring.h
-- [ ] Add OrbitType enum (Confix, Keyword, Operator, Identifier, Literal)
-- [ ] Add std::vector<EvidenceSpan> evidence member
-- [ ] Add std::map<GrammarType, Orbit*> grammar_children member
-- [ ] Add void assign_child(GrammarType g, Orbit* child) method
-- [ ] Add Orbit* get_child(GrammarType g) method
-- [ ] Add void parameterize_children(const PatternData& pattern) method
-- [ ] Add virtual bool matches(const EvidenceSpan& e) method
-- [ ] Add size_t start_pos member
-- [ ] Add size_t end_pos member
-- [ ] Add double confidence member
+- [x] Add class Orbit to orbit_ring.h
+- [x] Add OrbitType enum (Confix, Keyword, Operator, Identifier, Literal)
+- [x] Add std::vector<EvidenceSpan> evidence member
+- [x] Add std::map<GrammarType, Orbit*> grammar_children member
+- [x] Add void assign_child(GrammarType g, Orbit* child) method
+- [x] Add Orbit* get_child(GrammarType g) method
+- [x] Add void parameterize_children(const PatternData& pattern) method
+- [x] Add virtual bool matches(const EvidenceSpan& e) method
+- [x] Add size_t start_pos member
+- [x] Add size_t end_pos member
+- [x] Add double confidence member
 
 ### 1.2 Create OrbitIterator in orbit_iterator.cpp
 
-- [ ] Create orbit_iterator.h header file
-- [ ] Create orbit_iterator.cpp implementation file
-- [ ] Add class OrbitIterator declaration
-- [ ] Add Orbit* next() method
-- [ ] Add Orbit* current() const method
-- [ ] Add void reset() method
-- [ ] Add bool has_next() const method
-- [ ] Add std::vector<Orbit*> orbits member
-- [ ] Add size_t current_index member
-- [ ] Add constructor OrbitIterator()
-- [ ] Add destructor ~OrbitIterator()
+- [x] Create orbit_iterator.h header file
+- [x] Create orbit_iterator.cpp implementation file
+- [x] Add class OrbitIterator declaration
+- [x] Add Orbit* next() method
+- [x] Add Orbit* current() const method
+- [x] Add void reset() method
+- [x] Add bool has_next() const method
+- [x] Add std::vector<Orbit*> orbits member
+- [x] Add size_t current_index member
+- [x] Add constructor OrbitIterator()
+- [x] Add destructor ~OrbitIterator()
 
 ### 1.3 Create OrbitFragment struct
 
-- [ ] Add struct OrbitFragment to orbit_ring.h
-- [ ] Add std::string c_text member
-- [ ] Add std::string cpp_text member
-- [ ] Add std::string cpp2_text member
-- [ ] Add size_t start_pos member
-- [ ] Add size_t end_pos member
-- [ ] Add uint16_t lattice_mask member
-- [ ] Add double confidence member
+- [x] Add struct OrbitFragment to orbit_ring.h
+- [x] Add std::string c_text member
+- [x] Add std::string cpp_text member
+- [x] Add std::string cpp2_text member
+- [x] Add size_t start_pos member
+- [x] Add size_t end_pos member
+- [x] Add uint16_t lattice_mask member
+- [x] Add double confidence member
 
 ### 1.4 Create ConfixOrbit as derived class
 
-- [ ] Create confix_orbit.h header file
-- [ ] Create confix_orbit.cpp implementation file
-- [ ] Add class ConfixOrbit : public Orbit
-- [ ] Add char open_char member
-- [ ] Add char close_char member
-- [ ] Add int depth_counter member
-- [ ] Override bool matches(const EvidenceSpan& e) method
-- [ ] Add bool validate_pair(char open, char close) method
+- [x] Create confix_orbit.h header file
+- [x] Create confix_orbit.cpp implementation file
+- [x] Add class ConfixOrbit : public Orbit
+- [x] Add char open_char member
+- [x] Add char close_char member
+- [x] Add int depth_counter member
+- [x] Override bool matches(const EvidenceSpan& e) method
+- [x] Add bool validate_pair(char open, char close) method
 
-### 1.5 Grammar child parameterization
-
-- [ ] Parent orbit creates C_FunctionOrbit child
-- [ ] Parent orbit creates CPP_FunctionOrbit child
-- [ ] Parent orbit creates CPP2_FunctionOrbit child
-- [ ] Parent assigns "void %s()" pattern to C child
-- [ ] Parent assigns "auto %s() -> %s" pattern to CPP child
-- [ ] Parent assigns "%s: () -> %s" pattern to CPP2 child
-- [ ] All children receive same evidence span
-- [ ] Each child applies its pattern to evidence
-- [ ] Parent selects child with highest confidence match
 
 ## Phase 2: Wide Scanner Packrat Architecture
 
 ### 2.1 Create PackratCache for memoization
 
-- [ ] Add struct PackratEntry with position, orbit_id, result
-- [ ] Add std::unordered_map<size_t, PackratEntry> cache
-- [ ] Add bool has_cached(size_t pos, OrbitType type)
-- [ ] Add PackratEntry* get_cached(size_t pos, OrbitType type)
-- [ ] Add void store_cache(size_t pos, OrbitType type, result)
+- [x] Add struct PackratEntry with position, orbit_id, result
+- [x] Add std::unordered_map<size_t, PackratEntry> cache
+- [x] Add bool has_cached(size_t pos, OrbitType type)
+- [x] Add PackratEntry* get_cached(size_t pos, OrbitType type)
+- [x] Add void store_cache(size_t pos, OrbitType type, result)
 
 ### 2.2 Build n-way tree from grammar data
 
-- [ ] Load patterns/bnfc_cpp2_complete.yaml into tree root
-- [ ] Create branch node for each UnifiedOrbitCategory
-- [ ] Add C-specific leaves under C branch
-- [ ] Add CPP-specific leaves under CPP branch
-- [ ] Add CPP2-specific leaves under CPP2 branch
-- [ ] Share common trunk nodes between all three
+- [x] Load patterns/bnfc_cpp2_complete.yaml into tree root
+- [x] Create branch node for each UnifiedOrbitCategory
+- [x] Add C-specific leaves under C branch
+- [x] Add CPP-specific leaves under CPP branch
+- [x] Add CPP2-specific leaves under CPP2 branch
+- [x] Share common trunk nodes between all three
 
 ### 2.3 SIMD autovectorized orbit fanout
 
-- [ ] Add __attribute__((vector)) to scan loop
-- [ ] Process 16/32/64 bytes simultaneously
-- [ ] Fan out to multiple orbits in parallel
-- [ ] Each orbit checks its pattern concurrently
-- [ ] Winner takes the parse result
+- [x] Add __attribute__((vector)) to scan loop
+- [x] Process 16/32/64 bytes simultaneously
+- [x] Fan out to multiple orbits in parallel
+- [x] Each orbit checks its pattern concurrently
+- [x] Winner takes the parse result
 
 ## Phase 3: Combinator Integration
 
 ### 3.1 Add combinator to ConfixOrbit
 
-- [ ] Add forward declaration class RBCursiveScanner
-- [ ] Add RBCursiveScanner* combinator member
-- [ ] Add void set_combinator(RBCursiveScanner* c) method
-- [ ] Add RBCursiveScanner* get_combinator() const method
-- [ ] Initialize combinator to nullptr in constructor
+- [x] Add forward declaration class RBCursiveScanner
+- [x] Add RBCursiveScanner* combinator member
+- [x] Add void set_combinator(RBCursiveScanner* c) method
+- [x] Add RBCursiveScanner* get_combinator() const method
+- [x] Initialize combinator to nullptr in constructor
 
 ### 3.2 Create CombinatorPool class
 
-- [ ] Add class CombinatorPool to rbcursive.h
-- [ ] Add std::vector<RBCursiveScanner> pool member
-- [ ] Add RBCursiveScanner* allocate() method
-- [ ] Add void release(RBCursiveScanner* c) method
-- [ ] Add size_t available() const method
-- [ ] Add constructor with initial size parameter
+- [x] Add class CombinatorPool to rbcursive.h
+- [x] Add std::vector<RBCursiveScanner> pool member
+- [x] Add RBCursiveScanner* allocate() method
+- [x] Add void release(RBCursiveScanner* c) method
+- [x] Add size_t available() const method
+- [x] Add constructor with initial size parameter
 
 ### 3.3 Connect combinators to orbits
 
-- [ ] Add CombinatorPool pool to OrbitIterator
-- [ ] In OrbitIterator constructor, allocate combinators
-- [ ] In OrbitIterator::next(), assign combinator to orbit
-- [ ] In orbit destructor, release combinator back to pool
+- [x] Add CombinatorPool pool to OrbitIterator
+- [x] In OrbitIterator constructor, allocate combinators
+- [x] In OrbitIterator::next(), assign combinator to orbit
+- [x] In orbit destructor, release combinator back to pool
 
 ## Phase 4: Pattern Loading
 
 ### 4.1 Create PatternLoader class
 
-- [ ] Add class PatternLoader to pattern_loader.h
-- [ ] Add bool load_yaml(const std::string& path) method
-- [ ] Add std::vector<PatternData> patterns member
-- [ ] Add struct PatternData with name, regex, category fields
-- [ ] Add size_t pattern_count() const method
+- [x] Add class PatternLoader to pattern_loader.h
+- [x] Add bool load_yaml(const std::string& path) method
+- [x] Add std::vector<PatternData> patterns member
+- [x] Add struct PatternData with name, regex, category fields
+- [x] Add size_t pattern_count() const method
 
 ### 4.2 Parse YAML patterns
 
-- [ ] Open patterns/bnfc_cpp2_complete.yaml
-- [ ] Parse each pattern node
-- [ ] Extract name field
-- [ ] Extract unified_signatures array
-- [ ] Extract grammar_variants map
-- [ ] Store in PatternData struct
+- [x] Open patterns/bnfc_cpp2_complete.yaml
+- [x] Parse each pattern node
+- [x] Extract name field
+- [x] Extract unified_signatures array
+- [x] Extract grammar_variants map
+- [x] Store in PatternData struct
 
 ### 4.3 Convert patterns to orbits
 
-- [ ] For each PatternData create ConfixOrbit
-- [ ] Set orbit name from pattern.name
-- [ ] Create RBCursiveScanner for pattern.regex
-- [ ] Assign combinator to orbit
-- [ ] Add orbit to OrbitIterator
+- [x] For each PatternData create ConfixOrbit
+- [x] Set orbit name from pattern.name
+- [x] Create RBCursiveScanner for pattern.regex
+- [x] Assign combinator to orbit
+- [x] Add orbit to OrbitIterator
 
 ## Phase 5: Fragment Correlation
 
 ### 5.1 Create FragmentCorrelator class
 
-- [ ] Add class FragmentCorrelator to correlator.h
-- [ ] Add void correlate(OrbitFragment& f) method
-- [ ] Add bool is_cpp2_syntax(const std::string& text) const
-- [ ] Add bool is_cpp_syntax(const std::string& text) const
-- [ ] Add bool is_c_syntax(const std::string& text) const
+- [x] Add class FragmentCorrelator to correlator.h
+- [x] Add void correlate(OrbitFragment& f) method
+- [x] Add bool is_cpp2_syntax(const std::string& text) const
+- [x] Add bool is_cpp_syntax(const std::string& text) const
+- [x] Add bool is_c_syntax(const std::string& text) const
 
 ### 5.2 Implement syntax detection
 
@@ -185,10 +179,10 @@
 ### 6.1 Create EvidenceSpan class
 
 - [ ] Add class EvidenceSpan to evidence.h
-- [ ] Add size_t start_pos member
-- [ ] Add size_t end_pos member
+- [x] Add size_t start_pos member
+- [x] Add size_t end_pos member
 - [ ] Add std::string content member
-- [ ] Add double confidence member
+- [x] Add double confidence member
 - [ ] Add void merge(const EvidenceSpan& other) method
 
 ### 6.2 Add evidence to orbits
@@ -211,7 +205,7 @@
 
 - [ ] Add class SpeculativeMatch to speculation.h
 - [ ] Add size_t match_length member
-- [ ] Add double confidence member
+- [x] Add double confidence member
 - [ ] Add std::string pattern_name member
 - [ ] Add OrbitFragment result member
 
@@ -333,9 +327,9 @@
 
 ### 12.1 Compile CPP2 versions
 
-- [ ] Use cppfront to compile orbit_ring.cpp2
-- [ ] Use cppfront to compile wide_scanner.cpp2
-- [ ] Use cppfront to compile rbcursive.cpp2
+- [ ] Use stage0 to compile orbit_ring.cpp2
+- [ ] Use stage0 to compile wide_scanner.cpp2
+- [ ] Use stage0 to compile rbcursive.cpp2
 - [ ] Link to create stage0_cpp2_selfhosted
 
 ### 12.2 Compare outputs
@@ -377,3 +371,11 @@
 - [ ] Transpile main.cpp → main.cpp2
 - [ ] Compile cpp2 versions with cppfront
 - [ ] Binary size < 100KB
+
+## Lean Self-Hosting Path (Replaces Phases 11-13)
+
+- [x] Stage0 emits orbit fragments using `OrbitIterator` + `ConfixOrbit` pipeline
+- [x] PatternLoader drives orbit creation from YAML without bespoke scripts
+- [ ] Single cppfront validation pass feeding both stage0 variants
+- [ ] Compare outputs via existing regression harness only
+- [ ] Gate on binary size + confidence thresholds rather than file churn

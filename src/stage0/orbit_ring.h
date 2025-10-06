@@ -6,11 +6,107 @@
 #include <variant>
 #include <vector>
 #include <array>
+#include <map>
+#include <unordered_map>
+
+#include "evidence.h"
+#include "pattern_loader.h"
+#include "orbit_mask.h"
 
 // #include "token.h"  // Not needed
 // #include "ast.h"  // For ParameterKind - removed to break circular dependency
 
 namespace cppfort::stage0 {
+
+// Forward declarations
+class Orbit;
+struct OrbitFragment;
+
+// High level semantic orbit kind. These categories help coarse routing
+// before the more detailed lattice classification kicks in.
+enum class OrbitType {
+    Confix,
+    Keyword,
+    Operator,
+    Identifier,
+    Literal
+};
+
+// Orbit base class captures shared behaviour across category-specific
+// implementations. It owns evidence spans and tracks grammar-specialised
+// children for downstream refinement.
+class Orbit {
+public:
+    explicit Orbit(OrbitType type) : type_(type) {}
+    virtual ~Orbit() = default;
+
+    OrbitType type() const { return type_; }
+
+    void assign_child(::cppfort::ir::GrammarType grammar, Orbit* child) {
+        grammar_children_[grammar] = child;
+    }
+
+    Orbit* get_child(::cppfort::ir::GrammarType grammar) const {
+        auto it = grammar_children_.find(grammar);
+        return it != grammar_children_.end() ? it->second : nullptr;
+    }
+
+    virtual void parameterize_children(const PatternData& pattern) {
+        for (auto& [grammar, child] : grammar_children_) {
+            (void)grammar;
+            if (!child) continue;
+            child->parameterize_children(pattern);
+        }
+    }
+
+    virtual bool matches(const EvidenceSpan& span) const {
+        (void)span;
+        return !evidence_.empty();
+    }
+
+    void add_evidence(const EvidenceSpan& span) { evidence_.push_back(span); }
+
+    void clear_evidence() { evidence_.clear(); }
+
+    EvidenceSpan* get_evidence(size_t index) {
+        if (index >= evidence_.size()) return nullptr;
+        return &evidence_[index];
+    }
+
+    const EvidenceSpan* get_evidence(size_t index) const {
+        if (index >= evidence_.size()) return nullptr;
+        return &evidence_[index];
+    }
+
+    size_t evidence_count() const { return evidence_.size(); }
+    const std::vector<EvidenceSpan>& evidence() const { return evidence_; }
+
+    size_t start_pos = 0;
+    size_t end_pos = 0;
+    double confidence = 0.0;
+
+protected:
+    const std::map<::cppfort::ir::GrammarType, Orbit*>& grammar_children() const {
+        return grammar_children_;
+    }
+
+private:
+    OrbitType type_;
+    std::vector<EvidenceSpan> evidence_{};
+    std::map<::cppfort::ir::GrammarType, Orbit*> grammar_children_{};
+};
+
+// OrbitFragment captures the correlated source fragments for each grammar
+// flavour together with lattice metadata shared by emission and speculation.
+struct OrbitFragment {
+    std::string c_text;
+    std::string cpp_text;
+    std::string cpp2_text;
+    size_t start_pos = 0;
+    size_t end_pos = 0;
+    uint16_t lattice_mask = 0;
+    double confidence = 0.0;
+};
 
 // Source location for error reporting and debugging
 struct SourceLocation {

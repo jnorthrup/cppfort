@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string_view>
 
 // Platform-specific SIMD intrinsics
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
@@ -14,8 +15,15 @@
 
 #include "heuristic_grid.h"
 #include "lattice_classes.h"
+#include "evidence.h"
+#include "confix_orbit.h"
+#include "pattern_loader.h"
 
 namespace cppfort::ir {
+
+void WideScanner::reset_stats() {
+    stats_ = FanoutStats{};
+}
 
 bool WideScanner::isUTF8Boundary(const uint8_t* data, size_t position) {
     // UTF-8 continuation bytes have pattern 10xxxxxx
@@ -309,9 +317,53 @@ size_t WideScanner::findBoundarySIMD(
     const ::std::vector<AnchorPoint>& anchors
 ) {
     ::std::vector<Boundary> boundaries;
+    fragments_.clear();
+    packrat_cache_.clear();
+    reset_stats();
 
     const uint8_t* data = reinterpret_cast<const uint8_t*>(source.data());
     orbit_context_.reset();  // Reset context between scans
+
+    using ::cppfort::stage0::EvidenceGrammarKind;
+    using ::cppfort::stage0::OrbitFragment;
+    using ::cppfort::stage0::TypeEvidence;
+
+    auto emit_fragment = [&](size_t span_start, size_t span_end, uint16_t mask) {
+        if (span_start >= span_end || span_end > source.size()) {
+            return;
+        }
+        std::string_view view(source.data() + span_start, span_end - span_start);
+        TypeEvidence evidence;
+        evidence.ingest(view);
+        EvidenceGrammarKind grammar = evidence.deduce();
+
+        OrbitFragment fragment;
+        fragment.start_pos = span_start;
+        fragment.end_pos = span_end;
+        fragment.lattice_mask = mask;
+        fragment.confidence = (grammar == EvidenceGrammarKind::Unknown) ? 0.25 : 1.0;
+
+        std::string segment(view);
+        switch (grammar) {
+            case EvidenceGrammarKind::C:
+                fragment.c_text = segment;
+                break;
+            case EvidenceGrammarKind::CPP:
+                fragment.cpp_text = segment;
+                break;
+            case EvidenceGrammarKind::CPP2:
+                fragment.cpp2_text = segment;
+                break;
+            case EvidenceGrammarKind::Unknown:
+            default:
+                fragment.c_text = segment;
+                fragment.cpp_text = segment;
+                fragment.cpp2_text = segment;
+                break;
+        }
+
+        fragments_.push_back(std::move(fragment));
+    };
 
     // Handle small files with single anchor: scan entire buffer
     if (anchors.size() <= 1) {
@@ -336,6 +388,7 @@ size_t WideScanner::findBoundarySIMD(
                 boundaries.push_back(boundary);
             }
         }
+        emit_fragment(0, source.size(), boundaries.empty() ? 0 : boundaries.front().lattice_mask);
         return boundaries;
     }
 
@@ -406,6 +459,7 @@ size_t WideScanner::findBoundarySIMD(
                         // Populate orbit_confidence using OrbitContext
                         boundary.orbit_confidence = orbit_context_.calculateConfidence();
 
+                        packrat_cache_.store_cache(boundary.position, ::cppfort::stage0::OrbitType::Confix, boundary.orbit_confidence);
                         boundaries.push_back(boundary);
                         break;
                     }
@@ -482,6 +536,7 @@ size_t WideScanner::findBoundarySIMD(
                         // Populate orbit_confidence using OrbitContext
                         boundary.orbit_confidence = orbit_context_.calculateConfidence();
 
+                        packrat_cache_.store_cache(boundary.position, ::cppfort::stage0::OrbitType::Confix, boundary.orbit_confidence);
                         boundaries.push_back(boundary);
                     }
                 }
@@ -524,6 +579,24 @@ size_t WideScanner::findBoundarySIMD(
 
             pos++;
         }
+    }
+
+    size_t fragment_start = 0;
+    for (const auto& boundary : boundaries) {
+        if (boundary.position > fragment_start) {
+            emit_fragment(fragment_start, boundary.position, boundary.lattice_mask);
+        }
+        if (boundary.is_delimiter && boundary.position < source.size()) {
+            fragment_start = boundary.position + 1;
+        } else {
+            fragment_start = boundary.position;
+        }
+        if (fragment_start > source.size()) {
+            fragment_start = source.size();
+        }
+    }
+    if (fragment_start < source.size()) {
+        emit_fragment(fragment_start, source.size(), 0);
     }
 
     return boundaries;

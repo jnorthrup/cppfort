@@ -7,8 +7,13 @@
 #include "orbit_scanner.h"
 #include "wide_scanner.h"
 #include "multi_grammar_loader.h"
+#include "orbit_pipeline.h"
+#include "orbit_emitter.h"
 
 namespace fs = std::filesystem;
+
+using cppfort::stage0::OrbitIterator;
+using cppfort::stage0::OrbitPipeline;
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
@@ -48,6 +53,10 @@ int main(int argc, char* argv[]) {
         cppfort::ir::WideScanner scanner;
         auto boundaries = scanner.scanAnchorsWithOrbits(source, anchors);
 
+        OrbitPipeline orbit_pipeline;
+        std::filesystem::path pattern_path = std::filesystem::path("patterns") / "bnfc_cpp2_complete.yaml";
+        const bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path.string());
+
         std::cout << "\n=== Wide Scanner Results ===\n";
         std::cout << "Loaded " << source.size() << " bytes\n";
         std::cout << "Generated " << anchors.size() << " anchor points\n";
@@ -64,6 +73,44 @@ int main(int argc, char* argv[]) {
                          << " conf=" << boundary.orbit_confidence
                          << " mask=0x" << std::hex << boundary.lattice_mask << std::dec << "\n";
             }
+        }
+
+        if (patterns_loaded) {
+            OrbitIterator iterator(anchors.size());
+            orbit_pipeline.populate_iterator(scanner.fragments(), iterator);
+
+            const auto grammar_to_string = [](::cppfort::ir::GrammarType g) -> const char* {
+                switch (g) {
+                    case ::cppfort::ir::GrammarType::C: return "C";
+                    case ::cppfort::ir::GrammarType::CPP: return "C++";
+                    case ::cppfort::ir::GrammarType::CPP2: return "CPP2";
+                    default: return "UNKNOWN";
+                }
+            };
+
+            std::cout << "\n=== Orbit Iterator Results ===\n";
+            cppfort::stage0::OrbitEmitter emitter;
+            size_t orbit_count = 0;
+            for (Orbit* orbit = iterator.next(); orbit; orbit = iterator.next()) {
+                orbit_count++;
+                if (auto* confix = dynamic_cast<cppfort::stage0::ConfixOrbit*>(orbit)) {
+                    std::cout << "  span [" << confix->start_pos << ", " << confix->end_pos << ")"
+                              << " grammar=" << grammar_to_string(confix->selected_grammar())
+                              << " pattern=" << confix->selected_pattern()
+                              << " confidence=" << confix->confidence << "\n";
+                }
+            }
+
+            // Test round-trip reconstruction
+            iterator.reset();
+            std::string reconstructed = emitter.reconstruct_source(iterator, source);
+            std::cout << "\n=== Round-trip Test ===\n";
+            std::cout << "Orbits: " << orbit_count << "\n";
+            std::cout << "Original size: " << source.size() << " bytes\n";
+            std::cout << "Reconstructed size: " << reconstructed.size() << " bytes\n";
+            std::cout << "Match: " << (reconstructed == source ? "EXACT" : "DIFFERS") << "\n";
+        } else {
+            std::cout << "\nWarning: unable to load pattern data from " << pattern_path << "\n";
         }
 
     } else if (command == "anchors") {
