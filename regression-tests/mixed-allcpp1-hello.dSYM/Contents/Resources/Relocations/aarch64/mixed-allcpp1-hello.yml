@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     mixed-allcpp1-hello
+relocations:     []
+...

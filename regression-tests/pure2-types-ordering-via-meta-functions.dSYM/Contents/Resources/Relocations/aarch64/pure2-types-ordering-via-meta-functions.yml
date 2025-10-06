@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     pure2-types-ordering-via-meta-functions
+relocations:     []
+...

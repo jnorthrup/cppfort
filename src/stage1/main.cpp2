@@ -1,7 +1,0 @@
-# include <iostream>
-
-main: () -> int
-= {
-    std::cout << "Stage1 placeholder (Cpp2) program." << std::endl;
-    return 0;
-}

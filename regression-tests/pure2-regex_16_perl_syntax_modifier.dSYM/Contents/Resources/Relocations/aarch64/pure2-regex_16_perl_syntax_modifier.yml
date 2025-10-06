@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     pure2-regex_16_perl_syntax_modifier
+relocations:     []
+...

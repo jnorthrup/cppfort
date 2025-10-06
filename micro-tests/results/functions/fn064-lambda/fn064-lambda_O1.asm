@@ -1,8 +1,0 @@
-
-/Users/jim/work/cppfort/micro-tests/results/functions/fn064-lambda/fn064-lambda_O1.out:	file format mach-o arm64
-
-Disassembly of section __TEXT,__text:
-
-0000000100000360 <_main>:
-100000360: 52801000    	mov	w0, #0x80               ; =128
-100000364: d65f03c0    	ret

@@ -111,6 +111,88 @@ bool UnifiedOrbitDatabase::loadUnifiedPatterns(const ::std::string& patternFile)
         }
 
         ::std::cout << "Loaded " << _patterns.size() << " unified orbit patterns from " << patternFile << ::std::endl;
+        // --- Merge isomorphic patterns (same category + ast_node_type + unified signatures)
+        // This reduces duplication across grammar-specific variants and improves accuracy
+        struct MergeKey {
+            UnifiedOrbitCategory category;
+            ::std::string ast_type;
+            ::std::string sig_key;
+        };
+
+        auto make_sig_key = [](const UnifiedOrbitPattern& p) -> ::std::string {
+            ::std::vector<::std::string> s = p.unified_signatures;
+            std::sort(s.begin(), s.end());
+            ::std::ostringstream ss;
+            for (const auto& x : s) ss << x << "|";
+            return ss.str();
+        };
+
+        // Build index of merge groups
+        ::std::unordered_map<::std::string, UnifiedOrbitPattern> merged;
+        ::std::vector<::std::string> to_erase;
+
+        for (auto& kv : _patterns) {
+            const UnifiedOrbitPattern& p = kv.second;
+            ::std::ostringstream keyss;
+            keyss << static_cast<int>(p.category) << "#" << p.ast_node_type << "#" << make_sig_key(p);
+            ::std::string key = keyss.str();
+
+            auto it = merged.find(key);
+            if (it == merged.end()) {
+                // insert a copy
+                merged.emplace(key, p);
+            } else {
+                // merge p into existing
+                UnifiedOrbitPattern& base = it->second;
+
+                // Merge grammar variants: combine vectors and dedupe
+                for (const auto& gv : p.grammar_variants) {
+                    auto& dest_vec = base.grammar_variants[gv.first];
+                    for (const auto& v : gv.second) {
+                        if (std::find(dest_vec.begin(), dest_vec.end(), v) == dest_vec.end()) {
+                            dest_vec.push_back(v);
+                        }
+                    }
+                }
+
+                // Merge unified_signatures (dedupe)
+                for (const auto& s : p.unified_signatures) {
+                    if (std::find(base.unified_signatures.begin(), base.unified_signatures.end(), s) == base.unified_signatures.end()) {
+                        base.unified_signatures.push_back(s);
+                    }
+                }
+
+                // Merge grammar modes
+                base.grammar_modes = base.grammar_modes | p.grammar_modes;
+
+                // Combine lattice/filter/confix conservatively: keep bitwise OR where appropriate
+                base.lattice_filter = base.lattice_filter | p.lattice_filter;
+                base.confix_mask = base.confix_mask | p.confix_mask;
+
+                // Weight: take max (prefer stronger pattern) then slightly increase to reflect union
+                base.weight = std::max(base.weight, p.weight);
+
+                // Record original name by appending suffix for traceability (keep first name as primary)
+                if (base.name.find("+merged+") == ::std::string::npos) {
+                    base.name = base.name + "+merged+" + p.name;
+                } else {
+                    base.name = base.name + "," + p.name;
+                }
+
+                // mark original map entry for erasure (we will rebuild _patterns from merged)
+            }
+        }
+
+        // Replace _patterns and _patternsByCategory with merged results
+        _patterns.clear();
+        _patternsByCategory.clear();
+        for (auto& kv : merged) {
+            UnifiedOrbitPattern& p = kv.second;
+            _patterns[p.name] = p;
+            _patternsByCategory[p.category].push_back(p);
+        }
+
+        ::std::cout << "Merged patterns into " << _patterns.size() << " unified entries\n";
         return true;
 
     } catch (const YAML::Exception& e) {

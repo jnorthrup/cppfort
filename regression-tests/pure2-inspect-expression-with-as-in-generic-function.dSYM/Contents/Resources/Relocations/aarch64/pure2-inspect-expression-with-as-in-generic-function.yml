@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     pure2-inspect-expression-with-as-in-generic-function
+relocations:     []
+...

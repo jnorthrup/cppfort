@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     pure2-assert-unique-ptr-not-null
+relocations:     []
+...

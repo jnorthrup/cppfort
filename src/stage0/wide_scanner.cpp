@@ -114,33 +114,28 @@ size_t WideScanner::findBoundarySIMD(
     const uint8_t* data = reinterpret_cast<const uint8_t*>(source.data());
     size_t buf_size = source.size();
     size_t current_pos = 0;
-    size_t anchor_spacing = initial_spacing;
+    size_t anchor_spacing = initial_spacing ? initial_spacing : 64;
 
     while (current_pos < buf_size) {
-        // Record anchor at current position
         AnchorPoint anchor;
         anchor.position = current_pos;
         anchor.spacing = anchor_spacing;
         anchor.is_utf8_boundary = isUTF8Boundary(data, current_pos);
         anchors.push_back(anchor);
 
-        // Calculate next anchor position
         size_t next_target = current_pos + anchor_spacing;
         if (next_target >= buf_size) {
             break;
         }
 
-        // Adjust to UTF-8 boundary using SIMD
         size_t remaining = buf_size - next_target;
         size_t boundary_offset = findBoundarySIMD(data, next_target, remaining);
-
         if (boundary_offset != ::std::string::npos) {
             current_pos = next_target + boundary_offset;
         } else {
             current_pos = next_target;
         }
 
-        // Alternate spacing: 64 → 32 → 64 → 32 → ...
         anchor_spacing = (anchor_spacing == 64) ? 32 : 64;
     }
 
