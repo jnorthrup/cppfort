@@ -405,86 +405,91 @@ this project current enforces the orbits holding the recursive combinators to st
 - [x] Removed all cheating: fake patterns, hardcoded confidence values, echo-based emission pretense
 - [x] Established honest baseline: system fails transparently when real functionality missing
 
-## Phase 14: Bidirectional Pattern Foundation (Spirit-Style Combinators)
+## Phase 14: Semantic Codec Foundation (Lossless Isomorphic Transform)
 
-### 14.1 Convert patterns to bidirectional grammar syntax
+### 14.1 Define n-way codec patterns with ordinal placeholders
 
-- [ ] Update YAML schema to use grammar_syntax instead of extract + substitute
-- [ ] Define grammar_N_syntax: "template with $segment placeholders" per grammar mode
-- [ ] Example: grammar_4_syntax: "$0: ($1) = { $2 }" for CPP2 function
-- [ ] Example: grammar_2_syntax: "int $0($1) { $2 }" for CPP output
-- [ ] Remove separate segment_N_offset, segment_N_delim_start/end (derive from template)
-- [ ] Pattern definition becomes isomorphism declaration (same segments, different surface syntax)
+- [ ] YAML schema: semantic_unit with n-way encoding variants
+- [ ] Ordinal placeholders $1..$n for arbitrary segment count
+- [ ] Per-grammar delimiter sets (CPP2: ":", CPP: "::", C: "_")
+- [ ] Example codec: function_unit with 3 encodings (C/CPP/CPP2)
+- [ ] Each encoding preserves full semantic information (lossless)
+- [ ] Dense entropy: entire function→3 ordinals→3 encodings
 
-### 14.2 Implement bidirectional pattern matcher
+### 14.2 Parallel speculation with evidence-based fail-fast
 
-- [ ] Add parse_grammar_syntax(template, text) → extracts segments by matching template
-- [ ] Add generate_grammar_syntax(template, segments) → reconstructs text from template
-- [ ] Template parsing: find $0, $1, $2 positions and literal text between them
-- [ ] Match literal anchors in template against source text
-- [ ] Extract segments between anchors using balanced delimiter matching
-- [ ] Support nested delimiters (braces, parens) with depth tracking
+- [ ] Evidence phase: character class instant elimination
+- [ ] Evidence rules: "has ':' after identifier" → not C
+- [ ] Evidence rules: "has 'class'" → not CPP2
+- [ ] Speculation phase: ALL patterns fire simultaneously
+- [ ] Longest deterministic match wins (not probabilistic)
+- [ ] PackratCache prevents redundant speculation
 
-### 14.3 Enable pattern inversion (CPP2 ↔ C++ ↔ C)
+### 14.3 Codec transform via semantic unit preservation
 
-- [ ] Add transform(source_grammar, target_grammar, text) function
-- [ ] Match text against grammar_N_syntax template (N = source grammar)
-- [ ] Extract segments using source template structure
-- [ ] Regenerate using grammar_M_syntax template (M = target grammar)
-- [ ] All three grammars (C/CPP/CPP2) become interchangeable
-- [ ] Same pattern works for: CPP2→C++, C++→CPP2, CPP2→C, C→CPP2, etc.
+- [ ] NO parsing: semantic unit captured whole by longest match
+- [ ] Transform = re-encode same semantic unit in target grammar
+- [ ] Ordinal segments preserved across all encodings
+- [ ] Information theoretic: same entropy, different surface encoding
+- [ ] Measure codec loss: round-trip fidelity (CPP2→CPP→CPP2)
+- [ ] Target: 100% semantic preservation, 0% information loss
 
-## Phase 15: Recursive Orbit Application (Nested Pattern Matching)
+## Phase 15: Recursive Codec Depth (Nested Semantic Units)
 
-### 15.1 Add recursive scanning to extracted segments
+### 15.1 Ordinal segments contain nested semantic units
 
-- [ ] After extracting segments, recursively scan each segment for nested patterns
-- [ ] Create sub-orbit-iterator for segment content
-- [ ] Apply full pattern matching pipeline to segment text
-- [ ] Transform nested constructs (walrus operator, etc.) before reconstruction
-- [ ] Example: body segment `{ s1 := u"" }` rescanned to find `:=` pattern
+- [ ] Each ordinal ($1..$n) potentially contains more patterns
+- [ ] Body segment = nested codec space with own semantic units
+- [ ] Recursive speculation fires within ordinal boundaries
+- [ ] Nested wins bubble up: deepest matches resolve first
+- [ ] Example: function body contains variable_declaration units
 
-### 15.2 Implement orbit recursion depth tracking
+### 15.2 Terminal depth tracking (codec recursion limit)
 
-- [ ] Add recursion_depth to OrbitIterator
-- [ ] Increment depth when scanning extracted segment
-- [ ] Prevent infinite recursion (max depth = 100)
-- [ ] PackratCache keys include recursion depth to avoid false hits
-- [ ] Terminal patterns (literals, identifiers) don't recurse further
+- [ ] Terminal depth = 0 (ground state, no more patterns)
+- [ ] Each nesting level increments depth counter
+- [ ] Max codec depth = semantic complexity limit (e.g., 10)
+- [ ] Terminal patterns: literals, identifiers (atomic units)
+- [ ] PackratCache stratified by depth for O(n) complexity
 
-### 15.3 Wire recursive transformation into emit_orbit
+### 15.3 Compositional codec transform (inside-out)
 
-- [ ] Before applying substitution template, transform each segment
-- [ ] For each segment: recursively_transform(segment_text, target_grammar)
-- [ ] Recursion base case: no patterns match → return text unchanged
-- [ ] Recursion applies patterns inside-out (deepest nesting first)
-- [ ] Final reconstruction uses already-transformed segment text
+- [ ] Transform ordering: terminal depth → 0 (inside-out)
+- [ ] Each ordinal transformed before parent reconstruction
+- [ ] Codec composition: nested transforms complete first
+- [ ] Information preserved at every depth level
+- [ ] Dense result: minimal surface text, maximum semantic density
 
-## Phase 16: Complete Walrus Operator Example
+## Phase 16: Codec Density Demonstration (Walrus Transform)
 
-### 16.1 Add walrus operator pattern to YAML
+### 16.1 Variable declaration semantic unit
 
-- [ ] Pattern name: variable_declaration
-- [ ] Signature: ":="
-- [ ] grammar_4_syntax: "$0 := $1"  (CPP2: walrus)
-- [ ] grammar_2_syntax: "auto $0 = $1"  (CPP: auto declaration)
-- [ ] grammar_1_syntax: "/\* unsupported \*/ $0 := $1"  (C: no equivalent)
+- [ ] Semantic unit: variable_declaration
+- [ ] Evidence marker: ":=" (CPP2 only)
+- [ ] Ordinals: $1=name, $2=initializer
+- [ ] Encoding_4: "$1 := $2"  (CPP2 surface)
+- [ ] Encoding_2: "auto $1 = $2"  (CPP surface)
+- [ ] Encoding_1: undefined (C lacks auto inference)
+- [ ] Codec loss: C encoding loses type inference semantics
 
-### 16.2 Test nested transformation end-to-end
+### 16.2 Compositional codec cascade
 
-- [ ] Input: `main: () = { s1 := u"u\""; }`
-- [ ] Outer pattern: function_declaration matches ": ("
-- [ ] Segments extracted: $0=main, $1=(empty), $2={ s1 := u"u\""; }
-- [ ] Body segment $2 recursively scanned
-- [ ] Inner pattern: variable_declaration matches ":="
-- [ ] Inner segments: $0=s1, $1=u"u\""
-- [ ] Inner transform: `s1 := u"u\""` → `auto s1 = u"u\""`
-- [ ] Outer reconstruct: `int main() { auto s1 = u"u\""; }`
-- [ ] Expected g++ result: compiles successfully
+- [ ] Input entropy: `main: () = { s1 := u"u\""; }`
+- [ ] Outer speculation: function_unit wins (longest match)
+- [ ] Ordinal extraction: $1=main, $2=(), $3={ s1 := u"u\""; }
+- [ ] Ordinal $3 recursion: variable_unit wins
+- [ ] Nested ordinals: $1=s1, $2=u"u\""
+- [ ] Inside-out transform: variable first, then function
+- [ ] Output entropy: `int main() { auto s1 = u"u\""; }`
+- [ ] Information preserved: 100% (CPP supports all semantics)
 
-### 16.3 Validate bidirectional transformation
+### 16.3 Measure codec efficiency
 
-- [ ] Transform CPP2 → C++: `main: () = { s1 := u""; }` → `int main() { auto s1 = u""; }`
-- [ ] Transform C++ → CPP2: `int main() { auto s1 = u""; }` → `main: () = { s1 := u""; }`
-- [ ] Round-trip test: CPP2 → C++ → CPP2 produces identical output
-- [ ] Verify pattern inversion is lossless for supported constructs
+- [ ] Input size: 29 bytes (CPP2)
+- [ ] Output size: 33 bytes (CPP)
+- [ ] Semantic units: 2 (function + variable)
+- [ ] Ordinal count: 5 total (3 + 2)
+- [ ] Codec overhead: 4 bytes (13.8% expansion)
+- [ ] Round-trip fidelity: 100% (CPP2→CPP→CPP2 identical)
+- [ ] Theoretical limit: Huffman coding of semantic units
+- [ ] Dense entropy achieved: ~2 bits per semantic decision
