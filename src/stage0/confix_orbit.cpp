@@ -63,25 +63,33 @@ bool ConfixOrbit::validate_pair(char open, char close) const {
 void ConfixOrbit::parameterize_children(const PatternData& pattern) {
     Orbit::parameterize_children(pattern);
 
-    auto* c_child = ensure_function_child(::cppfort::ir::GrammarType::C, std::make_unique<C_FunctionOrbit>());
-    auto* cpp_child = ensure_function_child(::cppfort::ir::GrammarType::CPP, std::make_unique<CPP_FunctionOrbit>());
-    auto* cpp2_child = ensure_function_child(::cppfort::ir::GrammarType::CPP2, std::make_unique<CPP2_FunctionOrbit>());
+    // Create function children based on grammar_modes bitmask
+    // Bit 0 = C, Bit 1 = CPP, Bit 2 = CPP2
+    FunctionOrbit* c_child = nullptr;
+    FunctionOrbit* cpp_child = nullptr;
+    FunctionOrbit* cpp2_child = nullptr;
 
-    const auto assign_pattern = [&](FunctionOrbit* child, ::cppfort::ir::GrammarType grammar, const std::string& fallback) {
-        if (!child) {
-            return;
-        }
-        auto it = pattern.grammar_variants.find(grammar);
-        if (it != pattern.grammar_variants.end()) {
-            child->set_pattern(it->second);
-        } else {
-            child->set_pattern(fallback);
-        }
-    };
+    if (pattern.grammar_modes & 1) {  // C mode
+        c_child = ensure_function_child(::cppfort::ir::GrammarType::C, new C_FunctionOrbit());
+    }
+    if (pattern.grammar_modes & 2) {  // CPP mode
+        cpp_child = ensure_function_child(::cppfort::ir::GrammarType::CPP, new CPP_FunctionOrbit());
+    }
+    if (pattern.grammar_modes & 4) {  // CPP2 mode
+        cpp2_child = ensure_function_child(::cppfort::ir::GrammarType::CPP2, new CPP2_FunctionOrbit());
+    }
 
-    assign_pattern(c_child, ::cppfort::ir::GrammarType::C, "void %s()");
-    assign_pattern(cpp_child, ::cppfort::ir::GrammarType::CPP, "auto %s() -> %s");
-    assign_pattern(cpp2_child, ::cppfort::ir::GrammarType::CPP2, "%s: () -> %s");
+    // Set patterns from signature_patterns if available
+    if (!pattern.signature_patterns.empty()) {
+        if (c_child) c_child->set_pattern(pattern.signature_patterns[0]);
+        if (cpp_child) cpp_child->set_pattern(pattern.signature_patterns[0]);
+        if (cpp2_child) cpp2_child->set_pattern(pattern.signature_patterns[0]);
+    } else {
+        // Fallback patterns
+        if (c_child) c_child->set_pattern("void %s()");
+        if (cpp_child) cpp_child->set_pattern("auto %s() -> %s");
+        if (cpp2_child) cpp2_child->set_pattern("%s: () -> %s");
+    }
 
     std::vector<std::pair<FunctionOrbit*, ::cppfort::ir::GrammarType>> children;
     children.reserve(3);
@@ -111,15 +119,6 @@ void ConfixOrbit::parameterize_children(const PatternData& pattern) {
     EvidenceGrammarKind aggregate_kind = aggregate_text.empty()
         ? EvidenceGrammarKind::Unknown
         : correlator.classify_text(aggregate_text);
-
-    auto infer_grammar = [](const std::string& category) {
-        std::string lower = category;
-        for (auto& ch : lower) { ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); }
-        if (lower.find("cpp2") != std::string::npos) return ::cppfort::ir::GrammarType::CPP2;
-        if (lower.find("cpp") != std::string::npos) return ::cppfort::ir::GrammarType::CPP;
-        if (lower.find("c") != std::string::npos) return ::cppfort::ir::GrammarType::C;
-        return ::cppfort::ir::GrammarType::UNKNOWN;
-    };
 
     auto matches_kind = [&](::cppfort::ir::GrammarType grammar) {
         switch (aggregate_kind) {
@@ -161,91 +160,13 @@ void ConfixOrbit::parameterize_children(const PatternData& pattern) {
         }
     }
 
-    auto pattern_grammar = infer_grammar(pattern.category);
-    if (pattern_grammar != ::cppfort::ir::GrammarType::UNKNOWN) {
-        FunctionOrbit* preferred = nullptr;
-        for (auto& entry : children) {
-            if (entry.second == pattern_grammar) {
-                preferred = entry.first;
-                break;
-            }
-        }
-        if (preferred) {
-            double hint_conf = matches_kind(pattern_grammar) ? 0.85 : 0.65;
-            if (hint_conf > preferred->confidence) {
-                preferred->confidence = hint_conf;
-                preferred->start_pos = start_pos;
-                preferred->end_pos = end_pos;
-            }
-            if (preferred->confidence > best_confidence) {
-                best_confidence = preferred->confidence;
-                best_child = preferred;
-                selected_grammar_ = pattern_grammar;
-            }
-        }
+    // Apply pattern weight as confidence boost
+    if (best_child && pattern.weight > 1.0) {
+        best_child->confidence = std::min(1.0, best_child->confidence * pattern.weight);
     }
 
-    if ((!best_child || best_confidence <= 0.0) && !children.empty()) {
-        ::cppfort::ir::GrammarType fallback_grammar = pattern_grammar;
-        if (fallback_grammar == ::cppfort::ir::GrammarType::UNKNOWN) {
-            switch (aggregate_kind) {
-                case EvidenceGrammarKind::CPP2: fallback_grammar = ::cppfort::ir::GrammarType::CPP2; break;
-                case EvidenceGrammarKind::CPP: fallback_grammar = ::cppfort::ir::GrammarType::CPP; break;
-                case EvidenceGrammarKind::C: fallback_grammar = ::cppfort::ir::GrammarType::C; break;
-                case EvidenceGrammarKind::Unknown: default: fallback_grammar = ::cppfort::ir::GrammarType::C; break;
-            }
-        } else if (!matches_kind(fallback_grammar) && aggregate_kind != EvidenceGrammarKind::Unknown) {
-            switch (aggregate_kind) {
-                case EvidenceGrammarKind::CPP2: fallback_grammar = ::cppfort::ir::GrammarType::CPP2; break;
-                case EvidenceGrammarKind::CPP: fallback_grammar = ::cppfort::ir::GrammarType::CPP; break;
-                case EvidenceGrammarKind::C: fallback_grammar = ::cppfort::ir::GrammarType::C; break;
-                case EvidenceGrammarKind::Unknown: default: break;
-            }
-        }
-
-        FunctionOrbit* fallback_child = nullptr;
-        for (auto& entry : children) {
-            if (entry.second == fallback_grammar) {
-                fallback_child = entry.first;
-                break;
-            }
-        }
-        if (!fallback_child) {
-            fallback_child = children.front().first;
-            fallback_grammar = children.front().second;
-        }
-
-        double fallback_conf = aggregate_text.empty() ? 0.4 : 0.75;
-        fallback_child->confidence = std::max(fallback_child->confidence, fallback_conf);
-        fallback_child->start_pos = start_pos;
-        fallback_child->end_pos = end_pos;
-        best_child = fallback_child;
-        best_confidence = fallback_child->confidence;
-        selected_grammar_ = fallback_grammar;
-    }
-
-    if (best_child) {
-        winning_child_ = best_child;
-        confidence = best_child->confidence;
-        start_pos = best_child->start_pos;
-        end_pos = best_child->end_pos;
-    } else {
-        confidence = aggregate_text.empty() ? 0.0 : 0.3;
-        winning_child_ = nullptr;
-        if (aggregate_kind == EvidenceGrammarKind::CPP2) {
-            selected_grammar_ = ::cppfort::ir::GrammarType::CPP2;
-        } else if (aggregate_kind == EvidenceGrammarKind::CPP) {
-            selected_grammar_ = ::cppfort::ir::GrammarType::CPP;
-        } else if (aggregate_kind == EvidenceGrammarKind::C) {
-            selected_grammar_ = ::cppfort::ir::GrammarType::C;
-        } else {
-            selected_grammar_ = ::cppfort::ir::GrammarType::UNKNOWN;
-        }
-    }
-
-    if (auto* confix_scanner = get_combinator()) {
-        (void)confix_scanner->patternCapabilities();
-    }
+    winning_child_ = best_child;
+    confidence = best_confidence;
 }
 
 void ConfixOrbit::extract_evidence(std::string_view text, size_t start, size_t end) {
@@ -278,13 +199,14 @@ void ConfixOrbit::extract_evidence(std::string_view text, size_t start, size_t e
 }
 
 FunctionOrbit* ConfixOrbit::ensure_function_child(::cppfort::ir::GrammarType grammar,
-                                          std::unique_ptr<FunctionOrbit> child) {
+                                          FunctionOrbit* child) {
     if (auto* existing = dynamic_cast<FunctionOrbit*>(get_child(grammar))) {
+        delete child; // Don't need the new one
         return existing;
     }
 
-    FunctionOrbit* raw_child = child.get();
-    function_children_.push_back(std::move(child));
+    FunctionOrbit* raw_child = child;
+    function_children_.push_back(std::unique_ptr<FunctionOrbit>(child));
     assign_child(grammar, raw_child);
     return raw_child;
 }

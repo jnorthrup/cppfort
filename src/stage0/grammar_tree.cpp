@@ -29,35 +29,7 @@ void GrammarTree::clear() {
 }
 
 UnifiedOrbitCategory GrammarTree::classify(const PatternData& pattern) {
-    const auto lower_category = [](const std::string& value) {
-        std::string lowered;
-        lowered.resize(value.size());
-        std::transform(value.begin(), value.end(), lowered.begin(),
-                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-        return lowered;
-    };
-
-    std::string category = lower_category(pattern.category);
-    if (category.find("cpp2") != std::string::npos) {
-        return UnifiedOrbitCategory::CPP2Only;
-    }
-    if (category.find("cpp") != std::string::npos) {
-        return UnifiedOrbitCategory::CPPOnly;
-    }
-    if (category.find("c-only") != std::string::npos || category == "c") {
-        return UnifiedOrbitCategory::COnly;
-    }
-
-    // Fallback: look at name/signatures for hints
-    if (contains_case_insensitive(pattern.name, "inspect") ||
-        contains_case_insensitive(pattern.name, "contract")) {
-        return UnifiedOrbitCategory::CPP2Only;
-    }
-    if (contains_case_insensitive(pattern.name, "template") ||
-        contains_case_insensitive(pattern.name, "namespace")) {
-        return UnifiedOrbitCategory::CPPOnly;
-    }
-
+    // For now, classify all patterns as Common since they're unified
     return UnifiedOrbitCategory::Common;
 }
 

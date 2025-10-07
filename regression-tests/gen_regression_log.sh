@@ -1,7 +1,7 @@
 #!/bin/bash
 LOGFILE="regression_log.txt"
 echo "Regression test log - $(date)" > $LOGFILE
-echo "Using cppfront: ../build/stage0_cli transpile" >> $LOGFILE
+echo "Using stage0_cli: ../src/stage0/build/stage0_cli transpile" >> $LOGFILE
 
 TOTAL=0
 FAILED=0
@@ -11,7 +11,7 @@ for test in *.cpp2; do
     ((TOTAL++))
     
     # Try to load the file and transpile
-    if ../build/stage0_cli transpile "$test" "/tmp/out_${test%.cpp2}.cpp" >> $LOGFILE 2>&1; then
+    if ../src/stage0/build/stage0_cli transpile "$test" "/tmp/out_${test%.cpp2}.cpp" "../patterns/bnfc_cpp2_complete.yaml" 2>> $LOGFILE; then
         echo "  Transpile OK" >> $LOGFILE
     else
         echo "  Transpile FAILED" >> $LOGFILE

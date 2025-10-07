@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     }
 
     OrbitIterator iterator(anchors.size());
-    pipeline.populate_iterator(scanner.fragments(), iterator);
+    pipeline.populate_iterator(scanner.fragments(), iterator, source);
 
     const auto stats = scanner.stats();
 

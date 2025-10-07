@@ -5,7 +5,7 @@
 // Minimal isomorphic CPP2 grammar as TableGen patterns.
 // These 5 core patterns handle 80% of CPP2 → Sea of Nodes transformations.
 //
-// Based on Simple compiler Ch 19-23 architecture and Herb Sutter's cppfront.
+// Based on Simple compiler Ch 19-23 architecture.
 
 // ============================================================================
 // Pattern 1: Function Declaration (THE critical isomorphism)

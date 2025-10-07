@@ -115,7 +115,7 @@ EvaluationResult evaluate_source(const std::string& source, OrbitPipeline& pipel
     (void)scanner.scanAnchorsWithOrbits(source, anchors);
 
     OrbitIterator iterator(anchors.size());
-    pipeline.populate_iterator(scanner.fragments(), iterator);
+    pipeline.populate_iterator(scanner.fragments(), iterator, source);
 
     EvaluationResult result;
 
@@ -133,19 +133,9 @@ EvaluationResult evaluate_source(const std::string& source, OrbitPipeline& pipel
         cppfort::stage0::OrbitFragment fragment;
         fragment.start_pos = 0;
         fragment.end_pos = source.size();
-        fragment.c_text = source;
-        correlator.correlate(fragment);
-        double correlated_conf = fragment.confidence > 0.0 ? fragment.confidence : 0.6;
-        if (!fragment.cpp2_text.empty()) {
-            result.predicted = cppfort::ir::GrammarType::CPP2;
-            result.confidence = correlated_conf;
-        } else if (!fragment.cpp_text.empty()) {
-            result.predicted = cppfort::ir::GrammarType::CPP;
-            result.confidence = correlated_conf;
-        } else {
-            result.predicted = cppfort::ir::GrammarType::C;
-            result.confidence = correlated_conf;
-        }
+        correlator.correlate(fragment, source);
+        result.predicted = fragment.classified_grammar;
+        result.confidence = fragment.confidence > 0.0 ? fragment.confidence : 0.6;
     }
     if (result.confidence <= 0.0) {
         result.confidence = 0.5;

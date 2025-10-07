@@ -7,7 +7,6 @@
 #include <memory>
 #include <filesystem>
 
-#include "tblgen_patterns.h"
 #include "multi_grammar_loader.h"
 #include "orbit_scanner.h"
 #include "rabin_karp.h"
@@ -20,14 +19,14 @@ namespace cppfort {
 namespace ir {
 
 OrbitScanner::OrbitScanner(const OrbitScannerConfig& config,
-                           ::std::unique_ptr<IMultiGrammarLoader> loader)
+                           ::std::unique_ptr<MultiGrammarLoader> loader)
   : m_config(config),
     m_rabinKarp(::std::make_unique<RabinKarp>()),
     m_context(::std::make_unique<OrbitContext>(m_config.maxDepth)),
     m_loader(::std::move(loader)),
     m_unifiedDatabase(::std::make_unique<UnifiedOrbitDatabase>()) {
   if (!m_loader) {
-    m_loader = ::std::unique_ptr<IMultiGrammarLoader>(new MultiGrammarLoader());
+    m_loader = ::std::unique_ptr<MultiGrammarLoader>(new MultiGrammarLoader());
   }
   // Initialize private rbcursive scanner asset
   m_rbcursive = ::std::make_unique<RBCursiveScanner>();

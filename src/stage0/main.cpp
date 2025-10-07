@@ -9,6 +9,8 @@
 #include "multi_grammar_loader.h"
 #include "orbit_pipeline.h"
 #include "orbit_emitter.h"
+#include "cpp2_emitter.h"
+#include "orbit_ring.h"
 
 namespace fs = std::filesystem;
 
@@ -22,6 +24,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "  scan <file>          - Scan file and emit orbit streams with telemetry\n";
         std::cerr << "  anchors <file>       - Generate and display anchor points\n";
         std::cerr << "  boundaries <file>    - Scan and display boundaries with orbit data\n";
+        std::cerr << "  transpile <input_file> <output_file> [pattern_file] - Transpile file to C++\n";
         return 1;
     }
 
@@ -77,7 +80,7 @@ int main(int argc, char* argv[]) {
 
         if (patterns_loaded) {
             OrbitIterator iterator(anchors.size());
-            orbit_pipeline.populate_iterator(scanner.fragments(), iterator);
+            orbit_pipeline.populate_iterator(scanner.fragments(), iterator, source);
 
             const auto grammar_to_string = [](::cppfort::ir::GrammarType g) -> const char* {
                 switch (g) {
@@ -91,7 +94,7 @@ int main(int argc, char* argv[]) {
             std::cout << "\n=== Orbit Iterator Results ===\n";
             cppfort::stage0::OrbitEmitter emitter;
             size_t orbit_count = 0;
-            for (Orbit* orbit = iterator.next(); orbit; orbit = iterator.next()) {
+            for (cppfort::stage0::Orbit* orbit = iterator.next(); orbit; orbit = iterator.next()) {
                 orbit_count++;
                 if (auto* confix = dynamic_cast<cppfort::stage0::ConfixOrbit*>(orbit)) {
                     std::cout << "  span [" << confix->start_pos << ", " << confix->end_pos << ")"
@@ -138,6 +141,40 @@ int main(int argc, char* argv[]) {
                      << " delim=" << (boundary.is_delimiter ? std::string(1, boundary.delimiter) : " ")
                      << " conf=" << boundary.orbit_confidence
                      << " mask=0x" << std::hex << boundary.lattice_mask << std::dec << "\n";
+        }
+
+    } else if (command == "transpile") {
+        // Transpile to CPP2
+        if (argc < 4) {
+            std::cerr << "Usage: " << argv[0] << " transpile <input_file> <output_file> [pattern_file]\n";
+            return 1;
+        }
+
+        std::string output_file = argv[3];
+        std::ofstream out(output_file);
+        if (!out) {
+            std::cerr << "Error: Cannot open output file '" << output_file << "'\n";
+            return 1;
+        }
+
+        auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
+        cppfort::ir::WideScanner scanner;
+        scanner.scanAnchorsWithOrbits(source, anchors);
+
+        OrbitPipeline orbit_pipeline;
+        std::string pattern_path = (argc >= 5) ? argv[4] : "patterns/bnfc_cpp2_complete.yaml";
+        bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path);
+
+        if (patterns_loaded) {
+            std::cerr << "Loaded " << orbit_pipeline.pattern_count() << " patterns\n";
+            OrbitIterator iterator(anchors.size());
+            orbit_pipeline.populate_iterator(scanner.fragments(), iterator, source);
+
+            cppfort::stage0::CPP2Emitter emitter;
+            emitter.emit(iterator, source, out, orbit_pipeline.patterns());
+        } else {
+            std::cerr << "ERROR: Pattern loading failed\n";
+            return 1;
         }
 
     } else {

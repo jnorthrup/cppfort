@@ -19,15 +19,20 @@ public:
 
     bool load_patterns(const std::string& path);
 
+    size_t pattern_count() const { return loader_.pattern_count(); }
+
+    const std::vector<PatternData>& patterns() const { return loader_.patterns(); }
+
     void populate_iterator(const std::vector<OrbitFragment>& fragments,
-                           OrbitIterator& iterator);
+                           OrbitIterator& iterator,
+                           std::string_view source);
 
     const std::vector<std::unique_ptr<ConfixOrbit>>& orbits() const { return confix_orbits_; }
 
 private:
-    std::unique_ptr<ConfixOrbit> evaluate_fragment(const OrbitFragment& fragment) const;
-    std::unique_ptr<ConfixOrbit> make_base_orbit(const OrbitFragment& fragment) const;
-    std::pair<char, char> select_confix(const OrbitFragment& fragment) const;
+    std::unique_ptr<ConfixOrbit> evaluate_fragment(std::unique_ptr<ConfixOrbit> base_orbit, const OrbitFragment& fragment, std::string_view source) const;
+    std::unique_ptr<ConfixOrbit> make_base_orbit(const OrbitFragment& fragment, std::string_view source) const;
+    std::pair<char, char> select_confix(const OrbitFragment& fragment, std::string_view source) const;
     const PatternData* best_pattern_for(ConfixOrbit& candidate) const;
 
     PatternLoader loader_;

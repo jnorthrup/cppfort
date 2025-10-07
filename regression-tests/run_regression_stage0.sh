@@ -4,7 +4,7 @@ CPPFRONT="../build/stage0_cli transpile"
 LOG="regression_log.txt"
 rm -f "$LOG"
 echo "Regression test log - $(date)" > "$LOG"
-echo "Using cppfront: $CPPFRONT" >> "$LOG"
+echo "Using stage0_cli: $CPPFRONT" >> "$LOG"
 
 # Tests that require safety features not yet implemented in stage0
 SKIP_TESTS=(

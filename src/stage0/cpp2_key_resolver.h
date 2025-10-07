@@ -5,7 +5,6 @@
 #include <vector>
 #include <unordered_map>
 #include <regex>
-#include "tblgen_patterns.h"
 #include "lattice_classes.h"
 
 namespace cppfort::stage0 {

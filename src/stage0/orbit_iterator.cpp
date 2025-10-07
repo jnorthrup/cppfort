@@ -1,6 +1,7 @@
 #include "orbit_iterator.h"
 
 #include <algorithm>
+#include <iostream>
 
 #include "confix_orbit.h"
 
@@ -27,10 +28,19 @@ Orbit* OrbitIterator::next() {
     Orbit* orbit = orbits_[current_index_++];
 
     if (auto* confix = dynamic_cast<ConfixOrbit*>(orbit)) {
+        // std::cout << "DEBUG: Setting combinator on confix orbit\n";
         if (confix->get_combinator() == nullptr) {
             if (auto* scanner = pool_.allocate()) {
+                // std::cout << "DEBUG: Allocated scanner\n";
+                if (patterns_) {
+                    // std::cout << "DEBUG: Setting patterns on scanner\n";
+                    scanner->set_patterns(*patterns_);
+                }
+                scanner->set_packrat_cache(&packrat_cache_);
                 confix->set_combinator(scanner);
                 leased_.emplace_back(scanner, orbit);
+            } else {
+                // std::cout << "DEBUG: Failed to allocate scanner\n";
             }
         }
     }

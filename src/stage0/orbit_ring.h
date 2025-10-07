@@ -99,13 +99,14 @@ private:
 // OrbitFragment captures the correlated source fragments for each grammar
 // flavour together with lattice metadata shared by emission and speculation.
 struct OrbitFragment {
-    std::string c_text;
-    std::string cpp_text;
-    std::string cpp2_text;
     size_t start_pos = 0;
     size_t end_pos = 0;
     uint16_t lattice_mask = 0;
     double confidence = 0.0;
+    ::cppfort::ir::GrammarType classified_grammar = ::cppfort::ir::GrammarType::UNKNOWN;
+    std::string c_text;
+    std::string cpp_text;
+    std::string cpp2_text;
 };
 
 // Source location for error reporting and debugging

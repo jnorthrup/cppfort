@@ -33,6 +33,7 @@ public:
     const FunctionOrbit* winning_child() const { return winning_child_; }
     const std::string& selected_pattern() const { return selected_pattern_; }
     void set_selected_pattern(std::string pattern) { selected_pattern_ = std::move(pattern); }
+    void set_selected_grammar(::cppfort::ir::GrammarType grammar) { selected_grammar_ = grammar; }
 
     void set_combinator(::cppfort::ir::RBCursiveScanner* c) { combinator_ = c; }
     ::cppfort::ir::RBCursiveScanner* get_combinator() const { return combinator_; }
@@ -46,7 +47,7 @@ public:
 
 private:
     FunctionOrbit* ensure_function_child(::cppfort::ir::GrammarType grammar,
-                                          std::unique_ptr<FunctionOrbit> child);
+                                          FunctionOrbit* child);
 
     char open_char_;
     char close_char_;

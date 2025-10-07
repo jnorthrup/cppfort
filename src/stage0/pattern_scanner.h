@@ -10,7 +10,8 @@
 #include <any>
 #include <chrono>
 
-#include "tblgen_patterns.h"
+#include "orbit_mask.h"
+#include "pattern_matcher.h"
 
 namespace cppfort::stage0 {
 

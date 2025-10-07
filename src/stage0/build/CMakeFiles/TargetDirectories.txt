@@ -1,0 +1,4 @@
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/stage0_lib.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/stage0_cli.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/edit_cache.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/rebuild_cache.dir

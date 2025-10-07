@@ -21,11 +21,11 @@ std::string trim_copy(std::string_view text) {
 
 } // namespace
 
-std::string_view FragmentCorrelator::primary_view(const OrbitFragment& fragment) {
-    if (!fragment.cpp2_text.empty()) return fragment.cpp2_text;
-    if (!fragment.cpp_text.empty()) return fragment.cpp_text;
-    if (!fragment.c_text.empty()) return fragment.c_text;
-    return {};
+std::string_view FragmentCorrelator::extract_view(const OrbitFragment& fragment, std::string_view source) {
+    if (fragment.start_pos >= source.size() || fragment.end_pos > source.size() || fragment.start_pos >= fragment.end_pos) {
+        return {};
+    }
+    return source.substr(fragment.start_pos, fragment.end_pos - fragment.start_pos);
 }
 
 bool FragmentCorrelator::contains_token(const std::string& text, const std::string& token) {
@@ -91,44 +91,48 @@ bool FragmentCorrelator::is_c_syntax(const std::string& text) const {
     return contains_token(text, "#include") || contains_token(text, "extern");
 }
 
-void FragmentCorrelator::correlate(OrbitFragment& fragment) const {
-    std::string_view primary = primary_view(fragment);
-    if (primary.empty()) {
+void FragmentCorrelator::correlate(OrbitFragment& fragment, std::string_view source) const {
+    std::string_view view = extract_view(fragment, source);
+    if (view.empty()) {
         return;
     }
 
-    std::string primary_str(primary);
-    EvidenceGrammarKind kind = classify(primary_str);
+    std::string text(view);
+    TypeEvidence evidence;
+    evidence.ingest(text);
+    EvidenceGrammarKind kind = evidence.deduce();
 
-    auto ensure = [&](std::string& slot) {
-        if (slot.empty()) {
-            slot = primary_str;
+    // Compute confidence from evidence scores (honest baseline)
+    double computed_confidence = 0.0;
+    if (evidence.total_tokens > 0) {
+        uint32_t max_score = 0;
+        if (kind == EvidenceGrammarKind::C) {
+            max_score = evidence.c_keyword_hits * 4 + evidence.typedef_hits * 5 + evidence.struct_hits * 4 + evidence.pointer_indicators * 2;
+        } else if (kind == EvidenceGrammarKind::CPP) {
+            max_score = evidence.cpp_keyword_hits * 3 + evidence.template_hits * 5 + evidence.namespace_hits * 4 + evidence.double_colon * 5 + evidence.lambda_captures * 3 + evidence.concept_hits * 5 + evidence.requires_hits * 4 + evidence.arrow + evidence.angle_open;
+        } else if (kind == EvidenceGrammarKind::CPP2) {
+            max_score = evidence.cpp2_keyword_hits * 4 + evidence.cpp2_signature_hits * 6 + evidence.inspect_hits * 5 + evidence.contract_hits * 5 + (evidence.is_keyword_hits + evidence.as_keyword_hits) * 3 + evidence.flow_keyword_hits * 2 + evidence.arrow;
         }
-    };
+        computed_confidence = static_cast<double>(max_score) / evidence.total_tokens;
+        computed_confidence = std::min(computed_confidence, 1.0); // Cap at 1.0
+    }
 
+    fragment.confidence = computed_confidence;
     switch (kind) {
         case EvidenceGrammarKind::C:
-            fragment.confidence = std::max(fragment.confidence, 0.6);
-            ensure(fragment.c_text);
+            fragment.classified_grammar = ::cppfort::ir::GrammarType::C;
             break;
         case EvidenceGrammarKind::CPP:
-            fragment.confidence = std::max(fragment.confidence, 0.8);
-            ensure(fragment.cpp_text);
+            fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP;
             break;
         case EvidenceGrammarKind::CPP2:
-            fragment.confidence = std::max(fragment.confidence, 0.9);
-            ensure(fragment.cpp2_text);
+            fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2;
             break;
         case EvidenceGrammarKind::Unknown:
         default:
-            fragment.confidence = std::max(fragment.confidence, 0.25);
+            fragment.classified_grammar = ::cppfort::ir::GrammarType::UNKNOWN;
             break;
     }
-
-    // Provide fallbacks so downstream consumers always have content
-    ensure(fragment.c_text);
-    ensure(fragment.cpp_text);
-    ensure(fragment.cpp2_text);
 }
 
 } // namespace cppfort::stage0

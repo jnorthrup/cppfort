@@ -343,26 +343,57 @@ size_t WideScanner::findBoundarySIMD(
         fragment.lattice_mask = mask;
         fragment.confidence = (grammar == EvidenceGrammarKind::Unknown) ? 0.25 : 1.0;
 
-        std::string segment(view);
         switch (grammar) {
             case EvidenceGrammarKind::C:
-                fragment.c_text = segment;
+                fragment.classified_grammar = ::cppfort::ir::GrammarType::C;
                 break;
             case EvidenceGrammarKind::CPP:
-                fragment.cpp_text = segment;
+                fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP;
                 break;
             case EvidenceGrammarKind::CPP2:
-                fragment.cpp2_text = segment;
+                fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2;
                 break;
             case EvidenceGrammarKind::Unknown:
             default:
-                fragment.c_text = segment;
-                fragment.cpp_text = segment;
-                fragment.cpp2_text = segment;
+                fragment.classified_grammar = ::cppfort::ir::GrammarType::UNKNOWN;
                 break;
         }
 
         fragments_.push_back(std::move(fragment));
+    };
+
+    // Helper: detect if position starts CPP2 function pattern (name followed by colon+paren)
+    auto is_cpp2_function_start = [&](size_t pos) -> bool {
+        if (pos >= source.size()) return false;
+        // Scan forward to find colon
+        size_t colon_pos = pos;
+        while (colon_pos < source.size() && source[colon_pos] != ':' && source[colon_pos] != '\n') {
+            colon_pos++;
+        }
+        if (colon_pos >= source.size() || source[colon_pos] != ':') return false;
+        // Check if colon is followed by whitespace then '('
+        size_t paren_pos = colon_pos + 1;
+        while (paren_pos < source.size() && (source[paren_pos] == ' ' || source[paren_pos] == '\t')) {
+            paren_pos++;
+        }
+        return (paren_pos < source.size() && source[paren_pos] == '(');
+    };
+
+    // Helper: find matching closing delimiter accounting for nesting
+    auto find_matching_close = [&](size_t start_pos, char open_char, char close_char) -> size_t {
+        if (start_pos >= source.size()) return std::string::npos;
+        int depth = 1;
+        size_t pos = start_pos + 1;
+        while (pos < source.size() && depth > 0) {
+            if (source[pos] == open_char) {
+                depth++;
+            } else if (source[pos] == close_char) {
+                depth--;
+            }
+            if (depth == 0) return pos;
+            pos++;
+        }
+        return std::string::npos;
     };
 
     // Handle small files with single anchor: scan entire buffer
@@ -582,7 +613,57 @@ size_t WideScanner::findBoundarySIMD(
     }
 
     size_t fragment_start = 0;
-    for (const auto& boundary : boundaries) {
+    size_t i = 0;
+    while (i < boundaries.size()) {
+        const auto& boundary = boundaries[i];
+
+        // Check if this boundary is a colon that starts a CPP2 function
+        if (boundary.delimiter == ':' && boundary.is_delimiter) {
+            // Look back to start of line to get function name
+            size_t line_start = boundary.position;
+            while (line_start > 0 && source[line_start - 1] != '\n') {
+                line_start--;
+            }
+            // Skip leading whitespace on line
+            while (line_start < source.size() && (source[line_start] == ' ' || source[line_start] == '\t')) {
+                line_start++;
+            }
+
+            // Check if this line contains a CPP2 function pattern
+            if (line_start < boundary.position && is_cpp2_function_start(line_start)) {
+                // Find the function body end (matching closing brace)
+                size_t brace_pos = boundary.position;
+                while (brace_pos < source.size() && source[brace_pos] != '{' && source[brace_pos] != ';') {
+                    brace_pos++;
+                }
+
+                if (brace_pos < source.size()) {
+                    size_t func_end;
+                    if (source[brace_pos] == '{') {
+                        // Function with body - find matching close brace
+                        size_t close_brace = find_matching_close(brace_pos, '{', '}');
+                        func_end = (close_brace != std::string::npos) ? close_brace + 1 : brace_pos + 1;
+                    } else {
+                        // Forward declaration or inline - end at semicolon
+                        func_end = brace_pos + 1;
+                    }
+
+                    // Emit entire function as single fragment
+                    if (func_end > line_start) {
+                        emit_fragment(line_start, func_end, boundary.lattice_mask);
+                        fragment_start = func_end;
+
+                        // Skip boundaries within this function
+                        while (i < boundaries.size() && boundaries[i].position < func_end) {
+                            i++;
+                        }
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // Standard fragment boundary handling
         if (boundary.position > fragment_start) {
             emit_fragment(fragment_start, boundary.position, boundary.lattice_mask);
         }
@@ -594,6 +675,7 @@ size_t WideScanner::findBoundarySIMD(
         if (fragment_start > source.size()) {
             fragment_start = source.size();
         }
+        i++;
     }
     if (fragment_start < source.size()) {
         emit_fragment(fragment_start, source.size(), 0);

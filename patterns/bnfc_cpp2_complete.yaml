@@ -1,244 +1,55 @@
-# Unified OrbitPattern Database - Common Tree Trunk Grammar
-# Comprehensive grooming of C, C++, CPP2 orbits to reflect unified AST structures
-# Where deviations are negligible, patterns are merged into common trunks
-# Where deviations are significant, peer mappings preserve disambiguation
-
 ---
-# ===== COMMON TREE TRUNK PATTERNS =====
-# These patterns represent unified AST structures across all three grammars
-
-name: unified_declaration_trunk
-orbit_id: 1
+name: function_declaration
 signature_patterns:
-  - "x : int = 5"      # CPP2 canonical
-  - "int x = 5"        # C/C++ canonical
-  - "auto x = 5"       # C++11+ unified
-weight: 1.0
-grammar_modes: 7  # All modes (C | CPP | CPP2)
-lattice_filter: 65535  # All classes
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63  # All scopes
-
+  - ": ("
+grammar_modes: 7
+# Segments (isomorphic across C/CPP/CPP2)
+# $0 = function name, $1 = parameters, $2 = body
+segment_0_name: name
+segment_0_offset: -1
+segment_0_delim_start: ""
+segment_0_delim_end: ""
+segment_1_name: params
+segment_1_offset: 0
+segment_1_delim_start: "("
+segment_1_delim_end: ")"
+segment_2_name: body
+segment_2_offset: 1
+segment_2_delim_start: "{"
+segment_2_delim_end: "}"
+# Substitution: CPP2 uses ": (", C/CPP omit anchor
+substitute_4: "$0: ($1) = { $2 }"
+substitute_2: "int $0($1) { $2 }"
+substitute_1: "int $0($1) { $2 }"
 ---
-name: unified_function_trunk
-orbit_id: 2
+name: cpp2_variable
 signature_patterns:
-  - "f : (x : int) -> int = { return x; }"  # CPP2 canonical
-  - "int f(int x) { return x; }"            # C/C++ canonical
-  - "auto f(int x) { return x; }"           # C++ unified
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: global
-confix_mask: 1  # Top level only
-
+  - ":="
+grammar_modes: 4
+capture_patterns:
+  - "^([a-zA-Z_][a-zA-Z0-9_]*)"  # $1 = variable name
+  - ":=\\s*(.+)"                  # $2 = initializer
+transformation_templates:
+  2: "auto $1 = $2"               # CPP output
+  1: "/* no C equiv */ $1 := $2" # C output (not supported)
 ---
-name: unified_type_definition_trunk
-orbit_id: 3
+name: cpp2_type_alias
 signature_patterns:
-  - "T : type = { x: int; }"        # CPP2 canonical
-  - "struct T { int x; };"          # C/C++ canonical
-  - "class T { public: int x; };"   # C++ unified
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: global
-confix_mask: 1
-
+  - ": type ="
+grammar_modes: 4
+capture_patterns:
+  - "^([a-zA-Z_][a-zA-Z0-9_]*)"  # $1 = alias name
+  - "=\\s*(.+)"                   # $2 = aliased type
+transformation_templates:
+  2: "using $1 = $2;"             # CPP output
+  1: "typedef $2 $1;"             # C output
 ---
-name: unified_namespace_trunk
-orbit_id: 4
+name: cpp2_namespace
 signature_patterns:
-  - "ns : namespace = { ... }"      # CPP2 canonical
-  - "namespace ns { ... }"          # C++ canonical
-  - "/* C has no namespace */"      # C note
-weight: 0.9
-grammar_modes: 6  # CPP | CPP2 (C excluded)
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: global
-confix_mask: 1
-
----
-name: unified_control_flow_trunk
-orbit_id: 5
-signature_patterns:
-  - "if (cond) { ... }"             # All languages
-  - "while (cond) { ... }"          # All languages
-  - "for (init; cond; incr) { ... }" # All languages
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
-
----
-name: unified_expression_trunk
-orbit_id: 6
-signature_patterns:
-  - "x + y * z"     # Arithmetic (all languages)
-  - "a && b || c"   # Logical (all languages)
-  - "x = y + z"     # Assignment (all languages)
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
-
----
-# ===== NEGLIGIBLE DEVIATION PATTERNS =====
-# Patterns where syntax differs but AST structure is identical
-
-name: unified_parameter_list_trunk
-orbit_id: 7
-signature_patterns:
-  - "(x : int, y : string)"     # CPP2 style
-  - "(int x, string y)"         # C/C++ style
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: ["function_name"]
-next_tokens: ["{", "->"]
-scope_requirement: any
-confix_mask: 63
-
----
-name: unified_member_access_trunk
-orbit_id: 8
-signature_patterns:
-  - "obj.method()"     # All languages (dot operator)
-  - "ptr->method()"    # C/C++ (arrow operator)
-weight: 1.0
-grammar_modes: 7  # All modes
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
-
----
-name: unified_scope_resolution_trunk
-orbit_id: 9
-signature_patterns:
-  - "Class::member"      # C++ scope resolution
-  - "ns::member"         # C++ namespace resolution
-  - "module::member"     # CPP2 unified (negligible deviation)
-weight: 0.9
-grammar_modes: 6  # CPP | CPP2
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
-
----
-# ===== SIGNIFICANT DEVIATION PATTERNS =====
-# Patterns requiring separate orbit branches due to meaningful differences
-
-name: cpp2_type_annotation_only
-orbit_id: 100
-signature_patterns:
-  - "x : int"        # Pure CPP2 type annotation
-  - "name : string"  # Pure CPP2 type annotation
-weight: 1.0
-grammar_modes: 4  # CPP2 only
-lattice_filter: 512  # IDENTIFIER
-prev_tokens: []
-next_tokens: ["=", ",", ")"]
-scope_requirement: any
-confix_mask: 63
-
----
-name: cpp2_function_signature_only
-orbit_id: 101
-signature_patterns:
-  - "f : (x : int) -> int"  # Pure CPP2 function signature
-weight: 1.0
-grammar_modes: 4  # CPP2 only
-lattice_filter: 512  # IDENTIFIER
-prev_tokens: []
-next_tokens: ["=", "{"]
-scope_requirement: global
-confix_mask: 1
-
----
-name: cpp2_metafunction_only
-orbit_id: 102
-signature_patterns:
-  - "@interface type"  # Pure CPP2 metafunction
-  - "@concept type"    # Pure CPP2 metafunction
-weight: 1.0
-grammar_modes: 4  # CPP2 only
-lattice_filter: 512  # IDENTIFIER
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
-
----
-name: cpp_template_only
-orbit_id: 200
-signature_patterns:
-  - "template <typename T>"     # C++ template
-  - "template <class T>"        # C++ template
-weight: 1.0
-grammar_modes: 2  # CPP only
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: global
-confix_mask: 1
-
----
-name: cpp_inheritance_only
-orbit_id: 201
-signature_patterns:
-  - "class Derived : public Base"   # C++ inheritance
-  - "class Derived : private Base"  # C++ inheritance
-weight: 1.0
-grammar_modes: 2  # CPP only
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: ["{"]
-scope_requirement: global
-confix_mask: 1
-
----
-# ===== LEGACY COMPATIBILITY PATTERNS =====
-# Preserved for backward compatibility but marked for eventual migration
-
-name: legacy_c_bitfield
-orbit_id: 456
-signature_patterns:
-  - "field : 8"  # C bitfield (legacy)
-weight: 0.9
-grammar_modes: 1  # C only
-lattice_filter: 5  # DIGIT|PUNCTUATION
-prev_tokens: []
-next_tokens: []
-scope_requirement: struct_body
-confix_mask: 2  # InBrace only
-
----
-name: legacy_cpp_enum_init
-orbit_id: 234
-signature_patterns:
-  - "ENUM_VALUE = 42"  # C/C++ enum initialization
-weight: 0.7
-grammar_modes: 3  # C | CPP
-lattice_filter: 65535
-prev_tokens: []
-next_tokens: []
-scope_requirement: any
-confix_mask: 63
+  - ": namespace ="
+grammar_modes: 4
+capture_patterns:
+  - "^([a-zA-Z_][a-zA-Z0-9_]*)"  # $1 = namespace name
+transformation_templates:
+  2: "namespace $1"               # CPP output
+  1: "/* no C equiv */"           # C output (not supported)

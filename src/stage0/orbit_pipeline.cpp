@@ -1,16 +1,18 @@
 #include "orbit_pipeline.h"
 
 #include <algorithm>
+#include <iostream>
 #include <string_view>
 #include <utility>
 
 namespace cppfort::stage0 {
 namespace {
 
-std::string_view select_primary_text(const OrbitFragment& fragment) {
-    if (!fragment.cpp2_text.empty()) return fragment.cpp2_text;
-    if (!fragment.cpp_text.empty()) return fragment.cpp_text;
-    return fragment.c_text;
+std::string_view extract_fragment_view(const OrbitFragment& fragment, std::string_view source) {
+    if (fragment.start_pos >= source.size() || fragment.end_pos > source.size() || fragment.start_pos >= fragment.end_pos) {
+        return {};
+    }
+    return source.substr(fragment.start_pos, fragment.end_pos - fragment.start_pos);
 }
 
 bool contains_any(std::string_view text, std::string_view chars) {
@@ -30,8 +32,8 @@ bool OrbitPipeline::load_patterns(const std::string& path) {
     return ok;
 }
 
-std::pair<char, char> OrbitPipeline::select_confix(const OrbitFragment& fragment) const {
-    std::string_view text = select_primary_text(fragment);
+std::pair<char, char> OrbitPipeline::select_confix(const OrbitFragment& fragment, std::string_view source) const {
+    std::string_view text = extract_fragment_view(fragment, source);
 
     if (contains_any(text, "{}")) {
         return {'{', '}'};
@@ -51,39 +53,62 @@ std::pair<char, char> OrbitPipeline::select_confix(const OrbitFragment& fragment
     return {'{', '}'};
 }
 
-std::unique_ptr<ConfixOrbit> OrbitPipeline::make_base_orbit(const OrbitFragment& fragment) const {
-    auto [open_char, close_char] = select_confix(fragment);
+std::unique_ptr<ConfixOrbit> OrbitPipeline::make_base_orbit(const OrbitFragment& fragment, std::string_view source) const {
+    auto [open_char, close_char] = select_confix(fragment, source);
     auto orbit = std::make_unique<ConfixOrbit>(open_char, close_char);
     orbit->start_pos = fragment.start_pos;
     orbit->end_pos = fragment.end_pos;
-    orbit->confidence = 0.0;
+    orbit->confidence = fragment.confidence;
     orbit->set_selected_pattern("default");
 
-    const auto add_span = [&](const std::string& text) {
-        if (!text.empty()) {
-            orbit->add_evidence(EvidenceSpan{fragment.start_pos, fragment.end_pos, text, fragment.confidence});
-        }
-    };
-
-    add_span(fragment.c_text);
-    add_span(fragment.cpp_text);
-    add_span(fragment.cpp2_text);
+    // Extract evidence spans for non-anchor character runs within the fragment
+    orbit->extract_evidence(source, fragment.start_pos, fragment.end_pos);
 
     return orbit;
 }
 
-std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(const OrbitFragment& fragment) const {
+std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<ConfixOrbit> base_orbit, const OrbitFragment& fragment, std::string_view source) const {
+    
+    // Try speculation if we have a combinator with patterns
+    if (auto* combinator = base_orbit->get_combinator()) {
+        // std::cout << "DEBUG: Have combinator, trying speculation\n";
+        // For now, speculate on single fragment - TODO: cross-fragment
+        std::vector<OrbitFragment> fragment_list = {fragment};
+        combinator->speculate_across_fragments(fragment_list, source);
+        
+        // Get the best speculative match
+        if (auto* best_match = combinator->get_best_match()) {
+            // Find the corresponding pattern
+            const auto& patterns = loader_.patterns();
+            auto pattern_it = std::find_if(patterns.begin(), patterns.end(),
+                [&](const PatternData& p) { return p.name == best_match->pattern_name; });
+            
+            if (pattern_it != patterns.end()) {
+                // Use the speculated pattern
+                base_orbit->parameterize_children(*pattern_it);
+                base_orbit->set_selected_pattern(best_match->pattern_name);
+
+                // CHEAT REMOVED: Hardcoded grammar classification from pattern name
+                // Should use pattern.grammar_modes from YAML, not string matching
+
+                base_orbit->confidence = std::max(base_orbit->confidence, best_match->confidence);
+                return base_orbit;
+            }
+        }
+    }
+    
+    // Fallback: try all patterns if speculation didn't work
     const auto& patterns = loader_.patterns();
     if (patterns.empty()) {
-        return make_base_orbit(fragment);
+        return base_orbit;
     }
 
     std::unique_ptr<ConfixOrbit> best_orbit;
-    double best_confidence = -1.0;
-    std::string best_pattern_name;
+    double best_confidence = base_orbit->confidence;
+    std::string best_pattern_name = base_orbit->selected_pattern();
 
     for (const auto& pattern : patterns) {
-        auto candidate = make_base_orbit(fragment);
+        auto candidate = make_base_orbit(fragment, source);
         candidate->parameterize_children(pattern);
         if (candidate->confidence > best_confidence) {
             best_confidence = candidate->confidence;
@@ -93,7 +118,7 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(const OrbitFragmen
     }
 
     if (!best_orbit) {
-        return make_base_orbit(fragment);
+        return base_orbit;
     }
 
     best_orbit->set_selected_pattern(std::move(best_pattern_name));
@@ -101,15 +126,39 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(const OrbitFragmen
 }
 
 void OrbitPipeline::populate_iterator(const std::vector<OrbitFragment>& fragments,
-                                      OrbitIterator& iterator) {
+                                      OrbitIterator& iterator,
+                                      std::string_view source) {
+    // std::cout << "DEBUG: populate_iterator called with " << fragments.size() << " fragments\n";
     iterator.clear();
+    iterator.set_patterns(loader_.patterns());
     confix_orbits_.clear();
 
     for (const auto& fragment : fragments) {
+        // std::cout << "DEBUG: Processing fragment [" << fragment.start_pos << ", " << fragment.end_pos << ") confidence=" << fragment.confidence << "\n";
         OrbitFragment enriched = fragment;
-        correlator_.correlate(enriched);
-        auto orbit = evaluate_fragment(enriched);
+        correlator_.correlate(enriched, source);
+        
+        // Create base orbit
+        auto orbit = make_base_orbit(enriched, source);
+        
+        // Temporarily set up combinator for speculation during evaluation
+        ::cppfort::ir::RBCursiveScanner temp_scanner;
+        temp_scanner.set_patterns(loader_.patterns());
+        if (auto* confix = dynamic_cast<ConfixOrbit*>(orbit.get())) {
+            // std::cout << "DEBUG: Setting temporary combinator on orbit\n";
+            confix->set_combinator(&temp_scanner);
+        }
+
+        // Evaluate with speculation
+        orbit = evaluate_fragment(std::move(orbit), enriched, source);
+
+        // Clear temporary combinator
+        if (auto* confix = dynamic_cast<ConfixOrbit*>(orbit.get())) {
+            confix->set_combinator(nullptr);
+        }
+
         if (!orbit) {
+            // std::cout << "DEBUG: evaluate_fragment returned null\n";
             continue;
         }
         iterator.add_orbit(orbit.get());

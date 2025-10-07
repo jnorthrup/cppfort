@@ -9,6 +9,10 @@
 #include <string_view>
 #include <vector>
 
+#include "speculation.h"
+#include "orbit_ring.h"
+#include "packrat_cache.h"
+
 namespace cppfort {
 namespace ir {
 
@@ -56,12 +60,30 @@ public:
                                        std::string_view pattern,
                                        PatternType type) const;
 
+    // Speculative matching against all known patterns
+    void speculate(std::string_view text);
+
+    // Speculative matching against all known patterns across fragment boundaries
+    void speculate_across_fragments(const std::vector< ::cppfort::stage0::OrbitFragment>& fragments, std::string_view source);
+
+    // Get the best speculative match (longest match, then highest confidence)
+    const ::cppfort::stage0::SpeculativeMatch* get_best_match() const;
+
     Capabilities patternCapabilities() const { return {}; }
 
     const SimdScanner& scalarScanner() const { return m_scalarScanner; }
 
+    // Set patterns for speculation
+    void set_patterns(const std::vector< ::cppfort::stage0::PatternData>& patterns) { patterns_ = &patterns; }
+
+    // Set packrat cache for memoization
+    void set_packrat_cache( ::cppfort::stage0::PackratCache* cache) { packrat_cache_ = cache; }
+
 private:
     ScalarScanner m_scalarScanner;
+    std::vector< ::cppfort::stage0::SpeculativeMatch> matches_;
+    const std::vector< ::cppfort::stage0::PatternData>* patterns_ = nullptr;
+    ::cppfort::stage0::PackratCache* packrat_cache_ = nullptr;
     // Simple glob matcher supporting '*', '?'
     static bool globMatch(std::string_view text, std::string_view pattern);
 };

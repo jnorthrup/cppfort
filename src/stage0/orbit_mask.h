@@ -120,10 +120,13 @@ struct DenseOrbitContext {
 struct OrbitMatch {
     ::std::string patternName;   // Name of matched pattern
     GrammarType grammarType;     // Grammar type (C, CPP, CPP2)
+    size_t position;             // Start position in code (alias for startPos)
+    size_t length;               // Length of match (computed from endPos - startPos)
     size_t startPos;             // Start position in code
     size_t endPos;               // End position in code
     double confidence;           // Match confidence (0.0-1.0)
     ::std::string signature;     // Matched signature pattern
+    int orbit_type;              // Orbit type for emission (1=function, 2=declaration, etc.)
 
     // Orbit-based matching data
     ::std::array<uint64_t, 6> orbitHashes;  // Hierarchical hashes for each orbit type
@@ -131,14 +134,16 @@ struct OrbitMatch {
 
     OrbitMatch() = default;
     OrbitMatch(const ::std::string& name, GrammarType type, size_t start, size_t end,
-               double conf, const ::std::string& sig)
-        : patternName(name), grammarType(type), startPos(start), endPos(end),
-          confidence(conf), signature(sig), orbitHashes{0}, orbitCounts{0} {}
+               double conf, const ::std::string& sig, int otype = 0)
+        : patternName(name), grammarType(type), position(start), length(end - start),
+          startPos(start), endPos(end), confidence(conf), signature(sig), orbit_type(otype),
+          orbitHashes{0}, orbitCounts{0} {}
 
-    // Legacy constructor for backward compatibility
+        // Legacy constructor for backward compatibility
     OrbitMatch(size_t pos, OrbitType t, double conf, const ::std::string& snip)
-        : patternName("legacy"), grammarType(GrammarType::UNKNOWN), startPos(pos), endPos(pos + snip.length()),
-          confidence(conf), signature(snip), orbitHashes{0}, orbitCounts{0} {}
+        : patternName("legacy"), grammarType(GrammarType::UNKNOWN), position(pos), length(snip.length()),
+          startPos(pos), endPos(pos + snip.length()), confidence(conf), signature(snip),
+          orbit_type(static_cast<int>(t)), orbitHashes{0}, orbitCounts{0} {}
 };
 
 /**
@@ -235,6 +240,22 @@ public:
      */
     const DenseOrbitContext& getDenseContext() const { return dense_ctx; }
     DenseOrbitContext& getDenseContext() { return dense_ctx; }
+};
+
+/**
+ * OrbitPattern - unified pattern representation for clean room compliance
+ * Alias to UnifiedOrbitPattern for backward compatibility
+ */
+struct OrbitPattern {
+    ::std::string name;
+    GrammarType grammarType;
+    ::std::vector<::std::string> signatures;
+    double weight = 1.0;
+    uint8_t grammar_modes = 0x07;  // Default: C | CPP | CPP2
+
+    OrbitPattern() = default;
+    OrbitPattern(const ::std::string& n, GrammarType gt, const ::std::vector<::std::string>& sigs, double w = 1.0)
+        : name(n), grammarType(gt), signatures(sigs), weight(w) {}
 };
 
 } // namespace ir

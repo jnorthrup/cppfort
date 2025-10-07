@@ -25,8 +25,8 @@ std::vector<OrbitEmitter::Token> OrbitEmitter::emit_tokens(Orbit* orbit, std::st
         // Tag orbit type for debugging
         if (auto* confix = dynamic_cast<ConfixOrbit*>(orbit)) {
             tok.orbit_type = "confix[";
-            tok.orbit_type += confix->open_char;
-            tok.orbit_type += confix->close_char;
+            tok.orbit_type += confix->open_symbol();
+            tok.orbit_type += confix->close_symbol();
             tok.orbit_type += "]";
         } else {
             tok.orbit_type = "base";
@@ -75,8 +75,8 @@ std::string OrbitEmitter::extract_text(Orbit* orbit, std::string_view source) co
         const auto* evidence = orbit->get_evidence(i);
         if (evidence && evidence->confidence > best_confidence) {
             best_confidence = evidence->confidence;
-            if (!evidence->text.empty()) {
-                best_text = evidence->text;
+            if (!evidence->content.empty()) {
+                best_text = evidence->content;
             }
         }
     }

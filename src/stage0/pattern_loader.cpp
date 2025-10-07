@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
 namespace cppfort::stage0 {
@@ -45,21 +46,16 @@ bool PatternLoader::load_yaml(const std::string& path) {
         return false;
     }
 
-    enum class Section { None, Signatures, Variants };
-
     PatternData current;
-    Section section = Section::None;
-    auto flush_current = [&]() {
-        if (!current.name.empty()) {
-            patterns_.push_back(current);
-            current = PatternData{};
-        }
-    };
-
     std::string line;
+    bool in_pattern = false;
+    std::string current_section;
+
+    // Temp storage for segments during parsing
+    std::map<int, AnchorSegment> temp_segments;
+
     while (std::getline(input, line)) {
         if (line.empty()) {
-            section = Section::None;
             continue;
         }
 
@@ -68,64 +64,108 @@ bool PatternLoader::load_yaml(const std::string& path) {
             continue;
         }
 
-        if (trimmed.rfind("- name:", 0) == 0) {
-            flush_current();
-            section = Section::None;
-            std::string value = trim(trimmed.substr(7));
-            current.name = strip_quotes(trim(value));
+        // Check for pattern separator (---)
+        if (trimmed == "---") {
+            if (in_pattern && !current.name.empty()) {
+                // Finalize segments
+                for (auto& [ord, seg] : temp_segments) {
+                    current.segments.push_back(seg);
+                }
+
+                patterns_.push_back(current);
+                current = PatternData{};
+                temp_segments.clear();
+            }
+            in_pattern = true;
+            current_section.clear();
             continue;
         }
 
-        if (current.name.empty()) {
-            // Ignore entries until a pattern name is declared
+        if (!in_pattern) {
             continue;
         }
 
-        if (trimmed.rfind("regex:", 0) == 0) {
-            section = Section::None;
-            std::string value = trim(trimmed.substr(6));
-            current.regex = strip_quotes(value);
-            continue;
-        }
+        // Check for list items first (before key-value pairs)
+        if (trimmed.rfind("-", 0) == 0) {
+            if (!current_section.empty()) {
+                // List item
+                std::string item = trim(trimmed.substr(1));
+                item = strip_quotes(item);
+                // Strip comment
+                size_t comment_pos = item.find('#');
+                if (comment_pos != std::string::npos) {
+                    item = trim(item.substr(0, comment_pos));
+                }
+                item = strip_quotes(item);  // Strip quotes again after comment removal
 
-        if (trimmed.rfind("category:", 0) == 0) {
-            section = Section::None;
-            std::string value = trim(trimmed.substr(9));
-            current.category = strip_quotes(value);
-            continue;
-        }
-
-        if (trimmed.rfind("unified_signatures:", 0) == 0) {
-            section = Section::Signatures;
-            continue;
-        }
-
-        if (trimmed.rfind("grammar_variants:", 0) == 0) {
-            section = Section::Variants;
-            continue;
-        }
-
-        if (section == Section::Signatures && trimmed.rfind("-", 0) == 0) {
-            std::string value = trim(trimmed.substr(1));
-            current.unified_signatures.emplace_back(strip_quotes(value));
-            continue;
-        }
-
-        if (section == Section::Variants) {
-            auto colon = trimmed.find(':');
-            if (colon != std::string::npos) {
-                std::string key = strip_quotes(trim(trimmed.substr(0, colon)));
-                std::string value = strip_quotes(trim(trimmed.substr(colon + 1)));
-                auto grammar = parseGrammarType(key);
-                if (grammar != ::cppfort::ir::GrammarType::UNKNOWN) {
-                    current.grammar_variants[grammar] = value;
+                if (current_section == "signature_patterns") {
+                    current.signature_patterns.push_back(item);
+                } else if (current_section == "prev_tokens") {
+                    current.prev_tokens.push_back(item);
+                } else if (current_section == "next_tokens") {
+                    current.next_tokens.push_back(item);
                 }
             }
-            continue;
+        }
+        // Parse key-value pairs
+        else if (auto colon_pos = trimmed.find(':'); colon_pos != std::string::npos) {
+            std::string key = trim(trimmed.substr(0, colon_pos));
+            std::string value = trim(trimmed.substr(colon_pos + 1));
+            if (key == "name") {
+                current.name = strip_quotes(value);
+            } else if (key == "orbit_id") {
+                current.orbit_id = std::stoi(value);
+            } else if (key == "weight") {
+                current.weight = std::stod(value);
+            } else if (key == "grammar_modes") {
+                current.grammar_modes = std::stoi(value);
+            } else if (key == "lattice_filter") {
+                current.lattice_filter = std::stoi(value);
+            } else if (key == "scope_requirement") {
+                current.scope_requirement = strip_quotes(value);
+            } else if (key == "confix_mask") {
+                current.confix_mask = std::stoi(value);
+            } else if (key == "signature_patterns" || key == "prev_tokens" || key == "next_tokens") {
+                current_section = key;
+            } else if (key.rfind("segment_", 0) == 0) {
+                // Parse segment_X_Y format
+                size_t first_underscore = key.find('_', 8);
+                if (first_underscore != std::string::npos) {
+                    int segment_idx = std::stoi(key.substr(8, first_underscore - 8));
+                    std::string field = key.substr(first_underscore + 1);
+
+                    if (temp_segments.find(segment_idx) == temp_segments.end()) {
+                        temp_segments[segment_idx] = AnchorSegment{};
+                        temp_segments[segment_idx].ordinal = segment_idx;
+                    }
+
+                    if (field == "name") {
+                        temp_segments[segment_idx].name = strip_quotes(value);
+                    } else if (field == "offset") {
+                        temp_segments[segment_idx].offset_from_anchor = std::stoi(value);
+                    } else if (field == "delim_start") {
+                        temp_segments[segment_idx].delimiter_start = strip_quotes(value);
+                    } else if (field == "delim_end") {
+                        temp_segments[segment_idx].delimiter_end = strip_quotes(value);
+                    }
+                }
+            } else if (key.rfind("substitute_", 0) == 0) {
+                // Parse substitute_X format
+                int grammar_mode = std::stoi(key.substr(11));
+                current.substitution_templates[grammar_mode] = strip_quotes(value);
+            }
         }
     }
 
-    flush_current();
+    // Add the last pattern if it exists
+    if (in_pattern && !current.name.empty()) {
+        // Finalize segments
+        for (auto& [ord, seg] : temp_segments) {
+            current.segments.push_back(seg);
+        }
+        patterns_.push_back(current);
+    }
+
     return !patterns_.empty();
 }
 

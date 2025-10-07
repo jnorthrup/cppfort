@@ -9,12 +9,33 @@
 
 namespace cppfort::stage0 {
 
+// Anchor segment: text segment relative to anchor position
+struct AnchorSegment {
+    std::string name;       // e.g., "name", "params", "body"
+    int ordinal;            // Position in semantic structure
+    int offset_from_anchor; // Offset from anchor (negative = before, positive = after)
+    std::string delimiter_start; // Start delimiter (e.g., "{", "(", ":")
+    std::string delimiter_end;   // End delimiter (e.g., "}", ")", "")
+};
+
 struct PatternData {
     std::string name;
-    std::string regex;
-    std::string category;
-    std::vector<std::string> unified_signatures;
-    std::map<::cppfort::ir::GrammarType, std::string> grammar_variants;
+    int orbit_id = 0;
+    std::vector<std::string> signature_patterns;  // Anchors to match
+    double weight = 1.0;
+    int grammar_modes = 7;  // All modes by default
+    int lattice_filter = 65535;  // All classes by default
+    std::vector<std::string> prev_tokens;
+    std::vector<std::string> next_tokens;
+    std::string scope_requirement = "any";
+    int confix_mask = 63;  // All scopes by default
+
+    // Anchor-relative segments (shared across isomorphs)
+    std::vector<AnchorSegment> segments;
+
+    // Substitution templates per grammar
+    // Uses $0, $1, $2 for segments and @ANCHOR@ for anchor masking
+    std::map<int, std::string> substitution_templates;
 };
 
 class PatternLoader {

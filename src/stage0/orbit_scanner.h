@@ -8,15 +8,15 @@
 #include <filesystem>
 
 #include "orbit_mask.h"
-#include "tblgen_patterns.h"
 #include "cpp2_key_resolver.h"
 #include "unified_orbit_patterns.h"
+#include "multi_grammar_loader.h"
 
 namespace cppfort {
 namespace ir {
 
 // Forward declarations
-class IMultiGrammarLoader;
+// (none needed - all included)
 class RabinKarp;
 class OrbitContext;
 class RBCursiveScanner;
@@ -64,7 +64,7 @@ private:
     OrbitScannerConfig m_config;
     std::unique_ptr<RabinKarp> m_rabinKarp;
     std::unique_ptr<OrbitContext> m_context;
-    std::unique_ptr<IMultiGrammarLoader> m_loader;
+    std::unique_ptr<MultiGrammarLoader> m_loader;
     std::unique_ptr<cppfort::stage0::CPP2KeyResolver> m_cpp2Resolver;
     std::unique_ptr<UnifiedOrbitDatabase> m_unifiedDatabase;
     // Centralized scanner/lexer utility (private asset, replacing ad-hoc scanners)
@@ -102,7 +102,7 @@ public:
      * @param loader Grammar loader (optional, will create default if null)
      */
     OrbitScanner(const OrbitScannerConfig& config,
-                 std::unique_ptr<IMultiGrammarLoader> loader = nullptr);
+                 std::unique_ptr<MultiGrammarLoader> loader = nullptr);
 
     /**
      * Destructor

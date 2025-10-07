@@ -1,5 +1,4 @@
 #include "multi_grammar_loader.h"
-#include "tblgen_patterns.h"
 #include <iostream>
 #include <algorithm>
 #include <fstream>

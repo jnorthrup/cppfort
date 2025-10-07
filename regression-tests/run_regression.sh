@@ -1,12 +1,12 @@
 #!/bin/bash
 cd "$(dirname "$0")"
-CPPFRONT="../build/stage0_cli transpile"
+CPPFRONT="../src/stage0/build/stage0_cli transpile"
 LOG="regression_log.txt"
 TEC_DIR="../tools/stage1"
 
 rm -f "$LOG"
 echo "Regression test log - $(date)" > "$LOG"
-echo "Using cppfront: $CPPFRONT" >> "$LOG"
+echo "Using stage0_cli: $CPPFRONT" >> "$LOG"
 num_tests=0
 num_fail=0
 
@@ -30,7 +30,7 @@ for file in $ORDERED_LIST; do
   echo "Testing $file" >> "$LOG"
   output_file="output_${base}.txt"
   # Transpile
-  if $CPPFRONT "$file" "${base}.cpp" >> "$LOG" 2>&1; then
+  if $CPPFRONT "$file" "${base}.cpp" "../patterns/bnfc_cpp2_complete.yaml" >> "$LOG" 2>&1; then
     echo "  Transpile OK" >> "$LOG"
     # Compile
     if g++ -std=c++20 -O0 -g -I../include -o "$base" "${base}.cpp" >> "$LOG" 2>&1; then
