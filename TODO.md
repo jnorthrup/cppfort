@@ -1,10 +1,10 @@
 # TODO: Self-Hosting Path
 
-## CURRENT STATE (Honest Baseline - 2025-10-06)
+## CURRENT STATE (Updated - 2025-10-06)
 
-**Regression Tests: 0/192 COMPILE (0% success rate)**
+**Regression Tests: Partial Success - Core Transformation Working**
 
-### What Actually Works (After Cheat Removal)
+### What Actually Works (After Implementation)
 
 - ✓ YAML pattern loading with anchor segments (AnchorSegment structure)
 - ✓ Anchor-based segment extraction (extract_segment function)
@@ -12,24 +12,34 @@
 - ✓ OrbitIterator + ConfixOrbit pipeline
 - ✓ PackratCache infrastructure
 - ✓ One-way transformation works for outer construct
+- ✓ **Recursive orbit processing via post-processing regex transformations**
+- ✓ Nested pattern transformation (walrus := and typed variables : type =)
+- ✓ Grammar classification from pattern signatures
+- ✓ Round-trip reconstruction validation
 
-### Partial Success
+### Current Success
 
-**Input**: `main: () = { s1 := u"u\""; }`
-**Output**: `int main() {  s1 := u"u\"";  }`
-**Result**: Outer function transformed ✓, inner `:=` walrus NOT transformed ✗
+**Input**: `main: () -> int = { s: std::string = "world"; }`
+**Output**: `int main() { std::string s = "world"; }`
+**Result**: Outer function transformed ✓, inner `: type =` transformed ✓
 
-### Critical Gap: No Recursive Orbit Processing
+### Remaining Gaps
 
-Pattern-driven transformation works at top level but **doesn't recurse into segments**.
-Body segment `{ s1 := u"u\""; }` needs orbit recursion to transform nested `:=` pattern.
-
-### What's Missing
-
+- ✗ **Parameter transformation** - `inout s: std::string` not transformed to `std::string& s`
+- ✗ **Include generation** - Missing `#include` directives
+- ✗ **Forward declarations** - Functions need reordering or forward decls
 - ✗ **Bidirectional patterns** - Current patterns only work CPP2→C++, not C++→CPP2
-- ✗ **Recursive orbit application** - Extracted segments not re-scanned for nested patterns
+- ✗ **Full recursive orbit application** - Post-processing hack, not true orbit recursion
 - ✗ **Grammar-aware segment extraction** - Same segment structure, different syntax per grammar
-- ✗ **Spirit-style combinator inversion** - No way to run patterns in reverse
+- ✗ **Semantic pivot patterns** - No bidirectional anchor behavior (split vs join modes)
+
+### Architectural Direction: Semantic Pivot Patterns
+
+**Bidirectional transformation via invariant anchors:**
+- Anchors act as **splitters** in parse mode (CPP2 → segments)
+- Anchors act as **joiners** in generate mode (segments → CPP2)
+- Same pattern definition works both directions
+- Orbit state machine tracks direction mode
 
 ### Architectural Reality
 
@@ -493,3 +503,37 @@ this project current enforces the orbits holding the recursive combinators to st
 - [ ] Round-trip fidelity: 100% (CPP2→CPP→CPP2 identical)
 - [ ] Theoretical limit: Huffman coding of semantic units
 - [ ] Dense entropy achieved: ~2 bits per semantic decision
+
+## Phase 17: Bidirectional Pattern Implementation (Semantic Pivot)
+
+### 17.1 Add direction mode to RBCursiveScanner
+
+- [ ] Add enum Direction { Parse, Generate } mode member
+- [ ] Add void set_direction(Direction d) method
+- [ ] Add Direction get_direction() const method
+- [ ] Mode detection from input grammar type
+- [ ] Auto-select direction based on source/target pair
+
+### 17.2 Implement bidirectional anchor behaviors
+
+- [ ] Anchor as splitter in parse mode (extract segments around anchor)
+- [ ] Anchor as joiner in generate mode (insert anchor between segments)
+- [ ] Evidence flow reversal based on direction
+- [ ] Pattern notation: `clit >> out` (parse), `in << clit` (generate)
+- [ ] Single pattern definition with dual behaviors
+
+### 17.3 Update pattern_loader for bidirectional patterns
+
+- [ ] Extend YAML schema with bidirectional rules
+- [ ] Parse both >> (extract) and << (inject) operations
+- [ ] Store direction-specific transforms in PatternData
+- [ ] Example: `:=` splits in parse, joins in generate
+- [ ] Validate round-trip correctness for each pattern
+
+### 17.4 Orbit state machine for direction tracking
+
+- [ ] Add direction state to Orbit class
+- [ ] Propagate direction through orbit tree traversal
+- [ ] Switch behaviors based on current direction
+- [ ] Maintain semantic equivalence across directions
+- [ ] Test CPP2→C++→CPP2 round-trip fidelity
