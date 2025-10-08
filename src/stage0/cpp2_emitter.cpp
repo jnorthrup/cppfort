@@ -257,6 +257,19 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
 
     std::string_view text = source.substr(orbit.start_pos, orbit.end_pos - orbit.start_pos);
 
+    // Filter out whitespace-only orbits (garbage from over-speculation)
+    bool is_whitespace_only = true;
+    for (char c : text) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            is_whitespace_only = false;
+            break;
+        }
+    }
+    if (is_whitespace_only) {
+        out << text; // Emit as-is, don't try to transform
+        return;
+    }
+
     // ORBIT RECURSION MUST TERMINATE
     if (orbit.confidence == 0.0) {
         // For orbits with zero confidence, emit original text unchanged
@@ -298,7 +311,13 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
         }
 
         if (anchor_pos == std::string::npos) {
-            std::cerr << "FATAL: Anchor not found in matched text\n";
+            std::cerr << "FATAL: Anchor not found in pattern '" << pattern->name << "'\n";
+            std::cerr << "  Orbit text: \"" << text << "\"\n";
+            std::cerr << "  Expected anchors: ";
+            for (const auto& sig : pattern->signature_patterns) {
+                std::cerr << "\"" << sig << "\" ";
+            }
+            std::cerr << "\n";
             std::exit(1);
         }
 
