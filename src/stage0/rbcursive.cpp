@@ -122,6 +122,12 @@ void RBCursiveScanner::speculate(std::string_view text) {
 
     // Try all patterns in parallel (conceptually - actually sequential for now)
     for (const auto& pattern : *patterns_) {
+        // Try alternating pattern matching first (more specific)
+        if (pattern.use_alternating) {
+            speculate_alternating(pattern, text);
+            continue; // Alternating patterns don't use signature patterns
+        }
+        
         // Try signature pattern matching
         for (const auto& signature : pattern.signature_patterns) {
             // std::cout << "DEBUG: Checking pattern '" << pattern.name << "' signature: '" << signature << "'\n";
@@ -157,6 +163,122 @@ void RBCursiveScanner::speculate(std::string_view text) {
               [](const ::cppfort::stage0::SpeculativeMatch& a, const ::cppfort::stage0::SpeculativeMatch& b) {
                   return a.match_length > b.match_length;
               });
+}
+
+// Alternating anchor/evidence speculation for deterministic grammar selection
+void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternData& pattern, std::string_view text) {
+    if (!pattern.use_alternating || pattern.alternating_anchors.empty()) {
+        return;
+    }
+
+    // Find the first anchor
+    const std::string& first_anchor = pattern.alternating_anchors[0];
+    size_t anchor_pos = text.find(first_anchor);
+    if (anchor_pos == std::string::npos) {
+        return;
+    }
+
+    // Build alternating spans: anchor -> evidence -> anchor -> evidence -> ...
+    std::vector<std::pair<std::string_view, bool>> spans; // (content, is_anchor)
+
+    size_t match_start = anchor_pos; // Default: match starts at first anchor
+
+    // Special case: single anchor with 2 evidence types means evidence before AND after
+    if (pattern.alternating_anchors.size() == 1 && pattern.evidence_types.size() == 2) {
+        // Extract evidence before anchor
+        std::string_view before = text.substr(0, anchor_pos);
+        size_t ev_start = 0;
+        while (ev_start < before.size() && std::isspace(static_cast<unsigned char>(before[ev_start]))) ++ev_start;
+        size_t ev_end = before.size();
+        while (ev_end > ev_start && std::isspace(static_cast<unsigned char>(before[ev_end - 1]))) --ev_end;
+        std::string_view evidence_before = before.substr(ev_start, ev_end - ev_start);
+
+        if (!validate_evidence_type(pattern.evidence_types[0], evidence_before)) {
+            return; // Evidence before anchor doesn't match
+        }
+
+        // Extract evidence after anchor
+        size_t after_start = anchor_pos + first_anchor.length();
+        std::string_view after = text.substr(after_start);
+        ev_start = 0;
+        while (ev_start < after.size() && std::isspace(static_cast<unsigned char>(after[ev_start]))) ++ev_start;
+        ev_end = after.size();
+        while (ev_end > ev_start && std::isspace(static_cast<unsigned char>(after[ev_end - 1]))) --ev_end;
+        std::string_view evidence_after = after.substr(ev_start, ev_end - ev_start);
+
+        if (!validate_evidence_type(pattern.evidence_types[1], evidence_after)) {
+            return; // Evidence after anchor doesn't match
+        }
+
+        // Match the entire text
+        match_start = 0;
+        size_t match_end = text.size();
+
+        ::cppfort::stage0::OrbitFragment fragment;
+        fragment.start_pos = match_start;
+        fragment.end_pos = match_end;
+        fragment.confidence = 1.0;
+        fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2;
+
+        matches_.emplace_back(match_end - match_start, 1.0, pattern.name, std::move(fragment));
+        return;
+    }
+
+    size_t current_pos = anchor_pos;
+    spans.emplace_back(text.substr(anchor_pos, first_anchor.length()), true); // First anchor
+    current_pos += first_anchor.length();
+
+    // Alternate between evidence and anchors
+    for (size_t i = 0; i < pattern.alternating_anchors.size() + pattern.evidence_types.size(); ++i) {
+        if (i % 2 == 0) {
+            // Expect evidence span
+            size_t evidence_idx = i / 2;
+            if (evidence_idx >= pattern.evidence_types.size()) {
+                break; // No more evidence types
+            }
+            
+            // Find next anchor or end
+            size_t next_anchor_pos = std::string::npos;
+            if (evidence_idx + 1 < pattern.alternating_anchors.size()) {
+                const std::string& next_anchor = pattern.alternating_anchors[evidence_idx + 1];
+                next_anchor_pos = text.find(next_anchor, current_pos);
+            }
+            
+            size_t evidence_end = (next_anchor_pos != std::string::npos) ? next_anchor_pos : text.length();
+            std::string_view raw_evidence = text.substr(current_pos, evidence_end - current_pos);
+            // Trim whitespace from evidence
+            size_t ev_start = 0;
+            while (ev_start < raw_evidence.size() && std::isspace(static_cast<unsigned char>(raw_evidence[ev_start]))) ++ev_start;
+            size_t ev_end = raw_evidence.size();
+            while (ev_end > ev_start && std::isspace(static_cast<unsigned char>(raw_evidence[ev_end - 1]))) --ev_end;
+            std::string_view evidence = raw_evidence.substr(ev_start, ev_end - ev_start);
+
+            // Validate evidence type
+            if (!validate_evidence_type(pattern.evidence_types[evidence_idx], evidence)) {
+                return; // Evidence doesn't match expected type
+            }
+
+            spans.emplace_back(evidence, false); // Evidence span
+            current_pos = evidence_end;
+            
+            if (next_anchor_pos != std::string::npos) {
+                spans.emplace_back(text.substr(next_anchor_pos, pattern.alternating_anchors[evidence_idx + 1].length()), true);
+                current_pos += pattern.alternating_anchors[evidence_idx + 1].length();
+            }
+        }
+    }
+
+    // If we got here, all evidence types validated - create a match
+    size_t match_length = current_pos - anchor_pos;
+    double confidence = 1.0; // High confidence for validated alternating patterns
+    
+    ::cppfort::stage0::OrbitFragment fragment;
+    fragment.start_pos = anchor_pos;
+    fragment.end_pos = anchor_pos + match_length;
+    fragment.confidence = confidence;
+    fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2; // Alternating patterns are for CPP2
+    
+    matches_.emplace_back(match_length, confidence, pattern.name, std::move(fragment));
 }
 
 void RBCursiveScanner::speculate_across_fragments(const std::vector< ::cppfort::stage0::OrbitFragment>& fragments, std::string_view source) {
@@ -286,6 +408,46 @@ std::size_t CombinatorPool::available() const {
         }
     }
     return count;
+}
+
+// Validate evidence type for alternating patterns
+bool RBCursiveScanner::validate_evidence_type(const std::string& type, std::string_view evidence) const {
+    if (type == "identifier") {
+        // Simple identifier: starts with letter/underscore, contains letters/digits/underscores
+        if (evidence.empty()) return false;
+        if (!std::isalpha(evidence[0]) && evidence[0] != '_') return false;
+        for (char c : evidence) {
+            if (!std::isalnum(c) && c != '_') return false;
+        }
+        return true;
+    } else if (type == "identifier_template") {
+        // Template identifier: identifier followed by optional <...>
+        if (evidence.empty()) return false;
+        size_t angle_pos = evidence.find('<');
+        if (angle_pos == std::string::npos) {
+            // No template parameters, validate as regular identifier
+            return validate_evidence_type("identifier", evidence);
+        }
+        // Validate identifier part
+        std::string_view ident_part = evidence.substr(0, angle_pos);
+        if (!validate_evidence_type("identifier", ident_part)) return false;
+        // Check for matching angle brackets (simplified)
+        size_t close_pos = evidence.find('>', angle_pos);
+        return close_pos != std::string::npos && close_pos == evidence.length() - 1;
+    } else if (type == "type_expression") {
+        // Type expression: can be complex, for now accept if not empty and contains valid chars
+        if (evidence.empty()) return false;
+        // Basic validation: contains letters, spaces, <>, ::, etc., and punctuation
+        bool has_alpha = false;
+        for (char c : evidence) {
+            if (std::isalpha(c)) has_alpha = true;
+            if (!std::isalnum(c) && c != '_' && c != '<' && c != '>' && c != ':' && c != ' ' && c != '&' && c != '*' && c != ';' && c != ',' && c != '.' && c != '(' && c != ')') {
+                return false;
+            }
+        }
+        return has_alpha;
+    }
+    return false; // Unknown type
 }
 
 } // namespace ir

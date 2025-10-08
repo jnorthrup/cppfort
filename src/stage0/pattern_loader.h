@@ -30,7 +30,12 @@ struct PatternData {
     std::string scope_requirement = "any";
     int confix_mask = 63;  // All scopes by default
 
-    // Anchor-relative segments (shared across isomorphs)
+    // Alternating anchor/evidence pattern system
+    std::vector<std::string> alternating_anchors;     // Fixed anchor strings
+    std::vector<std::string> evidence_types;          // Types for evidence spans between anchors
+    bool use_alternating = false;                     // Whether to use alternating system
+
+    // Legacy segment-based system (for backward compatibility)
     std::vector<AnchorSegment> segments;
 
     // Substitution templates per grammar

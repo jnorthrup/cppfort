@@ -67,25 +67,7 @@ std::string OrbitEmitter::reconstruct_source(OrbitIterator& iterator, std::strin
 }
 
 std::string OrbitEmitter::extract_text(Orbit* orbit, std::string_view source) const {
-    // Check evidence spans for high-confidence matches
-    double best_confidence = -1.0;
-    std::string best_text;
-
-    for (size_t i = 0; i < orbit->evidence_count(); ++i) {
-        const auto* evidence = orbit->get_evidence(i);
-        if (evidence && evidence->confidence > best_confidence) {
-            best_confidence = evidence->confidence;
-            if (!evidence->content.empty()) {
-                best_text = evidence->content;
-            }
-        }
-    }
-
-    if (!best_text.empty()) {
-        return best_text;
-    }
-
-    // Fallback to source text
+    // For reconstruction, just use the source text
     return std::string(source);
 }
 

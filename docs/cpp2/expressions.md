@@ -60,8 +60,6 @@ To explicitly treat an object name passed as an argument as `move` or `out`, wri
 
 For example:
 
-
-
 ## <a id="wildcard"></a> <a id="discard"></a> `_` — the "don't care" wildcard, including explicit discard
 
 `_` is pronounced **"don't care"** and allowed as a wildcard in most contexts. For example:
@@ -97,7 +95,6 @@ _ = vec.emplace_back(1,2,3);
 ```
 
 For details, see [Design note: Explicit discard](https://github.com/hsutter/cppfront/wiki/Design-note%3A-Explicit-discard). In Cpp2, data is always initialized, data is never silently lost, data flow is always visible. Data is precious, and it's always safe.
-
 
 ## Type/value queries and casts
 
@@ -148,7 +145,6 @@ Here are some `is` queries with their Cpp1 equivalents. In this table, uppercase
 
 > Note: `is` unifies a variety of differently-named Cpp1 language and library queries under one syntax, and supports only the type-safe ones.
 
-
 ### <a id="as"></a> `as` — safe casts and conversions
 
 An `x as T` expression allows safe type casts. `x` must be an object or expression, and `T` must be a type. Like `is`, `as` supports both static and dynamic typing, including customization, with support for standard library dynamic types like `std::variant`, `std::optional`, `std::expected`, and `std::any` provided out of the box. For example:
@@ -185,7 +181,6 @@ Here are some `as` casts with their Cpp1 equivalents. In this table, uppercase n
 
 > Note: `as` unifies a variety of differently-named Cpp1 language and library casts and conversions under one syntax, and supports only the type-safe ones.
 
-
 ### <a id="unchecked-casts"></a> Unchecked (explicitly type-unsafe) casts
 
 Casts that are not known to be type-safe at compile time must always be explicit.
@@ -202,7 +197,6 @@ f: (i: i32, inout s: std::string) = {
     pi := unchecked_cast<*std::string>(pv);  // ok, 'unchecked' is explicit
 }
 ```
-
 
 ## <a id="inspect"></a> `inspect` — pattern matching
 
@@ -241,7 +235,6 @@ test(42);
 ```
 
 For more examples, see also the examples in the previous two sections on `is` and `as`, many of which use `inspect`.
-
 
 ## <a id="ranges"></a> `..<` and `..=` — range operators
 
@@ -286,7 +279,6 @@ main: () = {
 //    false
 ```
 
-
 ## <a id="captures"></a> `$` — captures, including interpolations
 
 Suffix `$` is pronounced **"paste the value of"** and captures the value of an expression at the point when the expression where the capture is written is evaluated. Depending on the complexity of the capture expression `expr$` and where it is used, parentheses `(expr)$` may be required for precedence or to show the boundaries of the expression.
@@ -296,7 +288,6 @@ Suffix `$` is pronounced **"paste the value of"** and captures the value of an e
 Captures are evaluated at the point where they are written in function expressions, contract postconditions, and string literals. The stored captured value can then be used later when evaluating its context, such as when the function expression body containing the captured value is actually called later (one or more times), when the postcondition containing the captured value is evaluated later when the function returns, or when the string literal containing the captured value is read later.
 
 The design and syntax are selected so that capture is spelled the same way in all contexts. For details, see [Design note: Capture](https://github.com/hsutter/cppfront/wiki/Design-note%3A-Capture).
-
 
 ### <a id="function-captures"></a> Capture in function expressions (aka lambdas)
 
@@ -344,7 +335,6 @@ main: () = {
 //      Price = 100
 ```
 
-
 ### <a id="postcondition-captures"></a> Capture in contract postconditions
 
 Any capture in a postcondition is evaluated at the point where the postcondition is written, at the beginning (entry) of the function. The postcondition itself is then evaluated when the function returns, and can reference the captured value.
@@ -359,7 +349,6 @@ push_back: (coll, value)
     // ...
 }
 ```
-
 
 ### <a id="interpolation"></a> Capture in string interpolation
 

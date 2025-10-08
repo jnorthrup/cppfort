@@ -104,6 +104,10 @@ bool PatternLoader::load_yaml(const std::string& path) {
                     current.prev_tokens.push_back(item);
                 } else if (current_section == "next_tokens") {
                     current.next_tokens.push_back(item);
+                } else if (current_section == "alternating_anchors") {
+                    current.alternating_anchors.push_back(item);
+                } else if (current_section == "evidence_types") {
+                    current.evidence_types.push_back(item);
                 }
             }
         }
@@ -125,8 +129,15 @@ bool PatternLoader::load_yaml(const std::string& path) {
                 current.scope_requirement = strip_quotes(value);
             } else if (key == "confix_mask") {
                 current.confix_mask = std::stoi(value);
-            } else if (key == "signature_patterns" || key == "prev_tokens" || key == "next_tokens") {
+            } else if (key == "signature_patterns" || key == "prev_tokens" || key == "next_tokens" || 
+                       key == "alternating_anchors" || key == "evidence_types" || key == "transformation_templates") {
                 current_section = key;
+            } else if (key == "use_alternating") {
+                current.use_alternating = (strip_quotes(value) == "true");
+            } else if (current_section == "transformation_templates") {
+                // Parse grammar_mode: template
+                int grammar_mode = std::stoi(key);
+                current.substitution_templates[grammar_mode] = strip_quotes(value);
             } else if (key.rfind("segment_", 0) == 0) {
                 // Parse segment_X_Y format
                 size_t first_underscore = key.find('_', 8);

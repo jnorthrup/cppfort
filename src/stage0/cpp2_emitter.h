@@ -27,6 +27,9 @@ public:
 private:
     // Extract text for fragment from source
     std::string_view extract_fragment_text(const OrbitFragment& fragment, std::string_view source) const;
+    
+    // Extract segments for alternating anchor/evidence patterns
+    std::vector<std::string> extract_alternating_segments(std::string_view text, const PatternData& pattern) const;
 };
 
 } // namespace cppfort::stage0

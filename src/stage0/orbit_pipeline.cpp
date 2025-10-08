@@ -21,6 +21,35 @@ bool contains_any(std::string_view text, std::string_view chars) {
 
 } // namespace
 
+// Classify grammar based on pattern characteristics
+::cppfort::ir::GrammarType classify_grammar_from_pattern(const PatternData& pattern) {
+    // Check signature patterns for grammar-specific markers
+    for (const auto& sig : pattern.signature_patterns) {
+        if (sig.find(": (") != std::string::npos || sig.find(":(") != std::string::npos) {
+            return ::cppfort::ir::GrammarType::CPP2;
+        }
+        if (sig.find("::") != std::string::npos || sig.find("template") != std::string::npos) {
+            return ::cppfort::ir::GrammarType::CPP;
+        }
+        if (sig.find("typedef") != std::string::npos || sig.find("struct") != std::string::npos) {
+            return ::cppfort::ir::GrammarType::C;
+        }
+    }
+    
+    // Check pattern name for fallback classification
+    if (pattern.name.find("cpp2") != std::string::npos || pattern.name.find("CPP2") != std::string::npos) {
+        return ::cppfort::ir::GrammarType::CPP2;
+    }
+    if (pattern.name.find("cpp") != std::string::npos || pattern.name.find("CPP") != std::string::npos) {
+        return ::cppfort::ir::GrammarType::CPP;
+    }
+    if (pattern.name.find("function") != std::string::npos) {
+        return ::cppfort::ir::GrammarType::CPP2;  // function_declaration uses : (
+    }
+    
+    return ::cppfort::ir::GrammarType::UNKNOWN;
+}
+
 bool OrbitPipeline::load_patterns(const std::string& path) {
     const bool ok = loader_.load_yaml(path);
     grammar_tree_.clear();
@@ -72,9 +101,8 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
     // Try speculation if we have a combinator with patterns
     if (auto* combinator = base_orbit->get_combinator()) {
         // std::cout << "DEBUG: Have combinator, trying speculation\n";
-        // For now, speculate on single fragment - TODO: cross-fragment
-        std::vector<OrbitFragment> fragment_list = {fragment};
-        combinator->speculate_across_fragments(fragment_list, source);
+        // Speculate on full source for alternating patterns
+        combinator->speculate(source);
         
         // Get the best speculative match
         if (auto* best_match = combinator->get_best_match()) {
@@ -87,9 +115,7 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                 // Use the speculated pattern
                 base_orbit->parameterize_children(*pattern_it);
                 base_orbit->set_selected_pattern(best_match->pattern_name);
-
-                // CHEAT REMOVED: Hardcoded grammar classification from pattern name
-                // Should use pattern.grammar_modes from YAML, not string matching
+                base_orbit->set_selected_grammar(classify_grammar_from_pattern(*pattern_it));
 
                 base_orbit->confidence = std::max(base_orbit->confidence, best_match->confidence);
                 return base_orbit;
@@ -122,6 +148,14 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
     }
 
     best_orbit->set_selected_pattern(std::move(best_pattern_name));
+    
+    // Set grammar for the best pattern
+    auto pattern_it = std::find_if(patterns.begin(), patterns.end(),
+        [&](const PatternData& p) { return p.name == best_pattern_name; });
+    if (pattern_it != patterns.end()) {
+        best_orbit->set_selected_grammar(classify_grammar_from_pattern(*pattern_it));
+    }
+    
     return best_orbit;
 }
 

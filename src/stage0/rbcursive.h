@@ -12,6 +12,7 @@
 #include "speculation.h"
 #include "orbit_ring.h"
 #include "packrat_cache.h"
+#include "pattern_loader.h"
 
 namespace cppfort {
 namespace ir {
@@ -66,6 +67,9 @@ public:
     // Speculative matching against all known patterns across fragment boundaries
     void speculate_across_fragments(const std::vector< ::cppfort::stage0::OrbitFragment>& fragments, std::string_view source);
 
+    // Speculative matching using alternating anchor/evidence pattern
+    void speculate_alternating(const ::cppfort::stage0::PatternData& pattern, std::string_view text);
+
     // Get the best speculative match (longest match, then highest confidence)
     const ::cppfort::stage0::SpeculativeMatch* get_best_match() const;
 
@@ -84,6 +88,9 @@ private:
     std::vector< ::cppfort::stage0::SpeculativeMatch> matches_;
     const std::vector< ::cppfort::stage0::PatternData>* patterns_ = nullptr;
     ::cppfort::stage0::PackratCache* packrat_cache_ = nullptr;
+    
+    // Validate evidence type for alternating patterns
+    bool validate_evidence_type(const std::string& type, std::string_view evidence) const;
     // Simple glob matcher supporting '*', '?'
     static bool globMatch(std::string_view text, std::string_view pattern);
 };

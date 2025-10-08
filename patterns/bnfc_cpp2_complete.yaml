@@ -4,7 +4,7 @@ signature_patterns:
   - ": ("
 grammar_modes: 7
 # Segments (isomorphic across C/CPP/CPP2)
-# $0 = function name, $1 = parameters, $2 = body
+# $0 = function name, $1 = parameters, $2 = return type, $3 = body
 segment_0_name: name
 segment_0_offset: -1
 segment_0_delim_start: ""
@@ -13,36 +13,56 @@ segment_1_name: params
 segment_1_offset: 0
 segment_1_delim_start: "("
 segment_1_delim_end: ")"
-segment_2_name: body
+segment_2_name: return_type
 segment_2_offset: 1
-segment_2_delim_start: "{"
-segment_2_delim_end: "}"
+segment_2_delim_start: "->"
+segment_2_delim_end: " ="
+segment_3_name: body
+segment_3_offset: 2
+segment_3_delim_start: "{"
+segment_3_delim_end: "}"
 # Substitution: CPP2 uses ": (", C/CPP omit anchor
-substitute_4: "$0: ($1) = { $2 }"
-substitute_2: "int $0($1) { $2 }"
-substitute_1: "int $0($1) { $2 }"
+substitute_4: "$0: ($1)$2 = { $3 }"
+substitute_2: "$2 $0($1) { $3 }"
+substitute_1: "$2 $0($1) { $3 }"
 ---
 name: cpp2_variable
-signature_patterns:
+use_alternating: true
+alternating_anchors:
   - ":="
 grammar_modes: 4
-capture_patterns:
-  - "^([a-zA-Z_][a-zA-Z0-9_]*)"  # $1 = variable name
-  - ":=\\s*(.+)"                  # $2 = initializer
+evidence_types:
+  - "identifier"       # Variable name (before :=)
+  - "expression"       # Initializer value
 transformation_templates:
-  2: "auto $1 = $2"               # CPP output
+  2: "auto $1 = $2"    # CPP output
   1: "/* no C equiv */ $1 := $2" # C output (not supported)
 ---
 name: cpp2_type_alias
-signature_patterns:
-  - ": type ="
+use_alternating: true
+alternating_anchors:
+  - ": type"
+  - "="
 grammar_modes: 4
-capture_patterns:
-  - "^([a-zA-Z_][a-zA-Z0-9_]*)"  # $1 = alias name
-  - "=\\s*(.+)"                   # $2 = aliased type
+evidence_types:
+  - "identifier"       # Alias name
+  - "type_expression"  # Aliased type
 transformation_templates:
-  2: "using $1 = $2;"             # CPP output
-  1: "typedef $2 $1;"             # C output
+  2: "using $1 = $2;"  # CPP output
+  1: "typedef $2 $1;"  # C output
+---
+name: cpp2_template_type_alias
+use_alternating: true
+alternating_anchors:
+  - "type"
+  - "="
+grammar_modes: 4
+evidence_types:
+  - "identifier_template"  # Type name with optional template args
+  - "type_expression"      # The aliased type
+transformation_templates:
+  2: "using $1 = $2;"      # CPP output
+  1: "typedef $2 $1;"      # C output
 ---
 name: cpp2_namespace
 signature_patterns:
