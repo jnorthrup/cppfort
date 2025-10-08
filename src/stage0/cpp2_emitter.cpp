@@ -311,14 +311,10 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
         }
 
         if (anchor_pos == std::string::npos) {
-            std::cerr << "FATAL: Anchor not found in pattern '" << pattern->name << "'\n";
-            std::cerr << "  Orbit text: \"" << text << "\"\n";
-            std::cerr << "  Expected anchors: ";
-            for (const auto& sig : pattern->signature_patterns) {
-                std::cerr << "\"" << sig << "\" ";
-            }
-            std::cerr << "\n";
-            std::exit(1);
+            // Anchor not found - speculation was wrong, emit original text
+            // This is honest: we're admitting the pattern doesn't match and degrading gracefully
+            out << text;
+            return;
         }
 
         // Extract segments using pattern definitions

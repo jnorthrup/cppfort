@@ -134,11 +134,52 @@ void RBCursiveScanner::speculate(std::string_view text) {
             // Simple substring search for now (can be enhanced later)
             size_t pos = text.find(signature);
             if (pos != std::string::npos) {
-                // Found signature
-                // CHEAT REMOVED: Was hardcoded CPP2 scope expansion (lines 135-179)
-                // Should be pattern-driven via orbit recursion, not string matching
+                // Found signature - now expand orbit boundaries using pattern segments
                 size_t start_pos = pos;
                 size_t end_pos = pos + signature.length();
+
+                // For segment-based patterns, extend boundaries to include all segments
+                if (!pattern.segments.empty()) {
+                    // Extend backwards for negative-offset segments (e.g., function name before ": (")
+                    for (const auto& seg : pattern.segments) {
+                        if (seg.offset_from_anchor < 0) {
+                            // Look backwards for identifier
+                            size_t scan_pos = pos;
+                            while (scan_pos > 0 && std::isspace(static_cast<unsigned char>(text[scan_pos - 1]))) {
+                                --scan_pos;
+                            }
+                            size_t ident_end = scan_pos;
+                            while (scan_pos > 0 && (std::isalnum(static_cast<unsigned char>(text[scan_pos - 1])) || text[scan_pos - 1] == '_')) {
+                                --scan_pos;
+                            }
+                            if (scan_pos < ident_end) {
+                                start_pos = std::min(start_pos, scan_pos);
+                            }
+                        }
+                    }
+
+                    // Extend forwards to include last segment delimiter end
+                    if (!pattern.segments.empty()) {
+                        // Find the last segment's end delimiter (e.g., "}" for function body)
+                        const auto& last_seg = pattern.segments.back();
+                        if (!last_seg.delimiter_end.empty()) {
+                            size_t delim_start_pos = text.find(last_seg.delimiter_start, pos);
+                            if (delim_start_pos != std::string::npos) {
+                                // Simple nesting-aware search for closing delimiter
+                                size_t search_pos = delim_start_pos + last_seg.delimiter_start.length();
+                                int depth = 1;
+                                while (search_pos < text.size() && depth > 0) {
+                                    if (text[search_pos] == last_seg.delimiter_start[0]) ++depth;
+                                    else if (text[search_pos] == last_seg.delimiter_end[0]) --depth;
+                                    ++search_pos;
+                                }
+                                if (depth == 0) {
+                                    end_pos = search_pos;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 size_t match_length = end_pos - start_pos;
                 // Compute confidence from pattern complexity (honest baseline)
