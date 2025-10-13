@@ -1,6 +1,6 @@
 # TODO: Self-Hosting Path
 
-## CURRENT STATE (Updated - 2025-10-06)
+## CURRENT STATE (Updated - 2025-10-13)
 
 **Regression Tests: Partial Success - Core Transformation Working**
 
@@ -16,12 +16,17 @@
 - ✓ Nested pattern transformation (walrus := and typed variables : type =)
 - ✓ Grammar classification from pattern signatures
 - ✓ Round-trip reconstruction validation
+- ✓ **Alternating anchor/evidence pattern system implemented** (speculation, extraction, validation)
+- ✓ **Pattern selection working for template type aliases** (e.g., `type Pair<A,B>=std::pair<A,B>`)
 
 ### Current Success
 
 **Input**: `main: () -> int = { s: std::string = "world"; }`
 **Output**: `int main() { std::string s = "world"; }`
 **Result**: Outer function transformed ✓, inner `: type =` transformed ✓
+
+**Template Alias Test**: `type Pair<A,B>=std::pair<A,B>;`
+**Status**: Pattern selected correctly (`cpp2_template_type_alias`), but substitution malformed (outputs "using :pair<A,B>; std = $2;")
 
 ### Remaining Gaps
 
@@ -32,6 +37,7 @@
 - ✗ **Full recursive orbit application** - Post-processing hack, not true orbit recursion
 - ✗ **Grammar-aware segment extraction** - Same segment structure, different syntax per grammar
 - ✗ **Semantic pivot patterns** - No bidirectional anchor behavior (split vs join modes)
+- ✗ **Alternating pattern substitution bug** - Segment extraction and template application incorrect for complex templates
 
 ### Architectural Direction: Semantic Pivot Patterns
 
