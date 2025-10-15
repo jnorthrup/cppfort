@@ -22,9 +22,9 @@ segment_3_offset: 2
 segment_3_delim_start: "{"
 segment_3_delim_end: "}"
 # Substitution: CPP2 uses ": (", C/CPP omit anchor
-substitute_4: "$0: ($1)$2 = { $3 }"
-substitute_2: "$2 $0($1) { $3 }"
-substitute_1: "$2 $0($1) { $3 }"
+substitute_4: "$0: ($1)$2 = {$3}"
+substitute_2: "$2 $0($1) {$3}"
+substitute_1: "$2 $0($1) {$3}"
 ---
 name: cpp2_variable
 use_alternating: true

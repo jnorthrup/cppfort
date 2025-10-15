@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+9df63b860b8b0d330c6ec3a4410fdbce /Users/jim/work/cppfort/patterns/semantic_units.json
+576428be23028e16c6696a9747f9ca75 CMakeFiles/tblgen_semantic_units

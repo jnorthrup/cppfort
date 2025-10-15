@@ -1,0 +1,27 @@
+# ninja log v7
+0	5	1760495855329091274	/Users/jim/work/cppfort/patterns/semantic_units.json	59fb2301d8e99904
+6	439	1760495855330190302	CMakeFiles/stage0_lib.dir/mmap_source.cpp.o	d9736d0b16ef2ed3
+7	540	1760495855330977709	CMakeFiles/stage0_lib.dir/orbit_mask.cpp.o	7548d92967324077
+6	658	1760495855329973721	CMakeFiles/stage0_lib.dir/grammar_tree.cpp.o	c6c1a2e98ebf9672
+7	719	1760495855331326371	CMakeFiles/stage0_lib.dir/packrat_cache.cpp.o	388b028d6ec06185
+6	729	1760495855329557268	CMakeFiles/stage0_lib.dir/correlator.cpp.o	507222b22d459095
+6	813	1760495855329877847	CMakeFiles/stage0_lib.dir/function_orbit.cpp.o	6dd2caea25872662
+442	816	1760495855766223398	CMakeFiles/stage0_lib.dir/rabin_karp.cpp.o	ed3ee599d3ffb395
+6	938	1760495855329772890	CMakeFiles/stage0_lib.dir/dense_orbit_builder.cpp.o	e6db83bb8c9ee073
+5	943	1760495855329419686	CMakeFiles/stage0_lib.dir/confix_orbit.cpp.o	4221291b817cbcb9
+7	1077	1760495855331111832	CMakeFiles/stage0_lib.dir/orbit_pipeline.cpp.o	10c836fa72ae9ab3
+6	1084	1760495855330360841	CMakeFiles/stage0_lib.dir/orbit_emitter.cpp.o	5f7c53f6f6de7549
+7	1087	1760495855330755878	CMakeFiles/stage0_lib.dir/orbit_iterator.cpp.o	42d01bc523c5bc15
+7	1091	1760495855331438161	CMakeFiles/stage0_lib.dir/pattern_loader.cpp.o	a7d56aea174c7729
+6	1133	1760495855330083678	CMakeFiles/stage0_lib.dir/minimal_cpp2.cpp.o	639b1cdf20ddfce0
+816	1307	1760495856140453808	CMakeFiles/test_pattern_match.dir/test_pattern_match.cpp.o	f60b2c558ae1c458
+4	565	1760496104617093625	CMakeFiles/stage0_lib.dir/cpp2_emitter.cpp.o	d88f4ac5577d5f0e
+719	1352	1760495856043234980	CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o	17bd4812d5e4046
+729	1449	1760495856052868652	CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o	9ca2ffc6cd803658
+813	1457	1760495856137229098	CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o	16c8591d57b106d1
+658	1488	1760495855982217826	CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.o	6c22e83d245fcfdb
+541	1545	1760495855864589795	CMakeFiles/stage0_lib.dir/rbcursive.cpp.o	6e0f167292272713
+565	599	1760496105177647291	libstage0_lib.a	92b998accc098bb0
+1580	1612	1760495856903608527	test_pattern_match	2811dc372e0c7526
+4	580	1760495939692137109	CMakeFiles/test_reality_check.dir/test_reality_check.cpp.o	aa07a41a7a615a31
+599	629	1760496105212328650	test_reality_check	155465a119041e2e

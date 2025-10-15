@@ -1,4 +1,5 @@
 #include "cpp2_emitter.h"
+#include "tblgen_pattern_matcher.h"
 
 #include <algorithm>
 #include <iostream>
@@ -83,10 +84,14 @@ std::string apply_substitution(const std::string& template_str, const std::vecto
     std::vector<std::string> processed_segments = segments;
     for (size_t i = 0; i < processed_segments.size(); ++i) {
         auto& seg = processed_segments[i];
-        // Trim whitespace
-        seg.erase(seg.begin(), std::find_if(seg.begin(), seg.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-        seg.erase(std::find_if(seg.rbegin(), seg.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), seg.end());
-        
+
+        // Don't trim body segment (i==3) - it needs spaces for formatting
+        if (i != 3) {
+            // Trim whitespace
+            seg.erase(seg.begin(), std::find_if(seg.begin(), seg.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+            seg.erase(std::find_if(seg.rbegin(), seg.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), seg.end());
+        }
+
         // Transform return type: "-> int" -> "int", empty -> "auto" (only for return type segment)
         if (i == 2) {  // return_type segment
             if (seg.starts_with("->")) {
@@ -100,21 +105,12 @@ std::string apply_substitution(const std::string& template_str, const std::vecto
     }
 
     // Replace placeholders with processed segments
-    // Support both 0-indexed ($0, $1, $2...) and 1-indexed ($1, $2, $3...)
+    // Use 0-indexed ($0, $1, $2, $3) to match tblgen patterns
     for (size_t i = 0; i < processed_segments.size(); ++i) {
-        // Try 1-indexed first ($1, $2, ...)
-        std::string placeholder_1 = "$" + std::to_string(i + 1);
+        std::string placeholder = "$" + std::to_string(i);
         size_t pos = 0;
-        while ((pos = result.find(placeholder_1, pos)) != std::string::npos) {
-            result.replace(pos, placeholder_1.length(), processed_segments[i]);
-            pos += processed_segments[i].length();
-        }
-
-        // Then try 0-indexed ($0, $1, ...)
-        std::string placeholder_0 = "$" + std::to_string(i);
-        pos = 0;
-        while ((pos = result.find(placeholder_0, pos)) != std::string::npos) {
-            result.replace(pos, placeholder_0.length(), processed_segments[i]);
+        while ((pos = result.find(placeholder, pos)) != std::string::npos) {
+            result.replace(pos, placeholder.length(), processed_segments[i]);
             pos += processed_segments[i].length();
         }
     }
@@ -125,15 +121,27 @@ std::string apply_substitution(const std::string& template_str, const std::vecto
 // Apply recursive transformations to handle nested patterns
 std::string apply_recursive_transformations(const std::string& input) {
     std::string result = input;
-    
+
+    // Transform parameter with inout: inout name: type -> type& name
+    std::regex inout_param_regex(R"(\binout\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*([^,)]+))");
+    result = std::regex_replace(result, inout_param_regex, "$2& $1");
+
+    // Transform parameter with out: out name: type -> type& name
+    std::regex out_param_regex(R"(\bout\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*([^,)]+))");
+    result = std::regex_replace(result, out_param_regex, "$2& $1");
+
+    // Transform parameter with in: in name: type -> const type& name
+    std::regex in_param_regex(R"(\bin\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*([^,)]+))");
+    result = std::regex_replace(result, in_param_regex, "const $2& $1");
+
     // Transform := patterns: var := value -> auto var = value
     std::regex walrus_regex(R"(\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:=\s*([^;]+))");
     result = std::regex_replace(result, walrus_regex, "auto $1 = $2");
-    
+
     // Transform : type = patterns: var : type = value -> type var = value
     std::regex typed_var_regex(R"(\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*([^=\s]+)\s*=\s*([^;]+))");
     result = std::regex_replace(result, typed_var_regex, "$2 $1 = $3");
-    
+
     return result;
 }
 
@@ -250,6 +258,24 @@ void CPP2Emitter::emit_fragment(const OrbitFragment& fragment, std::string_view 
     out << extract_fragment_text(fragment, source);
 }
 
+std::string apply_substitution_with_offset(const std::string& template_str, const std::vector<std::string>& segments, int placeholder_offset) {
+    std::string result = template_str;
+
+    // Replace placeholders with segments, accounting for offset
+    // placeholder_offset=0 means use $0, $1, $2... (function patterns)
+    // placeholder_offset=1 means use $1, $2, $3... (alternating patterns)
+    for (size_t i = 0; i < segments.size(); ++i) {
+        std::string placeholder = "$" + std::to_string(i + placeholder_offset);
+        size_t pos = 0;
+        while ((pos = result.find(placeholder, pos)) != std::string::npos) {
+            result.replace(pos, placeholder.length(), segments[i]);
+            pos += segments[i].length();
+        }
+    }
+
+    return result;
+}
+
 void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, std::ostream& out, const PatternData* pattern) const {
     if (orbit.start_pos >= source.size() || orbit.end_pos > source.size() || orbit.start_pos >= orbit.end_pos) {
         return;
@@ -303,25 +329,43 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
         // Extract evidence spans for alternating anchor/evidence pattern
         segments = extract_alternating_segments(text, *pattern);
     } else {
-        // Find anchor (signature pattern) in text
-        size_t anchor_pos = std::string::npos;
-        for (const auto& sig : pattern->signature_patterns) {
-            anchor_pos = text.find(sig);
-            if (anchor_pos != std::string::npos) break;
-        }
+        // Try pattern matching for function_declaration pattern
+        if (pattern->name == "function_declaration" && !pattern->signature_patterns.empty()) {
+            // Use tblgen pattern matcher for CPP2 pattern
+            std::string cpp2_pattern = "$0: ($1) -> $2 = $3";
+            auto match_result = TblgenPatternMatcher::match(cpp2_pattern, std::string(text));
 
-        if (anchor_pos == std::string::npos) {
-            // Anchor not found - speculation was wrong, emit original text
-            // This is honest: we're admitting the pattern doesn't match and degrading gracefully
-            out << text;
-            return;
-        }
+            if (match_result) {
+                segments = *match_result;
+            } else {
+                // Pattern match failed, emit original
+                out << text;
+                return;
+            }
+        } else {
+            // Fallback to old segment extraction for other patterns
+            size_t anchor_pos = std::string::npos;
+            for (const auto& sig : pattern->signature_patterns) {
+                anchor_pos = text.find(sig);
+                if (anchor_pos != std::string::npos) break;
+            }
 
-        // Extract segments using pattern definitions
-        for (const auto& seg_def : pattern->segments) {
-            std::string seg = extract_segment(text, anchor_pos, seg_def);
-            segments.push_back(seg);
+            if (anchor_pos == std::string::npos) {
+                out << text;
+                return;
+            }
+
+            for (const auto& seg_def : pattern->segments) {
+                std::string seg = extract_segment(text, anchor_pos, seg_def);
+                segments.push_back(seg);
+            }
         }
+    }
+
+    // Apply recursive transformations to segments BEFORE substitution
+    // This handles nested CPP2 syntax like variable declarations in function bodies
+    for (auto& seg : segments) {
+        seg = apply_recursive_transformations(seg);
     }
 
     // Get target grammar (CPP=2 for now)
@@ -332,18 +376,11 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
         std::exit(1);
     }
 
-    // Apply substitution
-    std::string result = apply_substitution(template_it->second, segments);
+    // Apply substitution (segments already transformed above)
+    // Alternating patterns use 1-indexed placeholders ($1, $2), function patterns use 0-indexed ($0, $1)
+    int placeholder_offset = pattern->use_alternating ? 1 : 0;
+    std::string result = apply_substitution_with_offset(template_it->second, segments, placeholder_offset);
     out << result;
-    
-    // RECURSIVE TRANSFORMATION: scan result for nested patterns
-    // Simple post-processing for := and : type = patterns
-    std::string processed_result = apply_recursive_transformations(result);
-    if (processed_result != result) {
-        // Replace the output
-        out.seekp(out.tellp() - std::streamoff(result.size()));
-        out << processed_result;
-    }
 }
 
 std::string_view CPP2Emitter::extract_fragment_text(const OrbitFragment& fragment, std::string_view source) const {

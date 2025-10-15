@@ -977,4 +977,5 @@ CMakeFiles/stage0_lib.dir/cpp2_emitter.cpp.o: \
   /Users/jim/work/cppfort/src/stage0/packrat_cache.h \
   /Users/jim/work/cppfort/src/stage0/confix_orbit.h \
   /Users/jim/work/cppfort/src/stage0/function_orbit.h \
+  /Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/usr/include/c++/v1/sstream

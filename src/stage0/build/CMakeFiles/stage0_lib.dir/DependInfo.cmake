@@ -25,6 +25,8 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/jim/work/cppfort/src/stage0/rabin_karp.cpp" "CMakeFiles/stage0_lib.dir/rabin_karp.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/rabin_karp.cpp.o.d"
   "/Users/jim/work/cppfort/src/stage0/rbcursive.cpp" "CMakeFiles/stage0_lib.dir/rbcursive.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/rbcursive.cpp.o.d"
   "/Users/jim/work/cppfort/src/stage0/stage0_cpp2.cpp" "CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.o.d"
+  "/Users/jim/work/cppfort/src/stage0/tblgen_loader.cpp" "CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o.d"
+  "/Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.cpp" "CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o.d"
   "/Users/jim/work/cppfort/src/stage0/wide_scanner.cpp" "CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o" "gcc" "CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o.d"
   )
 

@@ -117,6 +117,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named tblgen_semantic_units
+
+# Build rule for target.
+tblgen_semantic_units: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tblgen_semantic_units
+.PHONY : tblgen_semantic_units
+
+# fast build rule for target.
+tblgen_semantic_units/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tblgen_semantic_units.dir/build.make CMakeFiles/tblgen_semantic_units.dir/build
+.PHONY : tblgen_semantic_units/fast
+
+#=============================================================================
 # Target rules for targets named stage0_lib
 
 # Build rule for target.
@@ -141,6 +154,71 @@ stage0_cli: cmake_check_build_system
 stage0_cli/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_cli.dir/build.make CMakeFiles/stage0_cli.dir/build
 .PHONY : stage0_cli/fast
+
+#=============================================================================
+# Target rules for targets named test_reality_check
+
+# Build rule for target.
+test_reality_check: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_reality_check
+.PHONY : test_reality_check
+
+# fast build rule for target.
+test_reality_check/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_reality_check.dir/build.make CMakeFiles/test_reality_check.dir/build
+.PHONY : test_reality_check/fast
+
+#=============================================================================
+# Target rules for targets named test_confix_depth
+
+# Build rule for target.
+test_confix_depth: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_confix_depth
+.PHONY : test_confix_depth
+
+# fast build rule for target.
+test_confix_depth/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_confix_depth.dir/build.make CMakeFiles/test_confix_depth.dir/build
+.PHONY : test_confix_depth/fast
+
+#=============================================================================
+# Target rules for targets named test_correlation
+
+# Build rule for target.
+test_correlation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_correlation
+.PHONY : test_correlation
+
+# fast build rule for target.
+test_correlation/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_correlation.dir/build.make CMakeFiles/test_correlation.dir/build
+.PHONY : test_correlation/fast
+
+#=============================================================================
+# Target rules for targets named test_tblgen_integration
+
+# Build rule for target.
+test_tblgen_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_tblgen_integration
+.PHONY : test_tblgen_integration
+
+# fast build rule for target.
+test_tblgen_integration/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tblgen_integration.dir/build.make CMakeFiles/test_tblgen_integration.dir/build
+.PHONY : test_tblgen_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_pattern_match
+
+# Build rule for target.
+test_pattern_match: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_pattern_match
+.PHONY : test_pattern_match
+
+# fast build rule for target.
+test_pattern_match/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_pattern_match.dir/build.make CMakeFiles/test_pattern_match.dir/build
+.PHONY : test_pattern_match/fast
 
 confix_orbit.o: confix_orbit.cpp.o
 .PHONY : confix_orbit.o
@@ -574,6 +652,174 @@ stage0_cpp2.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.s
 .PHONY : stage0_cpp2.cpp.s
 
+tblgen_loader.o: tblgen_loader.cpp.o
+.PHONY : tblgen_loader.o
+
+# target to build an object file
+tblgen_loader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o
+.PHONY : tblgen_loader.cpp.o
+
+tblgen_loader.i: tblgen_loader.cpp.i
+.PHONY : tblgen_loader.i
+
+# target to preprocess a source file
+tblgen_loader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.i
+.PHONY : tblgen_loader.cpp.i
+
+tblgen_loader.s: tblgen_loader.cpp.s
+.PHONY : tblgen_loader.s
+
+# target to generate assembly for a file
+tblgen_loader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.s
+.PHONY : tblgen_loader.cpp.s
+
+tblgen_pattern_matcher.o: tblgen_pattern_matcher.cpp.o
+.PHONY : tblgen_pattern_matcher.o
+
+# target to build an object file
+tblgen_pattern_matcher.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o
+.PHONY : tblgen_pattern_matcher.cpp.o
+
+tblgen_pattern_matcher.i: tblgen_pattern_matcher.cpp.i
+.PHONY : tblgen_pattern_matcher.i
+
+# target to preprocess a source file
+tblgen_pattern_matcher.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.i
+.PHONY : tblgen_pattern_matcher.cpp.i
+
+tblgen_pattern_matcher.s: tblgen_pattern_matcher.cpp.s
+.PHONY : tblgen_pattern_matcher.s
+
+# target to generate assembly for a file
+tblgen_pattern_matcher.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/stage0_lib.dir/build.make CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.s
+.PHONY : tblgen_pattern_matcher.cpp.s
+
+test_confix_depth.o: test_confix_depth.cpp.o
+.PHONY : test_confix_depth.o
+
+# target to build an object file
+test_confix_depth.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_confix_depth.dir/build.make CMakeFiles/test_confix_depth.dir/test_confix_depth.cpp.o
+.PHONY : test_confix_depth.cpp.o
+
+test_confix_depth.i: test_confix_depth.cpp.i
+.PHONY : test_confix_depth.i
+
+# target to preprocess a source file
+test_confix_depth.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_confix_depth.dir/build.make CMakeFiles/test_confix_depth.dir/test_confix_depth.cpp.i
+.PHONY : test_confix_depth.cpp.i
+
+test_confix_depth.s: test_confix_depth.cpp.s
+.PHONY : test_confix_depth.s
+
+# target to generate assembly for a file
+test_confix_depth.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_confix_depth.dir/build.make CMakeFiles/test_confix_depth.dir/test_confix_depth.cpp.s
+.PHONY : test_confix_depth.cpp.s
+
+test_correlation.o: test_correlation.cpp.o
+.PHONY : test_correlation.o
+
+# target to build an object file
+test_correlation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_correlation.dir/build.make CMakeFiles/test_correlation.dir/test_correlation.cpp.o
+.PHONY : test_correlation.cpp.o
+
+test_correlation.i: test_correlation.cpp.i
+.PHONY : test_correlation.i
+
+# target to preprocess a source file
+test_correlation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_correlation.dir/build.make CMakeFiles/test_correlation.dir/test_correlation.cpp.i
+.PHONY : test_correlation.cpp.i
+
+test_correlation.s: test_correlation.cpp.s
+.PHONY : test_correlation.s
+
+# target to generate assembly for a file
+test_correlation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_correlation.dir/build.make CMakeFiles/test_correlation.dir/test_correlation.cpp.s
+.PHONY : test_correlation.cpp.s
+
+test_pattern_match.o: test_pattern_match.cpp.o
+.PHONY : test_pattern_match.o
+
+# target to build an object file
+test_pattern_match.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_pattern_match.dir/build.make CMakeFiles/test_pattern_match.dir/test_pattern_match.cpp.o
+.PHONY : test_pattern_match.cpp.o
+
+test_pattern_match.i: test_pattern_match.cpp.i
+.PHONY : test_pattern_match.i
+
+# target to preprocess a source file
+test_pattern_match.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_pattern_match.dir/build.make CMakeFiles/test_pattern_match.dir/test_pattern_match.cpp.i
+.PHONY : test_pattern_match.cpp.i
+
+test_pattern_match.s: test_pattern_match.cpp.s
+.PHONY : test_pattern_match.s
+
+# target to generate assembly for a file
+test_pattern_match.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_pattern_match.dir/build.make CMakeFiles/test_pattern_match.dir/test_pattern_match.cpp.s
+.PHONY : test_pattern_match.cpp.s
+
+test_reality_check.o: test_reality_check.cpp.o
+.PHONY : test_reality_check.o
+
+# target to build an object file
+test_reality_check.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_reality_check.dir/build.make CMakeFiles/test_reality_check.dir/test_reality_check.cpp.o
+.PHONY : test_reality_check.cpp.o
+
+test_reality_check.i: test_reality_check.cpp.i
+.PHONY : test_reality_check.i
+
+# target to preprocess a source file
+test_reality_check.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_reality_check.dir/build.make CMakeFiles/test_reality_check.dir/test_reality_check.cpp.i
+.PHONY : test_reality_check.cpp.i
+
+test_reality_check.s: test_reality_check.cpp.s
+.PHONY : test_reality_check.s
+
+# target to generate assembly for a file
+test_reality_check.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_reality_check.dir/build.make CMakeFiles/test_reality_check.dir/test_reality_check.cpp.s
+.PHONY : test_reality_check.cpp.s
+
+test_tblgen_integration.o: test_tblgen_integration.cpp.o
+.PHONY : test_tblgen_integration.o
+
+# target to build an object file
+test_tblgen_integration.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tblgen_integration.dir/build.make CMakeFiles/test_tblgen_integration.dir/test_tblgen_integration.cpp.o
+.PHONY : test_tblgen_integration.cpp.o
+
+test_tblgen_integration.i: test_tblgen_integration.cpp.i
+.PHONY : test_tblgen_integration.i
+
+# target to preprocess a source file
+test_tblgen_integration.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tblgen_integration.dir/build.make CMakeFiles/test_tblgen_integration.dir/test_tblgen_integration.cpp.i
+.PHONY : test_tblgen_integration.cpp.i
+
+test_tblgen_integration.s: test_tblgen_integration.cpp.s
+.PHONY : test_tblgen_integration.s
+
+# target to generate assembly for a file
+test_tblgen_integration.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tblgen_integration.dir/build.make CMakeFiles/test_tblgen_integration.dir/test_tblgen_integration.cpp.s
+.PHONY : test_tblgen_integration.cpp.s
+
 wide_scanner.o: wide_scanner.cpp.o
 .PHONY : wide_scanner.o
 
@@ -606,8 +852,14 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... tblgen_semantic_units"
 	@echo "... stage0_cli"
 	@echo "... stage0_lib"
+	@echo "... test_confix_depth"
+	@echo "... test_correlation"
+	@echo "... test_pattern_match"
+	@echo "... test_reality_check"
+	@echo "... test_tblgen_integration"
 	@echo "... confix_orbit.o"
 	@echo "... confix_orbit.i"
 	@echo "... confix_orbit.s"
@@ -662,6 +914,27 @@ help:
 	@echo "... stage0_cpp2.o"
 	@echo "... stage0_cpp2.i"
 	@echo "... stage0_cpp2.s"
+	@echo "... tblgen_loader.o"
+	@echo "... tblgen_loader.i"
+	@echo "... tblgen_loader.s"
+	@echo "... tblgen_pattern_matcher.o"
+	@echo "... tblgen_pattern_matcher.i"
+	@echo "... tblgen_pattern_matcher.s"
+	@echo "... test_confix_depth.o"
+	@echo "... test_confix_depth.i"
+	@echo "... test_confix_depth.s"
+	@echo "... test_correlation.o"
+	@echo "... test_correlation.i"
+	@echo "... test_correlation.s"
+	@echo "... test_pattern_match.o"
+	@echo "... test_pattern_match.i"
+	@echo "... test_pattern_match.s"
+	@echo "... test_reality_check.o"
+	@echo "... test_reality_check.i"
+	@echo "... test_reality_check.s"
+	@echo "... test_tblgen_integration.o"
+	@echo "... test_tblgen_integration.i"
+	@echo "... test_tblgen_integration.s"
 	@echo "... wide_scanner.o"
 	@echo "... wide_scanner.i"
 	@echo "... wide_scanner.s"

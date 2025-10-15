@@ -310,10 +310,38 @@ CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.s"
 	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/jim/work/cppfort/src/stage0/stage0_cpp2.cpp -o CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.s
 
+CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o: CMakeFiles/stage0_lib.dir/flags.make
+CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o: /Users/jim/work/cppfort/src/stage0/tblgen_loader.cpp
+CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o: CMakeFiles/stage0_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o -MF CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o.d -o CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o -c /Users/jim/work/cppfort/src/stage0/tblgen_loader.cpp
+
+CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/jim/work/cppfort/src/stage0/tblgen_loader.cpp > CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.i
+
+CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/jim/work/cppfort/src/stage0/tblgen_loader.cpp -o CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.s
+
+CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o: CMakeFiles/stage0_lib.dir/flags.make
+CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o: /Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.cpp
+CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o: CMakeFiles/stage0_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o -MF CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o.d -o CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o -c /Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.cpp
+
+CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.cpp > CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.i
+
+CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/jim/work/cppfort/src/stage0/tblgen_pattern_matcher.cpp -o CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.s
+
 CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o: CMakeFiles/stage0_lib.dir/flags.make
 CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o: /Users/jim/work/cppfort/src/stage0/wide_scanner.cpp
 CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o: CMakeFiles/stage0_lib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o"
 	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o -MF CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o.d -o CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o -c /Users/jim/work/cppfort/src/stage0/wide_scanner.cpp
 
 CMakeFiles/stage0_lib.dir/wide_scanner.cpp.i: cmake_force
@@ -343,6 +371,8 @@ stage0_lib_OBJECTS = \
 "CMakeFiles/stage0_lib.dir/rabin_karp.cpp.o" \
 "CMakeFiles/stage0_lib.dir/rbcursive.cpp.o" \
 "CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.o" \
+"CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o" \
+"CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o" \
 "CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o"
 
 # External object files for target stage0_lib
@@ -365,10 +395,12 @@ libstage0_lib.a: CMakeFiles/stage0_lib.dir/pattern_loader.cpp.o
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/rabin_karp.cpp.o
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/rbcursive.cpp.o
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/stage0_cpp2.cpp.o
+libstage0_lib.a: CMakeFiles/stage0_lib.dir/tblgen_loader.cpp.o
+libstage0_lib.a: CMakeFiles/stage0_lib.dir/tblgen_pattern_matcher.cpp.o
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/wide_scanner.cpp.o
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/build.make
 libstage0_lib.a: CMakeFiles/stage0_lib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Linking CXX static library libstage0_lib.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/jim/work/cppfort/src/stage0/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Linking CXX static library libstage0_lib.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/stage0_lib.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/stage0_lib.dir/link.txt --verbose=$(VERBOSE)
 

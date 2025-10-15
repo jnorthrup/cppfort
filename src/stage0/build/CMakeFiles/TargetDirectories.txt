@@ -1,4 +1,10 @@
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/tblgen_semantic_units.dir
 /Users/jim/work/cppfort/src/stage0/build/CMakeFiles/stage0_lib.dir
 /Users/jim/work/cppfort/src/stage0/build/CMakeFiles/stage0_cli.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/test_reality_check.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/test_confix_depth.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/test_correlation.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/test_tblgen_integration.dir
+/Users/jim/work/cppfort/src/stage0/build/CMakeFiles/test_pattern_match.dir
 /Users/jim/work/cppfort/src/stage0/build/CMakeFiles/edit_cache.dir
 /Users/jim/work/cppfort/src/stage0/build/CMakeFiles/rebuild_cache.dir

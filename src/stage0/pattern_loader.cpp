@@ -21,6 +21,16 @@ std::string trim(std::string_view text) {
 }
 
 std::string strip_quotes(std::string value) {
+    // Strip comments first (everything after #)
+    size_t comment_pos = value.find('#');
+    if (comment_pos != std::string::npos) {
+        value = value.substr(0, comment_pos);
+    }
+
+    // Trim whitespace
+    value = trim(value);
+
+    // Strip quotes
     if (value.size() >= 2 && ((value.front() == '"' && value.back() == '"') ||
                               (value.front() == '\'' && value.back() == '\''))) {
         return value.substr(1, value.size() - 2);

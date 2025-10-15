@@ -14,8 +14,22 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 # Collect all source files
 file(GLOB STAGE0_SOURCES "*.cpp")
 
-# Remove main.cpp from library sources
+# Remove main.cpp and test files from library sources
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_reality_check.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_confix_depth.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_correlation.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_tblgen_integration.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_pattern_match.cpp")
+
+# Add tblgen JSON generation
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.json
+    COMMAND /opt/homebrew/opt/llvm/bin/llvm-tblgen ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.td --dump-json > ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.json
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.td
+    COMMENT "Generating semantic units from tblgen"
+)
+add_custom_target(tblgen_semantic_units DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.json)
 
 # Temporarily remove problematic files
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_key_resolver.cpp")
@@ -35,6 +49,7 @@ endif()
 
 # Create static library
 add_library(stage0_lib STATIC ${STAGE0_SOURCES})
+add_dependencies(stage0_lib tblgen_semantic_units)
 
 # Link yaml-cpp if available
 if(yaml-cpp_FOUND)
@@ -46,6 +61,41 @@ add_executable(stage0_cli main.cpp)
 target_link_libraries(stage0_cli stage0_lib)
 if(yaml-cpp_FOUND)
     target_link_libraries(stage0_cli yaml-cpp)
+endif()
+
+# Create reality check test executable
+add_executable(test_reality_check test_reality_check.cpp)
+target_link_libraries(test_reality_check stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_reality_check yaml-cpp)
+endif()
+
+# Create confix depth test executable
+add_executable(test_confix_depth test_confix_depth.cpp)
+target_link_libraries(test_confix_depth stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_confix_depth yaml-cpp)
+endif()
+
+# Create correlation test executable
+add_executable(test_correlation test_correlation.cpp)
+target_link_libraries(test_correlation stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_correlation yaml-cpp)
+endif()
+
+# Create tblgen integration test executable
+add_executable(test_tblgen_integration test_tblgen_integration.cpp)
+target_link_libraries(test_tblgen_integration stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_tblgen_integration yaml-cpp)
+endif()
+
+# Create pattern match test executable
+add_executable(test_pattern_match test_pattern_match.cpp)
+target_link_libraries(test_pattern_match stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_pattern_match yaml-cpp)
 endif()
 
 # Add round-trip harness for Stage1 (if stage1 target exists)
