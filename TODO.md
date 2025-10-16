@@ -326,7 +326,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [x] Test C function to CPP2
 - [x] Test CPP template to CPP2
 
-## Phase 11: Self-Bootstrap Preparation
+## Phase 11: Self-Bootstrap Preparation (Superseded by Lean Path)
 
 ### 11.1 Transpile scanner components
 
@@ -350,7 +350,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Save output as cpp2_emitter.cpp2
 - [ ] Verify CPP2 syntax correctness
 
-## Phase 12: Self-Hosting Validation
+## Phase 12: Self-Hosting Validation (Superseded by Lean Path)
 
 ### 12.1 Compile CPP2 versions
 
@@ -373,7 +373,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Run on mixed-function-expression.cpp2
 - [ ] Verify all produce valid CPP2
 
-## Phase 13: Minimal Self-Hosting
+## Phase 13: Minimal Self-Hosting (Superseded by Lean Path)
 
 ### 13.1 Trim to essential files only
 
@@ -399,7 +399,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Compile cpp2 versions with cppfront
 - [ ] Binary size < 100KB
 
-## Lean Self-Hosting Path (Replaces Phases 11-13)
+## Current Self-Hosting Status
 
 - [x] OrbitIterator + ConfixOrbit pipeline
 - [x] PatternLoader (hardcoded patterns for clean room)
@@ -408,7 +408,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [x] Stage0 unit tests: 5/6 passing
 - [ ] Regression tests: not measured
 
-## Phase 14: Semantic Codec Foundation (Lossless Isomorphic Transform)
+## Phase 14: Semantic Codec Foundation (Conceptual - Not Implemented)
 
 ### 14.1 Define n-way codec patterns with ordinal placeholders
 
@@ -437,7 +437,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Measure codec loss: round-trip fidelity (CPP2→CPP→CPP2)
 - [ ] Target: 100% semantic preservation, 0% information loss
 
-## Phase 15: Recursive Codec Depth (Nested Semantic Units)
+## Phase 15: Recursive Codec Depth (Conceptual - Not Implemented)
 
 ### 15.1 Ordinal segments contain nested semantic units
 
@@ -463,7 +463,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Information preserved at every depth level
 - [ ] Dense result: minimal surface text, maximum semantic density
 
-## Phase 16: Codec Density Demonstration (Walrus Transform)
+## Phase 16: Codec Density (Conceptual - Not Implemented)
 
 ### 16.1 Variable declaration semantic unit
 
@@ -497,7 +497,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [ ] Theoretical limit: Huffman coding of semantic units
 - [ ] Dense entropy achieved: ~2 bits per semantic decision
 
-## Phase 17: Bidirectional Pattern Implementation (Semantic Pivot)
+## Phase 17: Bidirectional Patterns (Conceptual - Not Implemented)
 
 ### 17.1 Add direction mode to RBCursiveScanner
 
