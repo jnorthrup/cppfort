@@ -37,13 +37,45 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - Full recursive pattern application
 - Template specialization handling
 
-### Architecture
+### Architecture (Actual Implementation)
 
-**Orbit-based pattern matcher:**
-- Orbits hold recursive combinators for cross-fragment matching
-- RBCursiveScanner recurses across fragment boundaries
-- PackratCache memoizes results
-- Fragment correlation via orbit traversal
+**Pattern Matching System:**
+- **TblgenPatternMatcher**: Anchor-based segment extraction
+  - Finds literal anchors in pattern (non-$N text)
+  - Extracts segments between anchors from input
+  - No regex - direct string search and substring
+
+- **DepthPatternMatcher**: Depth-aware pattern validation
+  - Builds confix depth map (tracks {}, (), [], <> nesting)
+  - Validates evidence doesn't cross confix boundaries
+  - Filters overlapping matches
+
+- **ConfixTracker**: Nesting depth tracking
+  - Processes (), {}, [], <> characters
+  - Handles template angle brackets vs comparison operators
+  - Returns depth map for validation
+
+**Pattern Data Structure:**
+- **PatternData**: Alternating anchor/evidence patterns
+  - alternating_anchors: fixed literal strings
+  - evidence_types: segment types between anchors
+  - substitution_templates: $0, $1, $2 placeholders per grammar
+  - AnchorSegment: ordinal positions with delimiters
+
+- **TblgenSemanticUnit**: N-way pattern storage
+  - c_pattern, cpp_pattern, cpp2_pattern
+  - segments: shared structure across grammars
+
+**Transformation System:**
+- **CPP2Emitter**: Pattern-driven substitution
+  - emit_depth_based(): deterministic depth matching
+  - extract_alternating_segments(): anchor-based extraction
+  - Applies substitution templates with segment placeholders
+
+**Orbit Infrastructure (structural):**
+- ConfixOrbit, FunctionOrbit: AST-like structure representation
+- OrbitIterator, OrbitPipeline: iteration framework
+- Used for structure tracking, not primary pattern matching
 
 ### Code Standards
 
@@ -129,14 +161,16 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [x] Add CPP2-specific leaves under CPP2 branch
 - [x] Share common trunk nodes between all three
 
-### 2.3 Parallel orbit evaluation
+### 2.3 Pattern matching (actual implementation)
 
-- [ ] SIMD orbit fanout not implemented
-- [ ] Sequential orbit evaluation only
-- [ ] Parallel speculation infrastructure exists
-- [ ] Winner-takes-all pattern selection works
+- [x] Depth-aware pattern matching via DepthPatternMatcher
+- [x] Anchor-based extraction via TblgenPatternMatcher
+- [x] Confix boundary validation via ConfixTracker
+- [x] Longest deterministic match wins (no speculation)
 
-## Phase 3: Combinator Integration
+## Phase 3: Combinator Integration (Infrastructure exists, not primary mechanism)
+
+**Note:** RBCursiveScanner and combinator infrastructure exists but pattern matching actually uses TblgenPatternMatcher and DepthPatternMatcher.
 
 ### 3.1 Add combinator to ConfixOrbit
 
@@ -161,6 +195,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [x] In OrbitIterator constructor, allocate combinators
 - [x] In OrbitIterator::next(), assign combinator to orbit
 - [x] In orbit destructor, release combinator back to pool
+- [ ] **Actually use combinators for pattern matching** (currently uses TblgenPatternMatcher instead)
 
 ## Phase 4: Pattern Loading
 
@@ -408,125 +443,23 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - [x] Stage0 unit tests: 5/6 passing
 - [ ] Regression tests: not measured
 
-## Phase 14: Semantic Codec Foundation (Conceptual - Not Implemented)
+## Future Work (Not Implemented)
 
-### 14.1 Define n-way codec patterns with ordinal placeholders
+### Bidirectional Pattern Matching
 
-- [ ] YAML schema: semantic_unit with n-way encoding variants
-- [ ] Ordinal placeholders $1..$n for arbitrary segment count
-- [ ] Per-grammar delimiter sets (CPP2: ":", CPP: "::", C: "_")
-- [ ] Example codec: function_unit with 3 encodings (C/CPP/CPP2)
-- [ ] Each encoding preserves full semantic information (lossless)
-- [ ] Dense entropy: entire function→3 ordinals→3 encodings
+- [ ] C++ → CPP2 transformation (currently CPP2 → C++ only)
+- [ ] Reverse anchor behavior (join instead of split)
+- [ ] Round-trip validation (CPP2→C++→CPP2)
 
-### 14.2 Parallel speculation with evidence-based fail-fast
+### Recursive Pattern Application
 
-- [ ] Evidence phase: character class instant elimination
-- [ ] Evidence rules: "has ':' after identifier" → not C
-- [ ] Evidence rules: "has 'class'" → not CPP2
-- [ ] Speculation phase: ALL patterns fire simultaneously
-- [ ] Longest deterministic match wins (not probabilistic)
-- [ ] PackratCache prevents redundant speculation
+- [ ] Nested pattern matching (apply patterns to extracted segments)
+- [ ] Inside-out transformation (deepest matches first)
+- [ ] Depth-limited recursion to prevent infinite loops
 
-### 14.3 Codec transform via semantic unit preservation
+### Advanced Features
 
-- [ ] NO parsing: semantic unit captured whole by longest match
-- [ ] Transform = re-encode same semantic unit in target grammar
-- [ ] Ordinal segments preserved across all encodings
-- [ ] Information theoretic: same entropy, different surface encoding
-- [ ] Measure codec loss: round-trip fidelity (CPP2→CPP→CPP2)
-- [ ] Target: 100% semantic preservation, 0% information loss
-
-## Phase 15: Recursive Codec Depth (Conceptual - Not Implemented)
-
-### 15.1 Ordinal segments contain nested semantic units
-
-- [ ] Each ordinal ($1..$n) potentially contains more patterns
-- [ ] Body segment = nested codec space with own semantic units
-- [ ] Recursive speculation fires within ordinal boundaries
-- [ ] Nested wins bubble up: deepest matches resolve first
-- [ ] Example: function body contains variable_declaration units
-
-### 15.2 Terminal depth tracking (codec recursion limit)
-
-- [ ] Terminal depth = 0 (ground state, no more patterns)
-- [ ] Each nesting level increments depth counter
-- [ ] Max codec depth = semantic complexity limit (e.g., 10)
-- [ ] Terminal patterns: literals, identifiers (atomic units)
-- [ ] PackratCache stratified by depth for O(n) complexity
-
-### 15.3 Compositional codec transform (inside-out)
-
-- [ ] Transform ordering: terminal depth → 0 (inside-out)
-- [ ] Each ordinal transformed before parent reconstruction
-- [ ] Codec composition: nested transforms complete first
-- [ ] Information preserved at every depth level
-- [ ] Dense result: minimal surface text, maximum semantic density
-
-## Phase 16: Codec Density (Conceptual - Not Implemented)
-
-### 16.1 Variable declaration semantic unit
-
-- [ ] Semantic unit: variable_declaration
-- [ ] Evidence marker: ":=" (CPP2 only)
-- [ ] Ordinals: $1=name, $2=initializer
-- [ ] Encoding_4: "$1 := $2"  (CPP2 surface)
-- [ ] Encoding_2: "auto $1 = $2"  (CPP surface)
-- [ ] Encoding_1: undefined (C lacks auto inference)
-- [ ] Codec loss: C encoding loses type inference semantics
-
-### 16.2 Compositional codec cascade
-
-- [ ] Input entropy: `main: () = { s1 := u"u\""; }`
-- [ ] Outer speculation: function_unit wins (longest match)
-- [ ] Ordinal extraction: $1=main, $2=(), $3={ s1 := u"u\""; }
-- [ ] Ordinal $3 recursion: variable_unit wins
-- [ ] Nested ordinals: $1=s1, $2=u"u\""
-- [ ] Inside-out transform: variable first, then function
-- [ ] Output entropy: `int main() { auto s1 = u"u\""; }`
-- [ ] Information preserved: 100% (CPP supports all semantics)
-
-### 16.3 Measure codec efficiency
-
-- [ ] Input size: 29 bytes (CPP2)
-- [ ] Output size: 33 bytes (CPP)
-- [ ] Semantic units: 2 (function + variable)
-- [ ] Ordinal count: 5 total (3 + 2)
-- [ ] Codec overhead: 4 bytes (13.8% expansion)
-- [ ] Round-trip fidelity: 100% (CPP2→CPP→CPP2 identical)
-- [ ] Theoretical limit: Huffman coding of semantic units
-- [ ] Dense entropy achieved: ~2 bits per semantic decision
-
-## Phase 17: Bidirectional Patterns (Conceptual - Not Implemented)
-
-### 17.1 Add direction mode to RBCursiveScanner
-
-- [ ] Add enum Direction { Parse, Generate } mode member
-- [ ] Add void set_direction(Direction d) method
-- [ ] Add Direction get_direction() const method
-- [ ] Mode detection from input grammar type
-- [ ] Auto-select direction based on source/target pair
-
-### 17.2 Implement bidirectional anchor behaviors
-
-- [ ] Anchor as splitter in parse mode (extract segments around anchor)
-- [ ] Anchor as joiner in generate mode (insert anchor between segments)
-- [ ] Evidence flow reversal based on direction
-- [ ] Pattern notation: `clit >> out` (parse), `in << clit` (generate)
-- [ ] Single pattern definition with dual behaviors
-
-### 17.3 Update pattern_loader for bidirectional patterns
-
-- [ ] Extend YAML schema with bidirectional rules
-- [ ] Parse both >> (extract) and << (inject) operations
-- [ ] Store direction-specific transforms in PatternData
-- [ ] Example: `:=` splits in parse, joins in generate
-- [ ] Validate round-trip correctness for each pattern
-
-### 17.4 Orbit state machine for direction tracking
-
-- [ ] Add direction state to Orbit class
-- [ ] Propagate direction through orbit tree traversal
-- [ ] Switch behaviors based on current direction
-- [ ] Maintain semantic equivalence across directions
-- [ ] Test CPP2→C++→CPP2 round-trip fidelity
+- [ ] Parameter transformation (inout/in/out/move/forward)
+- [ ] Include generation based on type usage
+- [ ] Forward declarations for function ordering
+- [ ] Template specialization handling
