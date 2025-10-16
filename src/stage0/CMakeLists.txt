@@ -21,6 +21,8 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_confix_depth.c
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_correlation.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_tblgen_integration.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_pattern_match.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_depth_matcher.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_runner.cpp")
 
 # Add tblgen JSON generation
 add_custom_command(
@@ -96,6 +98,20 @@ add_executable(test_pattern_match test_pattern_match.cpp)
 target_link_libraries(test_pattern_match stage0_lib)
 if(yaml-cpp_FOUND)
     target_link_libraries(test_pattern_match yaml-cpp)
+endif()
+
+# Create depth matcher test executable
+add_executable(test_depth_matcher test_depth_matcher.cpp)
+target_link_libraries(test_depth_matcher stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_depth_matcher yaml-cpp)
+endif()
+
+# Create test runner executable
+add_executable(test_runner test_runner.cpp)
+target_link_libraries(test_runner stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_runner yaml-cpp)
 endif()
 
 # Add round-trip harness for Stage1 (if stage1 target exists)
