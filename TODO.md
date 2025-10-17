@@ -81,14 +81,52 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 
 - CMake build system
 - One ninja per directory
-- Orbits hold recursive combinators
-- Data-driven orbit tree configuration
+- Direct anchor-based pattern matching (no libraries)
+- Data-driven pattern configuration
 
 ### Constraints
 
 - Clean room implementation
 - N-way graph mapping transpiler
 - No external dependencies beyond build tools
+
+### Architectural Principles (For AI Agents)
+
+**DO NOT add Boost.Spirit, Karma, or similar parser combinator libraries:**
+- Violates clean room constraint
+- Massive template metaprogramming overhead
+- 30+ minute compile times
+- Megabytes of headers for what 75 lines does
+
+**Current approach is correct:**
+- tblgen_pattern_matcher.cpp: Direct string search for anchors
+- depth_pattern_matcher.cpp: Confix depth validation
+- confix_tracker.h: Nesting level tracking
+- Total: ~200 lines that compile instantly
+
+**N-way conversion without libraries:**
+- TblgenSemanticUnit already has c_pattern, cpp_pattern, cpp2_pattern
+- Anchor-based extraction: find literal strings, extract segments between
+- Template substitution: replace $0, $1, $2 with extracted segments
+- Works for CPP2 → C++, C → CPP2 requires reverse anchors (future)
+
+**Why this is better:**
+- Zero dependencies = clean room compliance
+- Instant compile vs 30 min Spirit builds
+- Debuggable: trace exact string positions
+- Extensible: add pattern = add tblgen entry + anchors
+- Known good: 5/6 tests passing on working code
+
+**The metal matters:**
+```cpp
+// This is enough:
+size_t pos = input.find(anchor, start);
+std::string segment = input.substr(pos, next_pos - pos);
+
+// Don't add this:
+qi::rule<Iterator, std::string(), qi::locals<char>> identifier
+    = qi::lexeme[qi::alpha >> *qi::alnum];
+```
 
 ## Phase 1: Core Orbit Infrastructure
 
