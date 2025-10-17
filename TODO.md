@@ -2,12 +2,13 @@
 
 ## TEST STATUS (2025-10-16)
 
-**Stage0 Unit Tests: 5/6 passing (83.3%)**
+**Stage0 Unit Tests: 6/6 passing (100%)**
+
 - test_reality_check: PASS
 - test_confix_depth: PASS
 - test_correlation: PASS
 - test_pattern_match: PASS
-- test_tblgen_integration: FAIL (missing semantic_units.json)
+- test_tblgen_integration: PASS
 - test_depth_matcher: PASS
 
 **Regression Tests: Not measured**
@@ -40,6 +41,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 ### Architecture (Actual Implementation)
 
 **Pattern Matching System:**
+
 - **TblgenPatternMatcher**: Anchor-based segment extraction
   - Finds literal anchors in pattern (non-$N text)
   - Extracts segments between anchors from input
@@ -56,6 +58,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
   - Returns depth map for validation
 
 **Pattern Data Structure:**
+
 - **PatternData**: Alternating anchor/evidence patterns
   - alternating_anchors: fixed literal strings
   - evidence_types: segment types between anchors
@@ -67,12 +70,14 @@ Run `cd src/stage0/build && ./test_runner` for current results.
   - segments: shared structure across grammars
 
 **Transformation System:**
+
 - **CPP2Emitter**: Pattern-driven substitution
   - emit_depth_based(): deterministic depth matching
   - extract_alternating_segments(): anchor-based extraction
   - Applies substitution templates with segment placeholders
 
 **Orbit Infrastructure (structural):**
+
 - ConfixOrbit, FunctionOrbit: AST-like structure representation
 - OrbitIterator, OrbitPipeline: iteration framework
 - Used for structure tracking, not primary pattern matching
@@ -93,24 +98,28 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 ### Architectural Principles (For AI Agents)
 
 **DO NOT add Boost.Spirit, Karma, or similar parser combinator libraries:**
+
 - Violates clean room constraint
 - Massive template metaprogramming overhead
 - 30+ minute compile times
 - Megabytes of headers for what 75 lines does
 
 **Current approach is correct:**
+
 - tblgen_pattern_matcher.cpp: Direct string search for anchors
 - depth_pattern_matcher.cpp: Confix depth validation
 - confix_tracker.h: Nesting level tracking
 - Total: ~200 lines that compile instantly
 
 **N-way conversion without libraries:**
+
 - TblgenSemanticUnit already has c_pattern, cpp_pattern, cpp2_pattern
 - Anchor-based extraction: find literal strings, extract segments between
 - Template substitution: replace $0, $1, $2 with extracted segments
 - Works for CPP2 → C++, C → CPP2 requires reverse anchors (future)
 
 **Why this is better:**
+
 - Zero dependencies = clean room compliance
 - Instant compile vs 30 min Spirit builds
 - Debuggable: trace exact string positions
@@ -118,6 +127,7 @@ Run `cd src/stage0/build && ./test_runner` for current results.
 - Known good: 5/6 tests passing on working code
 
 **The metal matters:**
+
 ```cpp
 // This is enough:
 size_t pos = input.find(anchor, start);
@@ -478,7 +488,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 - [x] PatternLoader (hardcoded patterns for clean room)
 - [x] CPP2Emitter implemented
 - [x] Transpile command in main.cpp
-- [x] Stage0 unit tests: 5/6 passing
+- [x] Stage0 unit tests: 6/6 passing (100%)
 - [ ] Regression tests: not measured
 
 ## Future Work (Not Implemented)

@@ -14,7 +14,7 @@ int main() {
 
     // Load tblgen semantic units
     TblgenLoader tblgen;
-    if (!tblgen.load_json("../../patterns/semantic_units.json")) {
+    if (!tblgen.load_json("../../../patterns/semantic_units.json")) {
         std::cerr << "FATAL: Failed to load tblgen semantic units\n";
         return 1;
     }
