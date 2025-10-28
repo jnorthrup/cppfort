@@ -9,6 +9,7 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include <deque>
 
 namespace cppfort {
 namespace stage0 {
@@ -527,6 +528,7 @@ void RBCursiveScanner::speculate_across_fragments(const std::vector< ::cppfort::
 // Experimental: alternating-anchor backchain thinning driven by TypeEvidence
 void RBCursiveScanner::speculate_backchain(std::string_view text) {
     matches_.clear();
+    semantic_traces_.clear();
     if (!patterns_ || text.empty()) {
         return;
     }
@@ -555,7 +557,7 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
         std::size_t start = live.ev_start;
         std::size_t end = live.ev_end;
         if (end <= start) {
-            return kind == "trailing" || kind == "body" || kind == "expression";
+            return kind == "trailing" || kind == "body" || kind == "expression" || kind == "parameters";
         }
         std::size_t local_wobbles = 0;
         while (true) {
@@ -589,7 +591,6 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
                 } else {
                     trace.failure_reason = "evidence type validation failed";
                 }
-                
                 // CRITICAL: Mark orbit dead immediately on contradiction
                 live.dead = true;
             }
@@ -616,7 +617,7 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
     };
 
     // Seed initial orbits
-    std::vector<std::unique_ptr<LiveOrbit>> storage;
+    std::deque<std::unique_ptr<LiveOrbit>> storage;
     std::vector<LiveOrbit*> frontier;
 
     for (const auto& pattern : *patterns_) {
@@ -780,6 +781,10 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
 
     // Emit matches for survivors
     for (LiveOrbit* live : survivors) {
+        if (live->pattern && live->anchor_index < live->pattern->alternating_anchors.size()) {
+            continue;
+        }
+
         std::size_t evidence_idx = (live->anchor_index == 0 ? 0 : live->anchor_index - 1) + live->evidence_offset;
         if (evidence_idx < live->pattern->evidence_types.size()) {
             if (!validate_with_wobble(*live, live->pattern->evidence_types[evidence_idx], text)) {

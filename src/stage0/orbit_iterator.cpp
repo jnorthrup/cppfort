@@ -36,6 +36,7 @@ Orbit* OrbitIterator::next() {
                     // std::cout << "DEBUG: Setting patterns on scanner\n";
                     scanner->set_patterns(*patterns_);
                 }
+                scanner->enable_trace_capture(true);
                 scanner->set_packrat_cache(&packrat_cache_);
                 confix->set_combinator(scanner);
                 leased_.emplace_back(scanner, orbit);
