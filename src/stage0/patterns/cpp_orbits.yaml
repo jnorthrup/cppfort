@@ -1,0 +1,226 @@
+# CPP Semantic Orbit Patterns with Masking Rings
+# Traditional C++ syntax with classes, templates, references
+
+patterns:
+  # Class/struct orbit
+  - name: cpp_class
+    orbit_type: class_definition
+    masking_ring: 0xF000  # Class-level mask
+    evidence:
+      - pattern: '(class|struct)\s+(\w+)'
+        weight: 1.0
+        semantic: class_declaration
+      - pattern: '(class|struct)\s+(\w+)\s*:\s*(public|private|protected)\s+(\w+)'
+        weight: 1.0
+        semantic: class_with_inheritance
+      - pattern: 'template\s*<.*?>\s*(class|struct)\s+(\w+)'
+        weight: 1.0
+        semantic: template_class
+    children:
+      - name
+      - inheritance_list
+      - body
+
+  # Function orbit with C++ specifics
+  - name: cpp_function
+    orbit_type: function
+    masking_ring: 0x0FF0  # Function mask
+    evidence:
+      - pattern: '(\w+)\s+(\w+)\s*\((.*?)\)'
+        weight: 0.9
+        semantic: function_signature
+      - pattern: '(virtual|override|final)\s+(\w+)\s+(\w+)\s*\((.*?)\)'
+        weight: 1.0
+        semantic: virtual_function
+      - pattern: '(\w+)\s+operator\s*([+\-*/=<>!]+)\s*\((.*?)\)'
+        weight: 1.0
+        semantic: operator_overload
+      - pattern: '(\w+)::\w+\s*\((.*?)\)'  # Member function
+        weight: 0.95
+        semantic: member_function
+    qualifiers:
+      - const
+      - noexcept
+      - constexpr
+      - mutable
+      - volatile
+    children:
+      - return_type
+      - name
+      - parameters
+      - body
+
+  # Template orbit
+  - name: cpp_template
+    orbit_type: template
+    masking_ring: 0xFF00  # Template mask
+    evidence:
+      - pattern: 'template\s*<(.*?)>'
+        weight: 1.0
+        semantic: template_declaration
+      - pattern: 'typename\s+(\w+)'
+        weight: 0.9
+        semantic: typename_parameter
+      - pattern: 'template\s+(\w+)'
+        weight: 0.9
+        semantic: template_parameter
+    children:
+      - parameters
+      - declaration
+
+  # Reference/pointer orbit
+  - name: cpp_reference
+    orbit_type: reference_type
+    masking_ring: 0x00FF  # Reference mask
+    evidence:
+      - pattern: '(\w+)\s*&'  # Lvalue reference
+        weight: 1.0
+        semantic: lvalue_reference
+      - pattern: '(\w+)\s*&&'  # Rvalue reference
+        weight: 1.0
+        semantic: rvalue_reference
+      - pattern: '(\w+)\s*\*'  # Pointer
+        weight: 0.9
+        semantic: pointer_type
+      - pattern: 'std::unique_ptr<(.*?)>'
+        weight: 0.95
+        semantic: unique_pointer
+      - pattern: 'std::shared_ptr<(.*?)>'
+        weight: 0.95
+        semantic: shared_pointer
+    children:
+      - base_type
+      - qualifiers
+
+  # Constructor/destructor orbit
+  - name: cpp_constructor
+    orbit_type: constructor
+    masking_ring: 0xF0F0  # Constructor mask
+    evidence:
+      - pattern: '(\w+)::\1\s*\((.*?)\)'  # Constructor
+        weight: 1.0
+        semantic: constructor
+      - pattern: '(\w+)::~\1\s*\(\)'  # Destructor
+        weight: 1.0
+        semantic: destructor
+      - pattern: ':\s*(\w+)\((.*?)\)'  # Member initializer
+        weight: 0.9
+        semantic: member_initializer
+    children:
+      - initializer_list
+      - body
+
+  # Lambda orbit
+  - name: cpp_lambda
+    orbit_type: lambda
+    masking_ring: 0x0F0F  # Lambda mask
+    evidence:
+      - pattern: '\[(.*?)\]\s*\((.*?)\)'  # Lambda with capture
+        weight: 1.0
+        semantic: lambda_expression
+      - pattern: '\[(.*?)\]\s*\{.*?\}'  # Lambda without params
+        weight: 0.95
+        semantic: lambda_no_params
+      - pattern: '\[(.*?)\]\s*\((.*?)\)\s*->\s*(\w+)'  # Trailing return
+        weight: 1.0
+        semantic: lambda_trailing_return
+    capture_modes:
+      - '='  # By value
+      - '&'  # By reference
+      - 'this'
+      - '*this'
+    children:
+      - capture_list
+      - parameters
+      - body
+
+  # STL container orbit
+  - name: cpp_stl_container
+    orbit_type: stl_container
+    masking_ring: 0xF00F  # STL mask
+    evidence:
+      - pattern: 'std::(vector|array|list|deque)<(.*?)>'
+        weight: 1.0
+        semantic: sequence_container
+      - pattern: 'std::(map|set|unordered_map|unordered_set)<(.*?)>'
+        weight: 1.0
+        semantic: associative_container
+      - pattern: 'std::(optional|variant|any)<(.*?)>'
+        weight: 1.0
+        semantic: utility_container
+    children:
+      - container_type
+      - element_type
+
+  # RAII orbit
+  - name: cpp_raii
+    orbit_type: raii_pattern
+    masking_ring: 0xFF00  # RAII mask
+    evidence:
+      - pattern: 'std::lock_guard<(.*?)>'
+        weight: 1.0
+        semantic: lock_guard
+      - pattern: 'std::unique_lock<(.*?)>'
+        weight: 1.0
+        semantic: unique_lock
+      - pattern: 'std::scoped_lock<(.*?)>'
+        weight: 1.0
+        semantic: scoped_lock
+    children:
+      - resource_type
+      - scope
+
+  # Namespace orbit
+  - name: cpp_namespace
+    orbit_type: namespace
+    masking_ring: 0xF000  # Namespace mask
+    evidence:
+      - pattern: 'namespace\s+(\w+)'
+        weight: 1.0
+        semantic: namespace_declaration
+      - pattern: 'using\s+namespace\s+(\w+)'
+        weight: 0.9
+        semantic: using_namespace
+      - pattern: 'namespace\s+(\w+)\s*='
+        weight: 0.95
+        semantic: namespace_alias
+    children:
+      - name
+      - declarations
+
+# Composition rules
+composition:
+  - parent: cpp_class
+    contains:
+      - cpp_function  # Member functions
+      - cpp_constructor  # Constructors/destructors
+      - cpp_template  # Member templates
+
+  - parent: cpp_function
+    contains:
+      - cpp_lambda  # Local lambdas
+      - cpp_stl_container  # Local containers
+      - cpp_raii  # RAII objects
+
+  - parent: cpp_namespace
+    contains:
+      - cpp_class
+      - cpp_function
+      - cpp_template
+
+# Masking combinations for context
+masking_combinations:
+  - context: inside_class
+    masks:
+      cpp_function: 0xFFF0  # Very strong for member functions
+      cpp_constructor: 0xFFFF  # Maximum for constructors
+
+  - context: template_context
+    masks:
+      cpp_template: 0xFFFF  # Maximum for templates
+      cpp_class: 0xFF00  # Strong for template classes
+
+  - context: stl_heavy
+    masks:
+      cpp_stl_container: 0xFFFF  # Maximum for STL
+      cpp_lambda: 0xFF00  # Strong for algorithms

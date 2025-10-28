@@ -1,0 +1,186 @@
+# CPP2 Semantic Orbit Patterns with Masking Rings
+# Based on unified declaration syntax: name : kind = value
+
+patterns:
+  # Core declaration orbit - the fundamental cpp2 pattern
+  - name: cpp2_declaration
+    orbit_type: declaration
+    masking_ring: 0xFF00  # High confidence for : = pattern
+    evidence:
+      - pattern: '(\w+)\s*:\s*(\w+|\(.*?\))\s*='
+        weight: 1.0
+        semantic: unified_declaration
+      - pattern: '(\w+)\s*:='  # Type deduction
+        weight: 0.9
+        semantic: type_deduced_declaration
+      - pattern: '(\w+)\s*::\s*='  # Alias/synonym
+        weight: 0.95
+        semantic: alias_declaration
+    children:
+      - name
+      - kind
+      - value
+
+  # Function orbit with parameter semantics
+  - name: cpp2_function
+    orbit_type: function
+    masking_ring: 0xF0F0  # Function-specific mask
+    evidence:
+      - pattern: '(\w+)\s*:\s*\((.*?)\)\s*(->.*?)?\s*='
+        weight: 1.0
+        semantic: function_definition
+      - pattern: ':\s*\((.*?)\)\s*='  # Unnamed/lambda
+        weight: 0.95
+        semantic: lambda_function
+    parameter_kinds:
+      - in       # Default, const
+      - copy     # Gets a copy
+      - inout    # Read/write reference
+      - out      # Constructor-like
+      - move     # Rvalue reference
+      - forward  # Perfect forwarding
+    children:
+      - signature
+      - parameters
+      - body
+
+  # Type declaration orbit
+  - name: cpp2_type
+    orbit_type: type_definition
+    masking_ring: 0xF000  # Type-level mask
+    evidence:
+      - pattern: '(\w+)\s*:\s*type\s*='
+        weight: 1.0
+        semantic: type_declaration
+      - pattern: '(\w+)\s*:\s*<.*?>\s*type\s*='
+        weight: 1.0
+        semantic: template_type
+    this_semantics:
+      - pattern: 'this\s*:\s*(\w+)'  # Inheritance
+        semantic: base_type
+      - pattern: '(in|inout|out|move)\s+this'
+        semantic: member_function_qualifier
+      - pattern: '(virtual|override|final)\s+this'
+        semantic: virtual_function
+    children:
+      - template_params
+      - body
+      - members
+
+  # Contract orbit for requires/ensures
+  - name: cpp2_contract
+    orbit_type: contract
+    masking_ring: 0x0F00  # Contract mask
+    evidence:
+      - pattern: '\[\[\s*pre:\s*(.*?)\]\]'
+        weight: 1.0
+        semantic: precondition
+      - pattern: '\[\[\s*post:\s*(.*?)\]\]'
+        weight: 1.0
+        semantic: postcondition
+      - pattern: '\[\[\s*assert:\s*(.*?)\]\]'
+        weight: 1.0
+        semantic: assertion
+    children:
+      - condition
+      - message
+
+  # Metafunction orbit
+  - name: cpp2_metafunction
+    orbit_type: metafunction
+    masking_ring: 0xFF00  # High confidence
+    evidence:
+      - pattern: '@(\w+)'
+        weight: 1.0
+        semantic: metafunction_invocation
+      - pattern: '@(\w+)\((.*?)\)'
+        weight: 1.0
+        semantic: metafunction_with_args
+    children:
+      - name
+      - arguments
+
+  # Expression orbit for cpp2-specific expressions
+  - name: cpp2_expression
+    orbit_type: expression
+    masking_ring: 0x00F0  # Expression mask
+    evidence:
+      - pattern: 'is\s+(\w+)'  # Type constraint
+        weight: 0.9
+        semantic: type_constraint
+      - pattern: 'as\s+(\w+)'  # Type cast
+        weight: 0.9
+        semantic: type_cast
+      - pattern: '\$\s*\((.*?)\)'  # String interpolation
+        weight: 0.95
+        semantic: string_interpolation
+    children:
+      - operands
+      - operator
+
+  # Namespace orbit
+  - name: cpp2_namespace
+    orbit_type: namespace
+    masking_ring: 0xF00F  # Namespace mask
+    evidence:
+      - pattern: '(\w+)\s*:\s*namespace\s*='
+        weight: 1.0
+        semantic: namespace_declaration
+    children:
+      - name
+      - declarations
+
+  # Capture orbit for lambda captures
+  - name: cpp2_capture
+    orbit_type: capture
+    masking_ring: 0x0FF0  # Capture mask
+    evidence:
+      - pattern: '&(\w+)'  # By reference
+        weight: 0.95
+        semantic: reference_capture
+      - pattern: '(\w+)\$'  # By value
+        weight: 0.95
+        semantic: value_capture
+      - pattern: '(\w+)\$\$'  # By move
+        weight: 0.95
+        semantic: move_capture
+    children:
+      - variable
+      - capture_mode
+
+# Orbit composition rules
+composition:
+  - parent: cpp2_type
+    contains:
+      - cpp2_function  # Member functions
+      - cpp2_declaration  # Member variables
+      - cpp2_type  # Nested types
+
+  - parent: cpp2_function
+    contains:
+      - cpp2_declaration  # Local variables
+      - cpp2_expression  # Function body
+      - cpp2_capture  # Lambda captures
+
+  - parent: cpp2_namespace
+    contains:
+      - cpp2_type
+      - cpp2_function
+      - cpp2_declaration
+
+# Masking ring combinations for context-sensitive patterns
+masking_combinations:
+  - context: inside_type
+    masks:
+      cpp2_declaration: 0xFF00  # Strong for member declarations
+      cpp2_function: 0xFFF0    # Very strong for member functions
+
+  - context: inside_function
+    masks:
+      cpp2_declaration: 0xF000  # Weaker for local variables
+      cpp2_expression: 0xFF00   # Strong for expressions
+
+  - context: template_context
+    masks:
+      cpp2_declaration: 0xF0F0  # Template parameters
+      cpp2_type: 0xFFFF        # Maximum for template types

@@ -1,0 +1,8 @@
+Regression test log - Mon Oct  6 18:34:26 CDT 2025
+Using stage0_cli: ../src/stage0/build/stage0_cli transpile
+Testing test_simple.cpp2
+./regression-tests/gen_regression_log.sh: line 14: ../src/stage0/build/stage0_cli: No such file or directory
+  Transpile FAILED
+
+Total tests: 1
+Failures: 1

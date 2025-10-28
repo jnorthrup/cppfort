@@ -1,0 +1,7 @@
+# include <iostream>
+
+main: () -> int
+= {
+    std::cout << "Simple test" << std::endl;
+    return 0;
+}

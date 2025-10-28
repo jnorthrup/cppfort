@@ -1,0 +1,67 @@
+- id: c_typedef
+  label: C
+  source: |
+    typedef struct Point {
+      int x;
+      int y;
+    } Point;
+
+- id: c_function
+  label: C
+  source: |
+    extern int sum(int a, int b);
+
+- id: c_struct
+  label: C
+  source: |
+    struct Node {
+      struct Node* next;
+      void* data;
+    };
+
+- id: cpp_template
+  label: CPP
+  source: |
+    namespace demo {
+      template<typename T>
+      T add(T a, T b) {
+        return a + b;
+      }
+    }
+
+- id: cpp_lambda
+  label: CPP
+  source: |
+    auto fn = [] (auto v) noexcept {
+      return v * v;
+    };
+
+- id: cpp_class
+  label: CPP
+  source: |
+    class Widget final {
+      public:
+        explicit Widget(int v) : value(v) {}
+      private:
+        int value;
+    };
+
+- id: cpp2_inspect
+  label: CPP2
+  source: |
+    inspect value: (int) -> int {
+      return value;
+    }
+
+- id: cpp2_contract
+  label: CPP2
+  source: |
+    auto calc = contract (int x) -> int
+      pre{ x > 0 }
+      post{ result > x }
+    { return x + 1; }
+
+- id: cpp2_lambda
+  label: CPP2
+  source: |
+    let square = [](int v) -> int { return v * v; };

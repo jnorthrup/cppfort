@@ -1,0 +1,273 @@
+// Sea of Nodes IR with direct MLIR integration
+// Eliminates visitor patterns and virtual function overhead
+
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/Operation.h>
+#include <mlir/IR/Value.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/Pass/Pass.h>
+#include <mlir/Transforms/DialectConversion.h>
+
+// Direct MLIR anchoring - no intermediate Type hierarchy
+node_type: @struct type = {
+    op: void*
+    value: int
+
+    // Direct MLIR emission - no virtual dispatch
+    emit: (this) -> int = {
+        return value;
+    }
+
+    // Pattern matching via MLIR's rewriter
+    match_and_rewrite: (inout this, rewriter: mlir::PatternRewriter&) -> bool = {
+        return replace_stub(op, op.getOperands());
+    }
+}
+
+// Constants directly map to MLIR constants
+const_node: @struct type = {
+    using node_type;
+    val: i64;
+
+    create: (out this, context: void*, v: i64) = {
+        builder: int = (context);
+        this.value = create_stub(
+            builder.getUnknownLoc(),
+            builder.getI64Type(),
+            builder.getI64IntegerAttr(v)
+        );
+        this.val = v;
+    }
+}
+
+// Binary operations directly emit MLIR ops
+binary_op: @struct type = {
+    using node_type;
+    lhs: int;
+    rhs: int;
+
+    create_add: (out this, context: void*, left: int, right: int) = {
+        builder: int = (context);
+        this.value = create_stub(
+            builder.getUnknownLoc(), left, right
+        );
+        this.lhs = left;
+        this.rhs = right;
+    }
+
+    create_mul: (out this, context: void*, left: int, right: int) = {
+        builder: int = (context);
+        this.value = create_stub(
+            builder.getUnknownLoc(), left, right
+        );
+        this.lhs = left;
+        this.rhs = right;
+    }
+}
+
+// Control flow directly maps to MLIR CF dialect
+control_node: @struct type = {
+    using node_type;
+    block: void*;
+
+    create_if: (out this, context: void*, cond: int) = {
+        builder: int = (context);
+        loc: mlir::Location = builder.getUnknownLoc();
+
+        // Direct MLIR cf.cond_br emission
+        thenBlock: void* = new mlir::Block();
+        elseBlock: void* = new mlir::Block();
+        mergeBlock: void* = new mlir::Block();
+
+        create_stub(loc, cond, thenBlock, elseBlock);
+        this.block = mergeBlock;
+    }
+}
+
+// Phi nodes map directly to MLIR block arguments
+phi_node: @struct type = {
+    using node_type;
+
+    create: (out this, block: void*, type: int) = {
+        this.value = block->addArgument(type, mlir::UnknownLoc::get(type.getContext()));
+    }
+}
+
+// Direct MLIR pattern rewriter - no custom pattern_matcher needed
+sea_pattern_rewriter: @struct type = {
+    patterns: mlir::RewritePatternSet;
+
+    // Add constant folding pattern
+    add_const_fold: (inout this) = {
+        patterns.add<ConstantFoldPattern>(patterns.getContext());
+    }
+
+    // Add strength reduction pattern
+    add_strength_reduce: (inout this) = {
+        patterns.add<StrengthReducePattern>(patterns.getContext());
+    }
+
+    // Apply all patterns
+    apply: (this, op: mlir::Operation*) -> bool = {
+        return apply_stub(op, patterns).succeeded();
+    }
+}
+
+// Direct MLIR execution - no custom evaluator
+sea_executor: @struct type = {
+    engine: std::unique_ptr<mlir::ExecutionEngine>;
+
+    create: (out this, module: mlir::ModuleOp) = {
+        optPipeline: std::string = "builtin.module(convert-arith-to-llvm,convert-cf-to-llvm,convert-func-to-llvm)";
+        maybeEngine: auto = create_engine_stub(
+            module,
+            /*llvmModuleBuilder=*/nullptr,
+            /*transformer=*/nullptr,
+            /*jitCodeGenOptLevel=*/3,
+            /*sharedLibPaths=*/{}
+        );
+        if (maybeEngine) {
+            this.engine = std::move(maybeEngine.value());
+        }
+    }
+
+    run: (this, fname: std::string_view) -> i64 = {
+        result: i64 = 0;
+        engine->invoke(fname, &result);
+        return result;
+    }
+}
+
+// Sea of Nodes builder with direct MLIR integration
+sea_builder: @struct type = {
+    context: void*;
+    module: mlir::ModuleOp;
+    builder: int;
+
+    create: (out this) = {
+        this.context = new mlir::MLIRContext();
+        this.context->loadDialect<mlir::arith::ArithDialect>();
+        this.context->loadDialect<mlir::cf::ControlFlowDialect>();
+        this.context->loadDialect<mlir::func::FuncDialect>();
+
+        this.builder = int(this.context);
+        this.module = mlir::ModuleOp::create(builder.getUnknownLoc());
+    }
+
+    // Create function directly in MLIR
+    create_function: (inout this, name: std::string_view, type: mlir::FunctionType) -> mlir::func::FuncOp = {
+        return create_stub(
+            builder.getUnknownLoc(),
+            name,
+            type
+        );
+    }
+
+    // Build expression tree directly as MLIR ops
+    build_expr: (inout this, n: node_type) -> int = {
+        return n.emit();
+    }
+
+    // Optimize using MLIR passes
+    optimize: (inout this) = {
+        pm: mlir::PassManager = (context);
+        pm.addPass(mlir::createCanonicalizerPass());
+        pm.addPass(mlir::createCSEPass());
+        pm.addPass(mlir::createInlinerPass());
+        pm.run(module);
+    }
+
+    // Dump MLIR for debugging
+    dump: (this) = {
+        module.dump();
+    }
+}
+
+// Global Code Motion using MLIR's dominance info
+gcm_scheduler: @struct type = {
+    dom: mlir::DominanceInfo;
+
+    schedule: (inout this, op: mlir::Operation*) = {
+        // Use MLIR's dominance analysis directly
+        dom.invalidate();
+
+        // Schedule ops based on dominance
+        op->walk([&](mlir::Operation* innerOp) {
+            if (auto addOp = mlir::dyn_cast<mlir::arith::AddIOp>(innerOp)) {
+                // Find earliest legal position using MLIR dominance
+                bestBlock: void* = findEarliestBlock(addOp);
+                if (bestBlock != addOp->getBlock()) {
+                    addOp->moveBefore(bestBlock, bestBlock->begin());
+                }
+            }
+        });
+    }
+
+    findEarliestBlock: (this, op: mlir::Operation*) -> void* = {
+        current: void* = op->getBlock();
+
+        // Check all operands for dominance constraints
+        for (operand : op->getOperands()) {
+            if (defOp: mlir::Operation* = operand.getDefiningOp()) {
+                if (!dom.dominates(defOp->getBlock(), current)) {
+                    current = defOp->getBlock();
+                }
+            }
+        }
+
+        return current;
+    }
+}
+
+// Test harness
+test_sea_of_nodes: () -> i32 = {
+    builder: sea_builder = ();
+
+    // Create a simple function: f(x) = (x + 1) * 2
+    funcType: mlir::FunctionType = builder.builder.getFunctionType(
+        {builder.builder.getI64Type()},
+        {builder.builder.getI64Type()}
+    );
+
+    func: auto = builder.create_function("test_func", funcType);
+    entry: void* = func.addEntryBlock();
+    builder.builder.setInsertionPointToStart(entry);
+
+    // Get function argument
+    arg: int = entry->getArgument(0);
+
+    // Create constants
+    one: const_node = (builder.context, 1);
+    two: const_node = (builder.context, 2);
+
+    // Build expression
+    add: binary_op = ();
+    add.create_add(builder.context, arg, one.emit());
+
+    mul: binary_op = ();
+    mul.create_mul(builder.context, add.emit(), two.emit());
+
+    // Return result
+    builder.create_stub(
+        builder.builder.getUnknownLoc(),
+        mul.emit()
+    );
+
+    // Optimize
+    builder.optimize();
+
+    // Execute
+    executor: sea_executor = (builder.module);
+    result: i64 = executor.run("test_func");
+
+    std::cout << "Result: " << result << std::endl;
+
+    return 0;
+}
+
+main: () -> i32 = {
+    return test_sea_of_nodes();
+}

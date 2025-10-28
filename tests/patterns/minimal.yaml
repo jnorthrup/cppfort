@@ -1,0 +1,21 @@
+- name: c_function
+  regex: "void\\s+%s\\(\\)"
+  category: C
+  unified_signatures:
+    - void foo()
+  grammar_variants:
+    C: void %s()
+- name: cpp_function
+  regex: "template\\s*<.*>"
+  category: CPP
+  unified_signatures:
+    - template<typename T>
+  grammar_variants:
+    CPP: auto %s() -> %s
+- name: cpp2_function
+  regex: "%s: \\(\\) -> %s"
+  category: CPP2
+  unified_signatures:
+    - inspect x: () -> int
+  grammar_variants:
+    CPP2: %s: () -> %s
