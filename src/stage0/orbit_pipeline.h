@@ -51,4 +51,35 @@ private:
     mutable std::vector<ConfixOrbit::CombinatorMemento> global_anchor_chain_;
 };
 
+// Semantic-aware orbit builder that gates orbit creation on TypeEvidence validation
+class SemanticOrbitBuilder {
+public:
+    SemanticOrbitBuilder(const std::vector<PatternData>& patterns) : patterns_(patterns) {}
+    
+    // Build orbit only if TypeEvidence validates the anchor tuple and evidence
+    std::unique_ptr<ConfixOrbit> build_validated_orbit(
+        const OrbitFragment& fragment, 
+        std::string_view source,
+        const PatternData* pattern = nullptr) const;
+    
+    // Check if anchor tuple + evidence combination is semantically valid
+    bool validate_semantic_context(
+        const PatternData& pattern,
+        size_t anchor_index,
+        std::string_view evidence_span,
+        std::string_view expected_type) const;
+    
+private:
+    const std::vector<PatternData>& patterns_;
+    
+    // Analyze evidence span for semantic validity
+    ::cppfort::stage0::TypeEvidence analyze_evidence_span(std::string_view span) const;
+    
+    // Check if evidence type matches expected semantic constraints
+    bool validate_evidence_constraints(
+        const std::string& expected_type,
+        std::string_view evidence,
+        const ::cppfort::stage0::TypeEvidence& traits) const;
+};
+
 } // namespace cppfort::stage0

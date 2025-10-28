@@ -24,7 +24,7 @@ private:
     std::string name_;
     std::string pattern_template_;
     std::string glob_pattern_;
-    ::cppfort::ir::RBCursiveScanner scanner_;
+    ::cppfort::stage0::RBCursiveScanner scanner_;
 };
 
 class C_FunctionOrbit final : public FunctionOrbit {

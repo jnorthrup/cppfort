@@ -14,7 +14,7 @@
 #include "pattern_loader.h"
 
 namespace cppfort {
-namespace ir {
+namespace stage0 {
 
 class SimdScanner {
 public:
@@ -64,32 +64,43 @@ public:
     void speculate(std::string_view text);
 
     // Speculative matching against all known patterns across fragment boundaries
-    void speculate_across_fragments(const std::vector< ::cppfort::stage0::OrbitFragment>& fragments, std::string_view source);
+    void speculate_across_fragments(const std::vector<OrbitFragment>& fragments, std::string_view source);
 
     // Speculative matching using alternating anchor/evidence pattern
-    void speculate_alternating(const ::cppfort::stage0::PatternData& pattern, std::string_view text);
+    void speculate_alternating(const PatternData& pattern, std::string_view text);
 
     // Experimental: Anchor tuple + terminal-span backchain thinning using TypeEvidence
     void speculate_backchain(std::string_view text);
 
     // Get the best speculative match (longest match, then highest confidence)
-    const ::cppfort::stage0::SpeculativeMatch* get_best_match() const;
+    const SpeculativeMatch* get_best_match() const;
 
     Capabilities patternCapabilities() const { return {}; }
 
     const SimdScanner& scalarScanner() const { return m_scalarScanner; }
 
     // Set patterns for speculation
-    void set_patterns(const std::vector< ::cppfort::stage0::PatternData>& patterns) { patterns_ = &patterns; }
+    void set_patterns(const std::vector<PatternData>& patterns) { patterns_ = &patterns; }
 
     // Set packrat cache for memoization
-    void set_packrat_cache( ::cppfort::stage0::PackratCache* cache) { packrat_cache_ = cache; }
+    void set_packrat_cache(PackratCache* cache) { packrat_cache_ = cache; }
+
+    // Enable semantic trace capture mode
+    void enable_trace_capture(bool enable) { capture_traces_ = enable; }
+    
+    // Get collected semantic traces (for regression testing)
+    const std::vector<SemanticTrace>& get_semantic_traces() const { return semantic_traces_; }
+    
+    // Clear collected traces
+    void clear_traces() { semantic_traces_.clear(); }
 
 private:
     ScalarScanner m_scalarScanner;
-    std::vector< ::cppfort::stage0::SpeculativeMatch> matches_;
-    const std::vector< ::cppfort::stage0::PatternData>* patterns_ = nullptr;
-    ::cppfort::stage0::PackratCache* packrat_cache_ = nullptr;
+    std::vector<SpeculativeMatch> matches_;
+    const std::vector<PatternData>* patterns_ = nullptr;
+    PackratCache* packrat_cache_ = nullptr;
+    bool capture_traces_ = false;  // NEW: enable trace capture mode
+    std::vector<SemanticTrace> semantic_traces_;  // NEW: collected traces
     
     // Validate evidence type for alternating patterns
     bool validate_evidence_type(const std::string& type, std::string_view evidence) const;
@@ -110,5 +121,5 @@ private:
     std::vector<bool> used_;
 };
 
-} // namespace ir
 } // namespace cppfort
+} // namespace stage0

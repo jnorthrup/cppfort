@@ -9,6 +9,9 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 namespace fs = std::filesystem;
 
@@ -32,13 +35,42 @@ std::string current_time_string() {
     return "unknown time";
 }
 
-int run_command(const std::string& command, std::ostream& log) {
+int run_command(const std::string& command, std::ostream& log, int timeout_seconds = 15) {
     log << "    CMD: " << command << "\n";
-    int rc = std::system(command.c_str());
-    if (rc != 0) {
-        log << "    -> exit code " << rc << "\n";
+    
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process
+        execl("/bin/bash", "bash", "-c", command.c_str(), nullptr);
+        _exit(127); // exec failed
+    } else if (pid > 0) {
+        // Parent process
+        int status = 0;
+        alarm(timeout_seconds); // Set alarm
+        
+        if (waitpid(pid, &status, 0) == -1) {
+            if (errno == EINTR) {
+                // Timeout occurred
+                kill(pid, SIGKILL);
+                waitpid(pid, &status, 0); // Clean up zombie
+                log << "    -> TIMEOUT after " << timeout_seconds << " seconds\n";
+                return -1; // Timeout exit code
+            }
+            log << "    -> waitpid failed\n";
+            return -1;
+        }
+        
+        alarm(0); // Cancel alarm
+        
+        int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        if (rc != 0) {
+            log << "    -> exit code " << rc << "\n";
+        }
+        return rc;
+    } else {
+        log << "    -> fork failed\n";
+        return -1;
     }
-    return rc;
 }
 
 std::string read_file(const fs::path& file) {
@@ -55,7 +87,7 @@ std::string read_file(const fs::path& file) {
 int main(int argc, char* argv[]) {
     if (argc < 5) {
         std::cerr << "Usage: " << argv[0]
-                  << " <stage0_cli> <tests_dir> <patterns_path> <include_dir> [--verbose]\n";
+                  << " <stage0_cli> <tests_dir> <patterns_path> <include_dir> [--verbose] [--capture-traces]\n";
         return 1;
     }
 
@@ -64,6 +96,7 @@ int main(int argc, char* argv[]) {
     fs::path patterns_path = fs::absolute(argv[3]);
     fs::path include_dir = fs::absolute(argv[4]);
     const bool verbose = (argc >= 6 && std::string_view(argv[5]) == "--verbose");
+    const bool capture_traces = (argc >= 7 && std::string_view(argv[6]) == "--capture-traces");
 
     if (!fs::exists(stage0_cli)) {
         std::cerr << "Error: stage0_cli not found at " << stage0_cli << "\n";
@@ -136,7 +169,8 @@ int main(int argc, char* argv[]) {
         log << "Testing " << filename << "\n";
         num_tests++;
 
-        const std::string transpile_cmd = quote(stage0_cli) + " transpile " +
+        const std::string transpile_cmd = (capture_traces ? "RBCURSIVE_CAPTURE=1 " : "") +
+                                          quote(stage0_cli) + " transpile " +
                                           quote(test) + " " + quote(output_cpp) + " " + quote(patterns_path);
         if (run_command(transpile_cmd, log) != 0) {
             log << "  Transpile FAILED\n\n";

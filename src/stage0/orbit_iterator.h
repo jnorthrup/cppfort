@@ -32,9 +32,9 @@ private:
 
     std::vector<Orbit*> orbits_{};
     std::size_t current_index_ = 0;
-    ::cppfort::ir::CombinatorPool pool_;
+    ::cppfort::stage0::CombinatorPool pool_;
     PackratCache packrat_cache_;
-    std::vector<std::pair<::cppfort::ir::RBCursiveScanner*, Orbit*>> leased_{};
+    std::vector<std::pair<::cppfort::stage0::RBCursiveScanner*, Orbit*>> leased_{};
     const std::vector<PatternData>* patterns_ = nullptr;
 };
 

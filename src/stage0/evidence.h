@@ -453,6 +453,87 @@ private:
     char last_char_ = '\0';
 };
 
+// Semantic trace for recording validation steps during orbit processing
+struct SemanticTrace {
+    std::string pattern_name;
+    size_t anchor_index = 0;
+    size_t evidence_start = 0;
+    size_t evidence_end = 0;
+    std::string evidence_content;
+    TypeEvidence traits;
+    std::string expected_type;
+    bool verdict = false;  // true = valid, false = contradiction/failure
+    std::string failure_reason;  // description of why validation failed
+    
+    // Serialize to JSON-like format for regression capture
+    std::string to_json() const {
+        std::string json = "{";
+        json += "\"pattern\":\"" + pattern_name + "\",";
+        json += "\"anchor\":" + std::to_string(anchor_index) + ",";
+        json += "\"evidence_start\":" + std::to_string(evidence_start) + ",";
+        json += "\"evidence_end\":" + std::to_string(evidence_end) + ",";
+        json += "\"evidence\":\"" + escape_json_string(evidence_content) + "\",";
+        json += "\"traits\":{" + traits_to_json() + "},";
+        json += "\"expected_type\":\"" + expected_type + "\",";
+        json += "\"verdict\":" + std::string(verdict ? "true" : "false");
+        if (!failure_reason.empty()) {
+            json += ",\"failure_reason\":\"" + escape_json_string(failure_reason) + "\"";
+        }
+        json += "}";
+        return json;
+    }
+    
+private:
+    std::string traits_to_json() const {
+        std::string json;
+        json += "\"brace_open\":" + std::to_string(traits.brace_open) + ",";
+        json += "\"brace_close\":" + std::to_string(traits.brace_close) + ",";
+        json += "\"paren_open\":" + std::to_string(traits.paren_open) + ",";
+        json += "\"paren_close\":" + std::to_string(traits.paren_close) + ",";
+        json += "\"bracket_open\":" + std::to_string(traits.bracket_open) + ",";
+        json += "\"bracket_close\":" + std::to_string(traits.bracket_close) + ",";
+        json += "\"angle_open\":" + std::to_string(traits.angle_open) + ",";
+        json += "\"angle_close\":" + std::to_string(traits.angle_close) + ",";
+        json += "\"colon\":" + std::to_string(traits.colon) + ",";
+        json += "\"double_colon\":" + std::to_string(traits.double_colon) + ",";
+        json += "\"arrow\":" + std::to_string(traits.arrow) + ",";
+        json += "\"lambda_captures\":" + std::to_string(traits.lambda_captures) + ",";
+        json += "\"pointer_indicators\":" + std::to_string(traits.pointer_indicators) + ",";
+        json += "\"c_keyword_hits\":" + std::to_string(traits.c_keyword_hits) + ",";
+        json += "\"cpp_keyword_hits\":" + std::to_string(traits.cpp_keyword_hits) + ",";
+        json += "\"cpp2_keyword_hits\":" + std::to_string(traits.cpp2_keyword_hits) + ",";
+        json += "\"typedef_hits\":" + std::to_string(traits.typedef_hits) + ",";
+        json += "\"struct_hits\":" + std::to_string(traits.struct_hits) + ",";
+        json += "\"template_hits\":" + std::to_string(traits.template_hits) + ",";
+        json += "\"namespace_hits\":" + std::to_string(traits.namespace_hits) + ",";
+        json += "\"concept_hits\":" + std::to_string(traits.concept_hits) + ",";
+        json += "\"requires_hits\":" + std::to_string(traits.requires_hits) + ",";
+        json += "\"inspect_hits\":" + std::to_string(traits.inspect_hits) + ",";
+        json += "\"contract_hits\":" + std::to_string(traits.contract_hits) + ",";
+        json += "\"is_keyword_hits\":" + std::to_string(traits.is_keyword_hits) + ",";
+        json += "\"as_keyword_hits\":" + std::to_string(traits.as_keyword_hits) + ",";
+        json += "\"flow_keyword_hits\":" + std::to_string(traits.flow_keyword_hits) + ",";
+        json += "\"cpp2_signature_hits\":" + std::to_string(traits.cpp2_signature_hits) + ",";
+        json += "\"total_tokens\":" + std::to_string(traits.total_tokens);
+        return json;
+    }
+    
+    static std::string escape_json_string(std::string_view str) {
+        std::string escaped;
+        for (char c : str) {
+            switch (c) {
+                case '"': escaped += "\\\""; break;
+                case '\\': escaped += "\\\\"; break;
+                case '\n': escaped += "\\n"; break;
+                case '\r': escaped += "\\r"; break;
+                case '\t': escaped += "\\t"; break;
+                default: escaped += c; break;
+            }
+        }
+        return escaped;
+    }
+};
+
 inline void update_evidence_columns(std::vector<TypeEvidence>& aggregate,
                                     const std::vector<TypeEvidence>& line) {
     if (aggregate.size() < line.size()) {
