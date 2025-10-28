@@ -53,15 +53,19 @@ add_custom_command(
 )
 add_custom_target(tblgen_semantic_units DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.json)
 
-# Temporarily remove problematic files (not yet converted to RBCursive or incompatible implementations)
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_key_resolver_new.cpp")  # Depends on yaml-cpp version of extractor
+# Remove deleted/consolidated files
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_key_resolver_new.cpp")  # Deleted - duplicate
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner_new.cpp")  # Deleted - duplicate
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/semantic_orbit_loader.cpp")  # Deleted - unused
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/depth_pattern_matcher.cpp")  # Consolidated into unified
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tblgen_pattern_matcher.cpp")  # Consolidated into unified
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp")  # Consolidated into unified
+
+# Temporarily remove broken files (need fixing)
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_pattern_extractor.cpp")  # Broken - doesn't match header
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/semantic_orbit_loader.cpp")  # yaml-cpp
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unified_orbit_patterns.cpp")  # yaml-cpp
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/multi_grammar_loader.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner_new.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.cpp")  # Temporarily broken - EvidenceSpan API mismatch
 
 # Create static library
