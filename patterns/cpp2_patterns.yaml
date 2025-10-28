@@ -1,0 +1,223 @@
+cpp2_canonical_patterns:
+  - name: cpp2_type_annotation_1
+    canonical_form: "x: int = 5"
+    pattern_type: type_annotation
+    semantic_context: Variable declaration with type annotation
+    scope_filter:
+      - function_body
+      - global
+      - class_body
+    lattice_filter: IDENTIFIER|PUNCTUATION
+    disambiguation_hint: Colon followed by type name, optional initialization
+    source_file: docs/cpp2/declarations.md
+    confidence: 1.0
+
+  - name: cpp2_function_signature_1
+    canonical_form: "f: (x: int) -> int = body"
+    pattern_type: function_signature
+    semantic_context: Function definition with parameter list
+    scope_filter:
+      - global
+      - namespace_body
+      - class_body
+    lattice_filter: IDENTIFIER|PUNCTUATION|BRACKET
+    disambiguation_hint: Identifier followed by colon, parentheses, optional return type
+    source_file: docs/cpp2/functions.md
+    confidence: 1.0
+
+  - name: cpp2_type_definition_1
+    canonical_form: "T: type = {...}"
+    pattern_type: type_definition
+    semantic_context: User-defined type declaration
+    scope_filter:
+      - global
+      - namespace_body
+      - class_body
+    lattice_filter: IDENTIFIER|KEYWORD|PUNCTUATION
+    disambiguation_hint: Identifier followed by colon, type keyword
+    source_file: docs/cpp2/types.md
+    confidence: 1.0
+
+  - name: cpp2_namespace_declaration_1
+    canonical_form: "ns: namespace = {...}"
+    pattern_type: namespace_declaration
+    semantic_context: Namespace definition
+    scope_filter:
+      - global
+    lattice_filter: IDENTIFIER|KEYWORD|PUNCTUATION
+    disambiguation_hint: Identifier followed by colon, namespace keyword
+    source_file: docs/cpp2/namespaces.md
+    confidence: 1.0
+
+  - name: cpp2_object_construction_1
+    canonical_form: "Point{1, 2}"
+    pattern_type: object_construction
+    semantic_context: Object construction/initialization
+    scope_filter:
+      - function_body
+      - global
+    lattice_filter: IDENTIFIER|BRACKET|PUNCTUATION
+    disambiguation_hint: Type name followed by braces or parentheses with arguments
+    source_file: docs/cpp2/objects.md
+    confidence: 1.0
+
+  - name: cpp2_member_access_1
+    canonical_form: "obj.field"
+    pattern_type: member_access
+    semantic_context: Object member access
+    scope_filter:
+      - function_body
+      - class_body
+    lattice_filter: IDENTIFIER|PUNCTUATION
+    disambiguation_hint: Identifier dot identifier
+    source_file: docs/cpp2/types.md
+    confidence: 1.0
+
+  - name: cpp2_range_for_1
+    canonical_form: "for (x: container) = {...}"
+    pattern_type: range_for
+    semantic_context: Range-based for loop
+    scope_filter:
+      - function_body
+    lattice_filter: KEYWORD|IDENTIFIER|PUNCTUATION|BRACKET
+    disambiguation_hint: for keyword, parentheses, identifier colon expression
+    source_file: docs/cpp2/expressions.md
+    confidence: 1.0
+
+  - name: cpp2_lambda_expression_1
+    canonical_form: ":(x) = x * 2"
+    pattern_type: lambda_expression
+    semantic_context: Anonymous function/lambda expression
+    scope_filter:
+      - function_body
+      - global
+    lattice_filter: PUNCTUATION|BRACKET|IDENTIFIER
+    disambiguation_hint: Colon followed by parameter list in parentheses
+    source_file: docs/cpp2/expressions.md
+    confidence: 1.0
+
+  - name: cpp2_contract_specification_1
+    canonical_form: "pre: (x > 0) = \"x must be positive\""
+    pattern_type: contract_specification
+    semantic_context: Function contract specification
+    scope_filter:
+      - function_body
+    lattice_filter: KEYWORD|PUNCTUATION|BRACKET
+    disambiguation_hint: pre/post/assert keyword followed by colon and condition
+    source_file: docs/cpp2/contracts.md
+    confidence: 1.0
+
+  - name: cpp2_metafunction_1
+    canonical_form: "@interface Shape"
+    pattern_type: metafunction
+    semantic_context: Compile-time metafunction application
+    scope_filter:
+      - global
+      - class_body
+    lattice_filter: OPERATOR|IDENTIFIER
+    disambiguation_hint: At-sign followed by identifier and type
+    source_file: docs/cpp2/metafunctions.md
+    confidence: 1.0
+
+extraction_metadata:
+  source_directory: docs/cpp2
+  total_patterns: 10
+  pattern_types:
+    - type_annotation
+    - function_signature
+    - type_definition
+    - namespace_declaration
+    - object_construction
+    - member_access
+    - range_for
+    - lambda_expression
+    - contract_specification
+    - metafunction
+
+peer_mappings:
+  cpp2_type_annotation_1:
+    - peer_context: C_variable_declaration
+      similarity_threshold: 0.7
+      confidence_modifier: 0.8
+      lattice_required: 65535
+      grammar_mode: 1
+      scope_filter:
+        - function_body
+        - global
+    - peer_context: CPP_auto_declaration
+      similarity_threshold: 0.8
+      confidence_modifier: 1.2
+      lattice_required: 65535
+      grammar_mode: 2
+      scope_filter:
+        - function_body
+        - global
+
+  cpp2_function_signature_1:
+    - peer_context: C_function_definition
+      similarity_threshold: 0.6
+      confidence_modifier: 0.7
+      lattice_required: 65535
+      grammar_mode: 1
+      scope_filter:
+        - global
+    - peer_context: CPP_lambda_definition
+      similarity_threshold: 0.9
+      confidence_modifier: 1.1
+      lattice_required: 65535
+      grammar_mode: 2
+      scope_filter:
+        - function_body
+        - global
+
+  cpp2_type_definition_1:
+    - peer_context: C_struct_definition
+      similarity_threshold: 0.8
+      confidence_modifier: 0.9
+      lattice_required: 65535
+      grammar_mode: 1
+      scope_filter:
+        - global
+    - peer_context: CPP_class_definition
+      similarity_threshold: 0.85
+      confidence_modifier: 1.0
+      lattice_required: 65535
+      grammar_mode: 2
+      scope_filter:
+        - global
+        - namespace_body
+
+  cpp2_object_construction_1:
+    - peer_context: C_struct_initialization
+      similarity_threshold: 0.8
+      confidence_modifier: 1.0
+      lattice_required: 65535
+      grammar_mode: 1
+      scope_filter:
+        - function_body
+        - global
+    - peer_context: CPP_uniform_initialization
+      similarity_threshold: 0.95
+      confidence_modifier: 1.3
+      lattice_required: 65535
+      grammar_mode: 2
+      scope_filter:
+        - function_body
+        - global
+
+  cpp2_member_access_1:
+    - peer_context: C_struct_member_access
+      similarity_threshold: 0.9
+      confidence_modifier: 1.0
+      lattice_required: 65535
+      grammar_mode: 1
+      scope_filter:
+        - function_body
+    - peer_context: CPP_member_access
+      similarity_threshold: 0.95
+      confidence_modifier: 1.1
+      lattice_required: 65535
+      grammar_mode: 2
+      scope_filter:
+        - function_body
+        - class_body

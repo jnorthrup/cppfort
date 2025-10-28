@@ -1,0 +1,111 @@
+name: cpp17_structured_bindings
+orbit_id: 1
+weight: 0.95
+signature_patterns:
+  - "auto ["
+  - "auto&& ["
+  - "const auto ["
+  - "structured_bindings"
+protocol_indicators:
+  - "C++17"
+  - "structured bindings"
+version_patterns:
+  - "C++17"
+
+---
+name: cpp17_constexpr_if
+orbit_id: 1
+weight: 0.9
+signature_patterns:
+  - "if constexpr"
+  - "constexpr if"
+protocol_indicators:
+  - "C++17"
+  - "constexpr if"
+version_patterns:
+  - "C++17"
+
+---
+name: cpp17_filesystem
+orbit_id: 1
+weight: 0.85
+signature_patterns:
+  - "#include <filesystem>"
+  - "std::filesystem::"
+  - "fs::"
+protocol_indicators:
+  - "C++17"
+  - "filesystem"
+version_patterns:
+  - "C++17"
+
+---
+name: cpp20_concepts
+orbit_id: 1
+weight: 0.98
+signature_patterns:
+  - "concept "
+  - "requires "
+  - "std::integral"
+  - "std::floating_point"
+protocol_indicators:
+  - "C++20"
+  - "concepts"
+version_patterns:
+  - "C++20"
+
+---
+name: cpp20_modules
+orbit_id: 1
+weight: 0.95
+signature_patterns:
+  - "import "
+  - "module "
+  - "export module"
+protocol_indicators:
+  - "C++20"
+  - "modules"
+version_patterns:
+  - "C++20"
+
+---
+name: cpp20_coroutines
+orbit_id: 1
+weight: 0.9
+signature_patterns:
+  - "co_await"
+  - "co_yield"
+  - "co_return"
+  - "std::coroutine_handle"
+protocol_indicators:
+  - "C++20"
+  - "coroutines"
+version_patterns:
+  - "C++20"
+
+---
+name: cpp23_executors
+orbit_id: 1
+weight: 0.85
+signature_patterns:
+  - "std::execution::"
+  - "executor"
+  - "scheduler"
+protocol_indicators:
+  - "C++23"
+  - "executors"
+version_patterns:
+  - "C++23"
+
+---
+name: cpp23_flat_map
+orbit_id: 1
+weight: 0.8
+signature_patterns:
+  - "std::flat_map"
+  - "std::flat_set"
+protocol_indicators:
+  - "C++23"
+  - "flat containers"
+version_patterns:
+  - "C++23"
