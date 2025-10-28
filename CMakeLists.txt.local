@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.20)
 
 project(cppfort LANGUAGES C CXX)
 
+if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+    message(FATAL_ERROR "Use cmake -G Ninja")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

@@ -148,7 +148,8 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                                    global_memo->end,
                                                    global_memo->pattern_name,
                                                    global_memo->confidence,
-                                                   global_memo->grammar);
+                                                   global_memo->grammar,
+                                                   global_memo->traits);
             if (auto cached_orbit = apply_memo(*global_memo)) {
                 return cached_orbit;
             }
@@ -161,16 +162,11 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
         std::string_view fragment_text = source.substr(fragment.start_pos, fragment.end_pos - fragment.start_pos);
         std::cerr << "DEBUG evaluate_fragment: Speculating on fragment [" << fragment.start_pos << ", " << fragment.end_pos << "): '"
                   << fragment_text << "'\n";
-        if (const char* use_backchain = std::getenv("RBCURSIVE_USE_BACKCHAIN"); use_backchain && *use_backchain == '1') {
-            combinator->speculate_backchain(fragment_text);
-        } else {
-            combinator->speculate(fragment_text);
-        }
+        // Use backward chaining by default for better semantic accuracy
+        combinator->speculate_backchain(fragment_text);
 
-        // Log if backchain mode is enabled
-        if (const char* dbg_bc = std::getenv("RBCURSIVE_USE_BACKCHAIN"); dbg_bc && *dbg_bc == '1') {
-            std::cerr << "DEBUG: Backchain mode enabled for terminal speculation\n";
-        }
+        // Log backchain usage
+        std::cerr << "DEBUG: Using backward chaining for terminal speculation\n";
 
         // Get the best speculative match
         if (auto* best_match = combinator->get_best_match()) {
@@ -194,7 +190,8 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                                     fragment.end_pos,
                                                     best_match->pattern_name,
                                                     base_orbit->confidence,
-                                                    base_orbit->selected_grammar());
+                                                    base_orbit->selected_grammar(),
+                                                    {}); // Empty traits for now
                 return base_orbit;
             }
         }
@@ -237,10 +234,192 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                             fragment.end_pos,
                                             best_orbit->selected_pattern(),
                                             best_orbit->confidence,
-                                            grammar);
+                                            grammar,
+                                            {}); // Empty traits for now
     }
     
     return best_orbit;
+}
+
+static std::pair<char, char> select_confix_for_semantic_builder(
+    const OrbitFragment& fragment, std::string_view source) {
+    
+    std::string_view text = source.substr(fragment.start_pos, 
+                                          fragment.end_pos - fragment.start_pos);
+    
+    if (text.find('<') != std::string::npos && text.find('>') != std::string::npos) {
+        return {'<', '>'};
+    }
+    if (text.find('(') != std::string::npos && text.find(')') != std::string::npos) {
+        return {'(', ')'};
+    }
+    if (text.find('[') != std::string::npos && text.find(']') != std::string::npos) {
+        return {'[', ']'};
+    }
+    if (text.find('"') != std::string::npos) {
+        return {'"', '"'};
+    }
+    return {'{', '}'};
+}
+
+// SemanticOrbitBuilder implementation
+std::unique_ptr<ConfixOrbit> SemanticOrbitBuilder::build_validated_orbit(
+    const OrbitFragment& fragment, 
+    std::string_view source,
+    const PatternData* pattern) const {
+    
+    // If no pattern specified, try to find the best matching pattern
+    const PatternData* target_pattern = pattern;
+    if (!target_pattern) {
+        // For now, use a simple heuristic - this could be enhanced
+        for (const auto& p : patterns_) {
+            if (p.name.find("function") != std::string::npos && 
+                fragment.classified_grammar == ::cppfort::ir::GrammarType::CPP2) {
+                target_pattern = &p;
+                break;
+            }
+        }
+        if (!target_pattern && !patterns_.empty()) {
+            target_pattern = &patterns_[0];
+        }
+    }
+    
+    if (!target_pattern) {
+        return nullptr; // No valid pattern found
+    }
+    
+    // Extract evidence spans using the pattern's alternating anchors
+    std::string_view fragment_text = source.substr(fragment.start_pos, 
+                                                   fragment.end_pos - fragment.start_pos);
+    
+    std::vector<std::string_view> evidence_spans;
+    size_t current_pos = 0;
+    
+    // Extract evidence spans based on alternating anchors
+    for (size_t i = 0; i < target_pattern->alternating_anchors.size(); ++i) {
+        const std::string& anchor = target_pattern->alternating_anchors[i];
+        size_t anchor_pos = fragment_text.find(anchor, current_pos);
+        
+        if (anchor_pos == std::string::npos) {
+            return nullptr; // Required anchor not found
+        }
+        
+        // Extract evidence before this anchor (if expected)
+        if (i < target_pattern->evidence_types.size()) {
+            std::string_view evidence = fragment_text.substr(current_pos, anchor_pos - current_pos);
+            // Trim whitespace
+            size_t start = 0;
+            while (start < evidence.size() && std::isspace(static_cast<unsigned char>(evidence[start]))) ++start;
+            size_t end = evidence.size();
+            while (end > start && std::isspace(static_cast<unsigned char>(evidence[end - 1]))) --end;
+            evidence = evidence.substr(start, end - start);
+            
+            evidence_spans.push_back(evidence);
+        }
+        
+        current_pos = anchor_pos + anchor.size();
+    }
+    
+    // Extract final evidence span after last anchor
+    if (target_pattern->evidence_types.size() > target_pattern->alternating_anchors.size()) {
+        std::string_view evidence = fragment_text.substr(current_pos);
+        // Trim whitespace and find end of construct
+        size_t start = 0;
+        while (start < evidence.size() && std::isspace(static_cast<unsigned char>(evidence[start]))) ++start;
+        size_t end = start;
+        while (end < evidence.size() && evidence[end] != ';' && evidence[end] != '\n' && evidence[end] != '}') ++end;
+        evidence = evidence.substr(start, end - start);
+        
+        evidence_spans.push_back(evidence);
+    }
+    
+    // Validate all evidence spans against expected types
+    if (evidence_spans.size() != target_pattern->evidence_types.size()) {
+        return nullptr; // Wrong number of evidence spans
+    }
+    
+    for (size_t i = 0; i < evidence_spans.size(); ++i) {
+        const std::string& expected_type = target_pattern->evidence_types[i];
+        std::string_view evidence = evidence_spans[i];
+        
+        if (!validate_semantic_context(*target_pattern, i, evidence, expected_type)) {
+            return nullptr; // Semantic validation failed
+        }
+    }
+    
+    // If validation passes, create the orbit
+    auto [open_char, close_char] = select_confix_for_semantic_builder(fragment, source);
+    auto orbit = std::make_unique<ConfixOrbit>(open_char, close_char);
+    orbit->start_pos = fragment.start_pos;
+    orbit->end_pos = fragment.end_pos;
+    orbit->confidence = fragment.confidence;
+    orbit->set_selected_pattern(target_pattern->name);
+    orbit->set_selected_grammar(fragment.classified_grammar);
+    
+    return orbit;
+}
+
+bool SemanticOrbitBuilder::validate_semantic_context(
+    const PatternData& pattern,
+    size_t anchor_index,
+    std::string_view evidence,
+    std::string_view expected_type) const {
+    
+    // Use TypeEvidence to analyze the semantic context
+    ::cppfort::stage0::TypeEvidence traits;
+    traits.ingest(evidence);
+    
+    // Check if the evidence matches the expected type based on traits
+    if (expected_type == "identifier") {
+        // Check for valid identifier characters
+        if (evidence.empty() || (!std::isalpha(static_cast<unsigned char>(evidence[0])) && evidence[0] != '_')) {
+            return false;
+        }
+        for (char c : evidence) {
+            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+                return false;
+            }
+        }
+        // Identifiers shouldn't have structural punctuation
+        return traits.colon == 0 && traits.double_colon == 0 && traits.angle_open == 0 &&
+               traits.brace_open == 0 && traits.paren_open == 0 && traits.arrow == 0;
+    } else if (expected_type == "type") {
+        // Types can have :: and <> for templates/namespaces
+        return traits.double_colon > 0 || traits.angle_open > 0 || 
+               (evidence.find("int") != std::string::npos || evidence.find("void") != std::string::npos ||
+                evidence.find("char") != std::string::npos || evidence.find("bool") != std::string::npos);
+    } else if (expected_type == "expression") {
+        // Expressions can have operators and parentheses
+        return traits.paren_open > 0 || traits.arrow > 0 || evidence.find('+') != std::string::npos ||
+               evidence.find('-') != std::string::npos || evidence.find('*') != std::string::npos ||
+               evidence.find('/') != std::string::npos;
+    } else if (expected_type == "statement") {
+        // Statements often end with semicolons or have braces
+        return traits.brace_open > 0 || std::string(evidence).find(';') != std::string::npos;
+    } else if (expected_type == "function") {
+        // Functions have parentheses for parameters
+        return traits.paren_open > 0;
+    } else if (expected_type == "class") {
+        // Classes/structs have braces
+        return traits.brace_open > 0;
+    } else if (expected_type == "template") {
+        // Templates have angle brackets
+        return traits.angle_open > 0;
+    } else if (expected_type == "literal") {
+        // Literals are simple tokens without complex structure
+        return traits.paren_open == 0 && traits.brace_open == 0 && traits.angle_open == 0 &&
+               (evidence.find('"') != std::string::npos || evidence.find('\'') != std::string::npos ||
+                std::all_of(evidence.begin(), evidence.end(), ::isdigit));
+    } else if (expected_type == "operator") {
+        // Operators are short sequences of special characters
+        return evidence.size() <= 3 && (evidence.find('+') != std::string::npos || 
+               evidence.find('-') != std::string::npos || evidence.find('*') != std::string::npos ||
+               evidence.find('/') != std::string::npos || evidence.find('=') != std::string::npos ||
+               evidence.find('<') != std::string::npos || evidence.find('>') != std::string::npos);
+    } else {
+        // For unknown types, do basic validation
+        return !evidence.empty() && evidence.find_first_not_of(" \t\n\r") != std::string::npos;
+    }
 }
 
 void OrbitPipeline::populate_iterator(const std::vector<OrbitFragment>& fragments,
@@ -250,16 +429,24 @@ void OrbitPipeline::populate_iterator(const std::vector<OrbitFragment>& fragment
     iterator.set_patterns(loader_.patterns());
     confix_orbits_.clear();
 
+    // Create semantic orbit builder for validated orbit creation
+    SemanticOrbitBuilder semantic_builder(loader_.patterns());
+
     for (const auto& fragment : fragments) {
         // std::cout << "DEBUG: Processing fragment [" << fragment.start_pos << ", " << fragment.end_pos << ") confidence=" << fragment.confidence << "\n";
         OrbitFragment enriched = fragment;
         correlator_.correlate(enriched, source);
         
-        // Create base orbit
-        auto orbit = make_base_orbit(enriched, source);
+        // Use semantic orbit builder to create validated orbit
+        auto orbit = semantic_builder.build_validated_orbit(enriched, source);
+        
+        if (!orbit) {
+            // Semantic validation failed - skip this fragment
+            continue;
+        }
         
         // Temporarily set up combinator for speculation during evaluation
-        ::cppfort::ir::RBCursiveScanner temp_scanner;
+        ::cppfort::stage0::RBCursiveScanner temp_scanner;
         temp_scanner.set_patterns(loader_.patterns());
         if (auto* confix = dynamic_cast<ConfixOrbit*>(orbit.get())) {
             // std::cout << "DEBUG: Setting temporary combinator on orbit\n";

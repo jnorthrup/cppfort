@@ -5,6 +5,8 @@
 #include <string_view>
 #include <vector>
 
+#include <yaml-cpp/yaml.h>
+
 #include "orbit_mask.h"
 
 namespace cppfort::stage0 {
@@ -65,6 +67,9 @@ public:
 
 private:
     std::vector<PatternData> patterns_;
+    
+    bool load_pattern(const YAML::Node& pattern_node);
+
 };
 
 } // namespace cppfort::stage0

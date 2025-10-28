@@ -157,6 +157,10 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        // Check for trace capture mode
+        const char* capture_env = std::getenv("RBCURSIVE_CAPTURE");
+        const bool capture_traces = (capture_env && std::string(capture_env) == "1");
+
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
         cppfort::ir::WideScanner scanner;
         scanner.scanAnchorsWithOrbits(source, anchors);
@@ -173,6 +177,20 @@ int main(int argc, char* argv[]) {
 
             cppfort::stage0::CPP2Emitter emitter;
             emitter.emit(iterator, source, out, orbit_pipeline.patterns());
+
+            // Emit semantic traces if capture mode is enabled
+            if (capture_traces) {
+                std::string trace_file = output_file + ".traces.json";
+                std::ofstream trace_out(trace_file);
+                if (trace_out) {
+                    trace_out << "[\n";
+                    bool first = true;
+                    // Note: We need to collect traces from the scanner used in orbit_pipeline
+                    // For now, this is a placeholder - traces would be collected during scanning
+                    trace_out << "]\n";
+                    std::cerr << "Semantic traces saved to " << trace_file << "\n";
+                }
+            }
         } else {
             std::cerr << "ERROR: Pattern loading failed\n";
             return 1;

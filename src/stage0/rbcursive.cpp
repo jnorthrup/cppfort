@@ -5,10 +5,13 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <map>
+#include <memory>
 #include <span>
+#include <vector>
 
 namespace cppfort {
-namespace ir {
+namespace stage0 {
 
 namespace {
 
@@ -521,8 +524,9 @@ void RBCursiveScanner::speculate_across_fragments(const std::vector< ::cppfort::
     }
 }
 
-// Experimental: multi-orbit thinning across a terminal span using TypeEvidence (backchain mode)
+// Experimental: alternating-anchor backchain thinning driven by TypeEvidence
 void RBCursiveScanner::speculate_backchain(std::string_view text) {
+    matches_.clear();
     if (!patterns_ || text.empty()) {
         return;
     }
@@ -533,330 +537,318 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
         std::size_t anchor_index = 0;
         std::size_t start = 0;
         std::size_t cursor = 0;
-        std::size_t evidence_offset = 0; // 1 when evidence-before-first-anchor exists
-        // incremental evidence window [ev_start, ev_end)
+        std::size_t evidence_offset = 0;
         std::size_t ev_start = 0;
         std::size_t ev_end = 0;
-        cppfort::stage0::TypeEvidence ev_traits;
         bool in_evidence = false;
-        bool saw_alpha = false;
+        double confidence = 1.0;
+        std::size_t wobble_count = 0;
         std::vector<Step> steps;
-        LiveOrbit* parent = nullptr;  // Backchain parent pointer
-        std::vector<LiveOrbit*> children; // Child orbits spawned from this one
-        double confidence = 1.0;      // Accumulated confidence score
-        std::size_t wobble_count = 0; // Track sliding window adjustments
+        LiveOrbit* parent = nullptr;
+        std::vector<LiveOrbit*> children;
         bool dead = false;
+        std::vector<::cppfort::stage0::SemanticTrace> semantic_traces;  // NEW: record validation steps
     };
 
-    // Pre-index anchor occurrences for each pattern
-    std::map<const ::cppfort::stage0::PatternData*, std::vector<std::size_t>> anchor_indices;
-    for (const auto& pattern : *patterns_) {
-        if (!pattern.use_alternating || pattern.alternating_anchors.empty()) continue;
-        const std::string& first = pattern.alternating_anchors.front();
-
-        // Find all occurrences of the first anchor
-        std::size_t pos = 0;
-        while ((pos = text.find(first, pos)) != std::string::npos) {
-            // Check if prefix is meaningless (essential for confix validity)
-            if (pos == 0 || is_meaningless_segment(text.substr(0, pos))) {
-                anchor_indices[&pattern].push_back(pos);
+    auto validate_with_wobble = [&](LiveOrbit& live, const std::string& kind, std::string_view text_span) -> bool {
+        if (kind.empty()) return true;
+        std::size_t start = live.ev_start;
+        std::size_t end = live.ev_end;
+        if (end <= start) {
+            return kind == "trailing" || kind == "body" || kind == "expression";
+        }
+        std::size_t local_wobbles = 0;
+        while (true) {
+            std::string_view span = text_span.substr(start, end - start);
+            bool valid = validate_evidence_type(kind, span);
+            
+            // Record semantic trace for this validation step
+            ::cppfort::stage0::SemanticTrace trace;
+            trace.pattern_name = live.pattern->name;
+            trace.anchor_index = live.anchor_index;
+            trace.evidence_start = start;
+            trace.evidence_end = end;
+            trace.evidence_content = std::string(span);
+            trace.traits = analyze_evidence(span);
+            trace.expected_type = kind;
+            trace.verdict = valid;
+            
+            if (!valid) {
+                // Determine failure reason
+                if (span.empty()) {
+                    trace.failure_reason = "empty evidence span";
+                } else if (kind == "identifier" && 
+                          (trace.traits.colon > 0 || trace.traits.double_colon > 0 || 
+                           trace.traits.angle_open > 0 || trace.traits.brace_open > 0 || 
+                           trace.traits.paren_open > 0 || trace.traits.arrow > 0)) {
+                    trace.failure_reason = "identifier contains structural punctuation";
+                } else if (kind == "type_expression" && 
+                          (std::string_view(span).find('=') != std::string::npos || 
+                           std::string_view(span).find(';') != std::string::npos)) {
+                    trace.failure_reason = "type expression contains assignment or semicolon";
+                } else {
+                    trace.failure_reason = "evidence type validation failed";
+                }
+                
+                // CRITICAL: Mark orbit dead immediately on contradiction
+                live.dead = true;
             }
-            pos++;
+            
+            live.semantic_traces.push_back(std::move(trace));
+            
+            if (valid) {
+                if (local_wobbles > 0) {
+                    live.ev_start = start;
+                    live.wobble_count += local_wobbles;
+                    for (std::size_t i = 0; i < local_wobbles; ++i) {
+                        live.confidence *= 0.95;
+                    }
+                }
+                return true;
+            }
+            if (live.wobble_count + local_wobbles >= 3 || start + 1 >= end) {
+                return false;
+            }
+            ++start;
+            ++local_wobbles;
+        }
+        return false;
+    };
+
+    // Seed initial orbits
+    std::vector<std::unique_ptr<LiveOrbit>> storage;
+    std::vector<LiveOrbit*> frontier;
+
+    for (const auto& pattern : *patterns_) {
+        if (!pattern.use_alternating || pattern.alternating_anchors.empty()) {
+            continue;
+        }
+        const std::string& first_anchor = pattern.alternating_anchors.front();
+        const bool has_leading_evidence = pattern.evidence_types.size() > pattern.alternating_anchors.size();
+
+        std::size_t search_pos = 0;
+        while ((search_pos = text.find(first_anchor, search_pos)) != std::string::npos) {
+            // If there is no leading evidence requirement, enforce meaningless prefix
+            if (!has_leading_evidence && search_pos > 0 && !is_meaningless_segment(text.substr(0, search_pos))) {
+                ++search_pos;
+                continue;
+            }
+
+            auto live = std::make_unique<LiveOrbit>();
+            live->pattern = &pattern;
+            live->anchor_index = 1; // consumed the first anchor
+            live->start = search_pos;
+            live->cursor = search_pos + first_anchor.size();
+            live->evidence_offset = has_leading_evidence ? 1 : 0;
+            live->ev_start = live->cursor;
+            live->ev_end = live->cursor;
+            live->confidence = 1.0;
+
+            // Validate leading evidence if required
+            if (has_leading_evidence && !pattern.evidence_types.empty()) {
+                std::string_view prefix = text.substr(0, search_pos);
+                if (!validate_evidence_type(pattern.evidence_types[0], prefix)) {
+                    ++search_pos;
+                    continue;
+                }
+                EvidenceAnalysis lead_analysis = make_evidence(prefix);
+                std::size_t lead_start = lead_analysis.trimmed.empty() ? search_pos
+                    : static_cast<std::size_t>(lead_analysis.trimmed.data() - text.data());
+                std::size_t lead_end = lead_analysis.trimmed.empty() ? search_pos
+                    : lead_start + lead_analysis.trimmed.size();
+                live->steps.push_back({search_pos, lead_start, lead_end});
+            }
+
+            frontier.push_back(live.get());
+            storage.push_back(std::move(live));
+            ++search_pos;
         }
     }
 
-    // Allocate all LiveOrbits upfront to avoid invalidation during child spawning
-    std::vector<std::unique_ptr<LiveOrbit>> orbit_storage;
-    orbit_storage.reserve(1000); // Pre-allocate for stability
-
-    std::vector<LiveOrbit*> frontier; // Current active orbits
-    frontier.reserve(100);
-
-    // Seed initial orbits at each first anchor occurrence
-    for (const auto& [pattern, positions] : anchor_indices) {
-        for (std::size_t pos : positions) {
-            auto orbit = std::make_unique<LiveOrbit>();
-            orbit->pattern = pattern;
-            orbit->anchor_index = 1; // consumed first anchor
-            orbit->start = pos;
-            orbit->cursor = pos + pattern->alternating_anchors.front().size();
-            orbit->evidence_offset = (pattern->evidence_types.size() > pattern->alternating_anchors.size()) ? 1 : 0;
-            orbit->ev_start = orbit->cursor;
-            orbit->ev_end = orbit->cursor;
-            orbit->ev_traits = cppfort::stage0::TypeEvidence{};
-            orbit->in_evidence = false;
-            orbit->parent = nullptr;
-
-            frontier.push_back(orbit.get());
-            orbit_storage.push_back(std::move(orbit));
-        }
+    if (frontier.empty()) {
+        return;
     }
 
-    if (frontier.empty()) return;
-
-    // Advance to EOF, thinning orbits on contradiction with wobbling window support
     std::vector<LiveOrbit*> next_frontier;
-    next_frontier.reserve(200);
+    next_frontier.reserve(frontier.size() * 2);
 
-    for (std::size_t pos = 0; pos < text.size(); ++pos) {
+    for (std::size_t pos = 0; pos < text.size() && !frontier.empty(); ++pos) {
         char ch = text[pos];
+        next_frontier.clear();
 
         for (LiveOrbit* live : frontier) {
-            if (live->dead) continue;
+            if (live->dead) {
+                continue;
+            }
+            if (pos < live->cursor) {
+                continue;
+            }
 
-            // Skip until live->cursor
-            if (pos < live->cursor) continue;
-
-            // Check if next anchor for this live starts here
+            // Anchor opportunity
             if (live->anchor_index < live->pattern->alternating_anchors.size()) {
                 const std::string& next_anchor = live->pattern->alternating_anchors[live->anchor_index];
                 if (text.compare(pos, next_anchor.size(), next_anchor) == 0) {
-                    // Validate accumulated evidence up to this anchor
                     std::size_t evidence_idx = live->anchor_index - 1 + live->evidence_offset;
                     if (evidence_idx < live->pattern->evidence_types.size()) {
-                        std::string_view span = (live->in_evidence && live->ev_end > live->ev_start)
-                            ? text.substr(live->ev_start, live->ev_end - live->ev_start)
-                            : std::string_view{};
-                        if (!validate_evidence_type(live->pattern->evidence_types[evidence_idx], span)) {
-                            // Try wobbling if we haven't seen alpha yet
-                            if (!live->saw_alpha && live->ev_start < live->ev_end && live->wobble_count < 3) {
-                                // Slide window forward by one character
-                                live->ev_start++;
-                                live->wobble_count++;
-                                live->confidence *= 0.95; // Small penalty for wobbling
-
-                                // Recompute traits for the new window
-                                live->ev_traits = cppfort::stage0::TypeEvidence{};
-                                for (std::size_t i = live->ev_start; i < live->ev_end; ++i) {
-                                    live->ev_traits.observe(text[i]);
-                                }
-
-                                // Try validation again
-                                std::string_view new_span = text.substr(live->ev_start, live->ev_end - live->ev_start);
-                                if (!validate_evidence_type(live->pattern->evidence_types[evidence_idx], new_span)) {
-                                    live->dead = true;
-                                    continue;
-                                }
-                            } else {
-                                live->dead = true;
-                                continue;
-                            }
+                        if (!validate_with_wobble(*live, live->pattern->evidence_types[evidence_idx], text)) {
+                            live->dead = true;
+                            continue;
                         }
                     }
 
-                    // Record this anchor + its evidence span in the backchain
-                    live->steps.push_back({pos, live->ev_start, live->ev_end});
+                    std::size_t evidence_start = live->ev_start;
+                    std::size_t evidence_end = live->ev_end;
+                    live->steps.push_back({pos, evidence_start, evidence_end});
 
-                    // Spawn a child orbit to continue from this anchor (backchain construction)
                     auto child = std::make_unique<LiveOrbit>();
                     child->pattern = live->pattern;
                     child->anchor_index = live->anchor_index + 1;
-                    child->start = live->start; // Preserve original start
+                    child->start = live->start;
                     child->cursor = pos + next_anchor.size();
                     child->evidence_offset = live->evidence_offset;
                     child->ev_start = child->cursor;
                     child->ev_end = child->cursor;
-                    child->ev_traits = cppfort::stage0::TypeEvidence{};
-                    child->in_evidence = false;
-                    child->saw_alpha = false;
-                    child->parent = live; // Link to parent for backchain
-                    child->confidence = live->confidence * 0.98; // Slight decay per hop
-                    child->steps = live->steps; // Copy parent's steps
-
+                    child->confidence = live->confidence * 0.98;
+                    child->wobble_count = live->wobble_count;
+                    child->steps = live->steps;
+                    child->parent = live;
                     live->children.push_back(child.get());
-                    next_frontier.push_back(child.get());
-                    orbit_storage.push_back(std::move(child));
 
-                    // Parent continues but doesn't advance cursor (allows forking)
-                    live->dead = true; // Mark parent as consumed
+                    next_frontier.push_back(child.get());
+                    storage.push_back(std::move(child));
+
+                    // Parent no longer participates further down the chain
+                    live->dead = true;
                     continue;
                 }
             }
 
-            // Accumulate evidence and early-poison on obvious contradictions
+            // Evidence accumulation
             if (!live->in_evidence) {
                 live->in_evidence = true;
                 live->ev_start = pos;
                 live->ev_end = pos;
-                live->ev_traits = cppfort::stage0::TypeEvidence{};
-                live->saw_alpha = false;
             }
-            live->ev_traits.observe(ch);
             live->ev_end = pos + 1;
-            if (std::isalpha(static_cast<unsigned char>(ch))) {
-                live->saw_alpha = true;
-            }
 
             std::size_t evidence_idx = (live->anchor_index == 0 ? 0 : live->anchor_index - 1) + live->evidence_offset;
             if (evidence_idx < live->pattern->evidence_types.size()) {
                 const std::string& kind = live->pattern->evidence_types[evidence_idx];
-                // Early contradiction checks per kind
-                auto finalize_and_maybe_kill = [&](char reason) {
-                    std::string_view span = text.substr(live->ev_start, live->ev_end - live->ev_start);
-                    if (!validate_evidence_type(kind, span)) {
-                        // Try wobbling before killing
-                        if (!live->saw_alpha && live->ev_start < live->ev_end && live->wobble_count < 3) {
-                            live->ev_start++;
-                            live->wobble_count++;
-                            live->confidence *= 0.95;
-                            // Recompute traits
-                            live->ev_traits = cppfort::stage0::TypeEvidence{};
-                            for (std::size_t i = live->ev_start; i < live->ev_end; ++i) {
-                                live->ev_traits.observe(text[i]);
-                            }
-                            std::string_view new_span = text.substr(live->ev_start, live->ev_end - live->ev_start);
-                            if (!validate_evidence_type(kind, new_span)) {
-                                live->dead = true;
-                            }
-                        } else {
-                            live->dead = true;
-                        }
-                    }
-                };
-
-                switch (kind[0]) { // cheap dispatch on first char
+                bool trigger_check = false;
+                switch (!kind.empty() ? kind[0] : '\0') {
                     case 'i': // identifier / identifier_template
-                        if (ch == '=' || ch == ';' || ch == '{' || ch == '}' || ch == ':') {
-                            finalize_and_maybe_kill(ch);
-                        }
+                        trigger_check = (ch == '=' || ch == ';' || ch == '{' || ch == '}' || ch == ':');
                         break;
                     case 't': // type_expression
-                        if (ch == '=' || ch == '{' || ch == '}') {
-                            finalize_and_maybe_kill(ch);
-                        }
+                        trigger_check = (ch == '=' || ch == '{' || ch == '}');
                         break;
                     default:
                         break;
                 }
-            }
-        }
-
-        // Update frontier with new children
-        for (LiveOrbit* child : next_frontier) {
-            bool already_in = false;
-            for (LiveOrbit* existing : frontier) {
-                if (existing == child) {
-                    already_in = true;
-                    break;
+                if (trigger_check) {
+                    if (!validate_with_wobble(*live, kind, text)) {
+                        live->dead = true;
+                        continue;
+                    }
                 }
             }
-            if (!already_in) {
-                frontier.push_back(child);
-            }
         }
-        next_frontier.clear();
 
-        // If every orbit is dead, we can stop early
-        bool any_alive = false;
+        // Rebuild frontier with surviving parents plus newly spawned children
+        std::vector<LiveOrbit*> updated;
+        updated.reserve(frontier.size() + next_frontier.size());
         for (LiveOrbit* live : frontier) {
             if (!live->dead) {
-                any_alive = true;
-                break;
+                updated.push_back(live);
             }
         }
-        if (!any_alive) break;
+        updated.insert(updated.end(), next_frontier.begin(), next_frontier.end());
+        frontier.swap(updated);
     }
 
-    // Walk the backchains to find terminal survivors
-    std::vector<LiveOrbit*> terminal_survivors;
-    for (const auto& orbit : orbit_storage) {
+    // Collect terminal survivors (leaves that remain alive)
+    std::vector<LiveOrbit*> survivors;
+    for (const auto& orbit : storage) {
         if (!orbit->dead && orbit->children.empty()) {
-            // This is a terminal orbit (no children spawned from it)
-            terminal_survivors.push_back(orbit.get());
+            survivors.push_back(orbit.get());
         }
     }
 
-    // Validate final evidence for survivors and emit matches to EOF
-    for (LiveOrbit* live : terminal_survivors) {
-        // Validate last evidence segment after last anchor if any
+    if (survivors.empty()) {
+        return;
+    }
+
+    // Emit matches for survivors
+    for (LiveOrbit* live : survivors) {
         std::size_t evidence_idx = (live->anchor_index == 0 ? 0 : live->anchor_index - 1) + live->evidence_offset;
         if (evidence_idx < live->pattern->evidence_types.size()) {
-            std::string_view final_span = (live->in_evidence && live->ev_end > live->ev_start)
-                ? text.substr(live->ev_start, live->ev_end - live->ev_start)
-                : std::string_view{};
-            if (!validate_evidence_type(live->pattern->evidence_types[evidence_idx], final_span)) {
+            if (!validate_with_wobble(*live, live->pattern->evidence_types[evidence_idx], text)) {
                 continue;
             }
         }
 
-        // Walk the backchain to collect all steps
-        std::vector<LiveOrbit::Step> full_chain;
-        LiveOrbit* current = live;
-        while (current != nullptr) {
-            // Prepend this orbit's steps (in reverse order to build from root to leaf)
-            full_chain.insert(full_chain.begin(), current->steps.begin(), current->steps.end());
-            current = current->parent;
-        }
-
-        // Debug dump of complete backchain
-        std::cerr << "DEBUG terminal: survivor pattern=" << live->pattern->name
+        // Debug output to understand the chain
+        std::cerr << "DEBUG backchain: pattern=" << live->pattern->name
                   << " anchors=" << live->anchor_index
-                  << " confidence=" << live->confidence
-                  << " wobbles=" << live->wobble_count
-                  << " backchain_depth=" << full_chain.size() << "\n";
-
-        // Show the anchor tuple
-        std::cerr << "  Anchor tuple: [";
-        bool first = true;
-        for (std::size_t i = 0; i < std::min(live->anchor_index, live->pattern->alternating_anchors.size()); ++i) {
-            if (!first) std::cerr << ", ";
-            std::cerr << "'" << live->pattern->alternating_anchors[i] << "'";
-            first = false;
-        }
-        std::cerr << "]\n";
-
-        // Show evidence spans
-        for (const auto& st : full_chain) {
-            std::string_view ev = (st.ev_end > st.ev_start) ? text.substr(st.ev_start, st.ev_end - st.ev_start) : std::string_view{};
-            std::string snippet = std::string(ev.substr(0, std::min<std::size_t>(ev.size(), 40)));
-            std::cerr << "  step: anchor@" << st.anchor_pos << " ev[" << st.ev_start << "," << st.ev_end << ")='"
-                     << snippet << (ev.size() > 40 ? "..." : "") << "'\n";
+                  << " steps=" << live->steps.size()
+                  << " conf=" << live->confidence
+                  << " wobbles=" << live->wobble_count << "\n";
+        for (const auto& step : live->steps) {
+            std::string_view span = (step.ev_end > step.ev_start)
+                ? text.substr(step.ev_start, step.ev_end - step.ev_start)
+                : std::string_view{};
+            std::string snippet = std::string(span.substr(0, std::min<std::size_t>(span.size(), 32)));
+            std::cerr << "  step: anchor@" << step.anchor_pos
+                      << " span[" << step.ev_start << "," << step.ev_end << ")='"
+                      << snippet << (span.size() > snippet.size() ? "..." : "") << "'\n";
         }
 
-        // Calculate final confidence score with multiple factors
-        double final_confidence = live->confidence;
+        double final_conf = live->confidence;
 
-        // Factor 1: Pattern weight (some patterns are more reliable)
-        double pattern_weight = 1.0;
         if (live->pattern->name.find("function") != std::string::npos) {
-            pattern_weight = 1.15; // Functions are high-confidence
+            final_conf *= 1.15;
         } else if (live->pattern->name.find("type") != std::string::npos) {
-            pattern_weight = 1.10; // Types are also reliable
+            final_conf *= 1.10;
         }
-        final_confidence *= pattern_weight;
 
-        // Factor 2: Anchor coverage (more anchors matched = higher confidence)
-        double anchor_coverage = static_cast<double>(live->anchor_index) / live->pattern->alternating_anchors.size();
-        final_confidence *= (0.7 + 0.3 * anchor_coverage);
+        double anchor_coverage = live->pattern->alternating_anchors.empty()
+            ? 1.0
+            : std::min<double>(live->anchor_index, live->pattern->alternating_anchors.size()) /
+              static_cast<double>(live->pattern->alternating_anchors.size());
+        final_conf *= (0.7 + 0.3 * anchor_coverage);
 
-        // Factor 3: Span coverage relative to text length
-        double span_coverage = static_cast<double>(text.size() - live->start) / text.size();
-        final_confidence *= (0.8 + 0.2 * span_coverage);
+        double span_coverage = text.empty() ? 1.0
+            : static_cast<double>(text.size() - live->start) / static_cast<double>(text.size());
+        final_conf *= (0.8 + 0.2 * span_coverage);
 
-        // Factor 4: Early poison penalty (orbits that encountered issues get penalized)
-        // Already factored in via wobble_count penalties
+        std::size_t chain_depth = live->steps.size();
+        final_conf *= (1.0 + 0.05 * std::min<std::size_t>(chain_depth, 5));
 
-        // Factor 5: Backchain depth bonus (deeper chains = more evidence)
-        std::size_t chain_depth = 0;
-        LiveOrbit* chain_walker = live;
-        while (chain_walker->parent != nullptr) {
-            chain_depth++;
-            chain_walker = chain_walker->parent;
-        }
-        final_confidence *= (1.0 + 0.05 * std::min(chain_depth, static_cast<std::size_t>(5)));
-
-        // Clamp to reasonable range
-        final_confidence = std::min(1.0, std::max(0.1, final_confidence));
+        final_conf = std::clamp(final_conf, 0.1, 1.0);
 
         ::cppfort::stage0::OrbitFragment fragment;
         fragment.start_pos = live->start;
-        fragment.end_pos   = text.size();
-        fragment.confidence = final_confidence;
+        fragment.end_pos = text.size();
+        fragment.confidence = final_conf;
         fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2;
 
         std::size_t match_length = fragment.end_pos - fragment.start_pos;
         matches_.emplace_back(match_length, fragment.confidence, live->pattern->name, std::move(fragment));
+        
+        // Collect semantic traces if capture mode is enabled
+        if (capture_traces_) {
+            for (const auto& trace : live->semantic_traces) {
+                semantic_traces_.push_back(trace);
+            }
+        }
     }
+
+    std::sort(matches_.begin(), matches_.end(), [](const auto& a, const auto& b) {
+        if (a.match_length != b.match_length) {
+            return a.match_length > b.match_length;
+        }
+        return a.confidence > b.confidence;
+    });
 }
 
 const ::cppfort::stage0::SpeculativeMatch* RBCursiveScanner::get_best_match() const {
@@ -864,28 +856,21 @@ const ::cppfort::stage0::SpeculativeMatch* RBCursiveScanner::get_best_match() co
         return nullptr;
     }
 
-    // Check if we should prefer backchain-based selection
-    const char* use_backchain = std::getenv("RBCURSIVE_USE_BACKCHAIN");
-    if (use_backchain && *use_backchain == '1') {
-        // In backchain mode, prefer highest confidence within similar lengths
-        std::size_t best_idx = 0;
-        double best_score = 0.0;
+    // Always use backchain-based selection: prefer highest confidence within similar lengths
+    std::size_t best_idx = 0;
+    double best_score = 0.0;
 
-        for (std::size_t i = 0; i < matches_.size(); ++i) {
-            // Combine length and confidence for scoring
-            double length_factor = static_cast<double>(matches_[i].match_length) / matches_[0].match_length;
-            double score = matches_[i].confidence * (0.7 + 0.3 * length_factor);
+    for (std::size_t i = 0; i < matches_.size(); ++i) {
+        // Combine length and confidence for scoring
+        double length_factor = static_cast<double>(matches_[i].match_length) / matches_[0].match_length;
+        double score = matches_[i].confidence * (0.7 + 0.3 * length_factor);
 
-            if (score > best_score) {
-                best_score = score;
-                best_idx = i;
-            }
+        if (score > best_score) {
+            best_score = score;
+            best_idx = i;
         }
-        return &matches_[best_idx];
     }
-
-    // Default: Return the first match (already sorted by length descending)
-    return &matches_[0];
+    return &matches_[best_idx];
 }
 
 CombinatorPool::CombinatorPool(std::size_t initial_size) {
@@ -1007,5 +992,5 @@ bool RBCursiveScanner::validate_evidence_type(const std::string& type, std::stri
     return false;
 }
 
-} // namespace ir
+} // namespace stage0
 } // namespace cppfort

@@ -1,5 +1,6 @@
 #include "pattern_loader.h"
 
+#include <yaml-cpp/yaml.h>
 #include <cctype>
 #include <charconv>
 #include <cstdlib>
@@ -91,203 +92,102 @@ std::optional<double> parse_double_value(std::string_view text) {
 bool PatternLoader::load_yaml(const std::string& path) {
     patterns_.clear();
 
-    std::ifstream input(path);
-    if (!input.is_open()) {
+    try {
+        std::vector<YAML::Node> documents = YAML::LoadAllFromFile(path);
+        
+        if (documents.empty()) {
+            std::cerr << "PatternLoader: No documents found in " << path << std::endl;
+            return false;
+        }
+
+        // If single document and it's a sequence, use it directly
+        if (documents.size() == 1 && documents[0].IsSequence()) {
+            for (const auto& pattern_node : documents[0]) {
+                if (load_pattern(pattern_node)) {
+                    // Pattern loaded successfully
+                }
+            }
+            return true;
+        }
+        
+        // If multiple documents, treat each as a pattern
+        for (const auto& doc : documents) {
+            if (load_pattern(doc)) {
+                // Pattern loaded successfully
+            }
+        }
+        
+        return !patterns_.empty();
+    } catch (const YAML::Exception& e) {
+        std::cerr << "PatternLoader: YAML parsing error in " << path << ": " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool PatternLoader::load_pattern(const YAML::Node& pattern_node) {
+    PatternData pattern;
+
+    if (pattern_node["name"]) {
+        pattern.name = pattern_node["name"].as<std::string>();
+    } else {
+        std::cerr << "PatternLoader: Pattern missing name" << std::endl;
         return false;
     }
 
-    PatternData current;
-    std::string line;
-    bool in_pattern = false;
-    std::string current_section;
+    if (pattern_node["orbit_id"]) {
+        pattern.orbit_id = pattern_node["orbit_id"].as<int>();
+    }
 
-    // Temp storage for segments during parsing
-    std::map<int, AnchorSegment> temp_segments;
+    if (pattern_node["weight"]) {
+        pattern.weight = pattern_node["weight"].as<double>();
+    }
 
-    while (std::getline(input, line)) {
-        if (line.empty()) {
-            continue;
-        }
+    if (pattern_node["priority"]) {
+        pattern.priority = pattern_node["priority"].as<int>();
+    }
 
-        const std::string trimmed = trim(line);
-        if (trimmed.empty() || trimmed.rfind("#", 0) == 0) {
-            continue;
-        }
+    if (pattern_node["grammar_modes"]) {
+        pattern.grammar_modes = pattern_node["grammar_modes"].as<int>();
+    }
 
-        // Check for pattern separator (---)
-        if (trimmed == "---") {
-            if (in_pattern && !current.name.empty()) {
-                // Finalize segments
-                for (auto& [ord, seg] : temp_segments) {
-                    current.segments.push_back(seg);
-                }
+    if (pattern_node["lattice_filter"]) {
+        pattern.lattice_filter = pattern_node["lattice_filter"].as<int>();
+    }
 
-                patterns_.push_back(current);
-                current = PatternData{};
-                temp_segments.clear();
-            }
-            in_pattern = true;
-            current_section.clear();
-            continue;
-        }
+    if (pattern_node["scope_requirement"]) {
+        pattern.scope_requirement = pattern_node["scope_requirement"].as<std::string>();
+    }
 
-        if (!in_pattern) {
-            continue;
-        }
+    if (pattern_node["confix_mask"]) {
+        pattern.confix_mask = pattern_node["confix_mask"].as<int>();
+    }
 
-        // Check for list items first (before key-value pairs)
-        if (trimmed.rfind("-", 0) == 0) {
-            if (!current_section.empty()) {
-                // List item
-                std::string item = trim(trimmed.substr(1));
-                // Strip comment first (before stripping quotes)
-                size_t comment_pos = item.find('#');
-                if (comment_pos != std::string::npos) {
-                    item = trim(item.substr(0, comment_pos));
-                }
-                item = strip_quotes(item);  // Strip quotes once
+    if (pattern_node["use_alternating"]) {
+        pattern.use_alternating = pattern_node["use_alternating"].as<bool>();
+    }
 
-                if (current_section == "signature_patterns") {
-                    current.signature_patterns.push_back(item);
-                } else if (current_section == "prev_tokens") {
-                    current.prev_tokens.push_back(item);
-                } else if (current_section == "next_tokens") {
-                    current.next_tokens.push_back(item);
-                } else if (current_section == "alternating_anchors") {
-                    current.alternating_anchors.push_back(item);
-                } else if (current_section == "evidence_types") {
-                    current.evidence_types.push_back(item);
-                } else if (current_section == "require_tokens" && !current.evidence_constraints.empty()) {
-                    current.evidence_constraints.back().require_tokens.push_back(item);
-                } else if (current_section == "forbid_tokens" && !current.evidence_constraints.empty()) {
-                    current.evidence_constraints.back().forbid_tokens.push_back(item);
-                }
-            }
-        }
-        // Parse key-value pairs
-        else if (auto colon_pos = trimmed.find(':'); colon_pos != std::string::npos) {
-            std::string key = trim(trimmed.substr(0, colon_pos));
-            std::string value = trim(trimmed.substr(colon_pos + 1));
-            if (key == "name") {
-                current.name = strip_quotes(value);
-            } else if (key == "orbit_id") {
-                if (auto parsed = parse_int_value(value)) {
-                    current.orbit_id = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid orbit_id value '" << value << "'\n";
-                }
-            } else if (key == "weight") {
-                if (auto parsed = parse_double_value(value)) {
-                    current.weight = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid weight value '" << value << "'\n";
-                }
-            } else if (key == "grammar_modes") {
-                if (auto parsed = parse_int_value(value)) {
-                    current.grammar_modes = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid grammar_modes value '" << value << "'\n";
-                }
-            } else if (key == "lattice_filter") {
-                if (auto parsed = parse_int_value(value)) {
-                    current.lattice_filter = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid lattice_filter value '" << value << "'\n";
-                }
-            } else if (key == "scope_requirement") {
-                current.scope_requirement = strip_quotes(value);
-            } else if (key == "confix_mask") {
-                if (auto parsed = parse_int_value(value)) {
-                    current.confix_mask = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid confix_mask value '" << value << "'\n";
-                }
-            } else if (key == "priority") {
-                if (auto parsed = parse_int_value(value)) {
-                    current.priority = *parsed;
-                } else {
-                    std::cerr << "PatternLoader: invalid priority value '" << value << "'\n";
-                }
-                current_section.clear();
-            } else if (key == "signature_patterns" || key == "prev_tokens" || key == "next_tokens" ||
-                       key == "alternating_anchors" || key == "evidence_types" || key == "transformation_templates") {
-                current_section = key;
-            } else if (key == "use_alternating") {
-                current.use_alternating = (strip_quotes(value) == "true");
-            } else if (key == "evidence_constraints") {
-                current.evidence_constraints.emplace_back();
-                current_section = key;
-            } else if (current_section == "transformation_templates") {
-                // Parse grammar_mode: template
-                if (auto parsed_mode = parse_int_value(key)) {
-                    current.substitution_templates[*parsed_mode] = strip_quotes(value);
-                } else {
-                    std::cerr << "PatternLoader: invalid transformation template key '" << key << "'\n";
-                }
-            } else if (current_section == "evidence_constraints" && !current.evidence_constraints.empty()) {
-                auto& constraint = current.evidence_constraints.back();
-                if (key == "kind") {
-                    constraint.kind = strip_quotes(value);
-                } else if (key == "enforce_type_evidence") {
-                    std::string val = strip_quotes(value);
-                    constraint.enforce_type_evidence = (val == "true" || val == "1");
-                } else if (key == "require_tokens") {
-                    current_section = "require_tokens";
-                } else if (key == "forbid_tokens") {
-                    current_section = "forbid_tokens";
-                }
-            } else if (key.rfind("segment_", 0) == 0) {
-                // Parse segment_X_Y format
-                size_t first_underscore = key.find('_', 8);
-                if (first_underscore != std::string::npos) {
-                    std::string ordinal_text = key.substr(8, first_underscore - 8);
-                    auto parsed_idx = parse_int_value(ordinal_text);
-                    if (!parsed_idx) {
-                        std::cerr << "PatternLoader: invalid segment ordinal '" << ordinal_text << "'\n";
-                        continue;
-                    }
-                    std::string field = key.substr(first_underscore + 1);
-
-                    if (temp_segments.find(*parsed_idx) == temp_segments.end()) {
-                        temp_segments[*parsed_idx] = AnchorSegment{};
-                        temp_segments[*parsed_idx].ordinal = *parsed_idx;
-                    }
-
-                    if (field == "name") {
-                        temp_segments[*parsed_idx].name = strip_quotes(value);
-                    } else if (field == "offset") {
-                        if (auto parsed_offset = parse_int_value(value)) {
-                            temp_segments[*parsed_idx].offset_from_anchor = *parsed_offset;
-                        } else {
-                            std::cerr << "PatternLoader: invalid segment offset '" << value << "'\n";
-                        }
-                    } else if (field == "delim_start") {
-                        temp_segments[*parsed_idx].delimiter_start = strip_quotes(value);
-                    } else if (field == "delim_end") {
-                        temp_segments[*parsed_idx].delimiter_end = strip_quotes(value);
-                    }
-                }
-            } else if (key.rfind("substitute_", 0) == 0) {
-                // Parse substitute_X format
-                if (auto parsed_mode = parse_int_value(key.substr(11))) {
-                    current.substitution_templates[*parsed_mode] = strip_quotes(value);
-                } else {
-                    std::cerr << "PatternLoader: invalid substitute key '" << key << "'\n";
-                }
-            }
+    if (pattern_node["alternating_anchors"] && pattern_node["alternating_anchors"].IsSequence()) {
+        for (const auto& anchor : pattern_node["alternating_anchors"]) {
+            pattern.alternating_anchors.push_back(anchor.as<std::string>());
         }
     }
 
-    // Add the last pattern if it exists
-    if (in_pattern && !current.name.empty()) {
-        // Finalize segments
-        for (auto& [ord, seg] : temp_segments) {
-            current.segments.push_back(seg);
+    if (pattern_node["evidence_types"] && pattern_node["evidence_types"].IsSequence()) {
+        for (const auto& type : pattern_node["evidence_types"]) {
+            pattern.evidence_types.push_back(type.as<std::string>());
         }
-        patterns_.push_back(current);
     }
 
-    return !patterns_.empty();
+    if (pattern_node["transformation_templates"] && pattern_node["transformation_templates"].IsMap()) {
+        for (const auto& template_pair : pattern_node["transformation_templates"]) {
+            int mode = template_pair.first.as<int>();
+            std::string template_str = template_pair.second.as<std::string>();
+            pattern.substitution_templates[mode] = template_str;
+        }
+    }
+
+    patterns_.push_back(pattern);
+    return true;
 }
 
 } // namespace cppfort::stage0

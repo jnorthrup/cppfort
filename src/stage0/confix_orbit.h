@@ -38,8 +38,8 @@ public:
     void set_selected_pattern(std::string pattern) { selected_pattern_ = std::move(pattern); }
     void set_selected_grammar(::cppfort::ir::GrammarType grammar) { selected_grammar_ = grammar; }
 
-    void set_combinator(::cppfort::ir::RBCursiveScanner* c) { combinator_ = c; }
-    ::cppfort::ir::RBCursiveScanner* get_combinator() const { return combinator_; }
+    void set_combinator(::cppfort::stage0::RBCursiveScanner* c) { combinator_ = c; }
+    ::cppfort::stage0::RBCursiveScanner* get_combinator() const { return combinator_; }
 
     void accumulate_depth(int delta) {
         current_depth_ += delta;
@@ -69,6 +69,7 @@ public:
         std::string pattern_name;
         double confidence = 0.0;
         ::cppfort::ir::GrammarType grammar = ::cppfort::ir::GrammarType::UNKNOWN;
+        ::cppfort::stage0::TypeEvidence traits;  // NEW: Include evidence traits for invalidation
     };
 
     struct SpanMemento {
@@ -80,7 +81,8 @@ public:
     void remember_combinator_hit(size_t start, size_t end,
                                  std::string pattern_name,
                                  double confidence,
-                                 ::cppfort::ir::GrammarType grammar);
+                                 ::cppfort::ir::GrammarType grammar,
+                                 const ::cppfort::stage0::TypeEvidence& traits = {});
     std::optional<CombinatorMemento> recall_combinator_hit(size_t start, size_t end) const;
     const std::vector<CombinatorMemento>& chained_anchors() const { return anchor_chain_; }
     void remember_idempotent_span(size_t start, size_t end, const std::vector<EvidenceSpan>& spans);
@@ -89,6 +91,7 @@ public:
     void merge_anchor_chain(const std::vector<CombinatorMemento>& chain);
 
 private:
+    uint64_t make_memento_key_with_traits(size_t start, size_t end, const ::cppfort::stage0::TypeEvidence& traits) const;
     FunctionOrbit* ensure_function_child(::cppfort::ir::GrammarType grammar,
                                           FunctionOrbit* child);
 
@@ -97,7 +100,7 @@ private:
     int current_depth_ = 0;
     int depth_counter_ = 0;
     double parent_hint_confidence_ = 0.0;  // Scanner hint confidence for parent depth
-    ::cppfort::ir::RBCursiveScanner* combinator_ = nullptr;
+    ::cppfort::stage0::RBCursiveScanner* combinator_ = nullptr;
     std::vector<std::unique_ptr<FunctionOrbit>> function_children_;
     ::cppfort::ir::GrammarType selected_grammar_ = ::cppfort::ir::GrammarType::UNKNOWN;
     FunctionOrbit* winning_child_ = nullptr;

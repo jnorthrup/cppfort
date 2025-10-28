@@ -64,6 +64,9 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp
 # Temporarily remove broken files (need fixing)
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_pattern_extractor.cpp")  # Broken - doesn't match header
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unified_orbit_patterns.cpp")  # yaml-cpp
+if(NOT yaml-cpp_FOUND)
+    list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_loader.cpp")  # Requires yaml-cpp
+endif()
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/multi_grammar_loader.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.cpp")  # Temporarily broken - EvidenceSpan API mismatch
@@ -71,6 +74,9 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.
 # Create static library
 add_library(stage0_lib STATIC ${STAGE0_SOURCES})
 add_dependencies(stage0_lib tblgen_semantic_units)
+if(yaml-cpp_FOUND)
+    target_link_libraries(stage0_lib yaml-cpp::yaml-cpp)
+endif()
 
 # Create executable
 add_executable(stage0_cli main.cpp)
