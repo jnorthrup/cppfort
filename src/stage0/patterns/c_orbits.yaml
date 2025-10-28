@@ -1,0 +1,254 @@
+# C Semantic Orbit Patterns with Masking Rings
+# Procedural patterns: functions, structs, pointers
+
+patterns:
+  # Function orbit
+  - name: c_function
+    orbit_type: function
+    masking_ring: 0xF000  # Base function mask
+    evidence:
+      - pattern: '(\w+)\s+(\w+)\s*\((.*?)\)\s*\{'
+        weight: 1.0
+        semantic: function_definition
+      - pattern: '(\w+)\s+(\*+)(\w+)\s*\((.*?)\)'  # Function pointer
+        weight: 0.95
+        semantic: function_pointer
+      - pattern: 'static\s+(\w+)\s+(\w+)\s*\((.*?)\)'
+        weight: 0.95
+        semantic: static_function
+      - pattern: 'inline\s+(\w+)\s+(\w+)\s*\((.*?)\)'
+        weight: 0.95
+        semantic: inline_function
+    return_types:
+      - void
+      - int
+      - char
+      - float
+      - double
+      - 'struct \w+'
+      - 'enum \w+'
+    children:
+      - return_type
+      - name
+      - parameters
+      - body
+
+  # Struct orbit
+  - name: c_struct
+    orbit_type: struct_definition
+    masking_ring: 0x0F00  # Struct mask
+    evidence:
+      - pattern: 'struct\s+(\w+)\s*\{'
+        weight: 1.0
+        semantic: struct_definition
+      - pattern: 'typedef\s+struct\s*(\w*)\s*\{'
+        weight: 1.0
+        semantic: typedef_struct
+      - pattern: 'struct\s+(\w+)\s*;'  # Forward declaration
+        weight: 0.8
+        semantic: struct_forward
+    children:
+      - name
+      - members
+
+  # Pointer orbit
+  - name: c_pointer
+    orbit_type: pointer_type
+    masking_ring: 0x00F0  # Pointer mask
+    evidence:
+      - pattern: '(\w+)\s*\*+'  # Basic pointer
+        weight: 0.9
+        semantic: pointer
+      - pattern: '(\w+)\s*\*\s*const'  # Const pointer
+        weight: 0.95
+        semantic: const_pointer
+      - pattern: 'const\s+(\w+)\s*\*'  # Pointer to const
+        weight: 0.95
+        semantic: pointer_to_const
+      - pattern: '(\w+)\s*\(\*(\w+)\)\((.*?)\)'  # Function pointer
+        weight: 1.0
+        semantic: function_pointer_type
+      - pattern: 'void\s*\*'  # Void pointer
+        weight: 0.9
+        semantic: void_pointer
+    children:
+      - base_type
+      - indirection_level
+
+  # Array orbit
+  - name: c_array
+    orbit_type: array_type
+    masking_ring: 0x000F  # Array mask
+    evidence:
+      - pattern: '(\w+)\s+(\w+)\[(.*?)\]'  # Array declaration
+        weight: 1.0
+        semantic: array_declaration
+      - pattern: '(\w+)\s*\[\]'  # Flexible array
+        weight: 0.9
+        semantic: flexible_array
+      - pattern: '(\w+)\s*\[(\d+)\]'  # Fixed size array
+        weight: 1.0
+        semantic: fixed_array
+    children:
+      - element_type
+      - size
+
+  # Enum orbit
+  - name: c_enum
+    orbit_type: enum_definition
+    masking_ring: 0xF0F0  # Enum mask
+    evidence:
+      - pattern: 'enum\s+(\w+)\s*\{'
+        weight: 1.0
+        semantic: enum_definition
+      - pattern: 'typedef\s+enum\s*(\w*)\s*\{'
+        weight: 1.0
+        semantic: typedef_enum
+      - pattern: 'enum\s+(\w+)\s*;'  # Forward declaration
+        weight: 0.8
+        semantic: enum_forward
+    children:
+      - name
+      - values
+
+  # Macro orbit
+  - name: c_macro
+    orbit_type: preprocessor_macro
+    masking_ring: 0xFF00  # Macro mask (high confidence)
+    evidence:
+      - pattern: '#define\s+(\w+)\s+(.*)'  # Object-like macro
+        weight: 1.0
+        semantic: object_macro
+      - pattern: '#define\s+(\w+)\((.*?)\)\s+(.*)'  # Function-like macro
+        weight: 1.0
+        semantic: function_macro
+      - pattern: '#ifdef\s+(\w+)'  # Conditional compilation
+        weight: 0.95
+        semantic: ifdef_directive
+      - pattern: '#include\s+[<"](.*?)[>"]'  # Include directive
+        weight: 1.0
+        semantic: include_directive
+    children:
+      - name
+      - replacement
+
+  # Control flow orbit
+  - name: c_control_flow
+    orbit_type: control_structure
+    masking_ring: 0x0FF0  # Control flow mask
+    evidence:
+      - pattern: 'if\s*\((.*?)\)\s*\{'
+        weight: 1.0
+        semantic: if_statement
+      - pattern: 'for\s*\((.*?);(.*?);(.*?)\)\s*\{'
+        weight: 1.0
+        semantic: for_loop
+      - pattern: 'while\s*\((.*?)\)\s*\{'
+        weight: 1.0
+        semantic: while_loop
+      - pattern: 'do\s*\{.*?\}\s*while\s*\((.*?)\)'
+        weight: 1.0
+        semantic: do_while_loop
+      - pattern: 'switch\s*\((.*?)\)\s*\{'
+        weight: 1.0
+        semantic: switch_statement
+    children:
+      - condition
+      - body
+
+  # Memory orbit
+  - name: c_memory
+    orbit_type: memory_operation
+    masking_ring: 0xF00F  # Memory mask
+    evidence:
+      - pattern: 'malloc\s*\((.*?)\)'
+        weight: 1.0
+        semantic: malloc_call
+      - pattern: 'calloc\s*\((.*?),\s*(.*?)\)'
+        weight: 1.0
+        semantic: calloc_call
+      - pattern: 'realloc\s*\((.*?),\s*(.*?)\)'
+        weight: 1.0
+        semantic: realloc_call
+      - pattern: 'free\s*\((.*?)\)'
+        weight: 1.0
+        semantic: free_call
+      - pattern: 'memcpy\s*\((.*?),\s*(.*?),\s*(.*?)\)'
+        weight: 1.0
+        semantic: memcpy_call
+    children:
+      - pointer
+      - size
+
+  # Type orbit
+  - name: c_typedef
+    orbit_type: type_alias
+    masking_ring: 0x0F0F  # Typedef mask
+    evidence:
+      - pattern: 'typedef\s+(\w+)\s+(\w+)'  # Simple typedef
+        weight: 0.9
+        semantic: simple_typedef
+      - pattern: 'typedef\s+struct\s+(\w+)\s+(\w+)'
+        weight: 1.0
+        semantic: struct_typedef
+      - pattern: 'typedef\s+(\w+)\s*\(\*(\w+)\)\((.*?)\)'  # Function pointer typedef
+        weight: 1.0
+        semantic: function_ptr_typedef
+    children:
+      - original_type
+      - new_name
+
+  # Union orbit
+  - name: c_union
+    orbit_type: union_definition
+    masking_ring: 0xF0F0  # Union mask
+    evidence:
+      - pattern: 'union\s+(\w+)\s*\{'
+        weight: 1.0
+        semantic: union_definition
+      - pattern: 'typedef\s+union\s*(\w*)\s*\{'
+        weight: 1.0
+        semantic: typedef_union
+    children:
+      - name
+      - members
+
+# Composition rules
+composition:
+  - parent: c_function
+    contains:
+      - c_control_flow  # Control structures
+      - c_memory  # Memory operations
+      - c_array  # Local arrays
+      - c_pointer  # Pointer operations
+
+  - parent: c_struct
+    contains:
+      - c_pointer  # Pointer members
+      - c_array  # Array members
+      - c_struct  # Nested structs
+
+  - parent: c_control_flow
+    contains:
+      - c_control_flow  # Nested control
+      - c_memory  # Memory ops in loops
+
+# Masking combinations for context
+masking_combinations:
+  - context: system_programming
+    masks:
+      c_pointer: 0xFFFF  # Maximum for pointers
+      c_memory: 0xFFFF  # Maximum for memory ops
+      c_macro: 0xFF00  # Strong for system macros
+
+  - context: data_structures
+    masks:
+      c_struct: 0xFFFF  # Maximum for structs
+      c_union: 0xFF00  # Strong for unions
+      c_typedef: 0xFF00  # Strong for typedefs
+
+  - context: embedded
+    masks:
+      c_macro: 0xFFFF  # Maximum for hardware macros
+      c_pointer: 0xFF00  # Strong for MMIO
+      c_array: 0xF000  # Weaker for fixed arrays

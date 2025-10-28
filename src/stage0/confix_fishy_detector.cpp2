@@ -1,0 +1,167 @@
+ConfixType: @enum type = {
+    PARENTHESES,
+    BRACKETS,
+    BRACES,
+    ANGLE_BRACKETS,
+    STRINGS,
+    CHAR_LITERALS,
+    COMMENTS,
+    TEMPLATE_ARGS
+};
+
+ConfixTracker: @struct type = {
+    confixType: ConfixType;
+    openChar: char;
+    closeChar: char;
+    openCount: size_t;
+    closeCount: size_t;
+    mismatchCount: size_t;
+    maxDepth: size_t;
+    currentDepth: size_t;
+}
+
+FishyType: @enum type = {
+    UNMATCHED_BRACKET,
+    NESTING_OVERFLOW,
+    MALFORMED_LITERAL
+};
+
+FishyPattern: @struct type = {
+    fishyType: FishyType;
+    position: size_t;
+    line: size_t;
+    column: size_t;
+    severity: int;
+    description: std::string;
+    contextSnippet: std::string;
+    confidence: double;
+}
+
+ConfixContext: @struct type = {
+    trackers: std::array<ConfixTracker, 8>;
+    totalMismatches: size_t;
+    fishyPatterns: std::vector<FishyPattern>;
+}
+
+initializeTrackers: () -> ConfixContext = {
+    context: ConfixContext = ()
+
+    // Initialize trackers with proper struct construction
+    context.trackers[0].confixType = ConfixType.PARENTHESES;
+    context.trackers[0].openChar = '(';
+    context.trackers[0].closeChar = ')';
+    context.trackers[1].confixType = ConfixType.BRACKETS;
+    context.trackers[1].openChar = '[';
+    context.trackers[1].closeChar = ']';
+    context.trackers[2].confixType = ConfixType.BRACES;
+    context.trackers[2].openChar = '{';
+    context.trackers[2].closeChar = '}';
+    context.trackers[3].confixType = ConfixType.ANGLE_BRACKETS;
+    context.trackers[3].openChar = '<';
+    context.trackers[3].closeChar = '>';
+    context.trackers[4].confixType = ConfixType.STRINGS;
+    context.trackers[4].openChar = '"';
+    context.trackers[4].closeChar = '"';
+    context.trackers[5].confixType = ConfixType.CHAR_LITERALS;
+    context.trackers[5].openChar = '\'';
+    context.trackers[5].closeChar = '\'';
+    context.trackers[6].confixType = ConfixType.COMMENTS;
+    context.trackers[6].openChar = '/';
+    context.trackers[6].closeChar = '/';
+    context.trackers[7].confixType = ConfixType.TEMPLATE_ARGS;
+    context.trackers[7].openChar = '<';
+    context.trackers[7].closeChar = '>';
+
+    return context;
+}
+
+trackConfixPairs: (inout context: ConfixContext, source: std::string) = {
+    line: size_t = 1;
+    column: size_t = 1;
+
+    i: size_t = 0;
+    while i < source.size() {
+        ch: char = source[i];
+
+        if ch == '\n' {
+            line++;
+            column = 1;
+        } else {
+            column++;
+        }
+
+        for context.trackers do (inout tracker) {
+            if tracker.confixType == ConfixType.PARENTHESES ||
+               tracker.confixType == ConfixType.BRACKETS ||
+               tracker.confixType == ConfixType.BRACES ||
+               tracker.confixType == ConfixType.ANGLE_BRACKETS {
+                if ch == tracker.openChar {
+                    tracker.openCount++;
+                    tracker.currentDepth++;
+                    tracker.maxDepth = std::max(tracker.maxDepth, tracker.currentDepth);
+                } else if ch == tracker.closeChar {
+                    tracker.closeCount++;
+                    if tracker.currentDepth > 0 {
+                        tracker.currentDepth--;
+                    } else {
+                        tracker.mismatchCount++;
+                        context.totalMismatches++;
+
+                        fishy: FishyPattern = ();
+                        fishy.fishyType = FishyType.UNMATCHED_BRACKET;
+                        fishy.position = i;
+                        fishy.line = line;
+                        fishy.column = column;
+                        fishy.severity = 8;
+                        fishy.description = "Unmatched closing bracket";
+                        fishy.contextSnippet = getContext(source, i, 20);
+                        fishy.confidence = 0.95;
+                        context.fishyPatterns.push_back(fishy);
+                    }
+                }
+            }
+        }
+
+        i++;
+    }
+
+    for context.trackers do (inout tracker) {
+        if tracker.currentDepth > 0 {
+            tracker.mismatchCount++;
+            context.totalMismatches++;
+
+            fishy: FishyPattern = ();
+            fishy.fishyType = FishyType.UNMATCHED_BRACKET;
+            fishy.position = source.size() - 1;
+            fishy.line = line;
+            fishy.column = column;
+            fishy.severity = 7;
+            fishy.description = "Unclosed confix";
+            fishy.contextSnippet = "End of file";
+            fishy.confidence = 0.9;
+            context.fishyPatterns.push_back(fishy);
+        }
+    }
+}
+
+confixTypeToString: (type: ConfixType) -> std::string = {
+    if type == ConfixType.PARENTHESES { return "parentheses"; }
+    if type == ConfixType.BRACKETS { return "brackets"; }
+    if type == ConfixType.BRACES { return "braces"; }
+    if type == ConfixType.ANGLE_BRACKETS { return "angle brackets"; }
+    if type == ConfixType.STRINGS { return "string literal"; }
+    if type == ConfixType.CHAR_LITERALS { return "character literal"; }
+    if type == ConfixType.COMMENTS { return "comment"; }
+    if type == ConfixType.TEMPLATE_ARGS { return "template arguments"; }
+    return "unknown";
+}
+
+getContext: (source: std::string, pos: size_t, window: size_t) -> std::string = {
+    start: size_t = 0;
+    if pos > window { start = pos - window; }
+
+    end: size_t = source.size();
+    if pos + window < source.size() { end = pos + window; }
+
+    return source.substr(start, end - start);
+}
