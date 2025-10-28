@@ -7,6 +7,10 @@
 #include <limits>
 #include <string_view>
 #include <utility>
+#include <vector>
+#include <string>
+
+#include "evidence.h"
 
 namespace cppfort::stage0 {
 namespace {
@@ -20,6 +24,76 @@ std::string_view extract_fragment_view(const OrbitFragment& fragment, std::strin
 
 bool contains_any(std::string_view text, std::string_view chars) {
     return text.find_first_of(chars) != std::string_view::npos;
+}
+
+std::vector<std::string> collect_segments_from_traces(
+        std::string_view fragment_text,
+        const PatternData& pattern,
+        const std::vector<SemanticTrace>& traces,
+        std::vector<std::pair<std::size_t, std::size_t>>& relative_ranges) {
+    relative_ranges.clear();
+
+    if (pattern.evidence_types.empty()) {
+        return {};
+    }
+
+    std::vector<std::pair<std::size_t, std::size_t>> ranges;
+    ranges.reserve(pattern.evidence_types.size());
+
+    for (const auto& trace : traces) {
+        if (trace.pattern_name != pattern.name || !trace.verdict) {
+            continue;
+        }
+        if (trace.evidence_end <= trace.evidence_start) {
+            continue;
+        }
+
+        std::size_t start = std::min<std::size_t>(trace.evidence_start, fragment_text.size());
+        std::size_t end = std::min<std::size_t>(trace.evidence_end, fragment_text.size());
+        if (start >= end) {
+            continue;
+        }
+
+        auto duplicate = std::find_if(ranges.begin(), ranges.end(),
+            [&](const auto& existing) {
+                return existing.first == start && existing.second == end;
+            });
+        if (duplicate != ranges.end()) {
+            continue;
+        }
+
+        ranges.emplace_back(start, end);
+    }
+
+    std::sort(ranges.begin(), ranges.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.first != rhs.first) {
+            return lhs.first < rhs.first;
+        }
+        return lhs.second < rhs.second;
+    });
+
+    if (ranges.size() < pattern.evidence_types.size()) {
+        return {};
+    }
+
+    std::vector<std::string> segments;
+    segments.reserve(pattern.evidence_types.size());
+    relative_ranges.reserve(pattern.evidence_types.size());
+
+    for (std::size_t i = 0; i < pattern.evidence_types.size(); ++i) {
+        const auto& entry = ranges[i];
+        std::size_t start = entry.first;
+        std::size_t end = entry.second;
+        if (start >= end || end > fragment_text.size()) {
+            relative_ranges.clear();
+            return {};
+        }
+
+        relative_ranges.emplace_back(start, end);
+        segments.emplace_back(fragment_text.substr(start, end - start));
+    }
+
+    return segments;
 }
 
 } // namespace
@@ -136,6 +210,18 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
             confix_cached->set_selected_grammar(memo.grammar);
             confix_cached->confidence = std::max(confix_cached->confidence, memo.confidence);
             confix_cached->propagate_scanner_hint_to_parent();
+
+            if (auto span_memo = confix_cached->recall_idempotent_span(memo.start, memo.end)) {
+                std::vector<std::string> captured;
+                captured.reserve(span_memo->spans.size());
+                for (const auto& span : span_memo->spans) {
+                    captured.push_back(span.content);
+                }
+                if (!captured.empty()) {
+                    confix_cached->set_captured_segments(std::move(captured));
+                }
+            }
+
             return std::move(base_orbit);
         };
 
@@ -150,6 +236,9 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                                    global_memo->confidence,
                                                    global_memo->grammar,
                                                    global_memo->traits);
+            if (auto span_memo = recall_span_memento(fragment.start_pos, fragment.end_pos)) {
+                confix_cached->seed_span_memento(*span_memo);
+            }
             if (auto cached_orbit = apply_memo(*global_memo)) {
                 return cached_orbit;
             }
@@ -159,7 +248,10 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
     // Try speculation if we have a combinator with patterns
     if (auto* combinator = base_orbit->get_combinator()) {
         // Extract fragment text for pattern matching
-        std::string_view fragment_text = source.substr(fragment.start_pos, fragment.end_pos - fragment.start_pos);
+        std::string_view fragment_text = extract_fragment_view(fragment, source);
+        if (fragment_text.empty()) {
+            return base_orbit;
+        }
         std::cerr << "DEBUG evaluate_fragment: Speculating on fragment [" << fragment.start_pos << ", " << fragment.end_pos << "): '"
                   << fragment_text << "'\n";
         // Use backward chaining by default for better semantic accuracy
@@ -192,9 +284,40 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                                     base_orbit->confidence,
                                                     base_orbit->selected_grammar(),
                                                     {}); // Empty traits for now
+
+                std::vector<std::pair<std::size_t, std::size_t>> relative_ranges;
+                auto fragment_view = extract_fragment_view(fragment, source);
+                if (!fragment_view.empty()) {
+                    auto segments = collect_segments_from_traces(fragment_view, *pattern_it, combinator->get_semantic_traces(), relative_ranges);
+                    if (!segments.empty() &&
+                        (pattern_it->evidence_types.empty() || segments.size() == pattern_it->evidence_types.size())) {
+                        base_orbit->set_captured_segments(std::move(segments));
+
+                        if (!relative_ranges.empty()) {
+                            std::vector<EvidenceSpan> memo_spans;
+                            memo_spans.reserve(relative_ranges.size());
+                            for (const auto& [rel_start, rel_end] : relative_ranges) {
+                                std::size_t global_start = fragment.start_pos + rel_start;
+                                std::size_t global_end = fragment.start_pos + rel_end;
+                                if (global_start < global_end && global_end <= source.size()) {
+                                    memo_spans.emplace_back(global_start,
+                                                            global_end,
+                                                            std::string(source.substr(global_start, global_end - global_start)),
+                                                            base_orbit->confidence);
+                                }
+                            }
+                            if (!memo_spans.empty()) {
+                                base_orbit->remember_idempotent_span(fragment.start_pos, fragment.end_pos, memo_spans);
+                            }
+                        }
+                    }
+                }
+                combinator->clear_traces();
                 return base_orbit;
             }
         }
+
+        combinator->clear_traces();
     }
     
     // Fallback: try all patterns if speculation didn't work
@@ -441,8 +564,10 @@ void OrbitPipeline::populate_iterator(const std::vector<OrbitFragment>& fragment
         auto orbit = semantic_builder.build_validated_orbit(enriched, source);
         
         if (!orbit) {
-            // Semantic validation failed - skip this fragment
-            continue;
+            orbit = make_base_orbit(enriched, source);
+            if (!orbit) {
+                continue;
+            }
         }
         
         // Temporarily set up combinator for speculation during evaluation

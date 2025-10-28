@@ -90,6 +90,9 @@ public:
     void seed_span_memento(const SpanMemento& memo);
     void merge_anchor_chain(const std::vector<CombinatorMemento>& chain);
 
+    void set_captured_segments(std::vector<std::string> segments) { captured_segments_ = std::move(segments); }
+    const std::vector<std::string>& captured_segments() const { return captured_segments_; }
+
 private:
     uint64_t make_memento_key_with_traits(size_t start, size_t end, const ::cppfort::stage0::TypeEvidence& traits) const;
     FunctionOrbit* ensure_function_child(::cppfort::ir::GrammarType grammar,
@@ -108,6 +111,7 @@ private:
     std::unordered_map<uint64_t, CombinatorMemento> memento_cache_;
     std::vector<CombinatorMemento> anchor_chain_;
     std::unordered_map<uint64_t, SpanMemento> span_cache_;
+    std::vector<std::string> captured_segments_;
 };
 
 } // namespace cppfort::stage0

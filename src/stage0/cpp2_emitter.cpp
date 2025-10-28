@@ -1701,8 +1701,13 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
     }
 
     std::vector<std::string> segments;
+    const auto& captured = orbit.captured_segments();
+    const bool captured_ok = !captured.empty() &&
+                              (!pattern->use_alternating || captured.size() == pattern->evidence_types.size());
 
-    if (pattern->use_alternating) {
+    if (captured_ok) {
+        segments = captured;
+    } else if (pattern->use_alternating) {
         // Extract evidence spans for alternating anchor/evidence pattern
         segments = extract_alternating_segments(text, *pattern);
     } else {
@@ -1737,6 +1742,12 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
                 segments.push_back(seg);
             }
         }
+    }
+
+    if (pattern->use_alternating && !pattern->evidence_types.empty() &&
+        segments.size() < pattern->evidence_types.size()) {
+        out << text;
+        return;
     }
 
     // Apply recursive transformations to segments BEFORE substitution
