@@ -1,7 +1,6 @@
 #include "cpp2_emitter.h"
-#include "tblgen_pattern_matcher.h"
+#include "unified_pattern_matcher.h"
 #include "confix_tracker.h"
-#include "depth_pattern_matcher.h"
 
 #include <algorithm>
 #include <cctype>
@@ -1217,8 +1216,19 @@ std::string apply_recursive_transformations(const std::string& input, const std:
                     }
 
                     if (!is_substring) {
-                        // Pattern might match - extract segments using depth matcher (FIXED)
-                        auto [segments, end_pos] = DepthPatternMatcher::extract_segments(working, pattern, anchor_pos);
+                        // Pattern might match - extract segments using unified matcher
+                        // Build a pattern string from alternating anchors
+                        std::string pat_str;
+                        for (size_t i = 0; i < pattern.evidence_types.size(); ++i) {
+                            pat_str += "$" + std::to_string(i);
+                            if (i < pattern.alternating_anchors.size()) {
+                                pat_str += pattern.alternating_anchors[i];
+                            }
+                        }
+                        auto segs_result = UnifiedPatternMatcher::extract_segments(pat_str, std::string(working));
+                        if (!segs_result) continue;
+                        auto segments = *segs_result;
+                        size_t end_pos = working.find(';', anchor_pos);
 
                         if (segments.size() == pattern.evidence_types.size()) {
                             // Check if this is a nested function declaration - transform to lambda instead
@@ -1516,7 +1526,7 @@ void CPP2Emitter::emit_depth_based(std::string_view source, std::ostream& out, c
         if (!first) out << "\n";
         first = false;
 
-        auto matches = DepthPatternMatcher::find_matches(line, patterns);
+        auto matches = UnifiedPatternMatcher::find_matches(line, patterns, true);
         std::cerr << "DEBUG emit_depth_based: Found " << matches.size() << " matches\n";
 
         if (matches.empty()) {
@@ -1700,7 +1710,7 @@ void CPP2Emitter::emit_orbit(const ConfixOrbit& orbit, std::string_view source, 
         if (pattern->name == "function_declaration" && !pattern->signature_patterns.empty()) {
             // Use tblgen pattern matcher for CPP2 pattern
             std::string cpp2_pattern = "$0: ($1) -> $2 = $3";
-            auto match_result = TblgenPatternMatcher::match(cpp2_pattern, std::string(text));
+            auto match_result = UnifiedPatternMatcher::extract_segments(cpp2_pattern, std::string(text));
 
             if (match_result) {
                 segments = *match_result;
