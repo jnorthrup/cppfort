@@ -11,3 +11,26 @@ cmake_install.cmake
 compile_commands.json
 *.log
 *.bin
+
+# Temporary test files
+tmp_*.cpp
+
+# Analysis and report files
+ANALYSIS_*.md
+*_ANALYSIS.md
+*_RESULT.txt
+*_SUMMARY.txt
+FAILURE_REFERENCE.txt
+COPILOT_TEST_RUN.txt
+GIT_TASK_TREE_ANALYSIS.md
+GIT_COMMIT_ANALYSIS.md
+REDUNDANCY_ANALYSIS.md
+
+# Trace and debug output
+trace_output*.txt
+
+# Local CMake overrides
+CMakeLists.txt.local
+
+# Utility scripts
+rm-empty-files.bat
