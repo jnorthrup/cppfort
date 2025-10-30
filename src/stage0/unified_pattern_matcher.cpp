@@ -28,6 +28,8 @@ std::vector<UnifiedPatternMatch> UnifiedPatternMatcher::find_matches(
         }
     }
 
+    constexpr bool kPatternDebug = false;
+
     // Try each pattern at each position
     for (const auto& pattern : patterns) {
         if (pattern.alternating_anchors.empty()) continue;
@@ -39,6 +41,12 @@ std::vector<UnifiedPatternMatch> UnifiedPatternMatcher::find_matches(
             auto match = try_match_at(text, pos, pattern, track_depth ? &depth_map : nullptr);
             if (match) {
                 if (!track_depth || match->depth <= max_depth) {
+                    if (kPatternDebug) {
+                        std::cerr << "DEBUG find_matches: matched pattern='" << pattern.name
+                                  << "' start=" << match->start_pos
+                                  << " end=" << match->end_pos
+                                  << " depth=" << match->depth << "\n";
+                    }
                     matches.push_back(*match);
                     pos = match->end_pos; // Skip past this match
                 } else {
@@ -52,7 +60,28 @@ std::vector<UnifiedPatternMatch> UnifiedPatternMatcher::find_matches(
 
     // Sort by position and filter overlaps
     std::sort(matches.begin(), matches.end(),
-        [](const auto& a, const auto& b) { return a.start_pos < b.start_pos; });
+        [](const auto& a, const auto& b) {
+            if (a.start_pos != b.start_pos) {
+                return a.start_pos < b.start_pos;
+            }
+
+            int priority_a = a.pattern ? a.pattern->priority : 0;
+            int priority_b = b.pattern ? b.pattern->priority : 0;
+            if (priority_a != priority_b) {
+                return priority_a > priority_b;
+            }
+
+            size_t span_a = (a.end_pos > a.start_pos) ? (a.end_pos - a.start_pos) : 0;
+            size_t span_b = (b.end_pos > b.start_pos) ? (b.end_pos - b.start_pos) : 0;
+            if (span_a != span_b) {
+                return span_a > span_b;
+            }
+
+            if (a.pattern && b.pattern) {
+                return a.pattern->name < b.pattern->name;
+            }
+            return false;
+        });
 
     std::vector<UnifiedPatternMatch> filtered;
     for (const auto& match : matches) {
@@ -169,51 +198,121 @@ std::optional<UnifiedPatternMatch> UnifiedPatternMatcher::try_match_at(
 ) {
     UnifiedPatternMatch match;
     match.pattern = &pattern;
-    match.start_pos = pos;
 
-    // Extract segments based on alternating anchors
-    size_t current_pos = pos;
-    for (size_t i = 0; i < pattern.alternating_anchors.size(); ++i) {
-        const std::string& anchor = pattern.alternating_anchors[i];
+    // Determine logical start position so we capture the segment that precedes
+    // the first anchor (e.g. identifier before ':' in cpp2 declarations).
+    size_t logical_start = pos;
+    if (!pattern.evidence_types.empty()) {
+        while (logical_start > 0) {
+            char prev = text[logical_start - 1];
+            bool is_delimiter = prev == ';' || prev == '\n' || prev == '\r' ||
+                                prev == '{' || prev == '}' || prev == '(' ||
+                                prev == ')' || prev == ',';
+            if (is_delimiter) {
+                break;
+            }
+            --logical_start;
+        }
+    }
 
-        size_t anchor_pos = text.find(anchor, current_pos);
+    match.start_pos = logical_start;
+
+    // Locate all anchors in order starting from logical_start
+    std::vector<size_t> anchor_positions;
+    anchor_positions.reserve(pattern.alternating_anchors.size());
+
+    size_t search_pos = logical_start;
+    for (const auto& anchor : pattern.alternating_anchors) {
+        size_t anchor_pos = text.find(anchor, search_pos);
         if (anchor_pos == std::string::npos) {
             return std::nullopt;
         }
-
-        // Extract segment before this anchor
-        if (i < pattern.evidence_types.size()) {
-            std::string segment(text.substr(current_pos, anchor_pos - current_pos));
-
-            // Trim
-            auto start = segment.find_first_not_of(" \t\n\r");
-            auto end = segment.find_last_not_of(" \t\n\r");
-            if (start != std::string::npos && end != std::string::npos) {
-                segment = segment.substr(start, end - start + 1);
-            } else {
-                segment.clear();
-            }
-
-            match.segments.push_back(segment);
-        }
-
-        current_pos = anchor_pos + anchor.size();
+        anchor_positions.push_back(anchor_pos);
+        search_pos = anchor_pos + anchor.size();
     }
 
-    // Extract final segment after last anchor
+    // Extract any evidence that precedes the first anchor (identifier, etc.)
+    size_t evidence_index = 0;
+    auto allows_empty_segment = [](std::string_view evidence_type) {
+        return evidence_type == "parameters";
+    };
+
     if (pattern.evidence_types.size() > pattern.alternating_anchors.size()) {
-        // Find end of statement (semicolon, newline, or closing brace)
-        size_t end_pos = current_pos;
-        while (end_pos < text.size() &&
-               text[end_pos] != ';' &&
-               text[end_pos] != '\n' &&
-               text[end_pos] != '}') {
-            ++end_pos;
+        size_t first_anchor_pos = anchor_positions.front();
+        std::string leading(text.substr(logical_start, first_anchor_pos - logical_start));
+
+        auto start = leading.find_first_not_of(" \t\n\r");
+        auto end = leading.find_last_not_of(" \t\n\r");
+        if (start != std::string::npos && end != std::string::npos) {
+            leading = leading.substr(start, end - start + 1);
+        } else {
+            leading.clear();
         }
 
-        std::string segment(text.substr(current_pos, end_pos - current_pos));
+        const std::string& evidence_type = pattern.evidence_types[evidence_index];
+        if (leading.empty() && !allows_empty_segment(evidence_type)) {
+            return std::nullopt;
+        }
 
-        // Trim
+        match.segments.push_back(leading);
+        ++evidence_index;
+    }
+
+    // Extract evidence segments that follow each anchor
+    for (size_t anchor_idx = 0; anchor_idx < pattern.alternating_anchors.size() && evidence_index < pattern.evidence_types.size(); ++anchor_idx) {
+        size_t segment_start = anchor_positions[anchor_idx] + pattern.alternating_anchors[anchor_idx].size();
+        size_t segment_end = text.size();
+
+        if (anchor_idx + 1 < anchor_positions.size()) {
+            segment_end = anchor_positions[anchor_idx + 1];
+        } else {
+            // Find natural termination for the final segment
+            size_t end_pos = segment_start;
+            int brace_depth = 0;
+            int paren_depth = 0;
+            int bracket_depth = 0;
+
+            while (end_pos < text.size()) {
+                char ch = text[end_pos];
+                if (ch == '{') {
+                    ++brace_depth;
+                } else if (ch == '}') {
+                    if (brace_depth > 0) {
+                        --brace_depth;
+                    }
+                    if (brace_depth == 0 && paren_depth == 0 && bracket_depth == 0) {
+                        ++end_pos; // Include closing brace in the span
+                        break;
+                    }
+                    ++end_pos;
+                    continue;
+                } else if (ch == '(') {
+                    ++paren_depth;
+                } else if (ch == ')') {
+                    if (paren_depth > 0) {
+                        --paren_depth;
+                    }
+                } else if (ch == '[') {
+                    ++bracket_depth;
+                } else if (ch == ']') {
+                    if (bracket_depth > 0) {
+                        --bracket_depth;
+                    }
+                }
+
+                if ((ch == ';' || ch == '\n') && brace_depth == 0 && paren_depth == 0 && bracket_depth == 0) {
+                    break;
+                }
+
+                ++end_pos;
+            }
+
+            segment_end = end_pos;
+            match.end_pos = end_pos;
+        }
+
+        std::string segment(text.substr(segment_start, segment_end - segment_start));
+
         auto start = segment.find_first_not_of(" \t\n\r");
         auto end = segment.find_last_not_of(" \t\n\r");
         if (start != std::string::npos && end != std::string::npos) {
@@ -222,10 +321,21 @@ std::optional<UnifiedPatternMatch> UnifiedPatternMatcher::try_match_at(
             segment.clear();
         }
 
+        const std::string& evidence_type = pattern.evidence_types[evidence_index];
+        if (segment.empty() && !allows_empty_segment(evidence_type)) {
+            return std::nullopt;
+        }
+
         match.segments.push_back(segment);
-        match.end_pos = end_pos;
-    } else {
-        match.end_pos = current_pos;
+        ++evidence_index;
+    }
+
+    if (match.segments.size() != pattern.evidence_types.size()) {
+        return std::nullopt;
+    }
+
+    if (match.end_pos == 0) {
+        match.end_pos = anchor_positions.back() + pattern.alternating_anchors.back().size();
     }
 
     // Set depth if tracking
