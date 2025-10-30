@@ -1,6 +1,6 @@
 # TODO: Self-Hosting Path
 
-## TEST STATUS (2025-10-18)
+## TEST STATUS (2025-10-28)
 
 **Stage0 Unit Tests: 6/6 passing (100%)**
 
@@ -11,18 +11,18 @@
 - test_tblgen_integration: PASS
 - test_depth_matcher: PASS
 
-**Reality Check (Feature Tests): 3/8 passing (37.5%)**
+**Reality Check (Feature Tests): 4/8 passing (50%)**
 
 PASSING:
 
 - simple_main: CPP2 function with variable declaration → C++
-- template_alias: Template type alias transformation
+- parameter_inout: inout parameter lowered to `std::string&` with include emission
+- include_generation: std::vector usage emits required #include
 - walrus_operator: := auto variable declaration
 
 FAILING:
 
-- parameter_inout: inout parameter → std::string& transformation (parameter parsing needed)
-- include_generation: Automatic #include generation (not implemented)
+- template_alias: Template type alias transformation (pattern selection still broken)
 - forward_declaration: Multiline pattern matching (newlines in anchors)
 - nested_patterns: Lambda generation for nested functions (recursive transformation)
 - contracts: Contract syntax placement (pre-condition handling)

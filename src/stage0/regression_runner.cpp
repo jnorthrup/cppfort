@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <thread>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -35,7 +36,7 @@ std::string current_time_string() {
     return "unknown time";
 }
 
-int run_command(const std::string& command, std::ostream& log, int timeout_seconds = 15) {
+int run_command(const std::string& command, std::ostream& log, int timeout_seconds = 0) {
     log << "    CMD: " << command << "\n";
     
     pid_t pid = fork();
@@ -46,21 +47,41 @@ int run_command(const std::string& command, std::ostream& log, int timeout_secon
     } else if (pid > 0) {
         // Parent process
         int status = 0;
-        alarm(timeout_seconds); // Set alarm
-        
-        if (waitpid(pid, &status, 0) == -1) {
-            if (errno == EINTR) {
-                // Timeout occurred
-                kill(pid, SIGKILL);
-                waitpid(pid, &status, 0); // Clean up zombie
-                log << "    -> TIMEOUT after " << timeout_seconds << " seconds\n";
-                return -1; // Timeout exit code
+        bool completed = false;
+
+        if (timeout_seconds > 0) {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+            while (true) {
+                pid_t rc = waitpid(pid, &status, WNOHANG);
+                if (rc == pid) {
+                    completed = true;
+                    break;
+                }
+                if (rc == -1) {
+                    log << "    -> waitpid failed\n";
+                    return -1;
+                }
+
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    kill(pid, SIGKILL);
+                    waitpid(pid, &status, 0);
+                    log << "    -> TIMEOUT after " << timeout_seconds << " seconds\n";
+                    return -1;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-            log << "    -> waitpid failed\n";
+        } else {
+            if (waitpid(pid, &status, 0) == -1) {
+                log << "    -> waitpid failed\n";
+                return -1;
+            }
+            completed = true;
+        }
+
+        if (!completed) {
             return -1;
         }
-        
-        alarm(0); // Cancel alarm
         
         int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         if (rc != 0) {

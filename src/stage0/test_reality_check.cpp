@@ -9,6 +9,38 @@
 #include "orbit_emitter.h"
 #include "cpp2_emitter.h"
 #include <sstream>
+#include <filesystem>
+
+namespace {
+std::filesystem::path resolve_patterns_path() {
+    // Keep the search list short to avoid masking real pathing issues.
+    static const std::filesystem::path candidates[] = {
+        "patterns/bnfc_cpp2_complete.yaml",
+        "../patterns/bnfc_cpp2_complete.yaml",
+        "../../patterns/bnfc_cpp2_complete.yaml",
+        "../../../patterns/bnfc_cpp2_complete.yaml"
+    };
+
+    for (const auto& candidate : candidates) {
+        std::filesystem::path attempt = std::filesystem::current_path() / candidate;
+        if (std::filesystem::exists(attempt)) {
+            return attempt;
+        }
+    }
+
+    // Last resort: resolve relative to this source file for hermetic runs.
+    try {
+        auto source_dir = std::filesystem::path(__FILE__).parent_path();
+        auto fallback = std::filesystem::weakly_canonical(source_dir / "../../../patterns/bnfc_cpp2_complete.yaml");
+        if (std::filesystem::exists(fallback)) {
+            return fallback;
+        }
+    } catch (...) {
+    }
+
+    return {};
+}
+} // namespace
 
 // Function to call the actual transpiler
 std::string transpile_cpp2(const std::string& input) {
@@ -22,9 +54,12 @@ std::string transpile_cpp2(const std::string& input) {
 
         // Load patterns
         cppfort::stage0::OrbitPipeline orbit_pipeline;
-        std::string pattern_path = "../../../patterns/bnfc_cpp2_complete.yaml";
-        bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path);
+        auto pattern_path = resolve_patterns_path();
+        if (pattern_path.empty()) {
+            return "ERROR: Patterns file not found";
+        }
 
+        bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path.string());
         if (!patterns_loaded) {
             // Try without patterns (will show what the raw system does)
             return "ERROR: Failed to load patterns";
@@ -34,10 +69,11 @@ std::string transpile_cpp2(const std::string& input) {
         cppfort::stage0::OrbitIterator iterator(anchors.size());
         orbit_pipeline.populate_iterator(scanner.fragments(), iterator, input);
 
-        // Emit using CPP2Emitter (depth-based matching)
+        // Emit using the same pipeline as stage0_cli
         std::ostringstream out;
         cppfort::stage0::CPP2Emitter emitter;
-        emitter.emit_depth_based(input, out, orbit_pipeline.patterns());
+        iterator.reset();
+        emitter.emit(iterator, input, out, orbit_pipeline.patterns());
 
         return out.str();
     } catch (const std::exception& e) {
@@ -59,8 +95,8 @@ TestCase reality_tests[] = {
     // Test 1: The ONE thing that allegedly works
     {
         "simple_main",
-        "main: () -> int = { s: std::string = \"world\"; }",
-        "int main() { std::string s = \"world\"; }",
+    "main: () -> int = { s: std::string = \"world\"; }",
+    "#include <string>\nint main() { std::string s = \"world\"; }",
         true,   // TODO.md says this works
         false   // Reality: probably doesn't fully work
     },
@@ -69,7 +105,7 @@ TestCase reality_tests[] = {
     {
         "parameter_inout",
         "foo: (inout s: std::string) -> void = {}",
-        "void foo(std::string& s) {}",
+        "#include <string>\nvoid foo(std::string& s) {}",
         false,  // TODO.md admits this doesn't work
         false   // Reality: definitely doesn't work
     },

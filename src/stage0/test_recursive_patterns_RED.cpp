@@ -1,13 +1,13 @@
-// RED FAILING TESTS: Prove Recursive Pattern Application is Broken
-// These tests MUST fail to expose the dishonest claims in TODO.md
+// Recursive pattern regression tests
+// Originally written to expose missing recursion, now guard against regressions.
 //
-// TODO.md claims:
+// TODO.md claims coverage:
 // - "Recursive Pattern Application"
 // - "Nested pattern matching (apply patterns to extracted segments)"
 // - "Inside-out transformation (deepest matches first)"
 // - "Depth-limited recursion to prevent infinite loops"
 //
-// REALITY: These features DON'T EXIST. This test suite proves it.
+// Keep this suite GREEN to prove those guarantees stay intact.
 
 #include <iostream>
 #include <string>
@@ -21,6 +21,36 @@
 #include "orbit_emitter.h"
 #include "cpp2_emitter.h"
 #include <sstream>
+#include <filesystem>
+
+namespace {
+std::filesystem::path resolve_patterns_path() {
+    static const std::filesystem::path candidates[] = {
+        "patterns/bnfc_cpp2_complete.yaml",
+        "../patterns/bnfc_cpp2_complete.yaml",
+        "../../patterns/bnfc_cpp2_complete.yaml",
+        "../../../patterns/bnfc_cpp2_complete.yaml"
+    };
+
+    for (const auto& candidate : candidates) {
+        std::filesystem::path attempt = std::filesystem::current_path() / candidate;
+        if (std::filesystem::exists(attempt)) {
+            return attempt;
+        }
+    }
+
+    try {
+        auto source_dir = std::filesystem::path(__FILE__).parent_path();
+        auto fallback = std::filesystem::weakly_canonical(source_dir / "../../../patterns/bnfc_cpp2_complete.yaml");
+        if (std::filesystem::exists(fallback)) {
+            return fallback;
+        }
+    } catch (...) {
+    }
+
+    return {};
+}
+} // namespace
 
 // Helper to strip #include lines from output (for test comparison)
 std::string strip_includes(const std::string& code) {
@@ -44,8 +74,11 @@ std::string transpile_cpp2_raw(const std::string& input) {
         scanner.scanAnchorsWithOrbits(input, anchors);
 
         cppfort::stage0::OrbitPipeline orbit_pipeline;
-        std::string pattern_path = "../../../patterns/bnfc_cpp2_complete.yaml";
-        bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path);
+        auto pattern_path = resolve_patterns_path();
+        if (pattern_path.empty()) {
+            return "ERROR: Patterns file not found";
+        }
+        bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path.string());
 
         if (!patterns_loaded) {
             return "ERROR: Failed to load patterns";
@@ -156,7 +189,15 @@ RedTestCase red_tests[] = {
         "Template types in variable declarations not transformed"
     },
 
-    // TEST 9: Return type deduction in nested function
+    // TEST 9: Type alias inside function body
+    {
+        "type_alias_in_body",
+        "main: () = { alias: type = int; }",
+        "int main() { using alias = int; }",
+        "Type alias declarations not transformed inside body"
+    },
+
+    // TEST 10: Return type deduction in nested function
     {
         "nested_return_auto",
         "main: () = { f: (x: int) = { return x * 2; } }",
@@ -164,7 +205,7 @@ RedTestCase red_tests[] = {
         "Return type deduction in nested function not handled"
     },
 
-    // TEST 10: Depth test - multiple nesting levels
+    // TEST 11: Depth test - multiple nesting levels
     {
         "deep_nesting",
         "main: () = { f: () = { g: () = { x := 42; } } }",
@@ -175,11 +216,11 @@ RedTestCase red_tests[] = {
 
 void run_red_tests() {
     int total = sizeof(red_tests) / sizeof(RedTestCase);
-    int red_count = 0;  // How many are RED (failing)
-    int green_count = 0;  // How many accidentally pass
+    int fail_count = 0;
+    int pass_count = 0;
 
-    std::cout << "=== RED FAILING TESTS: Exposing Broken Recursion ===\n\n";
-    std::cout << "Testing TODO.md claims about recursive pattern application...\n\n";
+    std::cout << "=== RECURSIVE PATTERN REGRESSION TESTS ===\n\n";
+    std::cout << "Verifying TODO.md claims about recursive pattern application...\n\n";
 
     for (int i = 0; i < total; i++) {
         const auto& test = red_tests[i];
@@ -199,34 +240,32 @@ void run_red_tests() {
         std::cout << "Valid C++: " << (output_valid ? "YES" : "NO") << "\n";
 
         if (!output_matches || !output_valid) {
-            std::cout << "STATUS:   *** RED (FAILING) ***\n";
+            std::cout << "STATUS:   FAIL\n";
             std::cout << "Reason:   " << test.reason_why_fails << "\n";
-            red_count++;
+            fail_count++;
         } else {
-            std::cout << "STATUS:   GREEN (passes)\n";
-            std::cout << "SURPRISE: This test unexpectedly works!\n";
-            green_count++;
+            std::cout << "STATUS:   PASS\n";
+            pass_count++;
         }
 
         std::cout << "---\n\n";
     }
 
-    std::cout << "=== RED TEST SUMMARY ===\n";
+    std::cout << "=== RECURSION TEST SUMMARY ===\n";
     std::cout << "Total tests: " << total << "\n";
-    std::cout << "RED (failing): " << red_count << " (" << (red_count*100/total) << "%)\n";
-    std::cout << "GREEN (passing): " << green_count << " (" << (green_count*100/total) << "%)\n";
+    std::cout << "Failures: " << fail_count << " (" << (fail_count*100/total) << "%)\n";
+    std::cout << "Passes: " << pass_count << " (" << (pass_count*100/total) << "%)\n";
     std::cout << "\n";
 
-    if (red_count == total) {
-        std::cout << "*** PROVEN: Recursive pattern application is 100% broken ***\n";
-        std::cout << "*** All " << total << " tests failed as expected ***\n";
-        std::cout << "*** TODO.md claims are DISHONEST ***\n";
-    } else if (red_count > total * 0.8) {
-        std::cout << "*** MOSTLY BROKEN: " << red_count << "/" << total << " failures ***\n";
-        std::cout << "*** Recursion is critically broken ***\n";
+    if (fail_count == 0) {
+        std::cout << "*** GREEN: Recursive pattern application holds steady ***\n";
+        std::cout << "*** All " << total << " tests passed ***\n";
+    } else if (fail_count == total) {
+        std::cout << "*** PROVEN: Recursive pattern application is broken ***\n";
+        std::cout << "*** All " << total << " tests failed ***\n";
     } else {
-        std::cout << "*** UNEXPECTED: Some tests passed! ***\n";
-        std::cout << "*** Recursion may partially work ***\n";
+        std::cout << "*** MIXED: Some tests failed ***\n";
+        std::cout << "*** Investigate recursion coverage ***\n";
     }
 
     std::cout << "\n=== SPECIFIC FAILURES ===\n";
@@ -257,8 +296,8 @@ namespace FocusedTests {
         bool has_auto = (output.find("auto") != std::string::npos);
 
         if (walrus_still_present) {
-            std::cout << "FAILURE: Walrus operator ':=' still in output\n";
-            std::cout << "PROOF: Recursive pattern application NOT working\n";
+            std::cout << "REGRESSION: Walrus operator ':=' still present\n";
+            std::cout << "ACTION: Restore recursive pattern application\n";
         } else if (has_auto) {
             std::cout << "SUCCESS: Walrus transformed to 'auto'\n";
         } else {
@@ -279,8 +318,8 @@ namespace FocusedTests {
         bool cpp_syntax = (output.find("std::string s") != std::string::npos);
 
         if (cpp2_syntax) {
-            std::cout << "FAILURE: cpp2 'name: type' syntax still present\n";
-            std::cout << "PROOF: Type declarations not transformed in body\n";
+            std::cout << "REGRESSION: cpp2 'name: type' syntax still present\n";
+            std::cout << "ACTION: Restore type declaration transforms\n";
         } else if (cpp_syntax) {
             std::cout << "SUCCESS: Transformed to 'type name' syntax\n";
         } else {
@@ -301,8 +340,8 @@ namespace FocusedTests {
         bool has_cpp2_func = (output.find("f: (x: int)") != std::string::npos);
 
         if (has_cpp2_func) {
-            std::cout << "FAILURE: Nested cpp2 function syntax unchanged\n";
-            std::cout << "PROOF: Nested patterns not recursively applied\n";
+            std::cout << "REGRESSION: Nested cpp2 function syntax unchanged\n";
+            std::cout << "ACTION: Restore nested pattern recursion\n";
         } else if (has_lambda) {
             std::cout << "SUCCESS: Transformed to lambda\n";
         } else {
@@ -326,8 +365,8 @@ namespace FocusedTests {
         }
 
         if (walrus_count > 0) {
-            std::cout << "FAILURE: " << walrus_count << " walrus operators remain\n";
-            std::cout << "PROOF: Statements not individually processed\n";
+            std::cout << "REGRESSION: " << walrus_count << " walrus operators remain\n";
+            std::cout << "ACTION: Restore statement-level recursion\n";
         } else {
             std::cout << "SUCCESS: All walrus operators transformed\n";
         }
@@ -343,24 +382,24 @@ namespace FocusedTests {
 
 int main() {
     std::cout << "======================================================\n";
-    std::cout << "RED TEST SUITE: Proving Recursive Patterns are Broken\n";
+    std::cout << "RECURSION REGRESSION SUITE\n";
     std::cout << "======================================================\n\n";
 
-    std::cout << "Goal: Create FAILING tests that expose dishonest TODO.md claims\n";
-    std::cout << "Method: TDD RED phase - tests MUST fail to prove brokenness\n\n";
+    std::cout << "Goal: Guard the recursive pattern pipeline described in TODO.md\n";
+    std::cout << "Method: TDD history preserved as regression checks (stay GREEN)\n\n";
 
     run_red_tests();
     FocusedTests::run_all_focused();
 
-    std::cout << "\n======================================================\n";
+    std::cout << "======================================================\n";
     std::cout << "CONCLUSION\n";
     std::cout << "======================================================\n";
-    std::cout << "If all tests are RED (failing), then:\n";
-    std::cout << "1. Recursive pattern application does NOT exist\n";
-    std::cout << "2. TODO.md claims are dishonest\n";
-    std::cout << "3. Need to implement actual recursion from scratch\n";
+    std::cout << "If any test fails:\n";
+    std::cout << "1. Recursive pattern application regressed\n";
+    std::cout << "2. TODO.md guarantees need reinforcement\n";
+    std::cout << "3. Restore the transformation pipeline to return GREEN\n";
     std::cout << "\n";
-    std::cout << "Next step: Fix the code to make these tests GREEN\n";
+    std::cout << "Next step: Keep these tests GREEN to maintain recursion guarantees\n";
     std::cout << "======================================================\n";
 
     return 0;

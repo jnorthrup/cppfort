@@ -15,6 +15,30 @@
 namespace cppfort::stage0 {
 namespace {
 
+constexpr bool kOrbitDebug = false;
+
+bool use_backchain_mode() {
+    static const bool enabled = []() {
+        if (const char* env = std::getenv("RBCURSIVE_USE_BACKCHAIN")) {
+            if (*env == '\0') {
+                return false;
+            }
+            switch (*env) {
+                case '0':
+                case 'n':
+                case 'N':
+                case 'f':
+                case 'F':
+                    return false;
+                default:
+                    return true;
+            }
+        }
+        return false;
+    }();
+    return enabled;
+}
+
 std::string_view extract_fragment_view(const OrbitFragment& fragment, std::string_view source) {
     if (fragment.start_pos >= source.size() || fragment.end_pos > source.size() || fragment.start_pos >= fragment.end_pos) {
         return {};
@@ -252,17 +276,26 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
         if (fragment_text.empty()) {
             return base_orbit;
         }
-        std::cerr << "DEBUG evaluate_fragment: Speculating on fragment [" << fragment.start_pos << ", " << fragment.end_pos << "): '"
-                  << fragment_text << "'\n";
-        // Use backward chaining by default for better semantic accuracy
-        combinator->speculate_backchain(fragment_text);
-
-        // Log backchain usage
-        std::cerr << "DEBUG: Using backward chaining for terminal speculation\n";
+        if (kOrbitDebug) {
+            std::cerr << "DEBUG evaluate_fragment: Speculating on fragment [" << fragment.start_pos << ", " << fragment.end_pos << "): '"
+                      << fragment_text << "'\n";
+        }
+        const bool backchain_enabled = use_backchain_mode();
+        combinator->clear_traces();
+        if (backchain_enabled) {
+            combinator->speculate_backchain(fragment_text);
+            if (kOrbitDebug) {
+                std::cerr << "DEBUG: Using backward chaining for terminal speculation\n";
+            }
+        } else {
+            combinator->speculate(fragment_text);
+        }
 
         // Get the best speculative match
         if (auto* best_match = combinator->get_best_match()) {
-            std::cerr << "DEBUG evaluate_fragment: Best match = " << best_match->pattern_name << " (confidence=" << best_match->confidence << ")\n";
+            if (kOrbitDebug) {
+                std::cerr << "DEBUG evaluate_fragment: Best match = " << best_match->pattern_name << " (confidence=" << best_match->confidence << ")\n";
+            }
             // Find the corresponding pattern
             const auto& patterns = loader_.patterns();
             auto pattern_it = std::find_if(patterns.begin(), patterns.end(),
@@ -286,28 +319,30 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
                                                     {}); // Empty traits for now
 
                 std::vector<std::pair<std::size_t, std::size_t>> relative_ranges;
-                auto fragment_view = extract_fragment_view(fragment, source);
-                if (!fragment_view.empty()) {
-                    auto segments = collect_segments_from_traces(fragment_view, *pattern_it, combinator->get_semantic_traces(), relative_ranges);
-                    if (!segments.empty() &&
-                        (pattern_it->evidence_types.empty() || segments.size() == pattern_it->evidence_types.size())) {
-                        base_orbit->set_captured_segments(std::move(segments));
+                if (backchain_enabled) {
+                    auto fragment_view = extract_fragment_view(fragment, source);
+                    if (!fragment_view.empty()) {
+                        auto segments = collect_segments_from_traces(fragment_view, *pattern_it, combinator->get_semantic_traces(), relative_ranges);
+                        if (!segments.empty() &&
+                            (pattern_it->evidence_types.empty() || segments.size() == pattern_it->evidence_types.size())) {
+                            base_orbit->set_captured_segments(std::move(segments));
 
-                        if (!relative_ranges.empty()) {
-                            std::vector<EvidenceSpan> memo_spans;
-                            memo_spans.reserve(relative_ranges.size());
-                            for (const auto& [rel_start, rel_end] : relative_ranges) {
-                                std::size_t global_start = fragment.start_pos + rel_start;
-                                std::size_t global_end = fragment.start_pos + rel_end;
-                                if (global_start < global_end && global_end <= source.size()) {
-                                    memo_spans.emplace_back(global_start,
-                                                            global_end,
-                                                            std::string(source.substr(global_start, global_end - global_start)),
-                                                            base_orbit->confidence);
+                            if (!relative_ranges.empty()) {
+                                std::vector<EvidenceSpan> memo_spans;
+                                memo_spans.reserve(relative_ranges.size());
+                                for (const auto& [rel_start, rel_end] : relative_ranges) {
+                                    std::size_t global_start = fragment.start_pos + rel_start;
+                                    std::size_t global_end = fragment.start_pos + rel_end;
+                                    if (global_start < global_end && global_end <= source.size()) {
+                                        memo_spans.emplace_back(global_start,
+                                                                global_end,
+                                                                std::string(source.substr(global_start, global_end - global_start)),
+                                                                base_orbit->confidence);
+                                    }
                                 }
-                            }
-                            if (!memo_spans.empty()) {
-                                base_orbit->remember_idempotent_span(fragment.start_pos, fragment.end_pos, memo_spans);
+                                if (!memo_spans.empty()) {
+                                    base_orbit->remember_idempotent_span(fragment.start_pos, fragment.end_pos, memo_spans);
+                                }
                             }
                         }
                     }

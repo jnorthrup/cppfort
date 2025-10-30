@@ -16,6 +16,8 @@ namespace stage0 {
 
 namespace {
 
+constexpr bool kRecursiveDebug = false;
+
 std::string_view trim_view(std::string_view text) {
     size_t begin = 0;
     size_t end = text.size();
@@ -244,7 +246,9 @@ void RBCursiveScanner::speculate(std::string_view text) {
                 fragment.confidence = confidence;
                 fragment.classified_grammar = ::cppfort::ir::GrammarType::UNKNOWN; // Will be set by correlator
 
-                std::cerr << "DEBUG speculate signature: MATCHED pattern=" << pattern.name << " length=" << match_length << "\n";
+                if (kRecursiveDebug) {
+                    std::cerr << "DEBUG speculate signature: MATCHED pattern=" << pattern.name << " length=" << match_length << "\n";
+                }
                 matches_.emplace_back(match_length, confidence, pattern.name, std::move(fragment));
                 break; // Only take first match per pattern for now
             }
@@ -285,9 +289,11 @@ void RBCursiveScanner::speculate(std::string_view text) {
               });
 
     // Debug: print sorted matches
-    std::cerr << "DEBUG speculate: After sorting, matches:\n";
-    for (size_t i = 0; i < matches_.size(); ++i) {
-        std::cerr << "  [" << i << "] " << matches_[i].pattern_name << " length=" << matches_[i].match_length << "\n";
+    if (kRecursiveDebug) {
+        std::cerr << "DEBUG speculate: After sorting, matches:\n";
+        for (size_t i = 0; i < matches_.size(); ++i) {
+            std::cerr << "  [" << i << "] " << matches_[i].pattern_name << " length=" << matches_[i].match_length << "\n";
+        }
     }
 }
 
@@ -300,7 +306,9 @@ void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternDat
     // Find the first anchor
     const std::string& first_anchor = pattern.alternating_anchors[0];
     size_t anchor_pos = text.find(first_anchor);
-    std::cerr << "DEBUG speculate_alternating: pattern=" << pattern.name << " anchor='" << first_anchor << "' found=" << (anchor_pos != std::string::npos) << "\n";
+    if (kRecursiveDebug) {
+        std::cerr << "DEBUG speculate_alternating: pattern=" << pattern.name << " anchor='" << first_anchor << "' found=" << (anchor_pos != std::string::npos) << "\n";
+    }
     if (anchor_pos == std::string::npos) {
         return;
     }
@@ -417,6 +425,10 @@ void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternDat
 
         // Validate evidence type
         if (!validate_evidence_type(pattern.evidence_types[evidence_idx], evidence)) {
+            if (kRecursiveDebug && (pattern.name == "cpp2_type_alias" || pattern.name == "cpp2_template_type_alias")) {
+                std::cerr << "DEBUG alias evidence rejected: type=" << pattern.evidence_types[evidence_idx]
+                          << " evidence='" << std::string(evidence) << "'\n";
+            }
             return; // Evidence doesn't match expected type
         }
 
@@ -441,7 +453,9 @@ void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternDat
     fragment.confidence = confidence;
     fragment.classified_grammar = ::cppfort::ir::GrammarType::CPP2; // Alternating patterns are for CPP2
 
-    std::cerr << "DEBUG speculate_alternating: MATCHED pattern=" << pattern.name << " length=" << match_length << "\n";
+    if (kRecursiveDebug) {
+        std::cerr << "DEBUG speculate_alternating: MATCHED pattern=" << pattern.name << " length=" << match_length << "\n";
+    }
     matches_.emplace_back(match_length, confidence, pattern.name, std::move(fragment));
 }
 
@@ -793,19 +807,21 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
         }
 
         // Debug output to understand the chain
-        std::cerr << "DEBUG backchain: pattern=" << live->pattern->name
-                  << " anchors=" << live->anchor_index
-                  << " steps=" << live->steps.size()
-                  << " conf=" << live->confidence
-                  << " wobbles=" << live->wobble_count << "\n";
-        for (const auto& step : live->steps) {
-            std::string_view span = (step.ev_end > step.ev_start)
-                ? text.substr(step.ev_start, step.ev_end - step.ev_start)
-                : std::string_view{};
-            std::string snippet = std::string(span.substr(0, std::min<std::size_t>(span.size(), 32)));
-            std::cerr << "  step: anchor@" << step.anchor_pos
-                      << " span[" << step.ev_start << "," << step.ev_end << ")='"
-                      << snippet << (span.size() > snippet.size() ? "..." : "") << "'\n";
+        if (kRecursiveDebug) {
+            std::cerr << "DEBUG backchain: pattern=" << live->pattern->name
+                      << " anchors=" << live->anchor_index
+                      << " steps=" << live->steps.size()
+                      << " conf=" << live->confidence
+                      << " wobbles=" << live->wobble_count << "\n";
+            for (const auto& step : live->steps) {
+                std::string_view span = (step.ev_end > step.ev_start)
+                    ? text.substr(step.ev_start, step.ev_end - step.ev_start)
+                    : std::string_view{};
+                std::string snippet = std::string(span.substr(0, std::min<std::size_t>(span.size(), 32)));
+                std::cerr << "  step: anchor@" << step.anchor_pos
+                          << " span[" << step.ev_start << "," << step.ev_end << ")='"
+                          << snippet << (span.size() > snippet.size() ? "..." : "") << "'\n";
+            }
         }
 
         double final_conf = live->confidence;
