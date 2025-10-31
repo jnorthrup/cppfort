@@ -1,0 +1,3 @@
+void t: type = {
+  swap(virtual inout this, that) { } // Non-`virtual` blocked on #508, idiomatic form on #507. }
+int main() { static_assert(noexcept(t().swap(t()))); // Fails on Clang 12 (lambda in unevaluated context) and GCC 10 (static assertion failed) }

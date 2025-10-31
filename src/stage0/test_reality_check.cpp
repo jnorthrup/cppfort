@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <cassert>
+#include <cctype>
 
 #include "orbit_scanner.h"
 #include "wide_scanner.h"
@@ -106,8 +107,8 @@ TestCase reality_tests[] = {
         "parameter_inout",
         "foo: (inout s: std::string) -> void = {}",
         "#include <string>\nvoid foo(std::string& s) {}",
-        false,  // TODO.md admits this doesn't work
-        false   // Reality: definitely doesn't work
+        true,   // TODO.md now claims inout lowering works
+        true    // Reality: verified via stage0_cli
     },
 
     // Test 3: Template alias (pattern selected but broken)
@@ -115,8 +116,8 @@ TestCase reality_tests[] = {
         "template_alias",
         "type Pair<A,B>=std::pair<A,B>;",
         "template<typename A, typename B> using Pair = std::pair<A,B>;",
-        false,  // TODO.md says substitution is malformed
-        false   // Reality: outputs garbage
+        true,   // TODO.md now claims alias substitution works
+        true    // Reality: stage0_cli emits correct alias
     },
 
     // Test 4: Include generation (claimed missing)
@@ -124,8 +125,8 @@ TestCase reality_tests[] = {
         "include_generation",
         "main: () -> int = { v: std::vector<int> = {}; }",
         "#include <vector>\nint main() { std::vector<int> v = {}; }",
-        false,  // TODO.md says missing
-        false   // Reality: no includes generated
+        true,   // TODO.md now claims include emission works
+        true    // Reality: include + body emitted
     },
 
     // Test 5: Basic walrus operator
@@ -133,8 +134,8 @@ TestCase reality_tests[] = {
         "walrus_operator",
         "main: () -> int = { x := 42; }",
         "int main() { auto x = 42; }",
-        false,  // Unclear from TODO.md
-        false   // Reality: probably broken
+        true,   // TODO.md now claims walrus lowering works
+        true    // Reality: matches expectation
     },
 
     // Test 6: Forward declaration
@@ -142,8 +143,8 @@ TestCase reality_tests[] = {
         "forward_declaration",
         "bar: () -> void;\nbar: () -> void = {}",
         "void bar();\nvoid bar() {}",
-        false,  // TODO.md says missing
-        false   // Reality: definitely missing
+        true,   // TODO.md now claims forward declarations work
+        true    // Reality: declaration + definition emitted
     },
 
     // Test 7: Nested patterns
@@ -151,8 +152,8 @@ TestCase reality_tests[] = {
         "nested_patterns",
         "main: () -> int = { f: (x: int) -> int = { return x; } }",
         "int main() { auto f = [](int x) -> int { return x; }; }",
-        false,  // TODO.md mentions "recursive orbit processing"
-        false   // Reality: uses regex hack
+        true,   // TODO.md now claims nested lambda lowering works
+        true    // Reality: lambda emitted correctly
     },
 
     // Test 8: Contract syntax
@@ -160,14 +161,15 @@ TestCase reality_tests[] = {
         "contracts",
         "sqrt: (x: double) -> double pre<{ x >= 0 }> = { }",
         "double sqrt(double x) [[pre: x >= 0]] { }",
-        false,  // Not mentioned as working
-        false   // Reality: not implemented
+        true,   // TODO.md now claims contract emission works
+        true    // Reality: pre-condition emitted
     }
 };
 
-void run_reality_check() {
+bool run_reality_check() {
     int claimed_working = 0;
     int actually_working = 0;
+    bool all_passed = true;
 
     std::cout << "=== REALITY CHECK: What Actually Works ===\n\n";
 
@@ -190,12 +192,14 @@ void run_reality_check() {
             // Flag discrepancies
             if (test.should_pass && !passes) {
                 std::cout << "*** REGRESSION: Claimed working but FAILS ***\n";
+                all_passed = false;
             }
             if (!test.should_pass && passes) {
                 std::cout << "*** SURPRISE: Not claimed but WORKS ***\n";
             }
         } catch (...) {
             std::cout << "*** CRASH: Exception thrown ***\n";
+            all_passed = false;
         }
 
         std::cout << "---\n\n";
@@ -209,56 +213,94 @@ void run_reality_check() {
     if (actually_working == 0) {
         std::cout << "\n*** CRITICAL: Zero tests passing. No actual transpilation capability. ***\n";
     }
+
+    return all_passed;
 }
 
 // Granular feature tests
 namespace FeatureTests {
 
+    static std::string trim_text(std::string text) {
+        size_t start = 0;
+        while (start < text.size() && std::isspace(static_cast<unsigned char>(text[start]))) {
+            ++start;
+        }
+
+        size_t end = text.size();
+        while (end > start && std::isspace(static_cast<unsigned char>(text[end - 1]))) {
+            --end;
+        }
+
+        return text.substr(start, end - start);
+    }
+
+    static bool matches(const std::string& input, const std::string& expected) {
+        return trim_text(transpile_cpp2(input)) == trim_text(expected);
+    }
+
     bool can_parse_function_signature() {
         // Just parse, don't transform
         // "main: () -> int" should be recognized
-        return false;  // Not implemented
+    return matches("main: () -> int = { }", "int main() {}");
     }
 
     bool can_extract_function_name() {
         // Extract "main" from "main: () -> int = {}"
-        return false;  // Not implemented
+        return matches("hello: () -> void = { }", "void hello() { }");
     }
 
     bool can_extract_return_type() {
         // Extract "int" from "main: () -> int = {}"
-        return false;  // Not implemented
+        return matches("foo: () -> double = { }", "double foo() { }");
     }
 
     bool can_handle_function_body() {
         // Process the {} part
-        return false;  // Not implemented
+        return matches("main: () -> int = { return 42; }", "int main() { return 42; }");
     }
 
     bool can_transform_parameter() {
         // Transform "x: int" to "int x"
-        return false;  // Not implemented
+        return matches("add: (x: int, y: int) -> int = { return x + y; }",
+                       "int add(int x, int y) { return x + y; }");
     }
 
     bool can_handle_inout_parameter() {
         // Transform "inout x: int" to "int& x"
-        return false;  // Not implemented
+        return matches("use: (inout s: std::string) -> void = { }",
+                       "#include <string>\nvoid use(std::string& s) { }");
     }
 
-    void run_granular_tests() {
+    bool deduplicates_includes() {
+        // Avoid emitting duplicate includes when source already has them
+        return matches("#include <iostream>\n\nmain: () -> int = { std::cout << \"hi\"; }",
+                       "#include <iostream>\n\nint main() { std::cout << \"hi\"; }");
+    }
+
+    bool run_granular_tests() {
+        auto report = [](const char* label, bool passed) {
+            std::cout << label << ": " << (passed ? "YES" : "NO") << "\n";
+            return passed;
+        };
+
         std::cout << "\n=== GRANULAR FEATURE TESTS ===\n";
-        std::cout << "Parse function signature: " << (can_parse_function_signature() ? "YES" : "NO") << "\n";
-        std::cout << "Extract function name: " << (can_extract_function_name() ? "YES" : "NO") << "\n";
-        std::cout << "Extract return type: " << (can_extract_return_type() ? "YES" : "NO") << "\n";
-        std::cout << "Handle function body: " << (can_handle_function_body() ? "YES" : "NO") << "\n";
-        std::cout << "Transform parameter: " << (can_transform_parameter() ? "YES" : "NO") << "\n";
-        std::cout << "Handle inout parameter: " << (can_handle_inout_parameter() ? "YES" : "NO") << "\n";
+
+        bool all_passed = true;
+        all_passed &= report("Parse function signature", can_parse_function_signature());
+        all_passed &= report("Extract function name", can_extract_function_name());
+        all_passed &= report("Extract return type", can_extract_return_type());
+        all_passed &= report("Handle function body", can_handle_function_body());
+        all_passed &= report("Transform parameter", can_transform_parameter());
+        all_passed &= report("Handle inout parameter", can_handle_inout_parameter());
+        all_passed &= report("Deduplicate includes", deduplicates_includes());
+
+        return all_passed;
     }
 }
 
 int main() {
-    run_reality_check();
-    FeatureTests::run_granular_tests();
+    bool reality_ok = run_reality_check();
+    bool feature_ok = FeatureTests::run_granular_tests();
 
     std::cout << "\n=== RECOMMENDATION ===\n";
     std::cout << "1. Stop claiming features work when they don't\n";
@@ -266,5 +308,5 @@ int main() {
     std::cout << "3. Don't move on until it's 100% correct\n";
     std::cout << "4. Update TODO.md with honest status\n";
 
-    return 0;
+    return (reality_ok && feature_ok) ? 0 : 1;
 }

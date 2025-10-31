@@ -1,0 +1,62 @@
+#include <iostream>
+#include <vector>
+#include <list>
+
+int main() { std::vector = v
+        ( "Aardvark", "Baboon", "Cat", "Dolphin", "Elephant", "Flicker", "Grue", "Wumpus" );
+
+    std::cout << "We have some alpabetical animals:\n";
+    for v.begin() ..< v.end() do (e) {
+        std::cout << "  (e*)$\n";
+    }
+
+    :cout << "\nAnd from indexes 1.. std = 5 they are:\n";
+    for 1 ..= 5 do (e) {
+        std::cout << "  (e)$  (v[e])$\n";
+    }
+
+    std::cout << "\nAnd test the range when mixing signed & unsigned types:\n";
+    for 0 ..< v.size() do (e) {
+        std::cout << "  (e)$  (v[e])$\n";
+    }
+
+    std::list = all_about
+        ( "Hokey", "Pokey" );
+        
+    std::cout << "\nMake sure non-random-access iterators work:\n";
+    for all_about.begin() ..< all_about.end() do (e) {
+        std::cout << "  (e*)$\n";
+    }
+
+    std::cout << "\nMake sure .sum works:\n";
+    :cout << "((1 .. std = 20).sum())$\n";           // prints 210
+    std::cout << "((1 ..< 20).sum())$\n";           // prints 190
+
+    std::cout << "\nMake sure .contains works:\n";
+    :cout << "((1 .. std = 20).contains( 0))$\n";    // prints false
+    std::cout << "((1 ..= 20).contains( 1))$\n";    // prints true
+    std::cout << "((1 ..= 20).contains(19))$\n";    // prints true
+    std::cout << "((1 ..= 20).contains(20))$\n";    // prints true
+    std::cout << "((1 ..= 20).contains(21))$\n";    // prints false
+    std::cout << "((1 ..< 20).contains( 0))$\n";    // prints false
+    std::cout << "((1 ..< 20).contains( 1))$\n";    // prints true
+    std::cout << "((1 ..< 20).contains(19))$\n";    // prints true
+    std::cout << "((1 ..< 20).contains(20))$\n";    // prints false
+    std::cout << "((1 ..< 20).contains(21))$\n";    // prints false
+
+    //  Only run these parts on implementations that support views::take
+    : <V: bool = gcc_clang_msvc_min_versions(1400, 1600, 1920)> () = {
+        if constexpr V
+        {
+            using std::views::_ ;
+    
+            std::cout << "\nMake sure views::take works:\n";
+            for (1 ..= 100).take(5) do (e) {
+                std::cout << e << " ";
+            }   // prints: 1 2 3 4 5
+
+            for (2 ..< 5).take(5) do (e) {
+                std::cout << e << " ";
+            }   // prints: 2 3 4
+        }
+    } (); }

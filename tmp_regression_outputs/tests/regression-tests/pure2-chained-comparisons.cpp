@@ -1,0 +1,15 @@
+#include <iostream>
+#include <string>
+int main() { auto i = 0; auto while i<3 next i++ {
+        j = 0; while j<3 next j++ {
+            k:=0; while k<3 next k++ {
+                std::cout
+                    << i << " "
+                    << j << " "
+                    << k << ": "
+                    << (i == j == k) as std::string << " "
+                    << (i <  j <= k) as std::string << " "
+                    << (i >= j >  k) as std::string << "\n";
+            }
+        }
+    } }

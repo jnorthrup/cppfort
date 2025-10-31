@@ -6,9 +6,11 @@
 #include <cctype>
 #include <iostream>
 #include <limits>
-#include <sstream>
-#include <string_view>
 #include <optional>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -48,6 +50,64 @@ std::string trim_copy(std::string_view text) {
         --end;
     }
     return std::string{text.substr(begin, end - begin)};
+}
+
+std::optional<std::string> rewrite_known_ufcs_call(std::string_view expr_view) {
+    std::string trimmed = trim_copy(expr_view);
+    size_t dot_pos = trimmed.find('.');
+    if (dot_pos == std::string::npos) {
+        return std::nullopt;
+    }
+
+    size_t open_paren = trimmed.find('(', dot_pos + 1);
+    if (open_paren == std::string::npos) {
+        return std::nullopt;
+    }
+
+    std::string lhs = trim_copy(trimmed.substr(0, dot_pos));
+    std::string function_name = trim_copy(trimmed.substr(dot_pos + 1, open_paren - dot_pos - 1));
+    if (lhs.empty() || function_name.empty()) {
+        return std::nullopt;
+    }
+
+    static const std::unordered_set<std::string> cstdio_functions = {
+        "fprintf", "fclose", "fscanf", "fgets", "fputs", "fread", "fwrite", "fflush"
+    };
+
+    if (cstdio_functions.find(function_name) == cstdio_functions.end()) {
+        return std::nullopt;
+    }
+
+    int depth = 0;
+    size_t close_paren = std::string::npos;
+    for (size_t idx = open_paren; idx < trimmed.size(); ++idx) {
+        char ch = trimmed[idx];
+        if (ch == '(') {
+            ++depth;
+        } else if (ch == ')') {
+            --depth;
+            if (depth == 0) {
+                close_paren = idx;
+                break;
+            }
+        }
+    }
+    if (close_paren == std::string::npos) {
+        return std::nullopt;
+    }
+
+    std::string args = trim_copy(trimmed.substr(open_paren + 1, close_paren - open_paren - 1));
+    std::string rewritten = "std::" + function_name + "(" + lhs;
+    if (!args.empty()) {
+        rewritten += ", " + args;
+    }
+    rewritten += ")";
+
+    if (close_paren + 1 < trimmed.size()) {
+        rewritten += trimmed.substr(close_paren + 1);
+    }
+
+    return rewritten;
 }
 
 void trim_in_place(std::string& text) {
@@ -2960,8 +3020,57 @@ std::string transform_statement(const std::string& statement, const std::vector<
         return statement;
     }
 
+    std::string trimmed_statement = trim_copy(statement);
+
+    size_t leading_ws_pos = statement.find_first_not_of(" \t");
+    if (leading_ws_pos != std::string::npos && statement[leading_ws_pos] == '_' &&
+        trimmed_statement.size() > 2 && trimmed_statement[1] == ' ' && trimmed_statement[2] == '=') {
+        size_t eq_pos = statement.find('=', leading_ws_pos);
+        if (eq_pos != std::string::npos) {
+            // Skip compound operators like '==' or '+='
+            if (eq_pos + 1 < statement.size() && statement[eq_pos + 1] == '=') {
+                // Not a simple assignment, skip transformation
+            } else {
+                size_t semi_pos = statement.find(';', eq_pos);
+                if (semi_pos != std::string::npos) {
+                    std::string expr = statement.substr(eq_pos + 1, semi_pos - eq_pos - 1);
+                    std::string sanitized_expr = trim_copy(expr);
+                    if (!sanitized_expr.empty()) {
+                        if (auto rewritten = rewrite_known_ufcs_call(sanitized_expr)) {
+                            sanitized_expr = *rewritten;
+                        }
+                        std::string prefix = statement.substr(0, leading_ws_pos);
+                        std::string suffix = statement.substr(semi_pos + 1);
+                        return prefix + "static_cast<void>(" + sanitized_expr + ");" + suffix;
+                    }
+                }
+            }
+        }
+    }
+
     if (statement.front() == '{') {
-        return apply_recursive_transformations(statement, patterns, nesting_depth + 1);
+        size_t first_non_ws = statement.find_first_not_of(" \t\n\r");
+        size_t last_non_ws = statement.find_last_not_of(" \t\n\r");
+        if (first_non_ws == std::string::npos || last_non_ws == std::string::npos) {
+            return statement;
+        }
+
+        size_t open_brace = statement.find('{', first_non_ws);
+        if (open_brace == std::string::npos) {
+            return statement;
+        }
+        if (statement[last_non_ws] != '}' || last_non_ws <= open_brace) {
+            return statement;
+        }
+
+        std::string prefix = statement.substr(0, open_brace);
+        std::string suffix = statement.substr(last_non_ws + 1);
+        std::string inner = statement.substr(open_brace + 1, last_non_ws - open_brace - 1);
+        std::string transformed_inner = apply_recursive_transformations(inner, patterns, nesting_depth + 1);
+        std::string trimmed_inner = trim_copy(transformed_inner);
+        std::string rebuilt = trimmed_inner.empty() ? std::string{"{}"}
+                                                    : std::string{"{ "} + trimmed_inner + " }";
+        return prefix + rebuilt + suffix;
     }
 
     auto matches = UnifiedPatternMatcher::find_matches(statement, patterns, true, 0);
@@ -3013,10 +3122,19 @@ std::string apply_recursive_transformations(const std::string& input, const std:
 
     std::string working = input;
     bool has_braces = false;
-    if (!working.empty() && working.front() == '{' && working.back() == '}') {
-        working = working.substr(1, working.size() - 2);
-        has_braces = true;
-    CPP2_EMITTER_DEBUG(std::cerr << "DEBUG apply_recursive_transformations: stripped braces, working='" << working << "'\n");
+    std::string outer_prefix;
+    std::string outer_suffix;
+    if (!working.empty()) {
+        size_t first_non_ws = working.find_first_not_of(" \t\n\r");
+        size_t last_non_ws = working.find_last_not_of(" \t\n\r");
+        if (first_non_ws != std::string::npos && last_non_ws != std::string::npos &&
+            working[first_non_ws] == '{' && working[last_non_ws] == '}' && last_non_ws > first_non_ws) {
+            outer_prefix = working.substr(0, first_non_ws);
+            outer_suffix = working.substr(last_non_ws + 1);
+            working = working.substr(first_non_ws + 1, last_non_ws - first_non_ws - 1);
+            has_braces = true;
+            CPP2_EMITTER_DEBUG(std::cerr << "DEBUG apply_recursive_transformations: stripped braces, working='" << working << "'\n");
+        }
     }
 
     while (transform_for_next_do_blocks(working, patterns, nesting_depth)) {
@@ -3049,10 +3167,13 @@ std::string apply_recursive_transformations(const std::string& input, const std:
 
     if (has_braces) {
         std::string trimmed = trim_copy(rebuilt);
+        std::string rebuilt_block;
         if (trimmed.empty()) {
-            return "{}";
+            rebuilt_block = "{}";
+        } else {
+            rebuilt_block = "{ " + trimmed + " }";
         }
-        return "{ " + trimmed + " }";
+        return outer_prefix + rebuilt_block + outer_suffix;
     }
 
     return rebuilt;
@@ -3223,6 +3344,39 @@ std::vector<std::string> extract_std_includes(std::string_view source) {
         {"std::list", "list"},
         {"std::deque", "deque"},
         {"std::array", "array"},
+        {"std::span", "span"},
+        {"int8_t", "cstdint"},
+        {"int16_t", "cstdint"},
+        {"int32_t", "cstdint"},
+        {"int64_t", "cstdint"},
+        {"uint8_t", "cstdint"},
+        {"uint16_t", "cstdint"},
+        {"uint32_t", "cstdint"},
+        {"uint64_t", "cstdint"},
+        {"std::int8_t", "cstdint"},
+        {"std::int16_t", "cstdint"},
+        {"std::int32_t", "cstdint"},
+        {"std::int64_t", "cstdint"},
+        {"std::uint8_t", "cstdint"},
+        {"std::uint16_t", "cstdint"},
+        {"std::uint32_t", "cstdint"},
+        {"std::uint64_t", "cstdint"},
+        {"std::fprintf", "cstdio"},
+        {"std::fclose", "cstdio"},
+        {"std::fscanf", "cstdio"},
+        {"std::fgets", "cstdio"},
+        {"std::fputs", "cstdio"},
+        {"std::fread", "cstdio"},
+        {"std::fwrite", "cstdio"},
+        {"std::fflush", "cstdio"},
+        {"i8", "cstdint"},
+        {"i16", "cstdint"},
+        {"i32", "cstdint"},
+        {"i64", "cstdint"},
+        {"u8", "cstdint"},
+        {"u16", "cstdint"},
+        {"u32", "cstdint"},
+        {"u64", "cstdint"},
     };
 
     for (const auto& mapping : mappings) {
@@ -3231,6 +3385,21 @@ std::vector<std::string> extract_std_includes(std::string_view source) {
         }
     }
 
+    auto add_cstdio_if_needed = [&](std::string_view needle) {
+        if (source.find(needle) != std::string::npos) {
+            add_include("#include <cstdio>");
+        }
+    };
+
+    add_cstdio_if_needed(".fprintf");
+    add_cstdio_if_needed(".fclose");
+    add_cstdio_if_needed(".fscanf");
+    add_cstdio_if_needed(".fgets");
+    add_cstdio_if_needed(".fputs");
+    add_cstdio_if_needed(".fread");
+    add_cstdio_if_needed(".fwrite");
+    add_cstdio_if_needed(".fflush");
+
     if (source.find("cpp2::impl::out<") != std::string::npos || has_out_parameter(source)) {
         add_include("#include \"cpp2_inline.h\"");
     }
@@ -3238,13 +3407,70 @@ std::vector<std::string> extract_std_includes(std::string_view source) {
     return includes;
 }
 
+class IncludeDeduper {
+public:
+    IncludeDeduper() = default;
+
+    void note_emitted(std::string_view line) {
+        std::string trimmed = trim_copy(line);
+        if (!trimmed.empty() && trimmed.front() == '#') {
+            seen_.insert(std::move(trimmed));
+        }
+    }
+
+    std::string filter(std::string_view block) {
+        if (block.empty()) {
+            return {};
+        }
+
+        std::string result;
+        result.reserve(block.size());
+
+        size_t pos = 0;
+        while (pos <= block.size()) {
+            size_t newline = block.find('\n', pos);
+            const bool has_newline = (newline != std::string::npos);
+            std::string_view line_view = has_newline ? block.substr(pos, newline - pos)
+                                                     : block.substr(pos);
+
+            bool drop_line = false;
+            std::string trimmed = trim_copy(line_view);
+            if (!trimmed.empty() && trimmed.front() == '#') {
+                auto [_, inserted] = seen_.insert(trimmed);
+                drop_line = !inserted;
+            }
+
+            if (!drop_line) {
+                result.append(line_view.begin(), line_view.end());
+                if (has_newline) {
+                    result.push_back('\n');
+                }
+            }
+
+            if (!has_newline) {
+                break;
+            }
+            pos = newline + 1;
+        }
+
+        return result;
+    }
+
+private:
+    std::unordered_set<std::string> seen_;
+};
+
 // Depth-based emit: deterministic pattern matching without speculation
 void CPP2Emitter::emit_depth_based(std::string_view source, std::ostream& out, const std::vector<PatternData>& patterns) const {
+    IncludeDeduper include_deduper;
+
     // Emit includes first
     auto includes = extract_std_includes(source);
     for (const auto& include : includes) {
         out << include << "\n";
+        include_deduper.note_emitted(include);
     }
+
     // Split on newlines for line-by-line processing
     std::vector<std::string_view> lines;
     size_t line_start = 0;
@@ -3261,99 +3487,122 @@ void CPP2Emitter::emit_depth_based(std::string_view source, std::ostream& out, c
     bool first = true;
     for (const auto& line : lines) {
     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit_depth_based: Processing line: '" << line << "'\n");
-        if (!first) out << "\n";
-        first = false;
 
-        auto matches = UnifiedPatternMatcher::find_matches(line, patterns, true);
-    CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit_depth_based: Found " << matches.size() << " matches\n");
+        std::string rendered_line;
+        std::string trimmed_line = trim_copy(line);
 
-        if (matches.empty()) {
-            std::string transformed_line = transform_function_signature_line(std::string(line), patterns);
-            if (!transformed_line.empty()) {
-                out << transformed_line;
+        if (!trimmed_line.empty() && trimmed_line.front() == '#') {
+            rendered_line.assign(line.begin(), line.end());
+        } else {
+            auto matches = UnifiedPatternMatcher::find_matches(line, patterns, true);
+        CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit_depth_based: Found " << matches.size() << " matches\n");
+
+            if (matches.empty()) {
+                std::string transformed_line = transform_function_signature_line(std::string(line), patterns);
+                if (!transformed_line.empty()) {
+                    rendered_line = std::move(transformed_line);
+                } else {
+                    rendered_line.assign(line.begin(), line.end());
+                }
             } else {
-                out << line;
+                size_t last_pos = 0;
+                rendered_line.reserve(line.size() * 2);
+
+                // Apply transformations in order (innermost first, as returned by find_matches)
+                for (const auto& match : matches) {
+                    // Emit text before this match
+                    if (last_pos < match.start_pos) {
+                        rendered_line.append(line.substr(last_pos, match.start_pos - last_pos));
+                    }
+
+                    // Apply substitution for this match
+                    int target_grammar = 2; // CPP target
+                    auto template_it = match.pattern->substitution_templates.find(target_grammar);
+
+                    CPP2_EMITTER_DEBUG({
+                        std::cerr << "DEBUG emit_depth_based: match pattern='" << match.pattern->name << "' start=" << match.start_pos << " end=" << match.end_pos << " segments=";
+                        for (size_t idx = 0; idx < match.segments.size(); ++idx) {
+                            if (idx != 0) {
+                                std::cerr << ", ";
+                            }
+                            std::cerr << "['" << match.segments[idx] << "']";
+                        }
+                        std::cerr << "\n";
+                    });
+
+                    if (template_it != match.pattern->substitution_templates.end()) {
+                        // Recursively transform segments (skip for template patterns - they have type expressions)
+                        std::vector<std::string> transformed_segments = match.segments;
+                        bool is_template = (match.pattern->name.find("template") != std::string::npos);
+                        bool is_function = (match.pattern->name.find("function") != std::string::npos);
+
+                        if (!is_template) {
+                            for (size_t i = 0; i < transformed_segments.size(); ++i) {
+                                auto& seg = transformed_segments[i];
+
+                                // Check if this segment is parameters based on evidence type
+                                bool is_parameters = (i < match.pattern->evidence_types.size() &&
+                                                    match.pattern->evidence_types[i] == "parameters");
+
+                                if (is_function && is_parameters) {
+                                    seg = transform_parameter(seg, patterns);
+                                } else {
+                                    // Top-level function body gets nesting_depth=1 (inside first function)
+                                    seg = apply_recursive_transformations(seg, patterns, 1);
+                                }
+                            }
+                        }
+
+                        // Apply substitution template (use template-aware version for template patterns)
+                        int placeholder_offset = match.pattern->use_alternating ? 1 : 0;
+                        std::string result;
+                        if (is_template) {
+                            result = apply_template_substitution(template_it->second, transformed_segments, placeholder_offset);
+                        } else {
+                            result = apply_substitution_with_offset(template_it->second, transformed_segments, placeholder_offset);
+                        }
+                        rendered_line.append(result);
+                    } else {
+                        // No template for target grammar - emit original
+                        rendered_line.append(line.substr(match.start_pos, match.end_pos - match.start_pos));
+                    }
+
+                    last_pos = match.end_pos;
+                }
+
+                // Emit remaining text from this line
+                if (last_pos < line.size()) {
+                    rendered_line.append(line.substr(last_pos));
+                }
             }
+        }
+
+        std::string filtered = include_deduper.filter(rendered_line);
+        if (filtered.empty()) {
             continue;
         }
 
-        size_t last_pos = 0;
-
-        // Apply transformations in order (innermost first, as returned by find_matches)
-        for (const auto& match : matches) {
-            // Emit text before this match
-            if (last_pos < match.start_pos) {
-                out << line.substr(last_pos, match.start_pos - last_pos);
-            }
-
-            // Apply substitution for this match
-            int target_grammar = 2; // CPP target
-            auto template_it = match.pattern->substitution_templates.find(target_grammar);
-
-            CPP2_EMITTER_DEBUG({
-                std::cerr << "DEBUG emit_depth_based: match pattern='" << match.pattern->name << "' start=" << match.start_pos << " end=" << match.end_pos << " segments=";
-                for (size_t idx = 0; idx < match.segments.size(); ++idx) {
-                    if (idx != 0) {
-                        std::cerr << ", ";
-                    }
-                    std::cerr << "['" << match.segments[idx] << "']";
-                }
-                std::cerr << "\n";
-            });
-
-            if (template_it != match.pattern->substitution_templates.end()) {
-                // Recursively transform segments (skip for template patterns - they have type expressions)
-                std::vector<std::string> transformed_segments = match.segments;
-                bool is_template = (match.pattern->name.find("template") != std::string::npos);
-                bool is_function = (match.pattern->name.find("function") != std::string::npos);
-
-                if (!is_template) {
-                    for (size_t i = 0; i < transformed_segments.size(); ++i) {
-                        auto& seg = transformed_segments[i];
-
-                        // Check if this segment is parameters based on evidence type
-                        bool is_parameters = (i < match.pattern->evidence_types.size() &&
-                                            match.pattern->evidence_types[i] == "parameters");
-
-                        if (is_function && is_parameters) {
-                            seg = transform_parameter(seg, patterns);
-                        } else {
-                            // Top-level function body gets nesting_depth=1 (inside first function)
-                            seg = apply_recursive_transformations(seg, patterns, 1);
-                        }
-                    }
-                }
-
-                // Apply substitution template (use template-aware version for template patterns)
-                int placeholder_offset = match.pattern->use_alternating ? 1 : 0;
-                std::string result;
-                if (is_template) {
-                    result = apply_template_substitution(template_it->second, transformed_segments, placeholder_offset);
-                } else {
-                    result = apply_substitution_with_offset(template_it->second, transformed_segments, placeholder_offset);
-                }
-                out << result;
-            } else {
-                // No template for target grammar - emit original
-                out << line.substr(match.start_pos, match.end_pos - match.start_pos);
+        if (!first) {
+            out << "\n";
         }
-
-            last_pos = match.end_pos;
-        }
-
-        // Emit remaining text from this line
-        if (last_pos < line.size()) {
-            out << line.substr(last_pos);
-        }
+        first = false;
+        out << filtered;
     }
 }
 
 void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::ostream& out, const std::vector<PatternData>& patterns) const {
+    IncludeDeduper include_deduper;
+
     // Emit includes first
     auto includes = extract_std_includes(source);
     for (const auto& include : includes) {
         out << include << "\n";
+        include_deduper.note_emitted(include);
     }
+
+    auto sanitize_segment = [&](std::string text) {
+        return include_deduper.filter(text);
+    };
 
     // Reset iterator to beginning
     iterator.reset();
@@ -3387,7 +3636,8 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
                 if (rewritten_initial != initial) {
                     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Rewritten initial -> '" << rewritten_initial << "'\n");
                 }
-                out << rewritten_initial;
+                std::string sanitized = sanitize_segment(std::move(rewritten_initial));
+                out << sanitized;
                 last_pos = confix->start_pos;
                 found_first_orbit = true;
             }
@@ -3410,7 +3660,8 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
                 if (rewritten_gap != gap) {
                     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Rewritten gap -> '" << rewritten_gap << "'\n");
                 }
-                out << rewritten_gap;
+                std::string sanitized = sanitize_segment(std::move(rewritten_gap));
+                out << sanitized;
                 last_pos = confix->start_pos;
             }
             
@@ -3427,21 +3678,24 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
                 std::string rewritten_stmt;
                 if (try_template_alias_rewrite(confix->start_pos, source, patterns, consumed_end, rewritten_stmt)) {
                     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Template alias rewrite consumed up to " << consumed_end << "\n");
-                    out << rewritten_stmt;
+                    std::string sanitized = sanitize_segment(std::move(rewritten_stmt));
+                    out << sanitized;
                     skip_until = consumed_end;
                     last_pos = consumed_end;
                     continue;
                 }
                 if (try_union_rewrite(confix->start_pos, source, patterns, consumed_end, rewritten_stmt)) {
                     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Union rewrite consumed up to " << consumed_end << "\n");
-                    out << rewritten_stmt;
+                    std::string sanitized = sanitize_segment(std::move(rewritten_stmt));
+                    out << sanitized;
                     skip_until = consumed_end;
                     last_pos = consumed_end;
                     continue;
                 }
                 if (try_function_signature_rewrite(confix->start_pos, source, patterns, consumed_end, rewritten_stmt)) {
                     CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Function signature rewrite consumed up to " << consumed_end << "\n");
-                    out << rewritten_stmt;
+                    std::string sanitized = sanitize_segment(std::move(rewritten_stmt));
+                    out << sanitized;
                     skip_until = consumed_end;
                     last_pos = consumed_end;
                     continue;
@@ -3454,7 +3708,8 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
                         std::string var_rewritten = transform_variable_declaration(stmt);
                         if (!var_rewritten.empty() && var_rewritten != stmt) {
                             CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Variable rewrite consumed up to " << stmt_end << "\n");
-                            out << var_rewritten;
+                            std::string sanitized = sanitize_segment(std::move(var_rewritten));
+                            out << sanitized;
                             skip_until = stmt_end;
                             last_pos = stmt_end;
                             continue;
@@ -3487,7 +3742,8 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
         if (rewritten_trailing != trailing) {
             CPP2_EMITTER_DEBUG(std::cerr << "DEBUG emit: Rewritten trailing segment -> '" << rewritten_trailing << "'\n");
         }
-        out << rewritten_trailing;
+        std::string sanitized = sanitize_segment(std::move(rewritten_trailing));
+        out << sanitized;
     }
 }
 
