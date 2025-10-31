@@ -1,8 +1,0 @@
-// Test scanner hint propagation to parent depth
-main: () = {
-    // This should trigger scanner hint propagation
-    nested: () = {
-        value: i32 = 42;
-    }
-    nested();
-}

@@ -1,0 +1,4 @@
+#include <iostream>
+auto main() -> int {
+    std::cout << "Hello from auto main() syntax!\n";
+}

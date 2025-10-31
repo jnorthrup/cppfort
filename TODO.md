@@ -2,7 +2,7 @@
 
 ## TEST STATUS (2025-10-28)
 
-**Stage0 Unit Tests: 6/6 passing (100%)**
+### Stage0 Unit Tests: 6/6 passing (100%)
 
 - test_reality_check: PASS
 - test_confix_depth: PASS
@@ -11,21 +11,18 @@
 - test_tblgen_integration: PASS
 - test_depth_matcher: PASS
 
-**Reality Check (Feature Tests): 4/8 passing (50%)**
+### Reality Check (Feature Tests): 8/8 passing (100%)
 
 PASSING:
 
 - simple_main: CPP2 function with variable declaration → C++
 - parameter_inout: inout parameter lowered to `std::string&` with include emission
+- template_alias: template type alias lowers to correct `using` declaration
 - include_generation: std::vector usage emits required #include
 - walrus_operator: := auto variable declaration
-
-FAILING:
-
-- template_alias: Template type alias transformation (pattern selection still broken)
-- forward_declaration: Multiline pattern matching (newlines in anchors)
-- nested_patterns: Lambda generation for nested functions (recursive transformation)
-- contracts: Contract syntax placement (pre-condition handling)
+- forward_declaration: extern declaration + definition pairing
+- nested_patterns: lambda generation inside function bodies
+- contracts: pre-condition attributes emitted with function signature
 
 Run `cd src/stage0/build && ./test_reality_check` for current feature status.
 
@@ -172,7 +169,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 
 - [x] Add class Orbit to orbit_ring.h
 - [x] Add OrbitType enum (Confix, Keyword, Operator, Identifier, Literal)
-- [x] Add std::vector<EvidenceSpan> evidence member
+- [x] Add `std::vector<EvidenceSpan>` evidence member
 - [x] Add std::map<GrammarType, Orbit*> grammar_children member
 - [x] Add void assign_child(GrammarType g, Orbit* child) method
 - [x] Add Orbit* get_child(GrammarType g) method
@@ -259,7 +256,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 ### 3.2 Create CombinatorPool class
 
 - [x] Add class CombinatorPool to rbcursive.h
-- [x] Add std::vector<RBCursiveScanner> pool member
+- [x] Add `std::vector<RBCursiveScanner>` pool member
 - [x] Add RBCursiveScanner* allocate() method
 - [x] Add void release(RBCursiveScanner* c) method
 - [x] Add size_t available() const method
@@ -279,7 +276,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 
 - [x] Add class PatternLoader to pattern_loader.h
 - [x] Add bool load_yaml(const std::string& path) method
-- [x] Add std::vector<PatternData> patterns member
+- [x] Add `std::vector<PatternData>` patterns member
 - [x] Add struct PatternData with name, anchors, segments fields
 - [x] Add size_t pattern_count() const method
 
@@ -344,7 +341,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 
 ### 6.2 Add evidence to orbits
 
-- [x] Add std::vector<EvidenceSpan> evidence to Orbit base class
+- [x] Add `std::vector<EvidenceSpan>` evidence to Orbit base class
 - [x] Add void add_evidence(const EvidenceSpan& e) method
 - [x] Add EvidenceSpan* get_evidence(size_t index) method
 - [x] Add size_t evidence_count() const method
@@ -368,7 +365,7 @@ qi::rule<Iterator, std::string(), qi::locals<char>> identifier
 
 ### 7.2 Add speculation to combinators
 
-- [x] Add std::vector<SpeculativeMatch> matches to RBCursiveScanner
+- [x] Add `std::vector<SpeculativeMatch>` matches to RBCursiveScanner
 - [x] Add void speculate(const std::string& text) method
 - [x] Try all patterns in parallel
 - [x] Store matches with confidence scores

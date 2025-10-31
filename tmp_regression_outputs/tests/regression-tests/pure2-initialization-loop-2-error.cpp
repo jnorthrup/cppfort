@@ -1,0 +1,12 @@
+
+void f() { int i;
+    if true {
+        while true {
+            i = 42;     // ERROR: can't initialize i in a loop
+        }
+        i = 42;
+    }
+    else {
+        i = 42;
+    }
+    i = 42; }
