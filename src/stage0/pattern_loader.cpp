@@ -42,6 +42,19 @@ std::string strip_quotes(std::string value) {
     return value;
 }
 
+template <typename T>
+bool assign_scalar(const YAML::Node& node, T& out) {
+    if (!node || !node.IsScalar()) {
+        return false;
+    }
+    try {
+        out = node.as<T>();
+        return true;
+    } catch (const YAML::BadConversion&) {
+        return false;
+    }
+}
+
 ::cppfort::ir::GrammarType parseGrammarType(const std::string& key) {
     using ::cppfort::ir::GrammarType;
     if (key == "C") return GrammarType::C;
@@ -92,31 +105,63 @@ std::optional<double> parse_double_value(std::string_view text) {
 bool PatternLoader::load_yaml(const std::string& path) {
     patterns_.clear();
 
+    auto load_sequence = [&](const YAML::Node& sequence_node) {
+        if (!sequence_node || !sequence_node.IsSequence()) {
+            return;
+        }
+        for (const auto& pattern_node : sequence_node) {
+            load_pattern(pattern_node);
+        }
+    };
+
     try {
         std::vector<YAML::Node> documents = YAML::LoadAllFromFile(path);
-        
+
         if (documents.empty()) {
             std::cerr << "PatternLoader: No documents found in " << path << std::endl;
             return false;
         }
 
-        // If single document and it's a sequence, use it directly
-        if (documents.size() == 1 && documents[0].IsSequence()) {
-            for (const auto& pattern_node : documents[0]) {
-                if (load_pattern(pattern_node)) {
-                    // Pattern loaded successfully
-                }
-            }
-            return true;
-        }
-        
-        // If multiple documents, treat each as a pattern
         for (const auto& doc : documents) {
-            if (load_pattern(doc)) {
-                // Pattern loaded successfully
+            if (doc.IsSequence()) {
+                load_sequence(doc);
+                continue;
+            }
+
+            if (doc.IsMap()) {
+                static const std::vector<std::string> container_keys = {
+                    "patterns",
+                    "cpp2_canonical_patterns",
+                    "cpp2_patterns",
+                    "cpp1_patterns",
+                    "pattern_list"
+                };
+
+                bool handled_container = false;
+                for (const auto& key : container_keys) {
+                    if (doc[key]) {
+                        load_sequence(doc[key]);
+                        handled_container = true;
+                    }
+                }
+
+                if (handled_container) {
+                    continue;
+                }
+
+                if (load_pattern(doc)) {
+                    continue;
+                }
+
+                std::cerr << "PatternLoader: Unrecognized pattern document in " << path << std::endl;
+                continue;
+            }
+
+            if (!load_pattern(doc)) {
+                std::cerr << "PatternLoader: Pattern missing name" << std::endl;
             }
         }
-        
+
         return !patterns_.empty();
     } catch (const YAML::Exception& e) {
         std::cerr << "PatternLoader: YAML parsing error in " << path << ": " << e.what() << std::endl;
@@ -134,37 +179,18 @@ bool PatternLoader::load_pattern(const YAML::Node& pattern_node) {
         return false;
     }
 
-    if (pattern_node["orbit_id"]) {
-        pattern.orbit_id = pattern_node["orbit_id"].as<int>();
-    }
+    assign_scalar(pattern_node["orbit_id"], pattern.orbit_id);
+    assign_scalar(pattern_node["weight"], pattern.weight);
+    assign_scalar(pattern_node["priority"], pattern.priority);
+    assign_scalar(pattern_node["grammar_modes"], pattern.grammar_modes);
+    assign_scalar(pattern_node["lattice_filter"], pattern.lattice_filter);
 
-    if (pattern_node["weight"]) {
-        pattern.weight = pattern_node["weight"].as<double>();
-    }
-
-    if (pattern_node["priority"]) {
-        pattern.priority = pattern_node["priority"].as<int>();
-    }
-
-    if (pattern_node["grammar_modes"]) {
-        pattern.grammar_modes = pattern_node["grammar_modes"].as<int>();
-    }
-
-    if (pattern_node["lattice_filter"]) {
-        pattern.lattice_filter = pattern_node["lattice_filter"].as<int>();
-    }
-
-    if (pattern_node["scope_requirement"]) {
+    if (pattern_node["scope_requirement"] && pattern_node["scope_requirement"].IsScalar()) {
         pattern.scope_requirement = pattern_node["scope_requirement"].as<std::string>();
     }
 
-    if (pattern_node["confix_mask"]) {
-        pattern.confix_mask = pattern_node["confix_mask"].as<int>();
-    }
-
-    if (pattern_node["use_alternating"]) {
-        pattern.use_alternating = pattern_node["use_alternating"].as<bool>();
-    }
+    assign_scalar(pattern_node["confix_mask"], pattern.confix_mask);
+    assign_scalar(pattern_node["use_alternating"], pattern.use_alternating);
 
     if (pattern_node["alternating_anchors"] && pattern_node["alternating_anchors"].IsSequence()) {
         for (const auto& anchor : pattern_node["alternating_anchors"]) {

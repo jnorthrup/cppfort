@@ -6,23 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CTest)
 
-# Find yaml-cpp (optional for clean room compliance)
-find_package(yaml-cpp QUIET)
-if(NOT yaml-cpp_FOUND)
-    find_path(YAML_CPP_INCLUDE_DIR yaml-cpp/yaml.h PATHS /opt/homebrew/opt/yaml-cpp/include NO_DEFAULT_PATH)
-    find_library(YAML_CPP_LIBRARY yaml-cpp PATHS /opt/homebrew/opt/yaml-cpp/lib NO_DEFAULT_PATH)
-    if(YAML_CPP_INCLUDE_DIR AND YAML_CPP_LIBRARY)
-        add_library(yaml-cpp::yaml-cpp UNKNOWN IMPORTED)
-        set_target_properties(yaml-cpp::yaml-cpp PROPERTIES
-            IMPORTED_LOCATION "${YAML_CPP_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${YAML_CPP_INCLUDE_DIR}")
-        set(yaml-cpp_FOUND TRUE)
-    endif()
-endif()
-
-if(yaml-cpp_FOUND AND NOT TARGET yaml-cpp::yaml-cpp)
-    set(yaml-cpp_FOUND FALSE)
-endif()
+# yaml-cpp is now provided via FetchContent in root CMakeLists.txt
+# This ensures ABI compatibility across all platforms
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -64,9 +49,6 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp
 # Temporarily remove broken files (need fixing)
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_pattern_extractor.cpp")  # Broken - doesn't match header
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unified_orbit_patterns.cpp")  # yaml-cpp
-if(NOT yaml-cpp_FOUND)
-    list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_loader.cpp")  # Requires yaml-cpp
-endif()
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/multi_grammar_loader.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.cpp")  # Temporarily broken - EvidenceSpan API mismatch
@@ -74,9 +56,7 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.
 # Create static library
 add_library(stage0_lib STATIC ${STAGE0_SOURCES})
 add_dependencies(stage0_lib tblgen_semantic_units)
-if(yaml-cpp_FOUND)
-    target_link_libraries(stage0_lib yaml-cpp::yaml-cpp)
-endif()
+target_link_libraries(stage0_lib yaml-cpp)
 
 # Create executable
 add_executable(stage0_cli main.cpp)

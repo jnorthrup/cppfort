@@ -52,6 +52,765 @@ std::string trim_copy(std::string_view text) {
     return std::string{text.substr(begin, end - begin)};
 }
 
+bool is_control_keyword(std::string_view word) {
+    static const std::unordered_set<std::string> control_keywords = {
+        "if", "for", "while", "switch", "catch"
+    };
+    return control_keywords.count(std::string(word)) > 0;
+}
+
+std::string extract_function_name(std::string_view signature_prefix) {
+    size_t end = signature_prefix.size();
+    while (end > 0 && std::isspace(static_cast<unsigned char>(signature_prefix[end - 1]))) {
+        --end;
+    }
+    size_t start = end;
+    while (start > 0) {
+        char ch = signature_prefix[start - 1];
+        if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '~') {
+            --start;
+        } else {
+            break;
+        }
+    }
+    if (start == end) {
+        return {};
+    }
+    return std::string(signature_prefix.substr(start, end - start));
+}
+
+size_t find_insertion_after_includes(const std::string& text) {
+    size_t search_pos = 0;
+    size_t last_include_end = 0;
+    bool found_include = false;
+    while (true) {
+        size_t include_pos = text.find("#include", search_pos);
+        if (include_pos == std::string::npos) {
+            break;
+        }
+        found_include = true;
+        size_t line_end = text.find('\n', include_pos);
+        if (line_end == std::string::npos) {
+            last_include_end = text.size();
+            return last_include_end;
+        }
+        last_include_end = line_end + 1;
+        search_pos = line_end + 1;
+    }
+    if (!found_include) {
+        return 0;
+    }
+    // Skip any blank lines immediately following the include block
+    size_t insertion = last_include_end;
+    while (insertion < text.size() && (text[insertion] == '\n' || text[insertion] == '\r')) {
+        ++insertion;
+    }
+    return insertion;
+}
+
+std::vector<std::string> collect_top_level_function_prototypes(const std::string& text) {
+    std::vector<std::string> prototypes;
+    std::unordered_set<std::string> seen_signatures;
+
+    size_t current = 0;
+    int depth = 0;
+
+    while (current < text.size()) {
+        size_t line_end = text.find('\n', current);
+        if (line_end == std::string::npos) {
+            line_end = text.size();
+        }
+        std::string line = text.substr(current, line_end - current);
+        std::string trimmed = trim_copy(line);
+        int depth_before_line = depth;
+
+        if (depth_before_line == 0 && !trimmed.empty() && trimmed[0] != '#') {
+            size_t brace_pos = line.find('{');
+            if (brace_pos != std::string::npos) {
+                std::string signature = trim_copy(line.substr(0, brace_pos));
+                size_t paren_pos = signature.find('(');
+                size_t equals_pos = signature.find('=');
+                if (paren_pos != std::string::npos &&
+                    (equals_pos == std::string::npos || equals_pos > paren_pos) &&
+                    signature.find("operator") == std::string::npos &&
+                    signature.find("class") == std::string::npos &&
+                    signature.find("struct") == std::string::npos &&
+                    signature.find("enum") == std::string::npos &&
+                    signature.find("namespace") == std::string::npos) {
+
+                    std::string name = extract_function_name(signature.substr(0, paren_pos));
+                    if (!name.empty() && !is_control_keyword(name) && name != "main") {
+                        if (seen_signatures.insert(signature).second) {
+                            std::string prototype = signature;
+                            if (!prototype.empty() && prototype.back() == '\r') {
+                                prototype.pop_back();
+                            }
+                            prototype.append(";");
+                            prototypes.push_back(std::move(prototype));
+                        }
+                    }
+                }
+            }
+        }
+
+        for (char ch : line) {
+            if (ch == '{') {
+                ++depth;
+            } else if (ch == '}') {
+                if (depth > 0) {
+                    --depth;
+                }
+            }
+        }
+
+        if (line_end == text.size()) {
+            break;
+        }
+        current = line_end + 1;
+    }
+
+    return prototypes;
+}
+
+std::string finalize_cpp2_output(std::string text) {
+    constexpr std::string_view cpp2_header = "#include \"cpp2util.h\"\n";
+
+    if (text.find("cpp2util.h") == std::string::npos) {
+        size_t insert_pos = find_insertion_after_includes(text);
+        std::string header_line(cpp2_header);
+        if (insert_pos == 0) {
+            text.insert(0, header_line + "\n");
+        } else {
+            text.insert(insert_pos, header_line);
+        }
+    }
+
+    auto prototypes = collect_top_level_function_prototypes(text);
+    if (!prototypes.empty()) {
+        size_t insert_pos = find_insertion_after_includes(text);
+        std::string block;
+        if (insert_pos > 0 && insert_pos <= text.size() && text[insert_pos - 1] != '\n') {
+            block.push_back('\n');
+        }
+        for (const auto& proto : prototypes) {
+            block.append(proto);
+            block.push_back('\n');
+        }
+        block.push_back('\n');
+        text.insert(insert_pos, block);
+    }
+
+    return text;
+}
+
+size_t find_keyword_outside(std::string_view text, std::string_view keyword, size_t start_pos) {
+    bool in_string = false;
+    bool in_char = false;
+    bool escape = false;
+
+    for (size_t i = start_pos; i + keyword.size() <= text.size(); ++i) {
+        char ch = text[i];
+
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (in_string) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if (in_char) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '\'') {
+                in_char = false;
+            }
+            continue;
+        }
+
+        if (ch == '"') {
+            in_string = true;
+            continue;
+        }
+
+        if (ch == '\'') {
+            in_char = true;
+            continue;
+        }
+
+        if (text.compare(i, keyword.size(), keyword) == 0) {
+            bool boundary_before = (i == 0) || (!std::isalnum(static_cast<unsigned char>(text[i - 1])) && text[i - 1] != '_');
+            char after_char = (i + keyword.size() < text.size()) ? text[i + keyword.size()] : ' ';
+            bool boundary_after = (i + keyword.size() >= text.size()) || (!std::isalnum(static_cast<unsigned char>(after_char)) && after_char != '_');
+            if (boundary_before && boundary_after) {
+                return i;
+            }
+        }
+    }
+
+    return std::string::npos;
+}
+
+std::string rewrite_using_namespace_placeholder(std::string statement) {
+    std::string trimmed = trim_copy(statement);
+    if (!trimmed.starts_with("using ")) {
+        return statement;
+    }
+
+    const std::string target_prefix = "using std::";
+    if (!trimmed.starts_with(target_prefix)) {
+        return statement;
+    }
+
+    if (!trimmed.ends_with("_ ;") && !trimmed.ends_with("_ ;") && !trimmed.ends_with("_;") ) {
+        return statement;
+    }
+
+    size_t literal_pos = trimmed.find("::_");
+    if (literal_pos == std::string::npos) {
+        return statement;
+    }
+
+    std::string ns = trimmed.substr(6, literal_pos - 6);
+    ns = trim_copy(ns);
+    if (ns.empty()) {
+        return statement;
+    }
+
+    std::string indent;
+    size_t first_non_ws = statement.find_first_not_of(" \t");
+    if (first_non_ws != std::string::npos) {
+        indent = statement.substr(0, first_non_ws);
+    }
+
+    std::string rebuilt = indent + "using namespace " + ns + ";";
+    return rebuilt;
+}
+
+std::string rewrite_default_placeholders(std::string statement) {
+    std::string result;
+    result.reserve(statement.size());
+
+    bool changed = false;
+    bool in_string = false;
+    bool in_char = false;
+    bool escape = false;
+    int paren_depth = 0;
+    int brace_depth = 0;
+    int bracket_depth = 0;
+
+    for (size_t i = 0; i < statement.size(); ++i) {
+        char ch = statement[i];
+
+        result.push_back(ch);
+
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (in_string) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if (in_char) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '\'') {
+                in_char = false;
+            }
+            continue;
+        }
+
+        if (ch == '"') {
+            in_string = true;
+            continue;
+        }
+
+        if (ch == '\'') {
+            in_char = true;
+            continue;
+        }
+
+        if (ch == '(') {
+            ++paren_depth;
+
+            if (paren_depth > 1 && i + 1 < statement.size() && statement[i + 1] == ')') {
+                result.back() = '{';
+                result.push_back('}');
+                ++i; // skip ')'
+                changed = true;
+                continue;
+            }
+            continue;
+        }
+
+        if (ch == ')') {
+            if (paren_depth > 0) {
+                --paren_depth;
+            }
+            continue;
+        }
+
+        if (ch == '{') {
+            ++brace_depth;
+            continue;
+        }
+
+        if (ch == '}') {
+            if (brace_depth > 0) {
+                --brace_depth;
+            }
+            continue;
+        }
+
+        if (ch == '[') {
+            ++bracket_depth;
+            continue;
+        }
+
+        if (ch == ']') {
+            if (bracket_depth > 0) {
+                --bracket_depth;
+            }
+            continue;
+        }
+    }
+
+    if (changed) {
+        return result;
+    }
+    return statement;
+}
+
+bool is_literal_template_candidate(std::string_view text) {
+    auto trimmed = trim_copy(text);
+    if (trimmed.empty()) {
+        return false;
+    }
+
+    if (trimmed.front() == '\'' && trimmed.back() == '\'' && trimmed.size() >= 3) {
+        return true;
+    }
+
+    size_t idx = 0;
+    bool has_digits = false;
+
+    auto consume_digit_like = [&](char c) {
+        if (c == '\'') {
+            return true;
+        }
+        if (std::isdigit(static_cast<unsigned char>(c))) {
+            has_digits = true;
+            return true;
+        }
+        return false;
+    };
+
+    if (trimmed[idx] == '0' && idx + 1 < trimmed.size() && (trimmed[idx + 1] == 'x' || trimmed[idx + 1] == 'X')) {
+        idx += 2;
+        for (; idx < trimmed.size(); ++idx) {
+            char c = trimmed[idx];
+            if (c == '\'') {
+                continue;
+            }
+            if (std::isxdigit(static_cast<unsigned char>(c))) {
+                has_digits = true;
+                continue;
+            }
+            break;
+        }
+    } else if (trimmed[idx] == '0' && idx + 1 < trimmed.size() && (trimmed[idx + 1] == 'b' || trimmed[idx + 1] == 'B')) {
+        idx += 2;
+        for (; idx < trimmed.size(); ++idx) {
+            char c = trimmed[idx];
+            if (c == '\'') {
+                continue;
+            }
+            if (c == '0' || c == '1') {
+                has_digits = true;
+                continue;
+            }
+            break;
+        }
+    } else {
+        for (; idx < trimmed.size(); ++idx) {
+            char c = trimmed[idx];
+            if (!consume_digit_like(c)) {
+                break;
+            }
+        }
+    }
+
+    if (!has_digits) {
+        return false;
+    }
+
+    static constexpr std::string_view allowed_suffix_chars = "uUlLzZ";
+    for (; idx < trimmed.size(); ++idx) {
+        char c = trimmed[idx];
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            continue;
+        }
+        if (allowed_suffix_chars.find(c) == std::string_view::npos) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+size_t find_matching_delimiter(const std::string& text, size_t open_pos, char open_ch, char close_ch) {
+    bool in_string = false;
+    bool in_char = false;
+    bool escape = false;
+    int depth = 0;
+
+    for (size_t i = open_pos; i < text.size(); ++i) {
+        char ch = text[i];
+
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (in_string) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if (in_char) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '\'') {
+                in_char = false;
+            }
+            continue;
+        }
+
+        if (ch == '"') {
+            in_string = true;
+            continue;
+        }
+
+        if (ch == '\'') {
+            in_char = true;
+            continue;
+        }
+
+        if (ch == open_ch) {
+            ++depth;
+            continue;
+        }
+
+        if (ch == close_ch) {
+            if (--depth == 0) {
+                return i;
+            }
+        }
+    }
+
+    return std::string::npos;
+}
+
+std::vector<std::string> split_top_level(std::string_view text) {
+    std::vector<std::string> parts;
+    size_t last = 0;
+    int angle = 0;
+    int paren = 0;
+    int brace = 0;
+    int bracket = 0;
+    bool in_string = false;
+    bool in_char = false;
+    bool escape = false;
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        char ch = text[i];
+
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (in_string) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if (in_char) {
+            if (ch == '\\') {
+                escape = true;
+            } else if (ch == '\'') {
+                in_char = false;
+            }
+            continue;
+        }
+
+        if (ch == '"') {
+            in_string = true;
+            continue;
+        }
+
+        if (ch == '\'') {
+            in_char = true;
+            continue;
+        }
+
+        switch (ch) {
+            case '<': ++angle; break;
+            case '>': if (angle > 0) --angle; break;
+            case '(': ++paren; break;
+            case ')': if (paren > 0) --paren; break;
+            case '{': ++brace; break;
+            case '}': if (brace > 0) --brace; break;
+            case '[': ++bracket; break;
+            case ']': if (bracket > 0) --bracket; break;
+            case ',':
+                if (angle == 0 && paren == 0 && brace == 0 && bracket == 0) {
+                    parts.push_back(trim_copy(text.substr(last, i - last)));
+                    last = i + 1;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (last <= text.size()) {
+        parts.push_back(trim_copy(text.substr(last)));
+    }
+    return parts;
+}
+
+std::string rewrite_contract_statement(const std::string& statement) {
+    std::string trimmed = trim_copy(statement);
+    if (!trimmed.starts_with("pre<") && !trimmed.starts_with("post<")) {
+        return {};
+    }
+
+    bool is_post = trimmed.starts_with("post<");
+    size_t template_start = trimmed.find('<');
+    size_t template_end = find_matching_delimiter(trimmed, template_start, '<', '>');
+    if (template_start == std::string::npos || template_end == std::string::npos) {
+        return {};
+    }
+
+    size_t args_start = trimmed.find('(', template_end + 1);
+    size_t args_end = find_matching_delimiter(trimmed, args_start, '(', ')');
+    if (args_start == std::string::npos || args_end == std::string::npos) {
+        return {};
+    }
+
+    std::string contract_targets = trimmed.substr(template_start + 1, template_end - template_start - 1);
+    std::vector<std::string> targets = split_top_level(contract_targets);
+    if (targets.empty()) {
+        return {};
+    }
+
+    std::string args_text = trimmed.substr(args_start + 1, args_end - args_start - 1);
+    std::vector<std::string> args = split_top_level(args_text);
+    if (args.empty()) {
+        return {};
+    }
+
+    std::string condition = trim_copy(args[0]);
+    std::string message = (args.size() > 1) ? trim_copy(args[1]) : std::string{""""};
+    if (message.empty()) {
+        message = "\"\"";
+    }
+
+    std::string indent;
+    size_t first_non_ws = statement.find_first_not_of(" \t");
+    if (first_non_ws != std::string::npos) {
+        indent = statement.substr(0, first_non_ws);
+    }
+
+    std::string guard_chain;
+    if (targets.size() > 1) {
+        for (size_t i = 1; i < targets.size(); ++i) {
+            if (!targets[i].empty()) {
+                guard_chain += trim_copy(targets[i]);
+                guard_chain += " && ";
+            }
+        }
+    }
+
+    std::string system = trim_copy(targets[0]);
+    if (system.empty()) {
+        return {};
+    }
+
+    std::string result;
+    result.reserve(statement.size() * 2);
+
+    result += indent;
+    result += "if (";
+    if (!guard_chain.empty()) {
+        result += guard_chain;
+    }
+    result += "cpp2::" + system + ".is_active() && !(" + condition + ") ) { ";
+    result += "cpp2::" + system + ".report_violation(CPP2_CONTRACT_MSG(" + message + "));";
+    result += " }";
+
+    if (is_post) {
+        result += "\n";
+    }
+
+    return result;
+}
+
+std::string rewrite_as_expressions(std::string statement) {
+    bool changed = false;
+    size_t search_pos = 0;
+
+    while (true) {
+        size_t pos = find_keyword_outside(statement, "as", search_pos);
+        if (pos == std::string::npos) {
+            break;
+        }
+
+        if (pos == 0 || pos + 2 >= statement.size()) {
+            search_pos = pos + 2;
+            continue;
+        }
+
+        if (!std::isspace(static_cast<unsigned char>(statement[pos - 1])) && statement[pos - 1] != '(') {
+            search_pos = pos + 2;
+            continue;
+        }
+
+        size_t rhs_start = pos + 2;
+        while (rhs_start < statement.size() && std::isspace(static_cast<unsigned char>(statement[rhs_start]))) {
+            ++rhs_start;
+        }
+        if (rhs_start >= statement.size()) {
+            break;
+        }
+
+        size_t lhs_end = pos;
+        while (lhs_end > 0 && std::isspace(static_cast<unsigned char>(statement[lhs_end - 1]))) {
+            --lhs_end;
+        }
+        if (lhs_end == 0) {
+            search_pos = pos + 2;
+            continue;
+        }
+
+        size_t lhs_start = 0;
+        int paren = 0;
+        int brace = 0;
+        int bracket = 0;
+        for (size_t i = lhs_end; i > 0; --i) {
+            char ch = statement[i - 1];
+            switch (ch) {
+                case ')': ++paren; break;
+                case '(': if (paren > 0) { --paren; } else { lhs_start = i - 1; goto lhs_done; }
+                          break;
+                case '}': ++brace; break;
+                case '{': if (brace > 0) { --brace; } else { lhs_start = i - 1; goto lhs_done; }
+                          break;
+                case ']': ++bracket; break;
+                case '[': if (bracket > 0) { --bracket; } else { lhs_start = i - 1; goto lhs_done; }
+                          break;
+                default:
+                    if (paren == 0 && brace == 0 && bracket == 0) {
+                        if (ch == ',' || ch == ';' || ch == '=' || ch == '+' || ch == '-' || ch == '*' || ch == '/' ||
+                            ch == '%' || ch == '|' || ch == '&' || ch == '^' || ch == '?' || ch == ':' || ch == '<' || ch == '>') {
+                            lhs_start = i;
+                            goto lhs_done;
+                        }
+                    }
+                    break;
+            }
+        }
+        lhs_start = 0;
+lhs_done:
+        while (lhs_start < lhs_end && std::isspace(static_cast<unsigned char>(statement[lhs_start]))) {
+            ++lhs_start;
+        }
+        if (lhs_start >= lhs_end) {
+            search_pos = pos + 2;
+            continue;
+        }
+
+        size_t rhs_end = rhs_start;
+        int angle = 0;
+        int paren_rhs = 0;
+        int brace_rhs = 0;
+        for (size_t i = rhs_start; i < statement.size(); ++i) {
+            char ch = statement[i];
+            if (ch == '<') {
+                ++angle;
+            } else if (ch == '>') {
+                if (angle > 0) {
+                    --angle;
+                }
+            } else if (ch == '(') {
+                ++paren_rhs;
+            } else if (ch == ')') {
+                if (paren_rhs > 0) {
+                    --paren_rhs;
+                } else {
+                    rhs_end = i;
+                    break;
+                }
+            }
+
+            if (angle == 0 && paren_rhs == 0) {
+                if (ch == ',' || ch == ';' || ch == ')' || ch == ']' || ch == '}') {
+                    rhs_end = i;
+                    break;
+                }
+                if (ch == '=' || ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '%' ||
+                    ch == '|' || ch == '&' || ch == '^' || ch == '?' || ch == ':') {
+                    rhs_end = i;
+                    break;
+                }
+            }
+            rhs_end = i + 1;
+        }
+
+        std::string lhs = trim_copy(statement.substr(lhs_start, lhs_end - lhs_start));
+        std::string rhs = trim_copy(statement.substr(rhs_start, rhs_end - rhs_start));
+        if (lhs.empty() || rhs.empty()) {
+            search_pos = pos + 2;
+            continue;
+        }
+
+        std::string replacement;
+        if (is_literal_template_candidate(lhs)) {
+            replacement = "cpp2::impl::as_<" + rhs + ", " + lhs + ">()";
+        } else {
+            replacement = "cpp2::impl::as_<" + rhs + ">(" + lhs + ")";
+        }
+
+        statement.replace(lhs_start, rhs_end - lhs_start, replacement);
+        search_pos = lhs_start + replacement.size();
+        changed = true;
+    }
+
+    return statement;
+}
+
 std::optional<std::string> rewrite_known_ufcs_call(std::string_view expr_view) {
     std::string trimmed = trim_copy(expr_view);
     size_t dot_pos = trimmed.find('.');
@@ -530,6 +1289,58 @@ size_t find_statement_end(std::string_view text, size_t start_pos) {
                 in_char = false;
             }
             continue;
+        }
+
+        // Check for raw string literal: R"delimiter(content)delimiter"
+        if (ch == 'R' && pos + 1 < text.size() && text[pos + 1] == '"') {
+            // Extract delimiter
+            size_t delim_start = pos + 2;
+            size_t delim_end = text.find('(', delim_start);
+            if (delim_end != std::string::npos) {
+                std::string delimiter(text.substr(delim_start, delim_end - delim_start));
+                std::string end_marker = ")" + delimiter + "\"";
+                size_t content_start = delim_end + 1;
+                size_t raw_end = text.find(end_marker, content_start);
+                if (raw_end != std::string::npos) {
+                    pos = raw_end + end_marker.length() - 1;
+                    continue;
+                }
+            }
+        }
+
+        // Check for prefix raw string literals: uR"...", u8R"...", UR"...", LR"..."
+        if (pos + 2 < text.size() && text[pos + 1] == 'R' && text[pos + 2] == '"') {
+            char prefix = ch;
+            if (prefix == 'u' || prefix == 'U' || prefix == 'L') {
+                size_t delim_start = pos + 3;
+                size_t delim_end = text.find('(', delim_start);
+                if (delim_end != std::string::npos) {
+                    std::string delimiter(text.substr(delim_start, delim_end - delim_start));
+                    std::string end_marker = ")" + delimiter + "\"";
+                    size_t content_start = delim_end + 1;
+                    size_t raw_end = text.find(end_marker, content_start);
+                    if (raw_end != std::string::npos) {
+                        pos = raw_end + end_marker.length() - 1;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // Check for u8R"..." prefix
+        if (pos + 3 < text.size() && ch == 'u' && text[pos + 1] == '8' && text[pos + 2] == 'R' && text[pos + 3] == '"') {
+            size_t delim_start = pos + 4;
+            size_t delim_end = text.find('(', delim_start);
+            if (delim_end != std::string::npos) {
+                std::string delimiter(text.substr(delim_start, delim_end - delim_start));
+                std::string end_marker = ")" + delimiter + "\"";
+                size_t content_start = delim_end + 1;
+                size_t raw_end = text.find(end_marker, content_start);
+                if (raw_end != std::string::npos) {
+                    pos = raw_end + end_marker.length() - 1;
+                    continue;
+                }
+            }
         }
 
         if (ch == '"') {
@@ -3016,31 +3827,55 @@ std::string rewrite_statement_from_match(const std::string& statement, const Uni
 }
 
 std::string transform_statement(const std::string& statement, const std::vector<PatternData>& patterns, int nesting_depth) {
-    if (statement.empty()) {
-        return statement;
+    std::string working = statement;
+    if (working.empty()) {
+        return working;
     }
 
-    std::string trimmed_statement = trim_copy(statement);
+    if (auto contract = rewrite_contract_statement(working); !contract.empty()) {
+        return contract;
+    }
 
-    size_t leading_ws_pos = statement.find_first_not_of(" \t");
-    if (leading_ws_pos != std::string::npos && statement[leading_ws_pos] == '_' &&
+    std::string namespace_rewrite = rewrite_using_namespace_placeholder(working);
+    if (namespace_rewrite != working) {
+        return namespace_rewrite;
+    }
+
+    std::string placeholder_rewrite = rewrite_default_placeholders(working);
+    if (placeholder_rewrite != working) {
+        working = std::move(placeholder_rewrite);
+    }
+
+    std::string as_rewrite = rewrite_as_expressions(working);
+    if (as_rewrite != working) {
+        working = std::move(as_rewrite);
+    }
+
+    if (working.empty()) {
+        return working;
+    }
+
+    std::string trimmed_statement = trim_copy(working);
+
+    size_t leading_ws_pos = working.find_first_not_of(" \t");
+    if (leading_ws_pos != std::string::npos && working[leading_ws_pos] == '_' &&
         trimmed_statement.size() > 2 && trimmed_statement[1] == ' ' && trimmed_statement[2] == '=') {
-        size_t eq_pos = statement.find('=', leading_ws_pos);
+        size_t eq_pos = working.find('=', leading_ws_pos);
         if (eq_pos != std::string::npos) {
             // Skip compound operators like '==' or '+='
-            if (eq_pos + 1 < statement.size() && statement[eq_pos + 1] == '=') {
+            if (eq_pos + 1 < working.size() && working[eq_pos + 1] == '=') {
                 // Not a simple assignment, skip transformation
             } else {
-                size_t semi_pos = statement.find(';', eq_pos);
+                size_t semi_pos = working.find(';', eq_pos);
                 if (semi_pos != std::string::npos) {
-                    std::string expr = statement.substr(eq_pos + 1, semi_pos - eq_pos - 1);
+                    std::string expr = working.substr(eq_pos + 1, semi_pos - eq_pos - 1);
                     std::string sanitized_expr = trim_copy(expr);
                     if (!sanitized_expr.empty()) {
                         if (auto rewritten = rewrite_known_ufcs_call(sanitized_expr)) {
                             sanitized_expr = *rewritten;
                         }
-                        std::string prefix = statement.substr(0, leading_ws_pos);
-                        std::string suffix = statement.substr(semi_pos + 1);
+                        std::string prefix = working.substr(0, leading_ws_pos);
+                        std::string suffix = working.substr(semi_pos + 1);
                         return prefix + "static_cast<void>(" + sanitized_expr + ");" + suffix;
                     }
                 }
@@ -3048,24 +3883,24 @@ std::string transform_statement(const std::string& statement, const std::vector<
         }
     }
 
-    if (statement.front() == '{') {
-        size_t first_non_ws = statement.find_first_not_of(" \t\n\r");
-        size_t last_non_ws = statement.find_last_not_of(" \t\n\r");
+    if (working.front() == '{') {
+        size_t first_non_ws = working.find_first_not_of(" \t\n\r");
+        size_t last_non_ws = working.find_last_not_of(" \t\n\r");
         if (first_non_ws == std::string::npos || last_non_ws == std::string::npos) {
-            return statement;
+            return working;
         }
 
-        size_t open_brace = statement.find('{', first_non_ws);
+        size_t open_brace = working.find('{', first_non_ws);
         if (open_brace == std::string::npos) {
-            return statement;
+            return working;
         }
-        if (statement[last_non_ws] != '}' || last_non_ws <= open_brace) {
-            return statement;
+        if (working[last_non_ws] != '}' || last_non_ws <= open_brace) {
+            return working;
         }
 
-        std::string prefix = statement.substr(0, open_brace);
-        std::string suffix = statement.substr(last_non_ws + 1);
-        std::string inner = statement.substr(open_brace + 1, last_non_ws - open_brace - 1);
+        std::string prefix = working.substr(0, open_brace);
+        std::string suffix = working.substr(last_non_ws + 1);
+        std::string inner = working.substr(open_brace + 1, last_non_ws - open_brace - 1);
         std::string transformed_inner = apply_recursive_transformations(inner, patterns, nesting_depth + 1);
         std::string trimmed_inner = trim_copy(transformed_inner);
         std::string rebuilt = trimmed_inner.empty() ? std::string{"{}"}
@@ -3073,13 +3908,13 @@ std::string transform_statement(const std::string& statement, const std::vector<
         return prefix + rebuilt + suffix;
     }
 
-    auto matches = UnifiedPatternMatcher::find_matches(statement, patterns, true, 0);
+    auto matches = UnifiedPatternMatcher::find_matches(working, patterns, true, 0);
     if (matches.empty()) {
-        std::string fallback = transform_variable_declaration(statement);
-        if (!fallback.empty() && fallback != statement) {
+        std::string fallback = transform_variable_declaration(working);
+        if (!fallback.empty() && fallback != working) {
             return fallback;
         }
-        return statement;
+        return working;
     }
 
     const UnifiedPatternMatch* best_match = nullptr;
@@ -3102,16 +3937,16 @@ std::string transform_statement(const std::string& statement, const std::vector<
     }
 
     if (!best_match) {
-        std::string fallback = transform_variable_declaration(statement);
-        if (!fallback.empty() && fallback != statement) {
+        std::string fallback = transform_variable_declaration(working);
+        if (!fallback.empty() && fallback != working) {
             return fallback;
         }
-        return statement;
+        return working;
     }
 
-    std::string rewritten = rewrite_statement_from_match(statement, *best_match, patterns, nesting_depth);
+    std::string rewritten = rewrite_statement_from_match(working, *best_match, patterns, nesting_depth);
     if (rewritten.empty()) {
-        return statement;
+        return working;
     }
     return rewritten;
 }
@@ -3590,7 +4425,9 @@ void CPP2Emitter::emit_depth_based(std::string_view source, std::ostream& out, c
     }
 }
 
-void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::ostream& out, const std::vector<PatternData>& patterns) const {
+void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::ostream& raw_out, const std::vector<PatternData>& patterns) const {
+    std::ostringstream generated_output;
+    std::ostream& out = generated_output;
     IncludeDeduper include_deduper;
 
     // Emit includes first
@@ -3745,6 +4582,8 @@ void CPP2Emitter::emit(OrbitIterator& iterator, std::string_view source, std::os
         std::string sanitized = sanitize_segment(std::move(rewritten_trailing));
         out << sanitized;
     }
+
+    raw_out << finalize_cpp2_output(generated_output.str());
 }
 
 void CPP2Emitter::emit_fragment(const OrbitFragment& fragment, std::string_view source, std::ostream& out) const {

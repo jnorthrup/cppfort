@@ -1,11 +1,11 @@
-Regression test log - Thu Oct 30 15:01:07 2025
+Regression test log - Thu Oct 30 22:46:10 2025
 Using stage0_cli: "/Users/jim/work/cppfort/./build/src/stage0/stage0_cli" transpile
 Patterns: "/Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml"
 
 Testing exact_test.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile exact_test.cpp2 exact_test.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o exact_test exact_test.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o exact_test exact_test.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/exact_test > /Users/jim/work/cppfort/tests/regression-tests/output_exact_test.txt 2>&1
   Run OK
@@ -14,7 +14,7 @@ Testing exact_test.cpp2
 Testing mixed-allcpp1-hello.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-allcpp1-hello.cpp2 mixed-allcpp1-hello.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-allcpp1-hello mixed-allcpp1-hello.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-allcpp1-hello mixed-allcpp1-hello.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-allcpp1-hello > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-allcpp1-hello.txt 2>&1
   Run OK
@@ -23,14 +23,14 @@ Testing mixed-allcpp1-hello.cpp2
 Testing mixed-as-for-variant-20-types.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-as-for-variant-20-types.cpp2 mixed-as-for-variant-20-types.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-as-for-variant-20-types mixed-as-for-variant-20-types.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-as-for-variant-20-types mixed-as-for-variant-20-types.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-bounds-check.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bounds-check.cpp2 mixed-bounds-check.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-check mixed-bounds-check.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-check mixed-bounds-check.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-bounds-check.txt 2>&1
   Run OK
@@ -39,189 +39,193 @@ Testing mixed-bounds-check.cpp2
 Testing mixed-bounds-safety-with-assert-2.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bounds-safety-with-assert-2.cpp2 mixed-bounds-safety-with-assert-2.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-safety-with-assert-2 mixed-bounds-safety-with-assert-2.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-safety-with-assert-2 mixed-bounds-safety-with-assert-2.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-bounds-safety-with-assert.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bounds-safety-with-assert.cpp2 mixed-bounds-safety-with-assert.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-safety-with-assert mixed-bounds-safety-with-assert.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bounds-safety-with-assert mixed-bounds-safety-with-assert.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2 mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-cpp2-comment-cpp1-sequence mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-cpp2-comment-cpp1-sequence mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-bugfix-for-cpp2-comment-cpp1-sequence > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-bugfix-for-cpp2-comment-cpp1-sequence.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing mixed-bugfix-for-double-pound-else-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bugfix-for-double-pound-else-error.cpp2 mixed-bugfix-for-double-pound-else-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-double-pound-else-error mixed-bugfix-for-double-pound-else-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-double-pound-else-error mixed-bugfix-for-double-pound-else-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-bugfix-for-literal-as-nttp.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bugfix-for-literal-as-nttp.cpp2 mixed-bugfix-for-literal-as-nttp.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-literal-as-nttp mixed-bugfix-for-literal-as-nttp.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-literal-as-nttp mixed-bugfix-for-literal-as-nttp.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-bugfix-for-ufcs-non-local.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-bugfix-for-ufcs-non-local.cpp2 mixed-bugfix-for-ufcs-non-local.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-ufcs-non-local mixed-bugfix-for-ufcs-non-local.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-bugfix-for-ufcs-non-local mixed-bugfix-for-ufcs-non-local.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-captures-in-expressions-and-postconditions.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-captures-in-expressions-and-postconditions.cpp2 mixed-captures-in-expressions-and-postconditions.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-captures-in-expressions-and-postconditions mixed-captures-in-expressions-and-postconditions.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-captures-in-expressions-and-postconditions mixed-captures-in-expressions-and-postconditions.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-default-arguments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-default-arguments.cpp2 mixed-default-arguments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-default-arguments mixed-default-arguments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-default-arguments mixed-default-arguments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-fixed-type-aliases.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-fixed-type-aliases.cpp2 mixed-fixed-type-aliases.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-fixed-type-aliases mixed-fixed-type-aliases.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-fixed-type-aliases mixed-fixed-type-aliases.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-float-literals.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-float-literals.cpp2 mixed-float-literals.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-float-literals mixed-float-literals.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-float-literals mixed-float-literals.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-forwarding.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-forwarding.cpp2 mixed-forwarding.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-forwarding mixed-forwarding.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-forwarding mixed-forwarding.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-function-expression-and-std-for-each.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-function-expression-and-std-for-each.cpp2 mixed-function-expression-and-std-for-each.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-for-each mixed-function-expression-and-std-for-each.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-for-each mixed-function-expression-and-std-for-each.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2 mixed-function-expression-and-std-ranges-for-each-with-capture.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-ranges-for-each-with-capture mixed-function-expression-and-std-ranges-for-each-with-capture.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-ranges-for-each-with-capture mixed-function-expression-and-std-ranges-for-each-with-capture.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-function-expression-and-std-ranges-for-each.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-function-expression-and-std-ranges-for-each.cpp2 mixed-function-expression-and-std-ranges-for-each.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-ranges-for-each mixed-function-expression-and-std-ranges-for-each.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-and-std-ranges-for-each mixed-function-expression-and-std-ranges-for-each.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-function-expression-with-pointer-capture.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-function-expression-with-pointer-capture.cpp2 mixed-function-expression-with-pointer-capture.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-with-pointer-capture mixed-function-expression-with-pointer-capture.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-with-pointer-capture mixed-function-expression-with-pointer-capture.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-function-expression-with-repeated-capture.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-function-expression-with-repeated-capture.cpp2 mixed-function-expression-with-repeated-capture.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-with-repeated-capture mixed-function-expression-with-repeated-capture.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-function-expression-with-repeated-capture mixed-function-expression-with-repeated-capture.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-hello.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-hello.cpp2 mixed-hello.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-hello mixed-hello.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o mixed-hello mixed-hello.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-hello > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-hello.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing mixed-increment-decrement.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-increment-decrement.cpp2 mixed-increment-decrement.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-increment-decrement mixed-increment-decrement.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-increment-decrement mixed-increment-decrement.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-initialization-safety-1-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-initialization-safety-1-error.cpp2 mixed-initialization-safety-1-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-1-error mixed-initialization-safety-1-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-1-error mixed-initialization-safety-1-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-initialization-safety-2-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-initialization-safety-2-error.cpp2 mixed-initialization-safety-2-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-2-error mixed-initialization-safety-2-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-2-error mixed-initialization-safety-2-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-initialization-safety-3-contract-violation.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-initialization-safety-3-contract-violation.cpp2 mixed-initialization-safety-3-contract-violation.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-3-contract-violation mixed-initialization-safety-3-contract-violation.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-3-contract-violation mixed-initialization-safety-3-contract-violation.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-initialization-safety-3.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-initialization-safety-3.cpp2 mixed-initialization-safety-3.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-3 mixed-initialization-safety-3.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-initialization-safety-3 mixed-initialization-safety-3.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-inspect-templates.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-inspect-templates.cpp2 mixed-inspect-templates.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-templates mixed-inspect-templates.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-templates mixed-inspect-templates.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-inspect-values-2.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-inspect-values-2.cpp2 mixed-inspect-values-2.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-values-2 mixed-inspect-values-2.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-values-2 mixed-inspect-values-2.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-inspect-values.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-inspect-values.cpp2 mixed-inspect-values.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-values mixed-inspect-values.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-values mixed-inspect-values.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-inspect-with-typeof-of-template-arg-list.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-inspect-with-typeof-of-template-arg-list.cpp2 mixed-inspect-with-typeof-of-template-arg-list.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-with-typeof-of-template-arg-list mixed-inspect-with-typeof-of-template-arg-list.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-inspect-with-typeof-of-template-arg-list mixed-inspect-with-typeof-of-template-arg-list.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-intro-example-three-loops.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-intro-example-three-loops.cpp2 mixed-intro-example-three-loops.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-intro-example-three-loops mixed-intro-example-three-loops.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-intro-example-three-loops mixed-intro-example-three-loops.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-intro-example-three-loops > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-intro-example-three-loops.txt 2>&1
   Run OK
@@ -230,133 +234,133 @@ Testing mixed-intro-example-three-loops.cpp2
 Testing mixed-intro-for-with-counter-include-last.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-intro-for-with-counter-include-last.cpp2 mixed-intro-for-with-counter-include-last.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-intro-for-with-counter-include-last mixed-intro-for-with-counter-include-last.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-intro-for-with-counter-include-last mixed-intro-for-with-counter-include-last.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-is-as-value-with-variant.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-is-as-value-with-variant.cpp2 mixed-is-as-value-with-variant.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-is-as-value-with-variant mixed-is-as-value-with-variant.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-is-as-value-with-variant mixed-is-as-value-with-variant.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-is-as-variant.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-is-as-variant.cpp2 mixed-is-as-variant.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-is-as-variant mixed-is-as-variant.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-is-as-variant mixed-is-as-variant.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-lifetime-safety-and-null-contracts.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-lifetime-safety-and-null-contracts.cpp2 mixed-lifetime-safety-and-null-contracts.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-and-null-contracts mixed-lifetime-safety-and-null-contracts.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-and-null-contracts mixed-lifetime-safety-and-null-contracts.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-lifetime-safety-pointer-init-1-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-lifetime-safety-pointer-init-1-error.cpp2 mixed-lifetime-safety-pointer-init-1-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-1-error mixed-lifetime-safety-pointer-init-1-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-1-error mixed-lifetime-safety-pointer-init-1-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-lifetime-safety-pointer-init-2-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-lifetime-safety-pointer-init-2-error.cpp2 mixed-lifetime-safety-pointer-init-2-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-2-error mixed-lifetime-safety-pointer-init-2-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-2-error mixed-lifetime-safety-pointer-init-2-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-lifetime-safety-pointer-init-3-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-lifetime-safety-pointer-init-3-error.cpp2 mixed-lifetime-safety-pointer-init-3-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-3-error mixed-lifetime-safety-pointer-init-3-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-3-error mixed-lifetime-safety-pointer-init-3-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-lifetime-safety-pointer-init-4.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-lifetime-safety-pointer-init-4.cpp2 mixed-lifetime-safety-pointer-init-4.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-4 mixed-lifetime-safety-pointer-init-4.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-lifetime-safety-pointer-init-4 mixed-lifetime-safety-pointer-init-4.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-multiple-return-values.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-multiple-return-values.cpp2 mixed-multiple-return-values.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-multiple-return-values mixed-multiple-return-values.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-multiple-return-values mixed-multiple-return-values.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-out-destruction.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-out-destruction.cpp2 mixed-out-destruction.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-out-destruction mixed-out-destruction.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-out-destruction mixed-out-destruction.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-parameter-passing-generic-out.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-parameter-passing-generic-out.cpp2 mixed-parameter-passing-generic-out.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing-generic-out mixed-parameter-passing-generic-out.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing-generic-out mixed-parameter-passing-generic-out.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-parameter-passing-with-forward.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-parameter-passing-with-forward.cpp2 mixed-parameter-passing-with-forward.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing-with-forward mixed-parameter-passing-with-forward.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing-with-forward mixed-parameter-passing-with-forward.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-parameter-passing.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-parameter-passing.cpp2 mixed-parameter-passing.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing mixed-parameter-passing.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-parameter-passing mixed-parameter-passing.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-postexpression-with-capture.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-postexpression-with-capture.cpp2 mixed-postexpression-with-capture.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-postexpression-with-capture mixed-postexpression-with-capture.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-postexpression-with-capture mixed-postexpression-with-capture.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-postfix-expression-custom-formatting.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-postfix-expression-custom-formatting.cpp2 mixed-postfix-expression-custom-formatting.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-postfix-expression-custom-formatting mixed-postfix-expression-custom-formatting.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-postfix-expression-custom-formatting mixed-postfix-expression-custom-formatting.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-string-interpolation.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-string-interpolation.cpp2 mixed-string-interpolation.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-string-interpolation mixed-string-interpolation.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-string-interpolation mixed-string-interpolation.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-test-parens.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-test-parens.cpp2 mixed-test-parens.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-test-parens mixed-test-parens.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-test-parens mixed-test-parens.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-type-safety-1.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-type-safety-1.cpp2 mixed-type-safety-1.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-type-safety-1 mixed-type-safety-1.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-type-safety-1 mixed-type-safety-1.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing mixed-ufcs-multiple-template-arguments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile mixed-ufcs-multiple-template-arguments.cpp2 mixed-ufcs-multiple-template-arguments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o mixed-ufcs-multiple-template-arguments mixed-ufcs-multiple-template-arguments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o mixed-ufcs-multiple-template-arguments mixed-ufcs-multiple-template-arguments.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/mixed-ufcs-multiple-template-arguments > /Users/jim/work/cppfort/tests/regression-tests/output_mixed-ufcs-multiple-template-arguments.txt 2>&1
   Run OK
@@ -377,245 +381,245 @@ Skipping pure2-bounds-safety-span.cpp2 (requires unimplemented safety features)
 Testing pure2-break-continue.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-break-continue.cpp2 pure2-break-continue.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-break-continue pure2-break-continue.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-break-continue pure2-break-continue.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-assert-capture-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-assert-capture-error.cpp2 pure2-bugfix-for-assert-capture-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-assert-capture-error pure2-bugfix-for-assert-capture-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-assert-capture-error pure2-bugfix-for-assert-capture-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-assign-expression-list.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-assign-expression-list.cpp2 pure2-bugfix-for-assign-expression-list.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-assign-expression-list pure2-bugfix-for-assign-expression-list.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-assign-expression-list pure2-bugfix-for-assign-expression-list.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-bad-capture-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-bad-capture-error.cpp2 pure2-bugfix-for-bad-capture-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-capture-error pure2-bugfix-for-bad-capture-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-capture-error pure2-bugfix-for-bad-capture-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-bad-decltype-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-bad-decltype-error.cpp2 pure2-bugfix-for-bad-decltype-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-decltype-error pure2-bugfix-for-bad-decltype-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-decltype-error pure2-bugfix-for-bad-decltype-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-bad-parameter-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-bad-parameter-error.cpp2 pure2-bugfix-for-bad-parameter-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-parameter-error pure2-bugfix-for-bad-parameter-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-parameter-error pure2-bugfix-for-bad-parameter-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-bad-using-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-bad-using-error.cpp2 pure2-bugfix-for-bad-using-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-using-error pure2-bugfix-for-bad-using-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-bad-using-error pure2-bugfix-for-bad-using-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-declaration-equal-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-declaration-equal-error.cpp2 pure2-bugfix-for-declaration-equal-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-declaration-equal-error pure2-bugfix-for-declaration-equal-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-declaration-equal-error pure2-bugfix-for-declaration-equal-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-discard-precedence.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-discard-precedence.cpp2 pure2-bugfix-for-discard-precedence.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-discard-precedence pure2-bugfix-for-discard-precedence.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-discard-precedence pure2-bugfix-for-discard-precedence.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-functions-before-superclasses-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-functions-before-superclasses-error.cpp2 pure2-bugfix-for-functions-before-superclasses-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-functions-before-superclasses-error pure2-bugfix-for-functions-before-superclasses-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-functions-before-superclasses-error pure2-bugfix-for-functions-before-superclasses-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-indexed-call.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-indexed-call.cpp2 pure2-bugfix-for-indexed-call.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-indexed-call pure2-bugfix-for-indexed-call.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-indexed-call pure2-bugfix-for-indexed-call.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-invalid-alias-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-invalid-alias-error.cpp2 pure2-bugfix-for-invalid-alias-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-invalid-alias-error pure2-bugfix-for-invalid-alias-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-invalid-alias-error pure2-bugfix-for-invalid-alias-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-late-comments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-late-comments.cpp2 pure2-bugfix-for-late-comments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-late-comments pure2-bugfix-for-late-comments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-late-comments pure2-bugfix-for-late-comments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-max-munch.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-max-munch.cpp2 pure2-bugfix-for-max-munch.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-max-munch pure2-bugfix-for-max-munch.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-max-munch pure2-bugfix-for-max-munch.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-memberwise-base-assignment.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-memberwise-base-assignment.cpp2 pure2-bugfix-for-memberwise-base-assignment.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-memberwise-base-assignment pure2-bugfix-for-memberwise-base-assignment.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-memberwise-base-assignment pure2-bugfix-for-memberwise-base-assignment.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-naked-unsigned-char-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-naked-unsigned-char-error.cpp2 pure2-bugfix-for-naked-unsigned-char-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-naked-unsigned-char-error pure2-bugfix-for-naked-unsigned-char-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-naked-unsigned-char-error pure2-bugfix-for-naked-unsigned-char-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-name-lookup-and-value-decoration.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-name-lookup-and-value-decoration.cpp2 pure2-bugfix-for-name-lookup-and-value-decoration.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-name-lookup-and-value-decoration pure2-bugfix-for-name-lookup-and-value-decoration.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-name-lookup-and-value-decoration pure2-bugfix-for-name-lookup-and-value-decoration.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-namespace-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-namespace-error.cpp2 pure2-bugfix-for-namespace-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-namespace-error pure2-bugfix-for-namespace-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-namespace-error pure2-bugfix-for-namespace-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-non-local-function-expression.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-non-local-function-expression.cpp2 pure2-bugfix-for-non-local-function-expression.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-non-local-function-expression pure2-bugfix-for-non-local-function-expression.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-non-local-function-expression pure2-bugfix-for-non-local-function-expression.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-non-local-initialization.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-non-local-initialization.cpp2 pure2-bugfix-for-non-local-initialization.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-non-local-initialization pure2-bugfix-for-non-local-initialization.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-non-local-initialization pure2-bugfix-for-non-local-initialization.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-optional-template-argument-list.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-optional-template-argument-list.cpp2 pure2-bugfix-for-optional-template-argument-list.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-optional-template-argument-list pure2-bugfix-for-optional-template-argument-list.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-optional-template-argument-list pure2-bugfix-for-optional-template-argument-list.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-out-this-nonconstructor-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-out-this-nonconstructor-error.cpp2 pure2-bugfix-for-out-this-nonconstructor-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-out-this-nonconstructor-error pure2-bugfix-for-out-this-nonconstructor-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-out-this-nonconstructor-error pure2-bugfix-for-out-this-nonconstructor-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-requires-clause-in-forward-declaration.cpp2 pure2-bugfix-for-requires-clause-in-forward-declaration.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-requires-clause-in-forward-declaration pure2-bugfix-for-requires-clause-in-forward-declaration.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-requires-clause-in-forward-declaration pure2-bugfix-for-requires-clause-in-forward-declaration.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp2 pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-requires-clause-unbraced-function-initializer pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-requires-clause-unbraced-function-initializer pure2-bugfix-for-requires-clause-unbraced-function-initializer.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-template-argument.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-template-argument.cpp2 pure2-bugfix-for-template-argument.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-template-argument pure2-bugfix-for-template-argument.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-template-argument pure2-bugfix-for-template-argument.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-ufcs-arguments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-ufcs-arguments.cpp2 pure2-bugfix-for-ufcs-arguments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-arguments pure2-bugfix-for-ufcs-arguments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-arguments pure2-bugfix-for-ufcs-arguments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-ufcs-name-lookup.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-ufcs-name-lookup.cpp2 pure2-bugfix-for-ufcs-name-lookup.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-name-lookup pure2-bugfix-for-ufcs-name-lookup.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-name-lookup pure2-bugfix-for-ufcs-name-lookup.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-ufcs-noexcept.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-ufcs-noexcept.cpp2 pure2-bugfix-for-ufcs-noexcept.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-noexcept pure2-bugfix-for-ufcs-noexcept.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-noexcept pure2-bugfix-for-ufcs-noexcept.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-ufcs-sfinae.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-ufcs-sfinae.cpp2 pure2-bugfix-for-ufcs-sfinae.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-sfinae pure2-bugfix-for-ufcs-sfinae.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-ufcs-sfinae pure2-bugfix-for-ufcs-sfinae.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-unbraced-function-expression.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-unbraced-function-expression.cpp2 pure2-bugfix-for-unbraced-function-expression.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-unbraced-function-expression pure2-bugfix-for-unbraced-function-expression.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-unbraced-function-expression pure2-bugfix-for-unbraced-function-expression.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-bugfix-for-variable-template.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-bugfix-for-variable-template.cpp2 pure2-bugfix-for-variable-template.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-variable-template pure2-bugfix-for-variable-template.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-bugfix-for-variable-template pure2-bugfix-for-variable-template.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-chained-comparisons.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-chained-comparisons.cpp2 pure2-chained-comparisons.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-chained-comparisons pure2-chained-comparisons.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-chained-comparisons pure2-chained-comparisons.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-concept-definition.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-concept-definition.cpp2 pure2-concept-definition.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-concept-definition pure2-concept-definition.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-concept-definition pure2-concept-definition.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-contracts.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-contracts.cpp2 pure2-contracts.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-contracts pure2-contracts.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-contracts pure2-contracts.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-cpp1-multitoken-fundamental-types-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-cpp1-multitoken-fundamental-types-error.cpp2 pure2-cpp1-multitoken-fundamental-types-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-cpp1-multitoken-fundamental-types-error pure2-cpp1-multitoken-fundamental-types-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-cpp1-multitoken-fundamental-types-error pure2-cpp1-multitoken-fundamental-types-error.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-cpp1-multitoken-fundamental-types-error > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-cpp1-multitoken-fundamental-types-error.txt 2>&1
   Run OK
@@ -624,434 +628,436 @@ Testing pure2-cpp1-multitoken-fundamental-types-error.cpp2
 Testing pure2-cpp1-prefix-expression-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-cpp1-prefix-expression-error.cpp2 pure2-cpp1-prefix-expression-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-cpp1-prefix-expression-error pure2-cpp1-prefix-expression-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-cpp1-prefix-expression-error pure2-cpp1-prefix-expression-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-deducing-pointers-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-deducing-pointers-error.cpp2 pure2-deducing-pointers-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-deducing-pointers-error pure2-deducing-pointers-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-deducing-pointers-error pure2-deducing-pointers-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-deduction-1-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-deduction-1-error.cpp2 pure2-deduction-1-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-deduction-1-error pure2-deduction-1-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-deduction-1-error pure2-deduction-1-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-deduction-2-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-deduction-2-error.cpp2 pure2-deduction-2-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-deduction-2-error pure2-deduction-2-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-deduction-2-error pure2-deduction-2-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-default-arguments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-default-arguments.cpp2 pure2-default-arguments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-default-arguments pure2-default-arguments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-default-arguments pure2-default-arguments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-defaulted-comparisons-and-final-types.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-defaulted-comparisons-and-final-types.cpp2 pure2-defaulted-comparisons-and-final-types.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-defaulted-comparisons-and-final-types pure2-defaulted-comparisons-and-final-types.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-defaulted-comparisons-and-final-types pure2-defaulted-comparisons-and-final-types.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-enum.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-enum.cpp2 pure2-enum.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-enum pure2-enum.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-enum pure2-enum.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-expected-is-as.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-expected-is-as.cpp2 pure2-expected-is-as.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-expected-is-as pure2-expected-is-as.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-expected-is-as pure2-expected-is-as.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-for-loop-range-with-lambda.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-for-loop-range-with-lambda.cpp2 pure2-for-loop-range-with-lambda.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-for-loop-range-with-lambda pure2-for-loop-range-with-lambda.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-for-loop-range-with-lambda pure2-for-loop-range-with-lambda.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-forward-return-diagnostics-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-forward-return-diagnostics-error.cpp2 pure2-forward-return-diagnostics-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-forward-return-diagnostics-error pure2-forward-return-diagnostics-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-forward-return-diagnostics-error pure2-forward-return-diagnostics-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-forward-return.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-forward-return.cpp2 pure2-forward-return.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-forward-return pure2-forward-return.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-forward-return pure2-forward-return.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-function-body-reflection.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-function-body-reflection.cpp2 pure2-function-body-reflection.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-function-body-reflection pure2-function-body-reflection.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-function-body-reflection pure2-function-body-reflection.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-function-multiple-forward-arguments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-function-multiple-forward-arguments.cpp2 pure2-function-multiple-forward-arguments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-function-multiple-forward-arguments pure2-function-multiple-forward-arguments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-function-multiple-forward-arguments pure2-function-multiple-forward-arguments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-function-single-expression-body-default-return.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-function-single-expression-body-default-return.cpp2 pure2-function-single-expression-body-default-return.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-function-single-expression-body-default-return pure2-function-single-expression-body-default-return.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-function-single-expression-body-default-return pure2-function-single-expression-body-default-return.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-function-typeids.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-function-typeids.cpp2 pure2-function-typeids.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-function-typeids pure2-function-typeids.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-function-typeids pure2-function-typeids.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-hashable.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-hashable.cpp2 pure2-hashable.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-hashable pure2-hashable.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-hashable pure2-hashable.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-hello.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-hello.cpp2 pure2-hello.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-hello pure2-hello.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o pure2-hello pure2-hello.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-hello > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-hello.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing pure2-initialization-loop-2-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-initialization-loop-2-error.cpp2 pure2-initialization-loop-2-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-loop-2-error pure2-initialization-loop-2-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-loop-2-error pure2-initialization-loop-2-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-initialization-loop-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-initialization-loop-error.cpp2 pure2-initialization-loop-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-loop-error pure2-initialization-loop-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-loop-error pure2-initialization-loop-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-initialization-safety-with-else-if.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-initialization-safety-with-else-if.cpp2 pure2-initialization-safety-with-else-if.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-safety-with-else-if pure2-initialization-safety-with-else-if.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-initialization-safety-with-else-if pure2-initialization-safety-with-else-if.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-inspect-expression-in-generic-function-multiple-types.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-inspect-expression-in-generic-function-multiple-types.cpp2 pure2-inspect-expression-in-generic-function-multiple-types.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-expression-in-generic-function-multiple-types pure2-inspect-expression-in-generic-function-multiple-types.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-expression-in-generic-function-multiple-types pure2-inspect-expression-in-generic-function-multiple-types.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-inspect-expression-with-as-in-generic-function.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-inspect-expression-with-as-in-generic-function.cpp2 pure2-inspect-expression-with-as-in-generic-function.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-expression-with-as-in-generic-function pure2-inspect-expression-with-as-in-generic-function.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-expression-with-as-in-generic-function pure2-inspect-expression-with-as-in-generic-function.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-inspect-fallback-with-variant-any-optional.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-inspect-fallback-with-variant-any-optional.cpp2 pure2-inspect-fallback-with-variant-any-optional.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-fallback-with-variant-any-optional pure2-inspect-fallback-with-variant-any-optional.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-fallback-with-variant-any-optional pure2-inspect-fallback-with-variant-any-optional.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2 pure2-inspect-generic-void-empty-with-variant-any-optional.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-generic-void-empty-with-variant-any-optional pure2-inspect-generic-void-empty-with-variant-any-optional.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-inspect-generic-void-empty-with-variant-any-optional pure2-inspect-generic-void-empty-with-variant-any-optional.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-interpolation.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-interpolation.cpp2 pure2-interpolation.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-interpolation pure2-interpolation.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-interpolation pure2-interpolation.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-intro-example-hello-2022.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-intro-example-hello-2022.cpp2 pure2-intro-example-hello-2022.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-intro-example-hello-2022 pure2-intro-example-hello-2022.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-intro-example-hello-2022 pure2-intro-example-hello-2022.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-intro-example-three-loops.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-intro-example-three-loops.cpp2 pure2-intro-example-three-loops.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-intro-example-three-loops pure2-intro-example-three-loops.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-intro-example-three-loops pure2-intro-example-three-loops.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-is-with-free-functions-predicate.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-is-with-free-functions-predicate.cpp2 pure2-is-with-free-functions-predicate.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-free-functions-predicate pure2-is-with-free-functions-predicate.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-free-functions-predicate pure2-is-with-free-functions-predicate.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-is-with-polymorphic-types.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-is-with-polymorphic-types.cpp2 pure2-is-with-polymorphic-types.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-polymorphic-types pure2-is-with-polymorphic-types.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-polymorphic-types pure2-is-with-polymorphic-types.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-is-with-unnamed-predicates.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-is-with-unnamed-predicates.cpp2 pure2-is-with-unnamed-predicates.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-unnamed-predicates pure2-is-with-unnamed-predicates.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-unnamed-predicates pure2-is-with-unnamed-predicates.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-is-with-variable-and-value.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-is-with-variable-and-value.cpp2 pure2-is-with-variable-and-value.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-variable-and-value pure2-is-with-variable-and-value.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-is-with-variable-and-value pure2-is-with-variable-and-value.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-last-use.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-last-use.cpp2 pure2-last-use.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-last-use pure2-last-use.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-last-use pure2-last-use.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-lifetime-safety-pointer-init-1-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-lifetime-safety-pointer-init-1-error.cpp2 pure2-lifetime-safety-pointer-init-1-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-lifetime-safety-pointer-init-1-error pure2-lifetime-safety-pointer-init-1-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-lifetime-safety-pointer-init-1-error pure2-lifetime-safety-pointer-init-1-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-lifetime-safety-reject-null-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-lifetime-safety-reject-null-error.cpp2 pure2-lifetime-safety-reject-null-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-lifetime-safety-reject-null-error pure2-lifetime-safety-reject-null-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-lifetime-safety-reject-null-error pure2-lifetime-safety-reject-null-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-look-up-parameter-across-unnamed-function.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-look-up-parameter-across-unnamed-function.cpp2 pure2-look-up-parameter-across-unnamed-function.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-look-up-parameter-across-unnamed-function pure2-look-up-parameter-across-unnamed-function.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-look-up-parameter-across-unnamed-function pure2-look-up-parameter-across-unnamed-function.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-main-args.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-main-args.cpp2 pure2-main-args.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-main-args pure2-main-args.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-main-args pure2-main-args.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-more-wildcards.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-more-wildcards.cpp2 pure2-more-wildcards.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-more-wildcards pure2-more-wildcards.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-more-wildcards pure2-more-wildcards.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-print.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-print.cpp2 pure2-print.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-print pure2-print.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-print pure2-print.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-range-operators.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-range-operators.cpp2 pure2-range-operators.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-range-operators pure2-range-operators.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-range-operators pure2-range-operators.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-raw-string-literal-and-interpolation.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-raw-string-literal-and-interpolation.cpp2 pure2-raw-string-literal-and-interpolation.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-raw-string-literal-and-interpolation pure2-raw-string-literal-and-interpolation.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-raw-string-literal-and-interpolation pure2-raw-string-literal-and-interpolation.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex-general.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex-general.cpp2 pure2-regex-general.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex-general pure2-regex-general.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex-general pure2-regex-general.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_01_char_matcher.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_01_char_matcher.cpp2 pure2-regex_01_char_matcher.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_01_char_matcher pure2-regex_01_char_matcher.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_01_char_matcher pure2-regex_01_char_matcher.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_02_ranges.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_02_ranges.cpp2 pure2-regex_02_ranges.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_02_ranges pure2-regex_02_ranges.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_02_ranges pure2-regex_02_ranges.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_03_wildcard.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_03_wildcard.cpp2 pure2-regex_03_wildcard.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_03_wildcard pure2-regex_03_wildcard.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_03_wildcard pure2-regex_03_wildcard.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_04_start_end.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_04_start_end.cpp2 pure2-regex_04_start_end.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_04_start_end pure2-regex_04_start_end.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_04_start_end pure2-regex_04_start_end.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_05_classes.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_05_classes.cpp2 pure2-regex_05_classes.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_05_classes pure2-regex_05_classes.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_05_classes pure2-regex_05_classes.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_06_boundaries.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_06_boundaries.cpp2 pure2-regex_06_boundaries.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_06_boundaries pure2-regex_06_boundaries.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_06_boundaries pure2-regex_06_boundaries.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_07_short_classes.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_07_short_classes.cpp2 pure2-regex_07_short_classes.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_07_short_classes pure2-regex_07_short_classes.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_07_short_classes pure2-regex_07_short_classes.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_08_alternatives.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_08_alternatives.cpp2 pure2-regex_08_alternatives.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_08_alternatives pure2-regex_08_alternatives.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_08_alternatives pure2-regex_08_alternatives.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_09_groups.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_09_groups.cpp2 pure2-regex_09_groups.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_09_groups pure2-regex_09_groups.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_09_groups pure2-regex_09_groups.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_10_escapes.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_10_escapes.cpp2 pure2-regex_10_escapes.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_10_escapes pure2-regex_10_escapes.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_10_escapes pure2-regex_10_escapes.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_11_group_references.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_11_group_references.cpp2 pure2-regex_11_group_references.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_11_group_references pure2-regex_11_group_references.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_11_group_references pure2-regex_11_group_references.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_12_case_insensitive.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_12_case_insensitive.cpp2 pure2-regex_12_case_insensitive.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_12_case_insensitive pure2-regex_12_case_insensitive.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_12_case_insensitive pure2-regex_12_case_insensitive.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_13_possessive_modifier.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_13_possessive_modifier.cpp2 pure2-regex_13_possessive_modifier.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_13_possessive_modifier pure2-regex_13_possessive_modifier.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_13_possessive_modifier pure2-regex_13_possessive_modifier.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_14_multiline_modifier.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_14_multiline_modifier.cpp2 pure2-regex_14_multiline_modifier.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_14_multiline_modifier pure2-regex_14_multiline_modifier.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_14_multiline_modifier pure2-regex_14_multiline_modifier.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_15_group_modifiers.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_15_group_modifiers.cpp2 pure2-regex_15_group_modifiers.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_15_group_modifiers pure2-regex_15_group_modifiers.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_15_group_modifiers pure2-regex_15_group_modifiers.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_16_perl_syntax_modifier.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_16_perl_syntax_modifier.cpp2 pure2-regex_16_perl_syntax_modifier.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_16_perl_syntax_modifier pure2-regex_16_perl_syntax_modifier.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_16_perl_syntax_modifier pure2-regex_16_perl_syntax_modifier.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_17_comments.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_17_comments.cpp2 pure2-regex_17_comments.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_17_comments pure2-regex_17_comments.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_17_comments pure2-regex_17_comments.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_18_branch_reset.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_18_branch_reset.cpp2 pure2-regex_18_branch_reset.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_18_branch_reset pure2-regex_18_branch_reset.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_18_branch_reset pure2-regex_18_branch_reset.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_19_lookahead.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_19_lookahead.cpp2 pure2-regex_19_lookahead.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_19_lookahead pure2-regex_19_lookahead.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_19_lookahead pure2-regex_19_lookahead.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-regex_21_atomic_patterns.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-regex_21_atomic_patterns.cpp2 pure2-regex_21_atomic_patterns.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_21_atomic_patterns pure2-regex_21_atomic_patterns.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-regex_21_atomic_patterns pure2-regex_21_atomic_patterns.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-repeated-call.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-repeated-call.cpp2 pure2-repeated-call.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-repeated-call pure2-repeated-call.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-repeated-call pure2-repeated-call.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-repeated-call > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-repeated-call.txt 2>&1
   Run OK
@@ -1060,63 +1066,67 @@ Testing pure2-repeated-call.cpp2
 Testing pure2-requires-clauses.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-requires-clauses.cpp2 pure2-requires-clauses.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-requires-clauses pure2-requires-clauses.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-requires-clauses pure2-requires-clauses.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-return-tuple-no-identifier-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-return-tuple-no-identifier-error.cpp2 pure2-return-tuple-no-identifier-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-no-identifier-error pure2-return-tuple-no-identifier-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-no-identifier-error pure2-return-tuple-no-identifier-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-return-tuple-no-type-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-return-tuple-no-type-error.cpp2 pure2-return-tuple-no-type-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-no-type-error pure2-return-tuple-no-type-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-no-type-error pure2-return-tuple-no-type-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-return-tuple-operator.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-return-tuple-operator.cpp2 pure2-return-tuple-operator.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-operator pure2-return-tuple-operator.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-return-tuple-operator pure2-return-tuple-operator.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-statement-parse-error.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-statement-parse-error.cpp2 pure2-statement-parse-error.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-statement-parse-error pure2-statement-parse-error.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-statement-parse-error pure2-statement-parse-error.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-statement-scope-parameters.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-statement-scope-parameters.cpp2 pure2-statement-scope-parameters.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-statement-scope-parameters pure2-statement-scope-parameters.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-statement-scope-parameters pure2-statement-scope-parameters.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-stdio-with-raii.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-stdio-with-raii.cpp2 pure2-stdio-with-raii.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-stdio-with-raii pure2-stdio-with-raii.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o pure2-stdio-with-raii pure2-stdio-with-raii.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-stdio-with-raii > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-stdio-with-raii.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing pure2-stdio.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-stdio.cpp2 pure2-stdio.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-stdio pure2-stdio.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o pure2-stdio pure2-stdio.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-stdio > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-stdio.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing pure2-synthesize-rightshift-and-rightshifteq.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-synthesize-rightshift-and-rightshifteq.cpp2 pure2-synthesize-rightshift-and-rightshifteq.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-synthesize-rightshift-and-rightshifteq pure2-synthesize-rightshift-and-rightshifteq.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-synthesize-rightshift-and-rightshifteq pure2-synthesize-rightshift-and-rightshifteq.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-synthesize-rightshift-and-rightshifteq > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-synthesize-rightshift-and-rightshifteq.txt 2>&1
   Run OK
@@ -1125,175 +1135,177 @@ Testing pure2-synthesize-rightshift-and-rightshifteq.cpp2
 Testing pure2-template-parameter-lists.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-template-parameter-lists.cpp2 pure2-template-parameter-lists.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-template-parameter-lists pure2-template-parameter-lists.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-template-parameter-lists pure2-template-parameter-lists.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-trailing-comma-assert.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-trailing-comma-assert.cpp2 pure2-trailing-comma-assert.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-trailing-comma-assert pure2-trailing-comma-assert.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-trailing-comma-assert pure2-trailing-comma-assert.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-trailing-commas.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-trailing-commas.cpp2 pure2-trailing-commas.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-trailing-commas pure2-trailing-commas.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-trailing-commas pure2-trailing-commas.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-type-and-namespace-aliases.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-type-and-namespace-aliases.cpp2 pure2-type-and-namespace-aliases.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-type-and-namespace-aliases pure2-type-and-namespace-aliases.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-type-and-namespace-aliases pure2-type-and-namespace-aliases.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-type-constraints.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-type-constraints.cpp2 pure2-type-constraints.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-type-constraints pure2-type-constraints.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-type-constraints pure2-type-constraints.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-type-safety-1.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-type-safety-1.cpp2 pure2-type-safety-1.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-type-safety-1 pure2-type-safety-1.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-type-safety-1 pure2-type-safety-1.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-type-safety-2-with-inspect-expression.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-type-safety-2-with-inspect-expression.cpp2 pure2-type-safety-2-with-inspect-expression.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-type-safety-2-with-inspect-expression pure2-type-safety-2-with-inspect-expression.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-type-safety-2-with-inspect-expression pure2-type-safety-2-with-inspect-expression.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-basics.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-basics.cpp2 pure2-types-basics.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-basics pure2-types-basics.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-basics pure2-types-basics.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-down-upcast.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-down-upcast.cpp2 pure2-types-down-upcast.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-down-upcast pure2-types-down-upcast.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-down-upcast pure2-types-down-upcast.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-inheritance.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-inheritance.cpp2 pure2-types-inheritance.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-inheritance pure2-types-inheritance.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-inheritance pure2-types-inheritance.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-order-independence-and-nesting.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-order-independence-and-nesting.cpp2 pure2-types-order-independence-and-nesting.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-order-independence-and-nesting pure2-types-order-independence-and-nesting.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-order-independence-and-nesting pure2-types-order-independence-and-nesting.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-ordering-via-meta-functions.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-ordering-via-meta-functions.cpp2 pure2-types-ordering-via-meta-functions.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-ordering-via-meta-functions pure2-types-ordering-via-meta-functions.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-ordering-via-meta-functions pure2-types-ordering-via-meta-functions.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-smf-and-that-1-provide-everything.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-smf-and-that-1-provide-everything.cpp2 pure2-types-smf-and-that-1-provide-everything.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-1-provide-everything pure2-types-smf-and-that-1-provide-everything.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-1-provide-everything pure2-types-smf-and-that-1-provide-everything.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp2 pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign pure2-types-smf-and-that-2-provide-mvconstruct-and-cpassign.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp2 pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign pure2-types-smf-and-that-3-provide-mvconstruct-and-mvassign.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp2 pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-4-provide-cpassign-and-mvassign pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-4-provide-cpassign-and-mvassign pure2-types-smf-and-that-4-provide-cpassign-and-mvassign.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp2 pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-5-provide-nothing-but-general-case pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-smf-and-that-5-provide-nothing-but-general-case pure2-types-smf-and-that-5-provide-nothing-but-general-case.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-that-parameters.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-that-parameters.cpp2 pure2-types-that-parameters.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-that-parameters pure2-types-that-parameters.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-that-parameters pure2-types-that-parameters.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-types-value-types-via-meta-functions.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-types-value-types-via-meta-functions.cpp2 pure2-types-value-types-via-meta-functions.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-types-value-types-via-meta-functions pure2-types-value-types-via-meta-functions.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-types-value-types-via-meta-functions pure2-types-value-types-via-meta-functions.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-ufcs-member-access-and-chaining.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-ufcs-member-access-and-chaining.cpp2 pure2-ufcs-member-access-and-chaining.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-ufcs-member-access-and-chaining pure2-ufcs-member-access-and-chaining.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-ufcs-member-access-and-chaining pure2-ufcs-member-access-and-chaining.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-union.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-union.cpp2 pure2-union.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-union pure2-union.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-union pure2-union.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-unsafe.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-unsafe.cpp2 pure2-unsafe.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-unsafe pure2-unsafe.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-unsafe pure2-unsafe.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-variadics.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-variadics.cpp2 pure2-variadics.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-variadics pure2-variadics.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o pure2-variadics pure2-variadics.cpp -I/Users/jim/work/cppfort/.
     -> exit code 1
   Compile FAILED
 
 Testing pure2-various-string-literals.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile pure2-various-string-literals.cpp2 pure2-various-string-literals.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o pure2-various-string-literals pure2-various-string-literals.cpp -I/Users/jim/work/cppfort/src/stage0
-    -> exit code 1
-  Compile FAILED
+    CMD: g++ -std=c++20 -O0 -g -o pure2-various-string-literals pure2-various-string-literals.cpp -I/Users/jim/work/cppfort/.
+  Compile OK
+    CMD: /Users/jim/work/cppfort/tests/regression-tests/pure2-various-string-literals > /Users/jim/work/cppfort/tests/regression-tests/output_pure2-various-string-literals.txt 2>&1
+  Run OK
+  No expected output to compare
 
 Testing simple_main_auto.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile simple_main_auto.cpp2 simple_main_auto.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o simple_main_auto simple_main_auto.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o simple_main_auto simple_main_auto.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/simple_main_auto > /Users/jim/work/cppfort/tests/regression-tests/output_simple_main_auto.txt 2>&1
   Run OK
@@ -1302,7 +1314,7 @@ Testing simple_main_auto.cpp2
 Testing simple_main_colon.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile simple_main_colon.cpp2 simple_main_colon.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o simple_main_colon simple_main_colon.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o simple_main_colon simple_main_colon.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/simple_main_colon > /Users/jim/work/cppfort/tests/regression-tests/output_simple_main_colon.txt 2>&1
   Run OK
@@ -1311,7 +1323,7 @@ Testing simple_main_colon.cpp2
 Testing simple_mixed.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile simple_mixed.cpp2 simple_mixed.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o simple_mixed simple_mixed.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o simple_mixed simple_mixed.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/simple_mixed > /Users/jim/work/cppfort/tests/regression-tests/output_simple_mixed.txt 2>&1
   Run OK
@@ -1320,7 +1332,7 @@ Testing simple_mixed.cpp2
 Testing simple_test.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile simple_test.cpp2 simple_test.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o simple_test simple_test.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o simple_test simple_test.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/simple_test > /Users/jim/work/cppfort/tests/regression-tests/output_simple_test.txt 2>&1
   Run OK
@@ -1329,12 +1341,12 @@ Testing simple_test.cpp2
 Testing unicode_test.cpp2
     CMD: /Users/jim/work/cppfort/./build/src/stage0/stage0_cli transpile unicode_test.cpp2 unicode_test.cpp /Users/jim/work/cppfort/patterns/bnfc_cpp2_complete.yaml
   Transpile OK
-    CMD: g++ -std=c++20 -O0 -g -o unicode_test unicode_test.cpp -I/Users/jim/work/cppfort/src/stage0
+    CMD: g++ -std=c++20 -O0 -g -o unicode_test unicode_test.cpp -I/Users/jim/work/cppfort/.
   Compile OK
     CMD: /Users/jim/work/cppfort/tests/regression-tests/unicode_test > /Users/jim/work/cppfort/tests/regression-tests/output_unicode_test.txt 2>&1
   Run OK
   No expected output to compare
 
 Total tests: 185
-Failures: 172
+Failures: 166
 Skipped: 6
