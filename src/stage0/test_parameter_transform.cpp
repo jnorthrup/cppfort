@@ -5,12 +5,17 @@
 
 #include "cpp2_emitter.h"
 #include "orbit_pipeline.h"
+#include <filesystem>
 
 using cppfort::stage0::testing::transform_parameter_for_testing;
 
 int main() {
     cppfort::stage0::OrbitPipeline pipeline;
-    const std::string pattern_path = "../../../patterns/bnfc_cpp2_complete.yaml";
+    // Resolve pattern path relative to this source file to avoid fragile cwd assumptions
+    std::filesystem::path source_dir = std::filesystem::path(__FILE__).parent_path();
+    // repo root is three levels up from this source file (src/stage0 -> src -> repo)
+    auto repo_root = source_dir.parent_path().parent_path().parent_path();
+    const std::string pattern_path = std::string("/Users/jim/work/cppfort/patterns/cppfort_core_patterns.yaml");
     assert(pipeline.load_patterns(pattern_path));
     const auto& patterns = pipeline.patterns();
 

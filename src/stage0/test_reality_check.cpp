@@ -16,10 +16,10 @@ namespace {
 std::filesystem::path resolve_patterns_path() {
     // Keep the search list short to avoid masking real pathing issues.
     static const std::filesystem::path candidates[] = {
-        "patterns/bnfc_cpp2_complete.yaml",
-        "../patterns/bnfc_cpp2_complete.yaml",
-        "../../patterns/bnfc_cpp2_complete.yaml",
-        "../../../patterns/bnfc_cpp2_complete.yaml"
+    "patterns/cppfort_core_patterns.yaml",
+    "../patterns/cppfort_core_patterns.yaml",
+    "../../patterns/cppfort_core_patterns.yaml",
+    "../../../patterns/cppfort_core_patterns.yaml"
     };
 
     for (const auto& candidate : candidates) {
@@ -32,7 +32,7 @@ std::filesystem::path resolve_patterns_path() {
     // Last resort: resolve relative to this source file for hermetic runs.
     try {
         auto source_dir = std::filesystem::path(__FILE__).parent_path();
-        auto fallback = std::filesystem::weakly_canonical(source_dir / "../../../patterns/bnfc_cpp2_complete.yaml");
+    auto fallback = std::filesystem::weakly_canonical(source_dir / "../../../patterns/cppfort_core_patterns.yaml");
         if (std::filesystem::exists(fallback)) {
             return fallback;
         }

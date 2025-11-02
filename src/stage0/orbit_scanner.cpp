@@ -47,7 +47,7 @@ bool OrbitScanner::initialize() {
   }
 
   // Load unified orbit patterns
-  ::std::filesystem::path unifiedPatternsPath = m_config.patternsDir / "bnfc_cpp2_complete.yaml";
+  ::std::filesystem::path unifiedPatternsPath = m_config.patternsDir / "cppfort_core_patterns.yaml";
   if (::std::filesystem::exists(unifiedPatternsPath)) {
     if (!m_unifiedDatabase->loadUnifiedPatterns(unifiedPatternsPath.string())) {
       ::std::cerr << "Warning: Failed to load unified orbit patterns from " << unifiedPatternsPath << ::std::endl;

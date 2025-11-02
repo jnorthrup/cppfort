@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
         auto boundaries = scanner.scanAnchorsWithOrbits(source, anchors);
 
         OrbitPipeline orbit_pipeline;
-        std::filesystem::path pattern_path = std::filesystem::path("patterns") / "bnfc_cpp2_complete.yaml";
+    std::filesystem::path pattern_path = std::filesystem::path("patterns") / "cppfort_core_patterns.yaml";
         const bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path.string());
 
         std::cout << "\n=== Wide Scanner Results ===\n";
@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
         scanner.scanAnchorsWithOrbits(source, anchors);
 
         OrbitPipeline orbit_pipeline;
-        std::string pattern_path = (argc >= 5) ? argv[4] : "patterns/bnfc_cpp2_complete.yaml";
+    std::string pattern_path = (argc >= 5) ? argv[4] : "patterns/cppfort_core_patterns.yaml";
         bool patterns_loaded = orbit_pipeline.load_patterns(pattern_path);
 
         if (patterns_loaded) {

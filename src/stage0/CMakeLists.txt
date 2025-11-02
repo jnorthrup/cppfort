@@ -136,9 +136,9 @@ if(BUILD_TESTING)
   add_test(
     NAME stage0_regression_suite
     COMMAND regression_runner
-            $<TARGET_FILE:stage0_cli>
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
+      $<TARGET_FILE:stage0_cli>
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/cppfort_core_patterns.yaml
             ${CMAKE_CURRENT_SOURCE_DIR}/../../include
             --verbose
   )
@@ -170,7 +170,7 @@ add_custom_target(regression_tests
   COMMAND $<TARGET_FILE:regression_runner>
           $<TARGET_FILE:stage0_cli>
           ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/cppfort_core_patterns.yaml
           ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   DEPENDS stage0_cli regression_runner
   USES_TERMINAL

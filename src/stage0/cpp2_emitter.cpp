@@ -1906,7 +1906,8 @@ std::string transform_function_signature_line(const std::string& line, const std
         }
 
         std::string cpp_return_type = modifiers.has_return ? transform_return_spec(modifiers.return_type) : std::string{"void"};
-    std::string transformed_params = transform_parameter(params_section, patterns, /*prefer_value_for_in=*/true);
+        // For top-level function signatures prefer const-ref for 'in' parameters (match test expectations)
+        std::string transformed_params = transform_parameter(params_section, patterns, /*prefer_value_for_in=*/false);
         std::string contract_suffix = build_contract_suffix(modifiers.contracts);
 
         std::string forward_decl = indent + cpp_return_type + " " + name + "(" + transformed_params + ")";
@@ -1951,7 +1952,8 @@ std::string transform_function_signature_line(const std::string& line, const std
         cpp_return_type = "void";
     }
 
-    std::string transformed_params = transform_parameter(params_section, patterns, /*prefer_value_for_in=*/true);
+    // For function definitions prefer const-ref for 'in' parameters (match test expectations)
+    std::string transformed_params = transform_parameter(params_section, patterns, /*prefer_value_for_in=*/false);
     std::string contract_suffix = build_contract_suffix(modifiers.contracts);
 
     std::string result = indent;
@@ -3285,6 +3287,88 @@ std::string apply_substitution_with_offset(const std::string& template_str, cons
     return result;
 }
 
+// Normalize function return notation: convert
+//   "auto name(params) -> Ret { ... }"
+// into
+//   "Ret name(params) { ... }"
+// Only applies when the form is a plain function (not an assignment or lambda)
+std::string normalize_function_return_style(const std::string& text) {
+    std::string s = text;
+    size_t pos = 0;
+    while (true) {
+        // Find "auto " occurrence
+        size_t auto_pos = s.find("auto ", pos);
+        if (auto_pos == std::string::npos) break;
+
+        size_t name_start = auto_pos + 5;
+        // extract identifier (may include template args or namespace)
+        size_t i = name_start;
+        while (i < s.size() && (std::isalnum(static_cast<unsigned char>(s[i])) || s[i] == '_' || s[i] == ':' || s[i] == '<' || s[i] == '>' || s[i] == ',' || s[i] == ' ')) {
+            ++i;
+        }
+        if (i >= s.size() || s[i] != '(') {
+            pos = name_start;
+            continue;
+        }
+
+        size_t params_open = i;
+        // find matching ')'
+        int depth = 0;
+        size_t j = params_open;
+        for (; j < s.size(); ++j) {
+            if (s[j] == '(') ++depth;
+            else if (s[j] == ')') { --depth; if (depth == 0) break; }
+        }
+        if (j >= s.size() || s[j] != ')') {
+            pos = i+1;
+            continue;
+        }
+
+        size_t after_paren = j + 1;
+        // Skip whitespace
+        while (after_paren < s.size() && std::isspace(static_cast<unsigned char>(s[after_paren]))) ++after_paren;
+        // Expect "->"
+        if (after_paren + 1 >= s.size() || s[after_paren] != '-' || s[after_paren+1] != '>') {
+            pos = after_paren;
+            continue;
+        }
+
+        size_t ret_start = after_paren + 2;
+        // skip spaces
+        while (ret_start < s.size() && std::isspace(static_cast<unsigned char>(s[ret_start]))) ++ret_start;
+        // find end of return type (stop at space before body or at '{')
+        size_t ret_end = ret_start;
+        while (ret_end < s.size() && s[ret_end] != '{' && s[ret_end] != ';' && s[ret_end] != '\n') ++ret_end;
+        // Trim trailing whitespace from return type
+        while (ret_end > ret_start && std::isspace(static_cast<unsigned char>(s[ret_end-1]))) --ret_end;
+        if (ret_end <= ret_start) {
+            pos = ret_end;
+            continue;
+        }
+
+        std::string return_type = s.substr(ret_start, ret_end - ret_start);
+        std::string name = s.substr(name_start, params_open - name_start);
+        std::string params = s.substr(params_open, j - params_open + 1);
+
+        // Ensure this isn't an assignment (i.e., next non-space char after params is not '=')
+        size_t after_params = j + 1;
+        size_t k = after_params;
+        while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) ++k;
+        if (k < s.size() && s[k] == '=') {
+            pos = k + 1;
+            continue; // likely "auto name = [](...) -> T" or similar
+        }
+
+        // Build replacement: return_type + ' ' + name + params
+        std::string replacement = return_type + " " + name + params;
+
+        // Replace the span from auto_pos to ret_end with replacement
+        s.replace(auto_pos, ret_end - auto_pos, replacement);
+        pos = auto_pos + replacement.size();
+    }
+    return s;
+}
+
 // Template-aware substitution for template alias patterns
 std::string apply_template_substitution(const std::string& template_str, const std::vector<std::string>& segments, int placeholder_offset) {
     std::vector<std::string> processed = segments;
@@ -4396,6 +4480,8 @@ void CPP2Emitter::emit_depth_based(std::string_view source, std::ostream& out, c
                         } else {
                             result = apply_substitution_with_offset(template_it->second, transformed_segments, placeholder_offset);
                         }
+                        // Normalize function return style if present
+                        result = normalize_function_return_style(result);
                         rendered_line.append(result);
                     } else {
                         // No template for target grammar - emit original
