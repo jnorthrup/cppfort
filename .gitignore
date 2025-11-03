@@ -1,36 +1,49 @@
+# Build directories
 build/
-*.o
-*.a
-*.so
-*.dylib
-*.dSYM
-.cmake/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-compile_commands.json
+cmake-build-*/
+
+# Log files
+logs/
 *.log
-*.bin
 
-# Temporary test files
-tmp_*.cpp
+# Temporary files
+*.tmp
+*.temp
+tmp_*
 
-# Analysis and report files
-ANALYSIS_*.md
-*_ANALYSIS.md
-*_RESULT.txt
-*_SUMMARY.txt
-FAILURE_REFERENCE.txt
-COPILOT_TEST_RUN.txt
-GIT_TASK_TREE_ANALYSIS.md
-GIT_COMMIT_ANALYSIS.md
-REDUNDANCY_ANALYSIS.md
+# Compiled binaries
+*.o
+*.exe
+*.out
+standalone_graph_test
+advanced_graph_solutions
+tdd_graph_approach
 
-# Trace and debug output
-trace_output*.txt
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Local CMake overrides
-CMakeLists.txt.local
+# OS files
+Thumbs.db
 
-# Utility scripts
-rm-empty-files.bat
+# Documentation consolidation
+DOCS/
+
+# Qwen logs
+QWEN.mdlogs/
+*.log
+logs/
+*.log
+QWEN.md
+advanced_graph_solutions
+standalone_graph_test
+tdd_graph_approach
+*.log
+tmp_*
+logs/
+*.log
+logs/
