@@ -14,7 +14,15 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 # Collect all source files
-file(GLOB STAGE0_SOURCES "*.cpp")
+set(STAGE0_SOURCES
+    cpp2_emitter.cpp
+    main.cpp
+    orbit_pipeline.cpp
+    orbit_scanner.cpp
+    stage0_cli.cpp
+    graph_nodes.cpp
+    simple_graph_nodes.cpp
+)
 
 # Remove main.cpp and test files from library sources
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
@@ -107,6 +115,20 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_parameter_transform yaml-cpp::yaml-cpp)
 endif()
 
+# Create graph nodes test executable
+add_executable(test_graph_nodes test_graph_nodes.cpp)
+target_link_libraries(test_graph_nodes stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_graph_nodes yaml-cpp::yaml-cpp)
+endif()
+
+# Create simple graph nodes test executable
+add_executable(test_simple_graph_nodes test_simple_graph_nodes.cpp)
+target_link_libraries(test_simple_graph_nodes stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(test_simple_graph_nodes yaml-cpp::yaml-cpp)
+endif()
+
 # Create depth matcher test executable (DISABLED - file missing)
 # add_executable(test_depth_matcher test_depth_matcher.cpp)
 # target_link_libraries(test_depth_matcher stage0_lib)
@@ -133,6 +155,8 @@ add_executable(regression_runner regression_runner.cpp)
 if(BUILD_TESTING)
   add_test(NAME stage0_confix_cache COMMAND test_confix_cache)
   add_test(NAME stage0_parameter_transform COMMAND test_parameter_transform)
+  add_test(NAME stage0_graph_nodes COMMAND test_graph_nodes)
+  add_test(NAME stage0_simple_graph_nodes COMMAND test_simple_graph_nodes)
   add_test(
     NAME stage0_regression_suite
     COMMAND regression_runner
