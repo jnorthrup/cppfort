@@ -1,0 +1,253 @@
+// Test for advanced lifetime safety and memory management features
+// This test combines lifetime safety, resource management, and error handling
+
+// RAII-style resource manager
+Resource: <T> type = {
+    ptr: T* = nullptr;
+    
+    // Constructor takes ownership
+    Resource: (p: T*) = {
+        ptr = p;
+    }
+    
+    // Move constructor
+    Resource: (inout other) = {
+        ptr = other.ptr;
+        other.ptr = nullptr;
+    }
+    
+    // Move assignment
+    operator=: (inout other) -> Resource& = {
+        if ptr != nullptr {
+            delete ptr;
+        }
+        ptr = other.ptr;
+        other.ptr = nullptr;
+        return *this;
+    }
+    
+    // Destructor
+    ~Resource: () = {
+        std::cout << "Destroying Resource\n";
+        if ptr != nullptr {
+            delete ptr;
+            ptr = nullptr;
+        }
+    }
+    
+    // Access methods
+    get: () -> T* = {
+        return ptr;
+    }
+    
+    value: () -> T& = {
+        _pre: (ptr != nullptr) = "Pointer must not be null";
+        return *ptr;
+    }
+    
+    // Safe access with optional
+    try_get: () -> std::optional<T&> = {
+        if ptr != nullptr {
+            return *ptr;
+        }
+        else {
+            return {};
+        }
+    }
+}
+
+// Class demonstrating lifetime safety
+DataProcessor: type = {
+    buffer: std::vector<int> = ();
+    
+    DataProcessor: (size: i32) = {
+        buffer.resize(size);
+    }
+    
+    // Method with lifetime annotation
+    process_inout: (inout data: std::vector<int>) = {
+        for i : cpp2::range(0, cpp2::as_<i32>(data.size())) {
+            data[i] = data[i] * 2;
+        }
+    }
+    
+    // Method that returns a reference with proper lifetime
+    get_buffer_ref: () -> std::vector<int>& = {
+        return buffer;
+    }
+    
+    // Method that safely works with raw pointers
+    safe_copy_from_ptr: (source: std::vector<int> const*) = {
+        _pre: (source != nullptr) = "Source pointer must not be null";
+        buffer = *source;
+    }
+    
+    // Method with safe pointer handling
+    process_with_ptr: (data_ptr: std::vector<int>*) = {
+        if data_ptr != nullptr {
+            for val : data_ptr* {
+                buffer.push_back(val);
+            }
+        }
+    }
+    
+    size: () -> i32 = {
+        return cpp2::as_<i32>(buffer.size());
+    }
+    
+    print: () = {
+        std::cout << "Buffer: ";
+        for val : buffer {
+            std::cout << val << " ";
+        }
+        std::cout << "\n";
+    }
+}
+
+// Class with smart pointers
+SmartDataProcessor: type = {
+    data: std::unique_ptr<std::vector<int>> = std::make_unique<std::vector<int>>();
+    
+    add_element: (value: int) = {
+        data->push_back(value);
+    }
+    
+    get_size: () -> i32 = {
+        return cpp2::as_<i32>(data->size());
+    }
+    
+    // Function that safely handles shared ownership
+    create_shared_copy: () -> std::shared_ptr<std::vector<int>> = {
+        shared_data := std::make_shared<std::vector<int>>(*data);
+        return shared_data;
+    }
+    
+    print: () = {
+        std::cout << "Smart Data: ";
+        for val : *data {
+            std::cout << val << " ";
+        }
+        std::cout << "\n";
+    }
+}
+
+// Lifetime-safe string operations
+StringProcessor: type = {
+    text: std::string = "";
+    
+    StringProcessor: (initial: std::string) = {
+        text = initial;
+    }
+    
+    // Safe substring operation
+    safe_substring: (start: i32, length: i32) -> std::string = {
+        _pre: (start >= 0 && start < cpp2::as_<i32>(text.size())) = "Start index must be valid";
+        _pre: (length >= 0) = "Length must be non-negative";
+        
+        actual_length := std::min(length, cpp2::as_<i32>(text.size()) - start);
+        return text.substr(cpp2::as_<std::size_t>(start), cpp2::as_<std::size_t>(actual_length));
+    }
+    
+    // Append with lifetime safety
+    append_safe: (in text_to_add: std::string) = {
+        text += text_to_add;
+    }
+    
+    get_text: () -> std::string const& = {
+        return text;
+    }
+    
+    print: () = {
+        std::cout << "Text: " << text << "\n";
+    }
+}
+
+// Function that demonstrates safe memory management
+process_with_resources: () -> i32 = {
+    // Using Resource with int
+    res1: Resource<int> = (new int(42));
+    std::cout << "Resource value: " << res1.value() << "\n";
+    
+    // Moving resource
+    res2: Resource<int> = (res1);  // Move constructor
+    std::cout << "Moved resource value: " << res2.value() << "\n";
+    
+    // Process with smart pointers
+    smart_proc: SmartDataProcessor = ();
+    smart_proc.add_element(10);
+    smart_proc.add_element(20);
+    smart_proc.add_element(30);
+    
+    smart_proc.print();
+    std::cout << "Smart processor size: " << smart_proc.get_size() << "\n";
+    
+    // Safe string operations
+    str_proc: StringProcessor = ("Hello, World!");
+    str_proc.print();
+    
+    sub := str_proc.safe_substring(0, 5);
+    std::cout << "Substring: '" << sub << "'\n";
+    
+    str_proc.append_safe(" CPP2");
+    str_proc.print();
+    
+    return 0;
+}
+
+// Function demonstrating exception safety and RAII
+exception_safe_operation: () = {
+    processor: DataProcessor = (10);
+    
+    // Initialize some data
+    buf_ref := processor.get_buffer_ref();
+    for i : cpp2::range(0, 10) {
+        buf_ref[i] = i;
+    }
+    
+    try {
+        // Perform operations that might throw
+        processor.process_inout(buf_ref);
+        processor.print();
+        
+        // Try to access invalid pointer safely
+        invalid_ptr: std::vector<int>* = nullptr;
+        processor.process_with_ptr(invalid_ptr);
+    }
+    catch const& e: std::exception {
+        std::cout << "Caught exception: " << e.what() << "\n";
+    }
+}
+
+// Main function to test all lifetime safety features
+main: () -> int = {
+    std::cout << "Testing lifetime safety and resource management\n";
+    
+    result := process_with_resources();
+    std::cout << "Process result: " << result << "\n";
+    
+    exception_safe_operation();
+    
+    // Demonstrate automatic cleanup
+    {
+        res: Resource<double> = (new double(3.14159));
+        std::cout << "Inside scope: " << res.value() << "\n";
+    }  // res goes out of scope here and is automatically destroyed
+    
+    std::cout << "Outside scope - resource should be destroyed\n";
+    
+    // Test shared ownership
+    smart1: SmartDataProcessor = ();
+    smart1.add_element(100);
+    smart1.add_element(200);
+    
+    shared := smart1.create_shared_copy();
+    std::cout << "Shared data size: " << cpp2::as_<i32>(shared->size()) << "\n";
+    
+    // Add to both to show they're distinct
+    smart1.add_element(300);
+    shared->push_back(400);
+    
+    std::cout << "Smart1 size: " << smart1.get_size() << ", Shared size: " << cpp2::as_<i32>(shared->size()) << "\n";
+    
+    return 0;
+}

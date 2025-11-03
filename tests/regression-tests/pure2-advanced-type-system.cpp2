@@ -1,0 +1,206 @@
+// Test for advanced type system features and pattern matching
+// This test covers complex type relationships and pattern matching scenarios
+
+// Union type using variant
+Value: type = {
+    data: std::variant<int, double, std::string, bool> = ();
+    
+    // Constructor from different types
+    Value: (i: int) { data = i; }
+    Value: (d: double) { data = d; }
+    Value: (s: std::string) { data = s; }
+    Value: (b: bool) { data = b; }
+    
+    // Visitor using inspect
+    visit: (visitor_func) = {
+        result := inspect data {
+            is int => visitor_func(std::get<int>(data));
+            is double => visitor_func(std::get<double>(data));
+            is std::string => visitor_func(std::get<std::string>(data));
+            is bool => visitor_func(std::get<bool>(data));
+        };
+        return result;
+    }
+    
+    // Type checking methods
+    is_int: () -> bool = { return std::holds_alternative<int>(data); }
+    is_double: () -> bool = { return std::holds_alternative<double>(data); }
+    is_string: () -> bool = { return std::holds_alternative<std::string>(data); }
+    is_bool: () -> bool = { return std::holds_alternative<bool>(data); }
+    
+    // Getters with type checking
+    get_int: () -> int = {
+        if is_int() { return std::get<int>(data); }
+        else { throw std::runtime_error("Not an int"); }
+    }
+    
+    get_double: () -> double = {
+        if is_double() { return std::get<double>(data); }
+        else { throw std::runtime_error("Not a double"); }
+    }
+    
+    get_string: () -> std::string = {
+        if is_string() { return std::get<std::string>(data); }
+        else { throw std::runtime_error("Not a string"); }
+    }
+    
+    get_bool: () -> bool = {
+        if is_bool() { return std::get<bool>(data); }
+        else { throw std::runtime_error("Not a bool"); }
+    }
+}
+
+// Generic class with type constraints
+Arithmetic: <T> type requires std::integral<T> || std::floating_point<T> = {
+    value: T = ();
+    
+    Arithmetic: (initial_value: T) = {
+        value = initial_value;
+    }
+    
+    add: (other: T) -> T = {
+        return value + other;
+    }
+    
+    multiply: (other: T) -> T = {
+        return value * other;
+    }
+    
+    to_string: () -> std::string = {
+        return cpp2::to_string(value);
+    }
+}
+
+// Class template with SFINAE-style constraints
+Stringable: <T> type = {
+    data: T = ();
+    
+    Stringable: (initial_data: T) = {
+        data = initial_data;
+    }
+    
+    // This function only exists if T has a to_string method or is arithmetic
+    to_string: () -> std::string requires requires (T t) { 
+        { cpp2::to_string(t) } -> std::convertible_to<std::string>; 
+    } = {
+        return cpp2::to_string(data);
+    }
+    
+    // Fallback if the above constraint isn't satisfied
+    to_serialized: () -> std::string = {
+        // Just return a placeholder for non-stringable types
+        return "[serialized data]";
+    }
+}
+
+// Template specialization simulation using constraints
+Formatter: <T> type = {
+    format: (value: T) -> std::string = {
+        return inspect value -> std::string {
+            is int i => "integer: " + cpp2::to_string(i);
+            is double d => "double: " + cpp2::to_string(d);
+            is std::string s => "string: " + s;
+            is bool b => "bool: " + (b ? "true" : "false");
+            is _ => "unknown type";
+        };
+    }
+}
+
+// Advanced function with multiple concepts
+calculate: <T> (x: T, y: T) -> T requires std::integral<T> || std::floating_point<T> = {
+    return x + y;
+}
+
+// Function with generic lambdas and complex capture
+process_data: <T> (data: std::vector<T>, processor: T->T) -> std::vector<T> = {
+    result: std::vector<T> = ();
+    for item : data {
+        result.push_back(processor(item));
+    }
+    return result;
+}
+
+// Function with complex nested types
+create_nested_structure: () -> std::vector<std::pair<std::string, std::variant<int, std::string>>> = {
+    result: std::vector<std::pair<std::string, std::variant<int, std::string>>> = ();
+    
+    // Add some data
+    pair1: std::pair<std::string, std::variant<int, std::string>> = ("number", 42);
+    pair2: std::pair<std::string, std::variant<int, std::string>> = ("text", "hello");
+    
+    result.push_back(pair1);
+    result.push_back(pair2);
+    
+    return result;
+}
+
+// Main function testing all features
+main: () -> int = {
+    std::cout << "Testing advanced type system features\n";
+    
+    // Test Value union type
+    v1: Value = (42);
+    v2: Value = (3.14);
+    v3: Value = ("hello");
+    v4: Value = (true);
+    
+    std::cout << "v1 is int: " << v1.is_int() << "\n";
+    std::cout << "v2 is double: " << v2.is_double() << "\n";
+    std::cout << "v3 is string: " << v3.is_string() << "\n";
+    std::cout << "v4 is bool: " << v4.is_bool() << "\n";
+    
+    // Using visitors
+    visitor := :(value) -> std::string = {
+        return inspect value -> std::string {
+            is int i => "int value: " + cpp2::to_string(i);
+            is double d => "double value: " + cpp2::to_string(d);
+            is std::string s => "string value: " + s;
+            is bool b => "bool value: " + cpp2::to_string(b);
+        };
+    };
+    
+    std::cout << "v1 visited: " << v1.visit(visitor) << "\n";
+    std::cout << "v2 visited: " << v2.visit(visitor) << "\n";
+    
+    // Test Arithmetic with constraints
+    int_calc: Arithmetic<int> = (10);
+    double_calc: Arithmetic<double> = (5.5);
+    
+    std::cout << "10 + 7 = " << int_calc.add(7) << "\n";
+    std::cout << "5.5 * 2 = " << double_calc.multiply(2.0) << "\n";
+    
+    // Test Formatter
+    formatter: Formatter<int> = ();
+    std::cout << "Formatted int: " << formatter.format(123) << "\n";
+    
+    // Test generic processing
+    data: std::vector<int> = ();
+    data.push_back(1);
+    data.push_back(2);
+    data.push_back(3);
+    
+    processor := :(x: int) -> int = { return x * x; };
+    processed := process_data(data, processor);
+    
+    std::cout << "Original: ";
+    for item : data { std::cout << item << " "; }
+    std::cout << "\nSquared: ";
+    for item : processed { std::cout << item << " "; }
+    std::cout << "\n";
+    
+    // Test nested structures
+    nested := create_nested_structure();
+    std::cout << "Nested structure size: " << nested.size() << "\n";
+    
+    for item : nested {
+        key := item.first;
+        value := item.second;
+        str_value := inspect value -> std::string {
+            is int i => cpp2::to_string(i);
+            is std::string s => s;
+        };
+        std::cout << "Key: " << key << ", Value: " << str_value << "\n";
+    }
+    
+    return 0;
+}

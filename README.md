@@ -62,7 +62,7 @@ Cppfort is a pattern-driven transpiler that converts C++2 (cpp2) syntax into sta
 - **Basic Functions**: Simple function transpilation working
 - **Include Detection**: Automatic header inclusion
 - **Parameter Handling**: Basic parameter transformation
-- **Test Coverage**: 192 regression tests defined, 0 currently passing
+- **Test Coverage**: 196 regression tests defined (added 4 new semantic depth/breadth tests), 0 currently passing
 - **Self-Hosting**: Long-term goal for complete bootstrap
 
 ## Building and Running
@@ -123,7 +123,12 @@ cppfort/
 
 ## Technical Debt and Known Issues
 
-- **Test Suite**: All 192 regression tests currently fail due to incomplete pattern implementations
+- **Test Suite**: All 196 regression tests currently fail due to incomplete pattern implementations
+  - Added 4 new tests focusing on semantic depth and breadth:
+    - pure2-complex-generic-templates.cpp2: Complex generic templates with multiple features
+    - pure2-advanced-type-system.cpp2: Advanced type system features and pattern matching
+    - pure2-lifetime-safety-advanced.cpp2: Advanced lifetime safety and memory management
+    - pure2-functional-programming-advanced.cpp2: Complex functional programming features
 - **Parameter Transformation**: Complex parameter modes (inout/out/move/forward) partially implemented
 - **Recursive Processing**: Nested pattern application uses workarounds instead of proper orbit recursion
 - **Bidirectional Patterns**: C++ to C++2 conversion not yet implemented

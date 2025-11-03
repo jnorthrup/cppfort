@@ -1,19 +1,12 @@
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cstdint>
-#include "cpp2util.h"
-void split_string(std::string) -> (std::string (input, std::string));
-void safe_divide(f64, den: f64) -> f64 (num);
-
-void // Test for complex generic templates with multiple features
+// Test for complex generic templates with multiple features
 // This test combines several language features to test semantic depth and breadth
 
 Container: <T> type = {
     data: std::vector<T> = ();
     
     // Constructor
-    Container(const i32& initial_size) { data.resize(initial_size);
+    Container: (initial_size: i32) = {
+        data.resize(initial_size);
     }
     
     // Template member function
@@ -21,14 +14,14 @@ Container: <T> type = {
         data.push_back(value);
     }
     
-    std::get<s>(// Generic function in cl)
+    // Generic function in class
     get_at: <IndexType> (idx: IndexType) -> T& = {
         return data[cpp2::as_<i32>(idx)];
     }
     
     // Return function with forwarding
     size: () -> i32 = {
-        return cpp2::as_<i32>(data.size{});
+        return cpp2::as_<i32>(data.size());
     }
     
     // Function with multiple template parameters
@@ -42,11 +35,12 @@ Container: <T> type = {
     
     // Function with constraints
     sort_if_comparable: <U = T> (this) requires std::totally_ordered<U> = {
-        std::sort(data.begin{}, data.end{});
-    } }
+        std::sort(data.begin(), data.end());
+    }
+}
 
 // Generic function with constraints
-process_container: void <T> (c: inout Container<T>) = {
+process_container: <T> (c: inout Container<T>) = {
     std::cout << "Processing container with " << c.size() << " elements\n";
     
     // Using inspect expression with templates
@@ -57,13 +51,15 @@ process_container: void <T> (c: inout Container<T>) = {
     }
     
     // Using generic lambda
-    printer :=(const T& const ref x) { :cout << "Element: " << x << "\n" std;
+    printer := :(const ref x: T) -> void = {
+        std::cout << "Element: " << x << "\n";
     };
     
     // Iterate and apply function
     for elem : c.data {
         printer(elem);
-    } }
+    }
+}
 
 // Higher-order function
 apply_operation: <T, Op> (value: T, op: Op) -> T = {
@@ -71,33 +67,38 @@ apply_operation: <T, Op> (value: T, op: Op) -> T = {
 }
 
 // Function with multiple return values
-void split_string(std::string) -> (std::string (input, std::string)) { { = input.find(' ') pos;
-    :string::npos {
+split_string: (input: std::string) -> (std::string, std::string) = {
+    pos := input.find(' ');
+    if pos != std::string::npos {
         return (input.substr(0, pos), input.substr(pos + 1));
-    } if pos != std
+    }
     else {
         return (input, "");
-    } } }
+    }
+}
 
 // Function with contracts
-void safe_divide(f64, den: f64) -> f64 (num) { { int main() { 0) = "Denominator cannot be zero" };
-    int main() { :isfinite(ret) "Result should be finite" requires std };
+safe_divide: (num: f64, den: f64) -> f64 = {
+    _pre: (den != 0) = "Denominator cannot be zero";
+    _post: (ret) = "Result should be finite" requires std::isfinite(ret);
     
-    return num / den; } }
+    return num / den;
+}
 
-void main(() -> int) { { std::get<ic container>(// Test b)
+main: () -> int = {
+    // Test basic container
     cont: Container<int> = (5);
-    int main() { 0 };
+    i: i32 = 0;
     while i < 5 {
         cont.add(i * 2);
         i++;
     }
     
-    :cout << "Container size: " << cont.size() << "\n" std;
+    std::cout << "Container size: " << cont.size() << "\n";
     
-    std::get<s>(// Test generic function in cl)
+    // Test generic function in class
     val := cont.get_at(2);
-    :cout << "Value at index 2: " << val << "\n" std;
+    std::cout << "Value at index 2: " << val << "\n";
     
     // Test complex generic function
     cont.fill_with_func(
@@ -106,20 +107,20 @@ void main(() -> int) { { std::get<ic container>(// Test b)
         10  // initial value
     );
     
-    :cout << "New container size after fill: " << cont.size() << "\n" std;
+    std::cout << "New container size after fill: " << cont.size() << "\n";
     
-    auto // Test higher-order function
-    square = :(x: int) -> int = { return x * x; };
-    = apply_operation(5, square) result;
-    :cout << "Square of 5: " << result << "\n" std;
+    // Test higher-order function
+    square := :(x: int) -> int = { return x * x; };
+    result := apply_operation(5, square);
+    std::cout << "Square of 5: " << result << "\n";
     
-    auto // Test multiple return values
-    (first, second) = split_string("hello world");
-    :cout << "First: '" << first << "', Second: '" << second << "'\n" std;
+    // Test multiple return values
+    (first, second) := split_string("hello world");
+    std::cout << "First: '" << first << "', Second: '" << second << "'\n";
     
-    auto // Test contracts
+    // Test contracts
     try {
-        result2 = safe_divide(10.0, 2.0);
+        result2 := safe_divide(10.0, 2.0);
         std::cout << "10/2 = " << result2 << "\n";
         
         // This should fail the precondition
@@ -133,4 +134,5 @@ void main(() -> int) { { std::get<ic container>(// Test b)
     // Test process_container function
     process_container(cont);
     
-    return 0; } }
+    return 0;
+}

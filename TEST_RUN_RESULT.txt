@@ -1,0 +1,130 @@
+TEST RUN RESULTS - REGRESSION SUITE ANALYSIS
+=============================================
+
+Total Regression Tests: 175 failed tests identified
+Test Run Date: 2025-10-30
+Analysis Scope: 3 largest failing tests by file size
+
+================================================================================
+TEST 1: pure2-regex_14_multiline_modifier.cpp2
+================================================================================
+File Size: 23698 bytes
+Test Status: COMPILE FAILED
+Failure Type: Compile error (C++ compilation)
+  Transpile: OK
+  g++ compilation: exit code 1
+
+File Content: Regex multiline modifier test with 572 lines
+  - Tests anchors: \Z, \z, $ with multiline modifier 'm'
+  - Tests 199 regex test cases for line boundary matching
+  - Contains helper functions: create_result(), sanitize(), test()
+
+Git History:
+  Commit: 504b636 (cppfort: Cpp2 transpiler with orbit-based pattern matching)
+  Lines at commit 504b636: 572 lines (file unchanged from initial version)
+  Follow pattern: single commit history - added with initial architecture
+
+Recent Changes:
+  No recent commits affecting this test file since initial implementation
+
+Failure Analysis:
+  Test transpiles successfully to C++ but fails at g++ compilation.
+  Likely causes:
+  - Missing regex library headers or implementation
+  - Template instantiation failures in regex type system
+  - Standard library compatibility with C++20 regex patterns
+
+================================================================================
+TEST 2: pure2-last-use.cpp2
+================================================================================
+File Size: 19145 bytes
+Test Status: TRANSPILE FAILED
+Failure Type: Transpiler crash (exit code -1)
+  Transpile: FAILED (exit code -1)
+  g++ compilation: NOT ATTEMPTED
+
+File Content: Lifetime safety and variable usage analysis test with 1044 lines
+  - Tests issue_313: identity function usage and lifetime tracking
+  - Tests issue_350: forward reference semantics
+  - Tests issue_683: loop variable scoping
+  - Tests issue_847: for-loop variable move semantics
+  - Tests issue_850: definite last use with move-capture
+  - Tests issue_857 variants: class method move semantics
+  - Tests issue_869: union operations with move semantics
+  - Tests issue_884: complex branching with move/copy patterns
+  - Tests loop and capture semantics
+
+Git History:
+  Commit: 504b636 (cppfort: Cpp2 transpiler with orbit-based pattern matching)
+  Lines at commit 504b636: 1044 lines (file unchanged from initial version)
+  Follow pattern: single commit history - added with initial architecture
+
+Recent Changes:
+  No recent commits affecting this test file since initial implementation
+
+Failure Analysis:
+  Transpiler crashes with exit code -1 indicating fatal error during parsing/analysis.
+  Test exercises complex lifetime tracking and move semantics analysis.
+  Multiple issue branches test edge cases in:
+  - Captured variable lifetime across lambda boundaries
+  - Move-only type handling in control flow
+  - Deferred initialization semantics
+  - Complex branching patterns with non-copyable objects
+
+  Crash likely indicates transpiler limitation in one of these areas.
+
+================================================================================
+TEST 3: pure2-regex_12_case_insensitive.cpp2
+================================================================================
+File Size: 17451 bytes
+Test Status: COMPILE FAILED
+Failure Type: Compile error (C++ compilation)
+  Transpile: OK
+  g++ compilation: exit code 1
+
+File Content: Regex case-insensitive modifier test with 412 lines
+  - Tests case-insensitive modifier 'i' with 119 regex patterns
+  - Tests basic patterns, quantifiers, character classes, groups
+  - Contains helper functions: create_result(), sanitize(), test()
+
+Git History:
+  Commit: 504b636 (cppfort: Cpp2 transpiler with orbit-based pattern matching)
+  Lines at commit 504b636: 412 lines (file unchanged from initial version)
+  Follow pattern: single commit history - added with initial architecture
+
+Recent Changes:
+  No recent commits affecting this test file since initial implementation
+
+Failure Analysis:
+  Test transpiles successfully to C++ but fails at g++ compilation.
+  Same failure pattern as regex_14_multiline_modifier.
+  Likely causes:
+  - Regex type system template generation issues
+  - Missing @regex attribute support in generated code
+  - Standard library regex implementation gaps for CPP2 abstraction
+
+================================================================================
+SUMMARY
+================================================================================
+
+Failure Categories:
+  - Compile failures (2): pure2-regex_14_multiline_modifier, pure2-regex_12_case_insensitive
+  - Transpile failures (1): pure2-last-use
+
+Key Observations:
+1. Both regex tests fail at C++ compilation after successful transpilation
+2. The last-use test fails at transpilation stage (exit code -1)
+3. All tests are large files (17K-23K bytes) with complex logic
+4. All tests originated in single commit 504b636 - no incremental development
+5. No file changes since initial implementation suggests static regression
+
+Problem Areas Identified:
+  - Regex library integration: @regex type system not fully supported in C++ backend
+  - Lifetime/move semantics: Complex patterns in issue_* tests expose transpiler gaps
+  - Template instantiation: Multi-parameter template tests struggling in C++20
+
+Total Test Coverage:
+  - Tests analyzed: 3 (largest)
+  - Total lines of code: 2,028 lines
+  - Failure rate: 100% (3/3 analyzed tests fail)
+  - Regression suite failure rate: 175 failures across all tests

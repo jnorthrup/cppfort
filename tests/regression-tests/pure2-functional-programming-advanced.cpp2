@@ -1,0 +1,288 @@
+// Test for complex functional programming features
+// This test combines higher-order functions, closures, and functional patterns
+
+// Functional list type with higher-order operations
+FunctionalList: <T> type = {
+    elements: std::vector<T> = ();
+    
+    FunctionalList: () = { }  // Empty list
+    FunctionalList: (init_elements: std::vector<T>) = {
+        elements = init_elements;
+    }
+    
+    // Create from initializer list (simulated)
+    add: (element: T) -> FunctionalList& = {
+        elements.push_back(element);
+        return *this;
+    }
+    
+    size: () -> i32 = {
+        return cpp2::as_<i32>(elements.size());
+    }
+    
+    // Higher-order function: map
+    map: <U> (func: T->U) -> FunctionalList<U> = {
+        result_elements: std::vector<U> = ();
+        for item : elements {
+            result_elements.push_back(func(item));
+        }
+        return FunctionalList<U>(result_elements);
+    }
+    
+    // Higher-order function: filter
+    filter: (predicate: T->bool) -> FunctionalList = {
+        result_elements: std::vector<T> = ();
+        for item : elements {
+            if predicate(item) {
+                result_elements.push_back(item);
+            }
+        }
+        return FunctionalList(result_elements);
+    }
+    
+    // Higher-order function: fold/reduce
+    fold: <U> (initial: U, folder: (U, T)->U) -> U = {
+        accumulator := initial;
+        for item : elements {
+            accumulator = folder(accumulator, item);
+        }
+        return accumulator;
+    }
+    
+    // ForEach operation
+    for_each: (op: T->void) = {
+        for item : elements {
+            op(item);
+        }
+    }
+    
+    // Find element matching predicate
+    find: (predicate: T->bool) -> std::optional<T> = {
+        for item : elements {
+            if predicate(item) {
+                return item;
+            }
+        }
+        return std::nullopt;
+    }
+    
+    print: () = {
+        std::cout << "[";
+        for (i, item) : cpp2::enumerate(elements) {
+            std::cout << item;
+            if i < cpp2::as_<i32>(elements.size()) - 1 {
+                std::cout << ", ";
+            }
+        }
+        std::cout << "]\n";
+    }
+}
+
+// Function factory creating specialized functions
+FunctionFactory: type = {
+    // Creates a function that adds a specific value
+    create_adder: (value: i32) -> (i32->i32) = {
+        return :(x: i32) -> i32 = {
+            return x + value;
+        };
+    }
+    
+    // Creates a function that multiplies by a specific value
+    create_multiplier: (value: i32) -> (i32->i32) = {
+        return :(x: i32) -> i32 = {
+            return x * value;
+        };
+    }
+    
+    // Creates a composed function
+    create_composer: <T, U, V> (f: U->V, g: T->U) -> (T->V) = {
+        return :(x: T) -> V = {
+            return f(g(x));
+        };
+    }
+    
+    // Creates a function with captured state
+    create_counter: (initial_value: i32) -> ()->i32 = {
+        count := initial_value;
+        return :() -> i32 = {
+            count++;
+            return count - 1;  // Return previous value
+        };
+    }
+    
+    // Creates a memoized version of a function
+    create_memoized: <T> (func: T->T) -> (T->T) = {
+        cache: std::map<T, T> = ();
+        return :(input: T) -> T = {
+            cached := cache.find(input);
+            if cached != cache.end() {
+                return cached->second;
+            }
+            else {
+                result := func(input);
+                cache[input] = result;
+                return result;
+            }
+        };
+    }
+}
+
+// Complex functional operations
+MathOperations: type = {
+    // Function composition
+    compose: <T, U, V> (f: U->V, g: T->U) -> (T->V) = {
+        return :(x: T) -> V = {
+            return f(g(x));
+        };
+    }
+    
+    // Partial application
+    partial_apply: <T, U, V> (func: (T, U)->V, fixed_arg: T) -> (U->V) = {
+        return :(second_arg: U) -> V = {
+            return func(fixed_arg, second_arg);
+        };
+    }
+    
+    // Curry a binary function
+    curry: <T, U, V> (func: (T, U)->V) -> (T->(U->V)) = {
+        return :(first_arg: T) -> (U->V) = {
+            return :(second_arg: U) -> V = {
+                return func(first_arg, second_arg);
+            };
+        };
+    }
+    
+    // Pipeline operation (left-to-right composition)
+    pipe: <T, U, V> (value: T, f: T->U, g: U->V) -> V = {
+        return g(f(value));
+    }
+    
+    // Chain multiple operations
+    chain: <T> (value: T, funcs: std::vector<T->T>) -> T = {
+        result := value;
+        for func : funcs {
+            result = func(result);
+        }
+        return result;
+    }
+}
+
+// Event system using function listeners
+EventSystem: <T> type = {
+    listeners: std::vector<T->void> = ();
+    
+    subscribe: (listener: T->void) = {
+        listeners.push_back(listener);
+    }
+    
+    unsubscribe: (listener: T->void) = {
+        // Find and remove the listener (simplified)
+        // In a real implementation, you'd need a more sophisticated approach
+    }
+    
+    emit: (event: T) = {
+        for listener : listeners {
+            listener(event);
+        }
+    }
+}
+
+// Main function demonstrating functional programming features
+main: () -> int = {
+    std::cout << "Testing functional programming features\n";
+    
+    // Create a list and perform functional operations
+    numbers: FunctionalList<i32> = ();
+    for i : cpp2::range(1, 6) {  // 1, 2, 3, 4, 5
+        numbers.add(i);
+    }
+    
+    std::cout << "Original list: ";
+    numbers.print();
+    
+    // Map: square each number
+    squared := numbers.map(:(x: i32) -> i32 = { return x * x; });
+    std::cout << "Squared: ";
+    squared.print();
+    
+    // Filter: keep only even numbers
+    evens := numbers.filter(:(x: i32) -> bool = { return x % 2 == 0; });
+    std::cout << "Evens: ";
+    evens.print();
+    
+    // Fold: sum all numbers
+    sum := numbers.fold(0, :(acc: i32, x: i32) -> i32 = { return acc + x; });
+    std::cout << "Sum: " << sum << "\n";
+    
+    // Find a specific element
+    found := numbers.find(:(x: i32) -> bool = { return x > 3; });
+    if found {
+        std::cout << "Found element > 3: " << found.value() << "\n";
+    }
+    
+    // Test function factory
+    factory: FunctionFactory = ();
+    add5 := factory.create_adder(5);
+    mult3 := factory.create_multiplier(3);
+    
+    std::cout << "add5(10) = " << add5(10) << "\n";
+    std::cout << "mult3(7) = " << mult3(7) << "\n";
+    
+    // Test function composition
+    math_ops: MathOperations = ();
+    add_then_mult := math_ops.compose(mult3, add5);  // (x + 5) * 3
+    std::cout << "compose(mult3, add5)(4) = " << add_then_mult(4) << " (should be 27)\n";
+    
+    // Test partial application
+    add_partial := math_ops.partial_apply(:(a: i32, b: i32) -> i32 = { return a + b; }, 10);
+    std::cout << "partial_apply(add, 10)(5) = " << add_partial(5) << " (should be 15)\n";
+    
+    // Test currying
+    curry_add := math_ops.curry(:(a: i32, b: i32) -> i32 = { return a + b; });
+    add_four := curry_add(4);
+    std::cout << "curry(add)(4)(6) = " << add_four(6) << " (should be 10)\n";
+    
+    // Test pipeline
+    result := math_ops.pipe(5, add5, mult3);  // (5+5)*3 = 30
+    std::cout << "pipe(5, add5, mult3) = " << result << " (should be 30)\n";
+    
+    // Test counter with closure
+    counter := factory.create_counter(0);
+    std::cout << "Counter: " << counter() << ", " << counter() << ", " << counter() << "\n";
+    
+    // Test event system
+    event_sys: EventSystem<std::string> = ();
+    
+    event_sys.subscribe(:(msg: std::string) -> void = {
+        std::cout << "Listener 1: " << msg << "\n";
+    });
+    
+    event_sys.subscribe(:(msg: std::string) -> void = {
+        std::cout << "Listener 2: " << msg << "\n";
+    });
+    
+    event_sys.emit("Hello from event system!");
+    
+    // Test complex functional chain
+    operations: std::vector<i32->i32> = ();
+    operations.push_back(:(x: i32) -> i32 = { return x + 1; });
+    operations.push_back(:(x: i32) -> i32 = { return x * 2; });
+    operations.push_back(:(x: i32) -> i32 = { return x - 3; });
+    
+    chained_result := math_ops.chain(5, operations);  // ((5+1)*2)-3 = 9
+    std::cout << "Complex chain result: " << chained_result << " (should be 9)\n";
+    
+    // Test memoization
+    expensive_func := :(x: i32) -> i32 = {
+        std::cout << "Computing for " << x << " (expensive operation)\n";
+        return x * x;
+    };
+    
+    memoized_func := factory.create_memoized(expensive_func);
+    
+    std::cout << "First call: " << memoized_func(5) << "\n";  // Will compute
+    std::cout << "Second call: " << memoized_func(5) << "\n"; // Will use cache
+    std::cout << "Third call: " << memoized_func(6) << "\n";  // Will compute
+    
+    return 0;
+}
