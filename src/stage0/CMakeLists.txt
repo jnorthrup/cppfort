@@ -22,6 +22,7 @@ set(STAGE0_SOURCES
     stage0_cli.cpp
     graph_nodes.cpp
     simple_graph_nodes.cpp
+    complete_pattern_engine.cpp
 )
 
 # Remove main.cpp and test files from library sources
@@ -67,7 +68,7 @@ add_dependencies(stage0_lib tblgen_semantic_units)
 target_link_libraries(stage0_lib yaml-cpp)
 
 # Create executable
-add_executable(stage0_cli main.cpp)
+add_executable(stage0_cli semantic_transpiler_main.cpp)
 target_link_libraries(stage0_cli stage0_lib)
 
 # Create reality check test executable

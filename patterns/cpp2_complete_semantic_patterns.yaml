@@ -1,0 +1,469 @@
+---
+name: cpp2_function_full_signature
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "("
+  - ")"
+  - "->"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "function_identifier"
+  - "parameter_list"
+  - "return_type"
+  - "function_body"
+priority: 300
+transformation_templates:
+  4: "$3 $1($2) { $4 }"
+---
+name: cpp2_function_simple_void
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "("
+  - ")"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "function_identifier"
+  - "parameter_list"
+  - "function_body"
+priority: 290
+transformation_templates:
+  3: "void $1($2) { $3 }"
+---
+name: cpp2_main_function_signature
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "->"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "main_identifier"
+  - "main_signature"
+  - "main_body"
+priority: 310
+transformation_templates:
+  3: "int main() { $3 }"
+---
+name: cpp2_parameter_inout
+use_alternating: true
+alternating_anchors:
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "inout_param_identifier"
+  - "inout_param_type"
+priority: 280
+transformation_templates:
+  2: "$2& $1"
+---
+name: cpp2_parameter_move
+use_alternating: true
+alternating_anchors:
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "move_param_identifier"
+  - "move_param_type"
+priority: 270
+transformation_templates:
+  2: "$2&& $1"
+---
+name: cpp2_parameter_copy
+use_alternating: true
+alternating_anchors:
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "copy_param_identifier"
+  - "copy_param_type"
+priority: 260
+transformation_templates:
+  2: "$2 $1"
+---
+name: cpp2_parameter_forward
+use_alternating: true
+alternating_anchors:
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "forward_param_identifier"
+  - "forward_param_type"
+priority: 250
+transformation_templates:
+  2: "$2&& $1"
+---
+name: cpp2_parameter_out
+use_alternating: true
+alternating_anchors:
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "out_param_identifier"
+  - "out_param_type"
+priority: 240
+transformation_templates:
+  2: "$2& $1"
+---
+name: cpp2_variable_explicit_type
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "var_identifier"
+  - "var_type"
+  - "var_initializer"
+priority: 230
+transformation_templates:
+  2: "$2 $1 = $3;"
+---
+name: cpp2_variable_auto_deduction
+use_alternating: true
+alternating_anchors:
+  - ":="
+grammar_modes: 7
+evidence_types:
+  - "auto_var_identifier"
+  - "auto_var_initializer"
+priority: 220
+transformation_templates:
+  2: "auto $1 = $2;"
+---
+name: cpp2_type_definition
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "type_identifier"
+  - "type_keyword"
+  - "type_body"
+priority: 210
+transformation_templates:
+  3: "struct $1 { $3 };"
+---
+name: cpp2_template_type_definition
+use_alternating: true
+alternating_anchors:
+  - "<"
+  - ">"
+  - ":"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "template_params"
+  - "type_identifier"
+  - "type_keyword"
+  - "type_body"
+priority: 200
+transformation_templates:
+  4: "template<$1> struct $2 { $4 };"
+---
+name: cpp2_template_function_definition
+use_alternating: true
+alternating_anchors:
+  - "<"
+  - ">"
+  - ":"
+  - "("
+  - ")"
+  - "->"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "template_params"
+  - "func_identifier"
+  - "func_params"
+  - "return_type"
+  - "func_body"
+priority: 190
+transformation_templates:
+  5: "template<$1> $4 $2($3) { $5 }"
+---
+name: cpp2_inspect_expression
+use_alternating: true
+alternating_anchors:
+  - "inspect"
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "inspect_expr"
+  - "inspect_cases"
+priority: 180
+transformation_templates:
+  2: "/* inspect transformation needed: std::visit or if/else chain */ auto&& inspect_temp = $1; if constexpr (std::holds_alternative<first_type>(inspect_temp)) { /* handle first case */ } else { /* handle default case */ }"
+---
+name: cpp2_inspect_case_is
+use_alternating: true
+alternating_anchors:
+  - "is"
+  - "=>"
+grammar_modes: 7
+evidence_types:
+  - "inspect_pattern"
+  - "inspect_result"
+priority: 170
+transformation_templates:
+  2: "/* case handling: $1 => $2 */"
+---
+name: cpp2_as_cast_expression
+use_alternating: true
+alternating_anchors:
+  - "as"
+grammar_modes: 7
+evidence_types:
+  - "as_expr"
+  - "as_type"
+priority: 160
+transformation_templates:
+  2: "static_cast<$2>($1)"
+---
+name: cpp2_variant_as_cast
+use_alternating: true
+alternating_anchors:
+  - "as"
+grammar_modes: 7
+evidence_types:
+  - "variant_expr"
+  - "variant_type"
+priority: 150
+transformation_templates:
+  2: "std::get<$2>($1)"
+---
+name: cpp2_range_expression
+use_alternating: true
+alternating_anchors:
+  - ".."
+grammar_modes: 7
+evidence_types:
+  - "range_start"
+  - "range_end"
+priority: 140
+transformation_templates:
+  2: "cpp2::range($1, $2)"
+---
+name: cpp2_range_inclusive
+use_alternating: true
+alternating_anchors:
+  - "..="
+grammar_modes: 7
+evidence_types:
+  - "range_start"
+  - "range_end"
+priority: 130
+transformation_templates:
+  2: "cpp2::range_inclusive($1, $2)"
+---
+name: cpp2_contract_pre
+use_alternating: true
+alternating_anchors:
+  - "_pre:"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "pre_condition"
+  - "pre_message"
+priority: 120
+transformation_templates:
+  2: "assert(($1) && $2);"
+---
+name: cpp2_contract_post
+use_alternating: true
+alternating_anchors:
+  - "_post:"
+  - "="
+  - "requires"
+grammar_modes: 7
+evidence_types:
+  - "post_condition"
+  - "post_message"
+  - "post_requires"
+priority: 110
+transformation_templates:
+  3: "// Post condition: $1 - $2 - requires $3"
+---
+name: cpp2_lambda_expression
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "("
+  - ")"
+  - "->"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "lambda_params"
+  - "lambda_return"
+  - "lambda_body"
+priority: 100
+transformation_templates:
+  3: "[&]($1) -> $2 { $3 }"
+---
+name: cpp2_anonymous_lambda
+use_alternating: true
+alternating_anchors:
+  - ":"
+  - "("
+  - ")"
+  - "="
+grammar_modes: 7
+evidence_types:
+  - "lambda_params"
+  - "lambda_body"
+priority: 90
+transformation_templates:
+  2: "[&]($1) { $2 }"
+---
+name: cpp2_ufcs_call
+use_alternating: true
+alternating_anchors:
+  - "."
+grammar_modes: 7
+evidence_types:
+  - "object_expr"
+  - "method_name"
+priority: 80
+transformation_templates:
+  2: "$2($1)"
+---
+name: cpp2_simple_for_range
+use_alternating: true
+alternating_anchors:
+  - "for"
+  - ":"
+grammar_modes: 7
+evidence_types:
+  - "for_identifier"
+  - "for_container"
+priority: 70
+transformation_templates:
+  2: "for (auto&& $1 : $2)"
+---
+name: cpp2_for_with_body
+use_alternating: true
+alternating_anchors:
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "for_loop_prefix"
+  - "for_loop_body"
+priority: 60
+transformation_templates:
+  2: "$1 { $2 }"
+---
+name: cpp2_while_loop
+use_alternating: true
+alternating_anchors:
+  - "while"
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "while_condition"
+  - "while_body"
+priority: 50
+transformation_templates:
+  2: "while ($1) { $2 }"
+---
+name: cpp2_loop_forever
+use_alternating: true
+alternating_anchors:
+  - "loop"
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "loop_body"
+priority: 40
+transformation_templates:
+  1: "while (true) { $1 }"
+---
+name: cpp2_if_expression
+use_alternating: true
+alternating_anchors:
+  - "if"
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "if_condition"
+  - "if_body"
+priority: 30
+transformation_templates:
+  2: "if ($1) { $2 }"
+---
+name: cpp2_if_else_expression
+use_alternating: true
+alternating_anchors:
+  - "else"
+  - "{"
+  - "}"
+grammar_modes: 7
+evidence_types:
+  - "if_else_prefix"
+  - "else_body"
+priority: 20
+transformation_templates:
+  2: "$1 else { $2 }"
+---
+name: cpp2_type_shortcut_i32
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "i32_usage"
+priority: 10
+transformation_templates:
+  1: "std::int32_t"
+---
+name: cpp2_type_shortcut_i64
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "i64_usage"
+priority: 10
+transformation_templates:
+  1: "std::int64_t"
+---
+name: cpp2_type_shortcut_u32
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "u32_usage"
+priority: 10
+transformation_templates:
+  1: "std::uint32_t"
+---
+name: cpp2_type_shortcut_u64
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "u64_usage"
+priority: 10
+transformation_templates:
+  1: "std::uint64_t"
+---
+name: cpp2_type_shortcut_f32
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "f32_usage"
+priority: 10
+transformation_templates:
+  1: "float"
+---
+name: cpp2_type_shortcut_f64
+use_alternating: false
+grammar_modes: 7
+evidence_types:
+  - "f64_usage"
+priority: 10
+transformation_templates:
+  1: "double"
