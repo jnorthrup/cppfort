@@ -1,0 +1,176 @@
+// Copyright (c) 2025 cppfort project
+// Smoke tests for C->C++ inheritance patterns
+// These tests verify C constructs compile equivalently in C++ mode
+
+#include <cassert>
+
+// TEST 1: C parameters with standard types compile equivalently in C++
+c_param_equivalent: (x: int, y: double) = {
+    _ = x + y;  // Should compile without modification in C++ mode
+}
+
+// TEST 2: C struct layout preservation (POD type)
+c_struct_layout: @struct type = {
+    x: int = 0;
+    y: int = 0;
+}
+
+// TEST 3: C restrict pointers have no C++ equivalent - should compile without restrict
+c_restrict_no_cpp_equivalent: () = {
+    p: *void = null;  // No restrict keyword, so compiles in C++
+}
+
+// TEST 4: C array parameters map to C++ array references
+c_array_param: (arr: int[10]) = {
+    _ = arr[0];  // Should preserve array semantics
+}
+
+// TEST 5: C function pointers preserve calling convention
+c_function_pointer: (f: (*int)(int, double)) = {
+    _ = f(42, 3.14);
+}
+
+// TEST 6: C varargs have limited C++ support
+c_varargs_equivalent: (fmt: *const char, ...) = {
+    // printf-style varargs work in C++
+}
+
+// TEST 7: C bitfields preserve layout
+// (Note: bitfields are implementation-defined behavior)
+c_bitfield_layout: @struct type = {
+    a: unsigned int : 3;
+    b: unsigned int : 5;
+    c: unsigned int : 24;
+}
+
+// TEST 8: C unions map to C++ unions (no variant yet)
+c_union_maps_to_union: union type = {
+    i: int;
+    f: float;
+}
+
+// TEST 9: C enum maps to enum class or plain enum depending on mode
+c_enum_maps: enum type = {
+    RED;
+    GREEN;
+    BLUE;
+}
+
+// TEST 10: C typedef preserves type aliases
+c_typedef_preserved: type = {
+    using my_int = int;
+    using my_func = *void(*int);
+}
+
+// TEST 11: C const correctness preserved
+c_const_preservation: (p: *const int, q: *int const) = {
+    // Both forms should compile in C++
+    _ = p;
+    _ = q;
+}
+
+// TEST 12: C volatile preserved (for memory-mapped I/O)
+c_volatile_preserved: (p: *volatile int) = {
+    _ = *p;  // Read from volatile location
+}
+
+// TEST 13: C macro-style constants map to constexpr
+c_constants_map: () = {
+    BUFFER_SIZE := 1024;
+    _ = BUFFER_SIZE;
+}
+
+// TEST 14: C static storage (function-local and global)
+c_static_storage: () = {
+    static counter: int = 0;
+    counter++;
+    _ = counter;
+}
+
+// TEST 15: C extern declarations preserve linkage
+c_extern_linkage: () = {
+    extern external_var: int;
+    _ = external_var;
+}
+
+// TEST 16: C inline functions map to inline or constexpr
+c_inline_to_inline: (x: int) = x * 2;
+
+// TEST 17: C _Generic (C11) has no direct C++ equivalent - selective compilation
+c_generic_selective: () = {
+    // Only compiles in C mode with _Generic support
+    // In C++ mode, requires template specialization
+}
+
+// TEST 18: C designated initializers map to constructor syntax
+c_designated_init: () = {
+    p: Point = (x = 3, y = 4);
+    _ = p.x + p.y;
+}
+
+// TEST 19: C string literals map to const char[]
+c_string_literals: () = {
+    s: *const char = "hello";
+    _ = s[0];
+}
+
+// TEST 20: C NULL macro maps to nullptr
+c_null_to_nullptr: () = {
+    p: *int = NULL;  // Should become nullptr in C++
+    _ = p;
+}
+
+// TEST 21: C size_t preserved
+c_size_t_preserved: (n: size_t) = {
+    _ = n;
+}
+
+// TEST 22: C pointer arithmetic preserved (for arrays)
+c_pointer_arithmetic: (arr: *int, i: int) = {
+    _ = *(arr + i);  // Should compile identically
+}
+
+// TEST 23: C cast operators map to C++ casts where appropriate
+c_casts_map: (p: *void) = {
+    i: int = static_cast<int>(p);  // Would use reinterpret in C++
+    _ = i;
+}
+
+// TEST 24: C complex numbers (optional C99 feature)
+// In C++: std::complex<T> or built-in _Complex if supported
+
+// TEST 25: C atomics (C11) map to std::atomic
+c_atomics_map: () = {
+    counter: std::atomic<int> = 0;
+    counter.fetch_add(1);
+    _ = counter.load();
+}
+
+// TEST 26: C thread-local storage maps to thread_local
+c_thread_local: () = {
+    thread_local tid: int = 0;
+    _ = tid;
+}
+
+// TEST 27: C static assertions map to static_assert
+c_static_assert_maps: () = {
+    static_assert(4 == sizeof(int), "int size mismatch");
+}
+
+// TEST 28: C _Alignas maps to alignas
+c_alignas_maps: @struct type = {
+    alignas(16) data: double[2];
+}
+
+// MAIN function to run smoke tests
+main: () = {
+    // Basic smoke test - compile and link check
+    c_param_equivalent(42, 3.14);
+
+    // Verify struct layout
+    p: Point = (x = 1, y = 2);
+    assert(p.x == 1);
+    assert(p.y == 2);
+
+    c_restrict_no_cpp_equivalent();
+}

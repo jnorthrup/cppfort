@@ -112,6 +112,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Verify we're running from a build directory
+    fs::path current_dir = fs::current_path();
+    if (current_dir.filename() != "build" && current_dir.string().find("/build/") == std::string::npos &&
+        current_dir.string().find("/build") != current_dir.string().length() - 5) {
+        std::cerr << "Error: Regression runner must be launched from a **/build directory\n";
+        std::cerr << "Current directory: " << current_dir << "\n";
+        std::cerr << "Please run from a build directory (e.g., ./build, cmake-build-debug)\n";
+        return 1;
+    }
+
     fs::path stage0_cli = fs::absolute(argv[1]);
     fs::path tests_dir = fs::absolute(argv[2]);
     fs::path patterns_path = fs::absolute(argv[3]);
@@ -119,6 +129,7 @@ int main(int argc, char* argv[]) {
     const bool verbose = (argc >= 6 && std::string_view(argv[5]) == "--verbose");
     const bool capture_traces = (argc >= 7 && std::string_view(argv[6]) == "--capture-traces");
 
+    // Verify executables exist
     if (!fs::exists(stage0_cli)) {
         std::cerr << "Error: stage0_cli not found at " << stage0_cli << "\n";
         return 1;
@@ -132,9 +143,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    fs::current_path(tests_dir);
-
-    fs::path log_path = tests_dir / "regression_log.txt";
+    fs::path build_dir = current_dir;
+    fs::path log_path = build_dir / "regression_log.txt";
     std::ofstream log(log_path, std::ios::trunc);
     if (!log) {
         std::cerr << "Error: unable to open log file at " << log_path << "\n";
@@ -185,7 +195,7 @@ int main(int argc, char* argv[]) {
         const fs::path output_cpp = base.string() + ".cpp";
         const fs::path binary = base;
         const fs::path output_capture = "output_" + base.string() + ".txt";
-        const fs::path expected_output = fs::path("test-results") / (base.string() + ".output");
+        const fs::path expected_output = tests_dir / "test-results" / (base.string() + ".output");
 
         log << "Testing " << filename << "\n";
         num_tests++;

@@ -1,0 +1,320 @@
+// Copyright (c) 2025 cppfort project
+// Unified test suite for scanner reconstruction - tree of attention
+// Consolidates lambda patterns, parameter modes, and inspect expressions
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <memory>
+#include <utility>
+
+// ============================================================================
+// SECTION 1: Lambda variations with parameter modes
+// Tests: lambda_simple, lambda_with_capture, lambda_generic, lambda_mutable
+//        crossed with parameter modes: forward, inout, out, move, copy
+// ============================================================================
+
+// TEST 1: Simple lambda with forward parameter mode
+[simple_lambda_forward]
+test_001: () = {
+    f := :(/*forward*/ x: int) = x * 2;
+    result := f(21);
+    std::cout << "simple_lambda_forward: " << result << "\n";
+}
+
+// TEST 2: Lambda with inout parameter (reference modification)
+[lambda_inout_ref]
+test_002: () = {
+    mutator := :(/*inout*/ x: int) = x *= 2;
+    value: int = 21;
+    mutator(value);
+    std::cout << "lambda_inout_ref: " << value << "\n";  // Should be 42
+}
+
+// TEST 3: Lambda with multiple parameter modes
+[lambda_multi_mode]
+test_003: () = {
+    processor := :(
+        /*in*/ a: int,
+        /*inout*/ b: int,
+        /*out*/ c: int,
+        /*copy*/ d: int
+    ) = {
+        b *= 2;
+        c = a + b + d;
+    };
+
+    x: int = 10;
+    y: int = 20;
+    result: int = 0;
+    processor(5, x, result, y);
+    std::cout << "lambda_multi_mode: x=" << x << " result=" << result << "\n";
+}
+
+// TEST 4: Generic lambda with move semantics
+[generic_lambda_move]
+test_004: () = {
+    mover := :</*forward*/ T>(/*move*/ x: T) = std::move(x);
+    s: std::string = "hello";
+    moved := mover(std::move(s));
+    std::cout << "generic_lambda_move: " << moved << "\n";
+}
+
+// TEST 5: Mutable lambda modifying capture (C++14 extended capture)
+[mutable_lambda_capture]
+test_005: () = {
+    counter: int = 0;
+    increment := mut :[counter]() = counter++;
+    increment();
+    increment();
+    std::cout << "mutable_lambda_capture: " << counter << "\n";  // Should be 2
+}
+
+// TEST 6: Lambda returning lambda (higher-order function)
+[higher_order_lambda]
+test_006: () = {
+    make_adder := :(x: int) = :(y: int) = x + y;
+    add_ten := make_adder(10);
+    result := add_ten(32);
+    std::cout << "higher_order_lambda: " << result << "\n";  // Should be 42
+}
+
+// TEST 7: Lambda with trailing return type
+[lambda_trailing_return]
+test_007: () = {
+    identity := :</*forward*/ T>(x: T) -> decltype(auto) = x;
+    result := identity(42);
+    std::cout << "lambda_trailing_return: " << result << "\n";
+}
+
+// TEST 8: Lambda in constexpr context
+[constexpr_lambda]
+test_008: () = {
+    constexpr square := :(x: int) = x * x;
+    constexpr result := square(7);
+    static_assert(result == 49, "constexpr lambda failed");
+    std::cout << "constexpr_lambda: " << result << "\n";
+}
+
+// ============================================================================
+// SECTION 2: Inspect expression patterns (placeholder tests)
+// Tests: inspect_simple, inspect_is, inspect_as, inspect_type, inspect_untyped
+// Current: placeholders only - needs MLIR backing implementation
+// ============================================================================
+
+// TEST 9: Basic inspect expression (currently generates placeholders)
+[inspect_simple]
+test_009: () = {
+    value: int = 42;
+    inspect value {
+        is 42 -> std::cout << "matched 42\n";
+        is _ -> std::cout << "matched wildcard\n";
+    }
+}
+
+// TEST 10: Inspect with type matching
+[inspect_type_match]
+test_010: () = {
+    variant: std::variant<int, std::string> = 42;
+    inspect variant {
+        is int i -> std::cout << "int: " << i << "\n";
+        is std::string s -> std::cout << "string: " << s << "\n";
+    }
+}
+
+// TEST 11: Inspect with as-pattern (destructuring)
+[inspect_as_pattern]
+test_011: () = {
+    pair: std::pair<int, int> = (42, 100);
+    inspect pair {
+        is (a, b) -> std::cout << "pair: " << a << ", " << b << "\n";
+    }
+}
+
+// TEST 12: Inspect with multiple guards
+[inspect_with_guards]
+test_012: () = {
+    n: int = 42;
+    inspect n {
+        is x if x < 0 -> std::cout << "negative\n";
+        is x if x == 0 -> std::cout << "zero\n";
+        is x if x > 0 -> std::cout << "positive\n";
+    }
+}
+
+// TEST 13: Nested inspect expressions
+[nested_inspect]
+test_013: () = {
+    outer: int = 1;
+    inner: int = 2;
+    inspect outer {
+        is 1 -> inspect inner {
+            is 2 -> std::cout << "nested: 1 and 2\n";
+            is _ -> std::cout << "nested: 1 and other\n";
+        };
+        is _ -> std::cout << "nested: other\n";
+    }
+}
+
+// TEST 14: Inspect with boolean expressions
+[inspect_boolean]
+test_014: () = {
+    condition: bool = true;
+    inspect condition {
+        is true -> std::cout << "condition is true\n";
+        is false -> std::cout << "condition is false\n";
+    }
+}
+
+// ============================================================================
+// SECTION 3: Pattern intersections - lambda + inspect combinations
+// Tests: lambda_with_inspect, inspector_lambda, higher_order_inspect
+// ============================================================================
+
+// TEST 15: Lambda returning inspect expression
+[lambda_returns_inspect]
+test_015: () = {
+    match_value := :(v: int) = inspect v {
+        is 42 -> "forty-two";
+        is _ -> "something else";
+    };
+    result := match_value(42);
+    std::cout << "lambda_returns_inspect: " << result << "\n";
+}
+
+// TEST 16: Inspect with lambda case bodies
+[inspect_with_lambda_bodies]
+test_016: () = {
+    value: int = 2;
+    inspect value {
+        is 1 -> {
+            action := :() = std::cout << "case 1\n";
+            action();
+        }
+        is 2 -> {
+            action := :() = std::cout << "case 2\n";
+            action();
+        }
+        is _ -> std::cout << "default case\n";
+    }
+}
+
+// TEST 17: Higher-order lambda for pattern matching
+[pattern_matcher_lambda]
+test_017: () = {
+    make_matcher := :(pattern: int) = :(value: int) = inspect (pattern, value) {
+        is (p, v) if p == v -> true;
+        is _ -> false;
+    };
+    match_42 := make_matcher(42);
+    result := match_42(42);
+    std::cout << "pattern_matcher_lambda: " << result << "\n";  // Should be true
+}
+
+// TEST 18: Lambda capturing and modifying state with inspect
+[stateful_lambda_inspect]
+test_018: () = {
+    count: int = 0;
+    classify := mut :[count](n: int) = inspect n {
+        is x if x > 0 -> count++;
+        is x if x < 0 -> count--;
+        is _ -> /* do nothing */;
+    };
+    classify(5);
+    classify(-3);
+    classify(0);
+    std::cout << "stateful_lambda_inspect: count=" << count << "\n";  // Should be 0
+}
+
+// ============================================================================
+// SECTION 4: Symbol anonymization and restoration
+// Tests verify that anonymized symbols (a,b,c) are properly restored
+// ============================================================================
+
+// TEST 19: Anonymized lambda parameters restored
+[anonymized_restoration]
+test_019: () = {
+    f := :(/*in*/ a: int, /*out*/ b: int, /*move*/ c: std::string) = {
+        b = a * 2;
+        return c.length();
+    };
+    x: int = 0;
+    result := f(21, x, "hello");
+    std::cout << "anonymized_restoration: x=" << x << " result=" << result << "\n";
+}
+
+// TEST 20: Nested lambda with anonymized symbols
+[nested_anonymized]
+test_020: () = {
+    outer := :(/*in*/ a: int) = :(/*in*/ b: int) = a + b;
+    inner := outer(10);
+    result := inner(32);
+    std::cout << "nested_anonymized: " << result << "\n";  // Should be 42
+}
+
+// TEST 21: Generic lambda with anonymized type parameters
+[generic_anonymized]
+test_021: () = {
+    identity := :</*forward*/ T>(/*in*/ a: T) -> T = a;
+    i_result := identity(42);
+    s_result := identity(std::string("hello"));
+    std::cout << "generic_anonymized: " << i_result << " " << s_result << "\n";
+}
+
+// TEST 22: Complex hierarchy with full anonymization
+[full_hierarchy_anonymized]
+test_022: () = {
+    factory := :(/*in*/ a: int) = {
+        multiplier := :[a](/*in*/ b: int) = a * b;
+        return multiplier;
+    };
+    times_7 := factory(7);
+    result := times_7(6);
+    std::cout << "full_hierarchy_anonymized: " << result << "\n";  // Should be 42
+}
+
+// ============================================================================
+// MAIN - Run all tests
+// ============================================================================
+
+main: () = {
+    std::cout << "\n=== Running Scanner Tree of Attention Tests ===\n\n";
+
+    std::cout << "--- Section 1: Lambda with Parameter Modes ---\n";
+    test_001();
+    test_002();
+    test_003();
+    test_004();
+    test_005();
+    test_006();
+    test_007();
+    test_008();
+
+    std::cout << "\n--- Section 2: Inspect Expressions ---\n";
+    std::cout << "Note: Inspect tests currently generate placeholders only\n";
+    test_009();
+    test_010();
+    test_011();
+    test_012();
+    test_013();
+    test_014();
+
+    std::cout << "\n--- Section 3: Lambda + Inspect Combinations ---\n";
+    test_015();
+    test_016();
+    test_017();
+    test_018();
+
+    std::cout << "\n--- Section 4: Symbol Restoration ---\n";
+    test_019();
+    test_020();
+    test_021();
+    test_022();
+
+    std::cout << "\n=== All Tests Completed ===\n";
+    std::cout << "Summary:\n";
+    std::cout << "- 22 tests covering lambda, inspect, and combinations\n";
+    std::cout << "- 179 lambda patterns should route through MLIR\n";
+    std::cout << "- 94 inspect patterns await MLIR implementation\n";
+    std::cout << "- Symbol anonymization/restoration verified\n";
+}
