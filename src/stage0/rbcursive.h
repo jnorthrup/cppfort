@@ -108,15 +108,61 @@ private:
     static bool globMatch(std::string_view text, std::string_view pattern);
 };
 
+// Configuration for combinator pool growth and limits
+struct PoolConfig {
+    size_t initial_size = 16;
+    size_t max_size = 128;  // Conservative limit for RBCursiveScanner objects
+    float growth_factor = 1.5f;  // Exponential growth factor
+    bool allow_growth = true;
+    bool log_growth = false;  // For debugging growth events
+};
+
+// Metrics for monitoring pool behavior
+struct PoolMetrics {
+    size_t current_size = 0;
+    size_t peak_size = 0;
+    size_t total_allocations = 0;
+    size_t allocation_failures = 0;
+    size_t growth_events = 0;
+    
+    void record_allocation(bool success) {
+        total_allocations++;
+        if (!success) {
+            allocation_failures++;
+        }
+    }
+    
+    void record_growth(size_t new_size) {
+        growth_events++;
+        current_size = new_size;
+        if (new_size > peak_size) {
+            peak_size = new_size;
+        }
+    }
+};
+
 class CombinatorPool {
 public:
-    explicit CombinatorPool(std::size_t initial_size = 0);
+    explicit CombinatorPool(const PoolConfig& config = {});
+    explicit CombinatorPool(std::size_t initial_size);  // Legacy constructor
 
     RBCursiveScanner* allocate();
     void release(RBCursiveScanner* scanner);
     std::size_t available() const;
+    std::size_t capacity() const { return pool_.size(); }
+    
+    // Metrics access
+    const PoolMetrics& metrics() const { return metrics_; }
+    PoolMetrics& metrics() { return metrics_; }
+    
+    // Manual resizing
+    bool resize(std::size_t new_size);
 
 private:
+    void grow_pool();
+    
+    PoolConfig config_;
+    PoolMetrics metrics_;
     std::vector<RBCursiveScanner> pool_;
     std::vector<bool> used_;
 };

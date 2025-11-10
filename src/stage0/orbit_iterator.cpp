@@ -10,6 +10,12 @@ namespace cppfort::stage0 {
 OrbitIterator::OrbitIterator(std::size_t combinator_pool_size)
     : pool_(combinator_pool_size) {}
 
+OrbitIterator::OrbitIterator(const PoolConfig& pool_config)
+    : pool_(pool_config) {}
+
+OrbitIterator::OrbitIterator(const PoolConfig& pool_config, const CacheConfig& cache_config)
+    : pool_(pool_config), packrat_cache_(cache_config) {}
+
 OrbitIterator::~OrbitIterator() {
     release_combinators();
 }
@@ -77,6 +83,16 @@ void OrbitIterator::release_combinators() {
     leased_.clear();
 }
 
+
+size_t OrbitIterator::evict_cache_entries(size_t target_count) {
+    if (target_count == 0) {
+        // Evict down to max_entries if over limit
+        return packrat_cache_.evict_if_needed();
+    } else {
+        // Force eviction to specific count
+        return packrat_cache_.force_evict(target_count);
+    }
+}
 
 void OrbitIterator::clear() {
     release_combinators();

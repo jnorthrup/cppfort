@@ -894,21 +894,43 @@ const ::cppfort::stage0::SpeculativeMatch* RBCursiveScanner::get_best_match() co
     return &matches_[best_idx];
 }
 
-CombinatorPool::CombinatorPool(std::size_t initial_size) {
-    pool_.resize(initial_size);
-    used_.assign(initial_size, false);
+CombinatorPool::CombinatorPool(const PoolConfig& config)
+    : config_(config) {
+    pool_.reserve(config.initial_size);
+    pool_.resize(config.initial_size);
+    used_.assign(config.initial_size, false);
+    metrics_.current_size = pool_.size();
+    metrics_.peak_size = pool_.size();
+}
+
+CombinatorPool::CombinatorPool(std::size_t initial_size)
+    : CombinatorPool(PoolConfig{initial_size}) {
 }
 
 RBCursiveScanner* CombinatorPool::allocate() {
+    // First try to find an available slot
     for (std::size_t idx = 0; idx < pool_.size(); ++idx) {
         if (!used_[idx]) {
             used_[idx] = true;
+            metrics_.record_allocation(true);
             return &pool_[idx];
         }
     }
-    pool_.emplace_back();
-    used_.push_back(true);
-    return &pool_.back();
+    
+    // No available slots - need to grow the pool
+    if (config_.allow_growth && pool_.size() < config_.max_size) {
+        grow_pool();
+        // After growth, the last element should be available
+        if (!used_.back()) {
+            used_.back() = true;
+            metrics_.record_allocation(true);
+            return &pool_.back();
+        }
+    }
+    
+    // Unable to allocate
+    metrics_.record_allocation(false);
+    return nullptr;
 }
 
 void CombinatorPool::release(RBCursiveScanner* scanner) {
@@ -921,6 +943,74 @@ void CombinatorPool::release(RBCursiveScanner* scanner) {
         std::size_t idx = static_cast<std::size_t>(scanner - begin);
         used_[idx] = false;
     }
+}
+
+void CombinatorPool::grow_pool() {
+    const std::size_t current_size = pool_.size();
+    const std::size_t max_new_size = config_.max_size;
+    
+    if (current_size >= max_new_size) {
+        return;  // Already at maximum size
+    }
+    
+    // Calculate new size using exponential growth
+    std::size_t growth_amount = static_cast<std::size_t>(
+        static_cast<float>(current_size) * (config_.growth_factor - 1.0f));
+    
+    // Ensure at least 1 new element
+    if (growth_amount == 0) {
+        growth_amount = 1;
+    }
+    
+    std::size_t new_size = current_size + growth_amount;
+    
+    // Respect maximum size limit
+    if (new_size > max_new_size) {
+        new_size = max_new_size;
+        growth_amount = new_size - current_size;
+    }
+    
+    if (config_.log_growth) {
+        std::cerr << "[CombinatorPool] Growing from " << current_size 
+                  << " to " << new_size << " elements\n";
+    }
+    
+    // Reserve space and add new elements
+    pool_.reserve(new_size);
+    pool_.resize(new_size);
+    used_.resize(new_size, false);  // New elements are unused
+    
+    metrics_.record_growth(new_size);
+}
+
+bool CombinatorPool::resize(std::size_t new_size) {
+    if (new_size > config_.max_size) {
+        return false;  // Exceeds configured maximum
+    }
+    
+    // Check if we can shrink
+    if (new_size < pool_.size()) {
+        // Count total used slots
+        std::size_t total_used = 0;
+        for (bool is_used : used_) {
+            if (is_used) {
+                total_used++;
+            }
+        }
+        
+        // If any scanners are in use, don't allow shrinking
+        // This is conservative but safe - prevents accidentally losing scanners
+        if (total_used > 0) {
+            return false;  // Can't shrink while scanners are in use
+        }
+    }
+    
+    // Perform resize
+    pool_.resize(new_size);
+    used_.resize(new_size, false);
+    metrics_.record_growth(new_size);
+    
+    return true;
 }
 
 std::size_t CombinatorPool::available() const {

@@ -10,7 +10,15 @@ struct PatternData;
 
 class OrbitIterator {
 public:
+    // Legacy constructor - uses default pool config
     explicit OrbitIterator(std::size_t combinator_pool_size = 0);
+    
+    // New constructor - accepts pool configuration
+    explicit OrbitIterator(const PoolConfig& pool_config);
+    
+    // New constructor - accepts both pool and cache configurations
+    OrbitIterator(const PoolConfig& pool_config, const CacheConfig& cache_config);
+    
     ~OrbitIterator();
 
     void add_orbit(Orbit* orbit);
@@ -26,6 +34,13 @@ public:
 
     // Set patterns for combinators
     void set_patterns(const std::vector<PatternData>& patterns) { patterns_ = &patterns; }
+    
+    // Access metrics
+    const PoolMetrics& pool_metrics() const { return pool_.metrics(); }
+    const CacheMetrics& cache_metrics() const { return packrat_cache_.metrics(); }
+    
+    // Force cache eviction (useful for long-running sessions)
+    size_t evict_cache_entries(size_t target_count = 0);
 
 private:
     void release_combinators();

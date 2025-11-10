@@ -23,6 +23,13 @@ set(STAGE0_SOURCES
     graph_nodes.cpp
     simple_graph_nodes.cpp
     complete_pattern_engine.cpp
+    rbcursive.cpp
+    packrat_cache.cpp
+    heap_limiter.cpp
+    confix_orbit.cpp
+    orbit_iterator.cpp
+    function_orbit.cpp
+    correlator.cpp
 )
 
 # Remove main.cpp and test files from library sources
@@ -130,6 +137,18 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_simple_graph_nodes yaml-cpp::yaml-cpp)
 endif()
 
+# Create combinator pool test executable
+add_executable(test_combinator_pool test_combinator_pool.cpp)
+target_link_libraries(test_combinator_pool stage0_lib)
+
+# Create packrat cache test executable
+add_executable(test_packrat_cache test_packrat_cache.cpp)
+target_link_libraries(test_packrat_cache stage0_lib)
+
+# Create packrat heap soak test executable (demonstrates cache limits)
+add_executable(test_packrat_heap_soak test_packrat_heap_soak.cpp)
+target_link_libraries(test_packrat_heap_soak stage0_lib)
+
 # Create depth matcher test executable (DISABLED - file missing)
 # add_executable(test_depth_matcher test_depth_matcher.cpp)
 # target_link_libraries(test_depth_matcher stage0_lib)
@@ -149,6 +168,13 @@ add_executable(test_recursive_patterns_RED test_recursive_patterns_RED.cpp)
 target_link_libraries(test_recursive_patterns_RED stage0_lib)
 if(yaml-cpp_FOUND)
     target_link_libraries(test_recursive_patterns_RED yaml-cpp::yaml-cpp)
+endif()
+
+# Create grammar evaluation test executable
+add_executable(run_grammar_eval ../../tests/run_grammar_eval.cpp)
+target_link_libraries(run_grammar_eval stage0_lib)
+if(yaml-cpp_FOUND)
+    target_link_libraries(run_grammar_eval yaml-cpp::yaml-cpp)
 endif()
 
 add_executable(regression_runner regression_runner.cpp)
