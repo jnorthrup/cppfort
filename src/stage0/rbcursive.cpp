@@ -295,7 +295,10 @@ void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternDat
 
     // Find the first anchor
     const std::string& first_anchor = pattern.alternating_anchors[0];
-    size_t anchor_pos = text.find(first_anchor);
+    std::vector<std::size_t> anchor_positions = find_anchor_positions_orbit(text, first_anchor);
+    if (anchor_positions.empty()) return;
+    size_t anchor_pos = anchor_positions[0];
+    std::cerr << "DEBUG speculate_alternating: pattern=" << pattern.name << " anchor='" << first_anchor << "' position=" << anchor_pos << "\n";
     std::cerr << "DEBUG speculate_alternating: pattern=" << pattern.name << " anchor='" << first_anchor << "' found=" << (anchor_pos != std::string::npos) << "\n";
     if (anchor_pos == std::string::npos) {
         return;
@@ -395,7 +398,7 @@ void RBCursiveScanner::speculate_alternating(const ::cppfort::stage0::PatternDat
         size_t next_anchor_pos = std::string::npos;
         if (anchor_idx + 1 < pattern.alternating_anchors.size()) {
             const std::string& next_anchor = pattern.alternating_anchors[anchor_idx + 1];
-            next_anchor_pos = text.find(next_anchor, current_pos);
+            std::vector<std::size_t> next_positions = find_anchor_positions_orbit(text.substr(current_pos), next_anchor); if (next_positions.empty()) { return; } next_anchor_pos = current_pos + next_positions[0]; if (next_anchor_pos == std::string::npos) { return; }
             if (next_anchor_pos == std::string::npos) {
                 return; // Required anchor not found
             }
@@ -556,7 +559,8 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
 
         // Find all occurrences of the first anchor
         std::size_t pos = 0;
-        while ((pos = text.find(first, pos)) != std::string::npos) {
+        std::vector<std::size_t> positions = find_anchor_positions_orbit(text, first);
+        for (std::size_t pos : positions) {
             // Check if prefix is meaningless (essential for confix validity)
             if (pos == 0 || is_meaningless_segment(text.substr(0, pos))) {
                 anchor_indices[&pattern].push_back(pos);

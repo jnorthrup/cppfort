@@ -72,6 +72,11 @@ public:
     // Experimental: Anchor tuple + terminal-span backchain thinning using TypeEvidence
     void speculate_backchain(std::string_view text);
 
+    // Orbit-based anchor position detection (NO string.find())
+    std::vector<std::size_t> find_anchor_positions_orbit(std::string_view text, 
+                                                         std::string_view anchor,
+                                                         const std::vector<int>* depth_map = nullptr) const;
+
     // Get the best speculative match (longest match, then highest confidence)
     const ::cppfort::stage0::SpeculativeMatch* get_best_match() const;
 
