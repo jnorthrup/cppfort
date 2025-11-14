@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <utility>
 #include <iostream>
 
 namespace cpp2 {
@@ -80,30 +79,11 @@ namespace cpp2 {
         }
     } // namespace impl
 
-    struct contract_system {
-        constexpr bool is_active() const noexcept {
-            return false;
-        }
-
-        template <typename Message>
-        void report_violation(Message&&) const noexcept {}
-    };
-
-    inline contract_system cpp2_default{};
-    inline contract_system type_safety{};
-    inline contract_system bounds_safety{};
-
 } // namespace cpp2
 
 // UFCS macro helper (captures function-like usage in generated code)
 #ifndef CPP2_UFCS
 #define CPP2_UFCS(X) (X)
-#endif
-
-inline void set_handler(cpp2::contract_system const&) noexcept {}
-
-#ifndef CPP2_CONTRACT_MSG
-#define CPP2_CONTRACT_MSG(message) (message)
 #endif
 
 using cpp2::impl::unchecked_narrow;

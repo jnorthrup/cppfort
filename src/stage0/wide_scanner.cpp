@@ -22,10 +22,6 @@
 
 namespace cppfort::ir {
 
-namespace {
-constexpr bool kScannerDebug = false;
-}
-
 void WideScanner::reset_stats() {
     stats_ = FanoutStats{};
 }
@@ -427,9 +423,7 @@ size_t WideScanner::findBoundarySIMD(
             }
         }
         // DON'T emit a single fragment for the whole file - fall through to use CPP2 function detection below
-        if (kScannerDebug) {
-            std::cerr << "DEBUG scanAnchorsWithOrbits: Small file with " << boundaries.size() << " boundaries, falling through to function detection\n";
-        }
+        std::cerr << "DEBUG scanAnchorsWithOrbits: Small file with " << boundaries.size() << " boundaries, falling through to function detection\n";
         // DO NOT return here - let the code below handle fragmentation
     }
 
@@ -626,9 +620,7 @@ size_t WideScanner::findBoundarySIMD(
         }
     }
 
-    if (kScannerDebug) {
-        std::cerr << "DEBUG scanAnchorsWithOrbits: Starting fragment emission with " << boundaries.size() << " boundaries\n";
-    }
+    std::cerr << "DEBUG scanAnchorsWithOrbits: Starting fragment emission with " << boundaries.size() << " boundaries\n";
     size_t fragment_start = 0;
     size_t i = 0;
     size_t function_count = 0;
@@ -669,12 +661,10 @@ size_t WideScanner::findBoundarySIMD(
                     // Emit entire function as single fragment
                     if (func_end > line_start) {
                         function_count++;
-                        if (kScannerDebug) {
-                            std::cerr << "DEBUG scanAnchorsWithOrbits: Emitting function #" << function_count
-                                      << " fragment [" << line_start << ", " << func_end << ")\n";
-                            std::cerr << "DEBUG scanAnchorsWithOrbits: Fragment text: '"
-                                      << source.substr(line_start, std::min(size_t(50), func_end - line_start)) << "...'\n";
-                        }
+                        std::cerr << "DEBUG scanAnchorsWithOrbits: Emitting function #" << function_count
+                                  << " fragment [" << line_start << ", " << func_end << ")\n";
+                        std::cerr << "DEBUG scanAnchorsWithOrbits: Fragment text: '"
+                                  << source.substr(line_start, std::min(size_t(50), func_end - line_start)) << "...'\n";
                         emit_fragment(line_start, func_end, boundary.lattice_mask);
                         fragment_start = func_end;
 
@@ -684,9 +674,7 @@ size_t WideScanner::findBoundarySIMD(
                             skipped++;
                             i++;
                         }
-                        if (kScannerDebug) {
-                            std::cerr << "DEBUG scanAnchorsWithOrbits: Skipped " << skipped << " boundaries, now at i=" << i << "\n";
-                        }
+                        std::cerr << "DEBUG scanAnchorsWithOrbits: Skipped " << skipped << " boundaries, now at i=" << i << "\n";
                         continue;
                     }
                 }
@@ -707,10 +695,8 @@ size_t WideScanner::findBoundarySIMD(
         }
         i++;
     }
-    if (kScannerDebug) {
-        std::cerr << "DEBUG scanAnchorsWithOrbits: Total functions emitted: " << function_count << "\n";
-        std::cerr << "DEBUG scanAnchorsWithOrbits: Total fragments: " << fragments_.size() << "\n";
-    }
+    std::cerr << "DEBUG scanAnchorsWithOrbits: Total functions emitted: " << function_count << "\n";
+    std::cerr << "DEBUG scanAnchorsWithOrbits: Total fragments: " << fragments_.size() << "\n";
     if (fragment_start < source.size()) {
         emit_fragment(fragment_start, source.size(), 0);
     }

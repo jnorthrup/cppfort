@@ -92,7 +92,7 @@ private:
     ::std::unordered_map<UnifiedOrbitCategory, ::std::vector<UnifiedOrbitPattern>> _patternsByCategory;
 
 public:
-    // Load patterns from the groomed cppfort_core_patterns.yaml bundle
+    // Load patterns from the groomed BNFC_CPP2_complete.yaml
     bool loadUnifiedPatterns(const ::std::string& patternFile);
 
     // Query patterns

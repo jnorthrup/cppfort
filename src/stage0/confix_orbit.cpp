@@ -223,10 +223,9 @@ uint64_t make_memento_key(size_t start, size_t end) {
 void ConfixOrbit::remember_combinator_hit(size_t start, size_t end,
                                           std::string pattern_name,
                                           double confidence,
-                                          ::cppfort::ir::GrammarType grammar,
-                                          const ::cppfort::stage0::TypeEvidence& traits) {
-    const uint64_t key = make_memento_key_with_traits(start, end, traits);
-    CombinatorMemento entry{start, end, std::move(pattern_name), confidence, grammar, traits};
+                                          ::cppfort::ir::GrammarType grammar) {
+    const uint64_t key = make_memento_key(start, end);
+    CombinatorMemento entry{start, end, std::move(pattern_name), confidence, grammar};
     memento_cache_[key] = entry;
 
     // Maintain anchor chain as insertion-ordered unique list keyed by same span
@@ -279,8 +278,7 @@ void ConfixOrbit::merge_anchor_chain(const std::vector<CombinatorMemento>& chain
                                 memo.end,
                                 memo.pattern_name,
                                 memo.confidence,
-                                memo.grammar,
-                                memo.traits);
+                                memo.grammar);
     }
 }
 
@@ -295,26 +293,6 @@ FunctionOrbit* ConfixOrbit::ensure_function_child(::cppfort::ir::GrammarType gra
     function_children_.push_back(std::unique_ptr<FunctionOrbit>(child));
     assign_child(grammar, raw_child);
     return raw_child;
-}
-
-uint64_t ConfixOrbit::make_memento_key_with_traits(size_t start, size_t end, const ::cppfort::stage0::TypeEvidence& traits) const {
-    uint64_t base_key = (static_cast<uint64_t>(start) << 32) ^ static_cast<uint64_t>(end & std::numeric_limits<uint32_t>::max());
-    
-    // Include key trait indicators in the hash to invalidate stale memos
-    uint64_t trait_hash = 0;
-    trait_hash ^= static_cast<uint64_t>(traits.brace_open) << 0;
-    trait_hash ^= static_cast<uint64_t>(traits.brace_close) << 4;
-    trait_hash ^= static_cast<uint64_t>(traits.paren_open) << 8;
-    trait_hash ^= static_cast<uint64_t>(traits.paren_close) << 12;
-    trait_hash ^= static_cast<uint64_t>(traits.angle_open) << 16;
-    trait_hash ^= static_cast<uint64_t>(traits.angle_close) << 20;
-    trait_hash ^= static_cast<uint64_t>(traits.colon) << 24;
-    trait_hash ^= static_cast<uint64_t>(traits.double_colon) << 28;
-    trait_hash ^= static_cast<uint64_t>(traits.cpp2_keyword_hits) << 32;
-    trait_hash ^= static_cast<uint64_t>(traits.cpp_keyword_hits) << 36;
-    trait_hash ^= static_cast<uint64_t>(traits.c_keyword_hits) << 40;
-    
-    return base_key ^ trait_hash;
 }
 
 } // namespace cppfort::stage0

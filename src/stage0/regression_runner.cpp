@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <chrono>
-#include <thread>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -10,9 +9,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <signal.h>
 
 namespace fs = std::filesystem;
 
@@ -36,62 +32,13 @@ std::string current_time_string() {
     return "unknown time";
 }
 
-int run_command(const std::string& command, std::ostream& log, int timeout_seconds = 0) {
+int run_command(const std::string& command, std::ostream& log) {
     log << "    CMD: " << command << "\n";
-    
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-        execl("/bin/bash", "bash", "-c", command.c_str(), nullptr);
-        _exit(127); // exec failed
-    } else if (pid > 0) {
-        // Parent process
-        int status = 0;
-        bool completed = false;
-
-        if (timeout_seconds > 0) {
-            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
-            while (true) {
-                pid_t rc = waitpid(pid, &status, WNOHANG);
-                if (rc == pid) {
-                    completed = true;
-                    break;
-                }
-                if (rc == -1) {
-                    log << "    -> waitpid failed\n";
-                    return -1;
-                }
-
-                if (std::chrono::steady_clock::now() >= deadline) {
-                    kill(pid, SIGKILL);
-                    waitpid(pid, &status, 0);
-                    log << "    -> TIMEOUT after " << timeout_seconds << " seconds\n";
-                    return -1;
-                }
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
-        } else {
-            if (waitpid(pid, &status, 0) == -1) {
-                log << "    -> waitpid failed\n";
-                return -1;
-            }
-            completed = true;
-        }
-
-        if (!completed) {
-            return -1;
-        }
-        
-        int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-        if (rc != 0) {
-            log << "    -> exit code " << rc << "\n";
-        }
-        return rc;
-    } else {
-        log << "    -> fork failed\n";
-        return -1;
+    int rc = std::system(command.c_str());
+    if (rc != 0) {
+        log << "    -> exit code " << rc << "\n";
     }
+    return rc;
 }
 
 std::string read_file(const fs::path& file) {
@@ -108,17 +55,7 @@ std::string read_file(const fs::path& file) {
 int main(int argc, char* argv[]) {
     if (argc < 5) {
         std::cerr << "Usage: " << argv[0]
-                  << " <stage0_cli> <tests_dir> <patterns_path> <include_dir> [--verbose] [--capture-traces]\n";
-        return 1;
-    }
-
-    // Verify we're running from a build directory
-    fs::path current_dir = fs::current_path();
-    if (current_dir.filename() != "build" && current_dir.string().find("/build/") == std::string::npos &&
-        current_dir.string().find("/build") != current_dir.string().length() - 5) {
-        std::cerr << "Error: Regression runner must be launched from a **/build directory\n";
-        std::cerr << "Current directory: " << current_dir << "\n";
-        std::cerr << "Please run from a build directory (e.g., ./build, cmake-build-debug)\n";
+                  << " <stage0_cli> <tests_dir> <patterns_path> <include_dir> [--verbose]\n";
         return 1;
     }
 
@@ -127,9 +64,7 @@ int main(int argc, char* argv[]) {
     fs::path patterns_path = fs::absolute(argv[3]);
     fs::path include_dir = fs::absolute(argv[4]);
     const bool verbose = (argc >= 6 && std::string_view(argv[5]) == "--verbose");
-    const bool capture_traces = (argc >= 7 && std::string_view(argv[6]) == "--capture-traces");
 
-    // Verify executables exist
     if (!fs::exists(stage0_cli)) {
         std::cerr << "Error: stage0_cli not found at " << stage0_cli << "\n";
         return 1;
@@ -143,8 +78,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    fs::path build_dir = current_dir;
-    fs::path log_path = build_dir / "regression_log.txt";
+    fs::current_path(tests_dir);
+
+    fs::path log_path = tests_dir / "regression_log.txt";
     std::ofstream log(log_path, std::ios::trunc);
     if (!log) {
         std::cerr << "Error: unable to open log file at " << log_path << "\n";
@@ -195,13 +131,12 @@ int main(int argc, char* argv[]) {
         const fs::path output_cpp = base.string() + ".cpp";
         const fs::path binary = base;
         const fs::path output_capture = "output_" + base.string() + ".txt";
-        const fs::path expected_output = tests_dir / "test-results" / (base.string() + ".output");
+        const fs::path expected_output = fs::path("test-results") / (base.string() + ".output");
 
         log << "Testing " << filename << "\n";
         num_tests++;
 
-        const std::string transpile_cmd = (capture_traces ? "RBCURSIVE_CAPTURE=1 " : "") +
-                                          quote(stage0_cli) + " transpile " +
+        const std::string transpile_cmd = quote(stage0_cli) + " transpile " +
                                           quote(test) + " " + quote(output_cpp) + " " + quote(patterns_path);
         if (run_command(transpile_cmd, log) != 0) {
             log << "  Transpile FAILED\n\n";

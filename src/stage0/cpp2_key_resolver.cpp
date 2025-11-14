@@ -214,7 +214,7 @@ void CPP2KeyResolver::build_peer_graph() {
 double CPP2KeyResolver::compute_cpp2_similarity(const std::string& token_sequence,
                                                const CPP2Key& key) const {
     // RBCursive combinator-based pattern matching (no regex)
-    cppfort::stage0::RBCursiveScanner scanner;
+    cppfort::ir::RBCursiveScanner scanner;
 
     // Use glob matching for pattern similarity
     if (scanner.matchGlob(token_sequence, key.pattern)) {
