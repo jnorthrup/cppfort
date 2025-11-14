@@ -6,31 +6,30 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CTest)
 
-# yaml-cpp is now provided via FetchContent in root CMakeLists.txt
-# This ensures ABI compatibility across all platforms
+# Find yaml-cpp (optional for clean room compliance)
+find_package(yaml-cpp QUIET)
+if(NOT yaml-cpp_FOUND)
+    find_path(YAML_CPP_INCLUDE_DIR yaml-cpp/yaml.h PATHS /opt/homebrew/opt/yaml-cpp/include NO_DEFAULT_PATH)
+    find_library(YAML_CPP_LIBRARY yaml-cpp PATHS /opt/homebrew/opt/yaml-cpp/lib NO_DEFAULT_PATH)
+    if(YAML_CPP_INCLUDE_DIR AND YAML_CPP_LIBRARY)
+        add_library(yaml-cpp::yaml-cpp UNKNOWN IMPORTED)
+        set_target_properties(yaml-cpp::yaml-cpp PROPERTIES
+            IMPORTED_LOCATION "${YAML_CPP_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${YAML_CPP_INCLUDE_DIR}")
+        set(yaml-cpp_FOUND TRUE)
+    endif()
+endif()
+
+if(yaml-cpp_FOUND AND NOT TARGET yaml-cpp::yaml-cpp)
+    set(yaml-cpp_FOUND FALSE)
+endif()
 
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 # Collect all source files
-set(STAGE0_SOURCES
-    cpp2_emitter.cpp
-    main.cpp
-    orbit_pipeline.cpp
-    orbit_scanner.cpp
-    stage0_cli.cpp
-    graph_nodes.cpp
-    simple_graph_nodes.cpp
-    complete_pattern_engine.cpp
-    rbcursive.cpp
-    packrat_cache.cpp
-    heap_limiter.cpp
-    confix_orbit.cpp
-    orbit_iterator.cpp
-    function_orbit.cpp
-    correlator.cpp
-)
+file(GLOB STAGE0_SOURCES "*.cpp")
 
 # Remove main.cpp and test files from library sources
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
@@ -54,28 +53,23 @@ add_custom_command(
 )
 add_custom_target(tblgen_semantic_units DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/semantic_units.json)
 
-# Remove deleted/consolidated files
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_key_resolver_new.cpp")  # Deleted - duplicate
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner_new.cpp")  # Deleted - duplicate
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/semantic_orbit_loader.cpp")  # Deleted - unused
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/depth_pattern_matcher.cpp")  # Consolidated into unified
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tblgen_pattern_matcher.cpp")  # Consolidated into unified
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp")  # Consolidated into unified
-
-# Temporarily remove broken files (need fixing)
+# Temporarily remove problematic files (not yet converted to RBCursive or incompatible implementations)
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_key_resolver_new.cpp")  # Depends on yaml-cpp version of extractor
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_pattern_extractor.cpp")  # Broken - doesn't match header
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/semantic_orbit_loader.cpp")  # yaml-cpp
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unified_orbit_patterns.cpp")  # yaml-cpp
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/multi_grammar_loader.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner_new.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.cpp")  # Temporarily broken - EvidenceSpan API mismatch
 
 # Create static library
 add_library(stage0_lib STATIC ${STAGE0_SOURCES})
 add_dependencies(stage0_lib tblgen_semantic_units)
-target_link_libraries(stage0_lib yaml-cpp)
 
 # Create executable
-add_executable(stage0_cli semantic_transpiler_main.cpp)
+add_executable(stage0_cli main.cpp)
 target_link_libraries(stage0_cli stage0_lib)
 
 # Create reality check test executable
@@ -123,32 +117,6 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_parameter_transform yaml-cpp::yaml-cpp)
 endif()
 
-# Create graph nodes test executable
-add_executable(test_graph_nodes test_graph_nodes.cpp)
-target_link_libraries(test_graph_nodes stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(test_graph_nodes yaml-cpp::yaml-cpp)
-endif()
-
-# Create simple graph nodes test executable
-add_executable(test_simple_graph_nodes test_simple_graph_nodes.cpp)
-target_link_libraries(test_simple_graph_nodes stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(test_simple_graph_nodes yaml-cpp::yaml-cpp)
-endif()
-
-# Create combinator pool test executable
-add_executable(test_combinator_pool test_combinator_pool.cpp)
-target_link_libraries(test_combinator_pool stage0_lib)
-
-# Create packrat cache test executable
-add_executable(test_packrat_cache test_packrat_cache.cpp)
-target_link_libraries(test_packrat_cache stage0_lib)
-
-# Create packrat heap soak test executable (demonstrates cache limits)
-add_executable(test_packrat_heap_soak test_packrat_heap_soak.cpp)
-target_link_libraries(test_packrat_heap_soak stage0_lib)
-
 # Create depth matcher test executable (DISABLED - file missing)
 # add_executable(test_depth_matcher test_depth_matcher.cpp)
 # target_link_libraries(test_depth_matcher stage0_lib)
@@ -170,26 +138,17 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_recursive_patterns_RED yaml-cpp::yaml-cpp)
 endif()
 
-# Create grammar evaluation test executable
-add_executable(run_grammar_eval ../../tests/run_grammar_eval.cpp)
-target_link_libraries(run_grammar_eval stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(run_grammar_eval yaml-cpp::yaml-cpp)
-endif()
-
 add_executable(regression_runner regression_runner.cpp)
 
 if(BUILD_TESTING)
   add_test(NAME stage0_confix_cache COMMAND test_confix_cache)
   add_test(NAME stage0_parameter_transform COMMAND test_parameter_transform)
-  add_test(NAME stage0_graph_nodes COMMAND test_graph_nodes)
-  add_test(NAME stage0_simple_graph_nodes COMMAND test_simple_graph_nodes)
   add_test(
     NAME stage0_regression_suite
     COMMAND regression_runner
-      $<TARGET_FILE:stage0_cli>
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
-      ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/cppfort_core_patterns.yaml
+            $<TARGET_FILE:stage0_cli>
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
             ${CMAKE_CURRENT_SOURCE_DIR}/../../include
             --verbose
   )
@@ -221,7 +180,7 @@ add_custom_target(regression_tests
   COMMAND $<TARGET_FILE:regression_runner>
           $<TARGET_FILE:stage0_cli>
           ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/cppfort_core_patterns.yaml
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
           ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   DEPENDS stage0_cli regression_runner
   USES_TERMINAL

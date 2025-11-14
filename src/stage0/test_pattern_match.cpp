@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cassert>
-#include "unified_pattern_matcher.h"
+#include "tblgen_pattern_matcher.h"
 
 using namespace cppfort::stage0;
 
@@ -10,7 +10,7 @@ int main() {
     std::string pattern = "$0: ($1) -> $2 = $3";
     std::string input = "main: () -> int = { s: std::string = \"world\"; }";
 
-    auto result = UnifiedPatternMatcher::extract_segments(pattern, input);
+    auto result = TblgenPatternMatcher::match(pattern, input);
 
     if (!result) {
         std::cerr << "FAILED: Pattern did not match\n";

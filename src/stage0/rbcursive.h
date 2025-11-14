@@ -14,7 +14,7 @@
 #include "pattern_loader.h"
 
 namespace cppfort {
-namespace stage0 {
+namespace ir {
 
 class SimdScanner {
 public:
@@ -64,43 +64,32 @@ public:
     void speculate(std::string_view text);
 
     // Speculative matching against all known patterns across fragment boundaries
-    void speculate_across_fragments(const std::vector<OrbitFragment>& fragments, std::string_view source);
+    void speculate_across_fragments(const std::vector< ::cppfort::stage0::OrbitFragment>& fragments, std::string_view source);
 
     // Speculative matching using alternating anchor/evidence pattern
-    void speculate_alternating(const PatternData& pattern, std::string_view text);
+    void speculate_alternating(const ::cppfort::stage0::PatternData& pattern, std::string_view text);
 
     // Experimental: Anchor tuple + terminal-span backchain thinning using TypeEvidence
     void speculate_backchain(std::string_view text);
 
     // Get the best speculative match (longest match, then highest confidence)
-    const SpeculativeMatch* get_best_match() const;
+    const ::cppfort::stage0::SpeculativeMatch* get_best_match() const;
 
     Capabilities patternCapabilities() const { return {}; }
 
     const SimdScanner& scalarScanner() const { return m_scalarScanner; }
 
     // Set patterns for speculation
-    void set_patterns(const std::vector<PatternData>& patterns) { patterns_ = &patterns; }
+    void set_patterns(const std::vector< ::cppfort::stage0::PatternData>& patterns) { patterns_ = &patterns; }
 
     // Set packrat cache for memoization
-    void set_packrat_cache(PackratCache* cache) { packrat_cache_ = cache; }
-
-    // Enable semantic trace capture mode
-    void enable_trace_capture(bool enable) { capture_traces_ = enable; }
-    
-    // Get collected semantic traces (for regression testing)
-    const std::vector<SemanticTrace>& get_semantic_traces() const { return semantic_traces_; }
-    
-    // Clear collected traces
-    void clear_traces() { semantic_traces_.clear(); }
+    void set_packrat_cache( ::cppfort::stage0::PackratCache* cache) { packrat_cache_ = cache; }
 
 private:
     ScalarScanner m_scalarScanner;
-    std::vector<SpeculativeMatch> matches_;
-    const std::vector<PatternData>* patterns_ = nullptr;
-    PackratCache* packrat_cache_ = nullptr;
-    bool capture_traces_ = false;  // NEW: enable trace capture mode
-    std::vector<SemanticTrace> semantic_traces_;  // NEW: collected traces
+    std::vector< ::cppfort::stage0::SpeculativeMatch> matches_;
+    const std::vector< ::cppfort::stage0::PatternData>* patterns_ = nullptr;
+    ::cppfort::stage0::PackratCache* packrat_cache_ = nullptr;
     
     // Validate evidence type for alternating patterns
     bool validate_evidence_type(const std::string& type, std::string_view evidence) const;
@@ -108,64 +97,18 @@ private:
     static bool globMatch(std::string_view text, std::string_view pattern);
 };
 
-// Configuration for combinator pool growth and limits
-struct PoolConfig {
-    size_t initial_size = 16;
-    size_t max_size = 128;  // Conservative limit for RBCursiveScanner objects
-    float growth_factor = 1.5f;  // Exponential growth factor
-    bool allow_growth = true;
-    bool log_growth = false;  // For debugging growth events
-};
-
-// Metrics for monitoring pool behavior
-struct PoolMetrics {
-    size_t current_size = 0;
-    size_t peak_size = 0;
-    size_t total_allocations = 0;
-    size_t allocation_failures = 0;
-    size_t growth_events = 0;
-    
-    void record_allocation(bool success) {
-        total_allocations++;
-        if (!success) {
-            allocation_failures++;
-        }
-    }
-    
-    void record_growth(size_t new_size) {
-        growth_events++;
-        current_size = new_size;
-        if (new_size > peak_size) {
-            peak_size = new_size;
-        }
-    }
-};
-
 class CombinatorPool {
 public:
-    explicit CombinatorPool(const PoolConfig& config = {});
-    explicit CombinatorPool(std::size_t initial_size);  // Legacy constructor
+    explicit CombinatorPool(std::size_t initial_size = 0);
 
     RBCursiveScanner* allocate();
     void release(RBCursiveScanner* scanner);
     std::size_t available() const;
-    std::size_t capacity() const { return pool_.size(); }
-    
-    // Metrics access
-    const PoolMetrics& metrics() const { return metrics_; }
-    PoolMetrics& metrics() { return metrics_; }
-    
-    // Manual resizing
-    bool resize(std::size_t new_size);
 
 private:
-    void grow_pool();
-    
-    PoolConfig config_;
-    PoolMetrics metrics_;
     std::vector<RBCursiveScanner> pool_;
     std::vector<bool> used_;
 };
 
+} // namespace ir
 } // namespace cppfort
-} // namespace stage0

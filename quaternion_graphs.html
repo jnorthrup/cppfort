@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quaternion Group Q₈ Graph Representations</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .graph-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .graph-title {
+            font-size: 1.3em;
+            color: #34495e;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .graph-description {
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .graph-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        svg {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        .node {
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+        .node-label {
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+        .link {
+            stroke-width: 2px;
+            opacity: 0.7;
+        }
+        .insights {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .insights h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .insights ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .insights li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quaternion Group Q₈ Actions and Graph Representations</h1>
+        <div class="subtitle">Q₈ = {±1, ±i, ±j, ±k} with i² = j² = k² = ijk = -1</div>
+
+        <!-- Commutativity Graph -->
+        <div class="graph-section">
+            <div class="graph-title">1. Commutativity Graph (Conjugacy Structure)</div>
+            <div class="graph-description">
+                Shows which pairs of elements commute (blue) and which don't (red).
+                The center Z(Q₈) = {±1} commutes with all elements.
+            </div>
+            <div class="graph-container">
+                <svg id="commutativity-graph" width="400" height="400"></svg>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Commute</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Don't Commute</span>
+                </div>
+            </div>
+            <div class="insights">
+                <h3>Key Insights:</h3>
+                <ul>
+                    <li>Center Z(Q₈) = {1, -1} commutes with ALL elements (full blue rows/columns)</li>
+                    <li>{±i}, {±j}, {±k} each commute within their pairs (2×2 blue blocks)</li>
+                    <li>Cross pairs (i,j), (i,k), (j,k) are red (non-abelian structure)</li>
+                    <li>Reveals Q₈ is Hamiltonian (all subgroups normal)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Cayley Graph -->
+        <div class="graph-section">
+            <div class="graph-title">2. Cayley Graph (Generator Actions)</div>
+            <div class="graph-description">
+                Shows the action of generators i and j through right multiplication.
+                Red edges represent multiplication by i, blue edges by j.
+            </div>
+            <div class="graph-container">
+                <svg id="cayley-graph" width="400" height="400"></svg>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Multiply by i</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Multiply by j</span>
+                </div>
+            </div>
+            <div class="insights">
+                <h3>Key Insights:</h3>
+                <ul>
+                    <li>Visualizes group presentation ⟨i,j | i⁴=j⁴=1, ij=ji⁻¹⟩</li>
+                    <li>Each vertex has out-degree 2 (one edge for each generator)</li>
+                    <li>Directed edges show non-abelian structure</li>
+                    <li>Forms a directed 8-vertex graph with specific symmetry</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Conjugacy Action -->
+        <div class="graph-section">
+            <div class="graph-title">3. Conjugacy Action (Inner Automorphisms)</div>
+            <div class="graph-description">
+                Shows how each group element acts by conjugation: g·x = gxg⁻¹.
+                Demonstrates the orbit structure of Q₈.
+            </div>
+            <div class="graph-container">
+                <svg id="conjugacy-graph" width="400" height="400"></svg>
+            </div>
+            <div class="insights">
+                <h3>Key Insights:</h3>
+                <ul>
+                    <li>5 orbits total: {1}, {-1}, {±i}, {±j}, {±k}</li>
+                    <li>2 fixed points (center elements)</li>
+                    <li>3 orbits of size 2 (conjugacy classes)</li>
+                    <li>Class equation: 8 = 1 + 1 + 2 + 2 + 2</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Matrix Action -->
+        <div class="graph-section">
+            <div class="graph-title">4. Linear Action: Q₈ as 2×2 Matrices over 𝔽₃</div>
+            <div class="graph-description">
+                The smallest faithful permutation representation of Q₈.
+                Shows action on the 9 vectors of 𝔽₃².
+            </div>
+            <div class="graph-container">
+                <svg id="matrix-graph" width="400" height="400"></svg>
+            </div>
+            <div class="insights">
+                <h3>Key Insights:</h3>
+                <ul>
+                    <li>Q₈ acts faithfully on 9 points (vectors in 𝔽₃²)</li>
+                    <li>Representation as subgroup of GL(2,3), not just S₉</li>
+                    <li>Each matrix has order 4 (i⁴ = j⁴ = k⁴ = 1)</li>
+                    <li>Demonstrates Q₈ cannot embed in Sₙ for n < 8</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="graph-section">
+            <div class="graph-title">Summary: Graph-Theoretic Insights</div>
+            <div class="insights">
+                <p><strong>Q₈'s actions are best understood through:</strong></p>
+                <ul>
+                    <li><strong>Commutativity graphs</strong> → reveals internal structure and center</li>
+                    <li><strong>Cayley graphs</strong> → shows generator relationships and presentation</li>
+                    <li><strong>Orbital graphs</strong> → encodes action on external sets (𝔽₃², conjugacy)</li>
+                    <li><strong>Quotient graphs</strong> → connects to deep arithmetic (Bruhat-Tits trees)</li>
+                </ul>
+                <p style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 3px;">
+                    <strong>Unlike Sₙ or Dₙ:</strong> Q₈ requires <em>linear representations</em> for its smallest faithful actions,
+                    making its graph representations inherently <em>algebraic-geometric</em> rather than purely combinatorial.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Quaternion group data
+        const elementNames = ['1', '-1', 'i', '-i', 'j', '-j', 'k', '-k'];
+
+        // Multiplication table
+        function multiply(a, b) {
+            const [signA, typeA] = a;
+            const [signB, typeB] = b;
+
+            if (typeA === 0) return [signA * signB, typeB];
+            if (typeB === 0) return [signA * signB, typeA];
+            if (typeA === typeB) return [-signA * signB, 0];
+
+            // i*j = k, j*i = -k, etc.
+            if (typeA === 1 && typeB === 2) return [signA * signB, 3]; // i*j = k
+            if (typeA === 2 && typeB === 1) return [-signA * signB, 3]; // j*i = -k
+            if (typeA === 2 && typeB === 3) return [signA * signB, 1]; // j*k = i
+            if (typeA === 3 && typeB === 2) return [-signA * signB, 1]; // k*j = -i
+            if (typeA === 3 && typeB === 1) return [signA * signB, 2]; // k*i = j
+            if (typeA === 1 && typeB === 3) return [-signA * signB, 2]; // i*k = -j
+        }
+
+        function conjugate(a) {
+            const [sign, type] = a;
+            return type === 0 ? [sign, type] : [-sign, type];
+        }
+
+        function commute(a, b) {
+            const ab = multiply(a, b);
+            const ba = multiply(b, a);
+            return ab[0] === ba[0] && ab[1] === ba[1];
+        }
+
+        // Create elements
+        const elements = [
+            [1, 0], [-1, 0], [1, 1], [-1, 1],
+            [1, 2], [-1, 2], [1, 3], [-1, 3]
+        ];
+
+        // Graph creation functions
+        function createCommutativityGraph() {
+            const width = 400, height = 400;
+            const svg = d3.select("#commutativity-graph");
+            svg.selectAll("*").remove();
+
+            const radius = 150;
+            const nodes = elements.map((_, i) => ({
+                id: i,
+                name: elementNames[i],
+                x: width/2 + radius * Math.cos(2 * Math.PI * i / 8 - Math.PI/2),
+                y: height/2 + radius * Math.sin(2 * Math.PI * i / 8 - Math.PI/2)
+            }));
+
+            // Add edges
+            const edges = [];
+            for (let i = 0; i < elements.length; i++) {
+                for (let j = i; j < elements.length; j++) {
+                    const color = commute(elements[i], elements[j]) ? "#3498db" : "#e74c3c";
+                    edges.push({source: i, target: j, color: color});
+                }
+            }
+
+            // Draw edges
+            svg.selectAll("line")
+                .data(edges)
+                .enter()
+                .append("line")
+                .attr("x1", d => nodes[d.source].x)
+                .attr("y1", d => nodes[d.source].y)
+                .attr("x2", d => nodes[d.target].x)
+                .attr("y2", d => nodes[d.target].y)
+                .attr("stroke", d => d.color)
+                .attr("stroke-width", 2)
+                .attr("opacity", 0.7);
+
+            // Draw nodes
+            svg.selectAll("circle")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 20)
+                .attr("fill", "#3498db")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            // Draw labels
+            svg.selectAll("text")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .attr("fill", "white")
+                .attr("font-weight", "bold")
+                .attr("font-size", "12px")
+                .text(d => d.name);
+        }
+
+        function createCayleyGraph() {
+            const width = 400, height = 400;
+            const svg = d3.select("#cayley-graph");
+            svg.selectAll("*").remove();
+
+            const radius = 150;
+            const nodes = elements.map((_, i) => ({
+                id: i,
+                name: elementNames[i],
+                x: width/2 + radius * Math.cos(2 * Math.PI * i / 8 - Math.PI/2),
+                y: height/2 + radius * Math.sin(2 * Math.PI * i / 8 - Math.PI/2)
+            }));
+
+            // Generators: i (index 2), j (index 4)
+            const generators = [
+                {idx: 2, color: "#e74c3c", name: "i"},
+                {idx: 4, color: "#3498db", name: "j"}
+            ];
+
+            // Draw edges
+            generators.forEach(gen => {
+                const g = elements[gen.idx];
+                const edges = [];
+
+                for (let x = 0; x < elements.length; x++) {
+                    const y = elements.findIndex(el => {
+                        const prod = multiply(elements[x], g);
+                        return el[0] === prod[0] && el[1] === prod[1];
+                    });
+                    edges.push({source: x, target: y});
+                }
+
+                svg.selectAll(`line.${gen.name}`)
+                    .data(edges)
+                    .enter()
+                    .append("line")
+                    .attr("x1", d => nodes[d.source].x)
+                    .attr("y1", d => nodes[d.source].y)
+                    .attr("x2", d => nodes[d.target].x)
+                    .attr("y2", d => nodes[d.target].y)
+                    .attr("stroke", gen.color)
+                    .attr("stroke-width", 2)
+                    .attr("opacity", 0.7)
+                    .attr("marker-end", "url(#arrowhead)");
+            });
+
+            // Add arrow marker
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#333");
+
+            // Draw nodes
+            svg.selectAll("circle")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 20)
+                .attr("fill", "#3498db")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            // Draw labels
+            svg.selectAll("text")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .attr("fill", "white")
+                .attr("font-weight", "bold")
+                .attr("font-size", "12px")
+                .text(d => d.name);
+        }
+
+        function createConjugacyGraph() {
+            const width = 400, height = 400;
+            const svg = d3.select("#conjugacy-graph");
+            svg.selectAll("*").remove();
+
+            const radius = 150;
+            const nodes = elements.map((_, i) => ({
+                id: i,
+                name: elementNames[i],
+                orbit: i === 0 ? 0 : i === 1 ? 1 : Math.floor((i-2)/2) + 2,
+                x: width/2 + radius * Math.cos(2 * Math.PI * i / 8 - Math.PI/2),
+                y: height/2 + radius * Math.sin(2 * Math.PI * i / 8 - Math.PI/2)
+            }));
+
+            // Group by orbits
+            const orbitColors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"];
+            nodes.forEach(node => {
+                node.color = orbitColors[node.orbit];
+            });
+
+            // Draw edges showing conjugacy
+            const edges = [];
+            for (let g = 0; g < elements.length; g++) {
+                for (let x = 0; x < elements.length; x++) {
+                    const gx = multiply(elements[g], elements[x]);
+                    const g_inv = conjugate(elements[g]);
+                    const gxg_inv = multiply(gx, g_inv);
+                    const y = elements.findIndex(el =>
+                        el[0] === gxg_inv[0] && el[1] === gxg_inv[1]
+                    );
+                    if (x !== y) {
+                        edges.push({source: x, target: y, color: nodes[x].color});
+                    }
+                }
+            }
+
+            // Draw edges
+            svg.selectAll("line")
+                .data(edges)
+                .enter()
+                .append("line")
+                .attr("x1", d => nodes[d.source].x)
+                .attr("y1", d => nodes[d.source].y)
+                .attr("x2", d => nodes[d.target].x)
+                .attr("y2", d => nodes[d.target].y)
+                .attr("stroke", d => d.color)
+                .attr("stroke-width", 1.5)
+                .attr("opacity", 0.4);
+
+            // Draw nodes
+            svg.selectAll("circle")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 20)
+                .attr("fill", d => d.color)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            // Draw labels
+            svg.selectAll("text")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .attr("fill", "white")
+                .attr("font-weight", "bold")
+                .attr("font-size", "12px")
+                .text(d => d.name);
+
+            // Add orbit legend
+            const legendData = [
+                {name: "{1}", color: "#e74c3c"},
+                {name: "{-1}", color: "#3498db"},
+                {name: "{±i}", color: "#2ecc71"},
+                {name: "{±j}", color: "#f39c12"},
+                {name: "{±k}", color: "#9b59b6"}
+            ];
+
+            const legend = svg.append("g")
+                .attr("transform", "translate(10, 10)");
+
+            legendData.forEach((item, i) => {
+                const g = legend.append("g")
+                    .attr("transform", `translate(0, ${i * 20})`);
+
+                g.append("circle")
+                    .attr("r", 6)
+                    .attr("fill", item.color);
+
+                g.append("text")
+                    .attr("x", 12)
+                    .attr("y", 4)
+                    .attr("font-size", "10px")
+                    .text(item.name);
+            });
+        }
+
+        function createMatrixGraph() {
+            const width = 400, height = 400;
+            const svg = d3.select("#matrix-graph");
+            svg.selectAll("*").remove();
+
+            // Vectors in F₃²
+            const vectors = [];
+            for (let x = 0; x < 3; x++) {
+                for (let y = 0; y < 3; y++) {
+                    vectors.push([x, y]);
+                }
+            }
+
+            // Matrix for 'i': [[1,1],[1,2]] mod 3
+            function applyMatrix(vec) {
+                const x = (1*vec[0] + 1*vec[1]) % 3;
+                const y = (1*vec[0] + 2*vec[1]) % 3;
+                return [x, y];
+            }
+
+            // Create nodes in grid layout
+            const nodes = vectors.map((vec, i) => ({
+                id: i,
+                vec: vec,
+                name: `(${vec[0]},${vec[1]})`,
+                x: 50 + (vec[0] * 100) + (vec[1] * 30),
+                y: 50 + (vec[1] * 100) - (vec[0] * 20)
+            }));
+
+            // Create edges for action of 'i'
+            const edges = [];
+            for (let i = 0; i < vectors.length; i++) {
+                const result = applyMatrix(vectors[i]);
+                const j = vectors.findIndex(v => v[0] === result[0] && v[1] === result[1]);
+                if (i !== j) {
+                    edges.push({source: i, target: j});
+                }
+            }
+
+            // Draw edges
+            svg.selectAll("line")
+                .data(edges)
+                .enter()
+                .append("line")
+                .attr("x1", d => nodes[d.source].x)
+                .attr("y1", d => nodes[d.source].y)
+                .attr("x2", d => nodes[d.target].x)
+                .attr("y2", d => nodes[d.target].y)
+                .attr("stroke", "#e74c3c")
+                .attr("stroke-width", 2)
+                .attr("opacity", 0.7)
+                .attr("marker-end", "url(#arrowhead2)");
+
+            // Add arrow marker
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead2")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#e74c3c");
+
+            // Draw nodes
+            svg.selectAll("circle")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 18)
+                .attr("fill", "#3498db")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2);
+
+            // Draw labels
+            svg.selectAll("text")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .attr("fill", "white")
+                .attr("font-weight", "bold")
+                .attr("font-size", "10px")
+                .text(d => d.name);
+
+            // Add title
+            svg.append("text")
+                .attr("x", width/2)
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                .attr("font-size", "12px")
+                .attr("font-weight", "bold")
+                .text("Action of i on 𝔽₃² vectors");
+        }
+
+        // Initialize graphs when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createCommutativityGraph();
+            createCayleyGraph();
+            createConjugacyGraph();
+            createMatrixGraph();
+        });
+    </script>
+</body>
+</html>

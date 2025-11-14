@@ -1,49 +1,13 @@
-# Build directories
 build/
-cmake-build-*/
-
-# Log files
-logs/
-*.log
-
-# Temporary files
-*.tmp
-*.temp
-tmp_*
-
-# Compiled binaries
 *.o
-*.exe
-*.out
-standalone_graph_test
-advanced_graph_solutions
-tdd_graph_approach
-
-# Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# OS files
-Thumbs.db
-
-# Documentation consolidation
-DOCS/
-
-# Qwen logs
-QWEN.mdlogs/
+*.a
+*.so
+*.dylib
+*.dSYM
+.cmake/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
 *.log
-logs/
-*.log
-QWEN.md
-advanced_graph_solutions
-standalone_graph_test
-tdd_graph_approach
-*.log
-tmp_*
-logs/
-*.log
-logs/
+*.bin

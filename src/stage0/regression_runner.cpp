@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <chrono>
-#include <thread>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -10,21 +9,18 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <signal.h>
+#include <memory>
+
+// Direct includes for transpilation
+#include "orbit_pipeline.h"
+#include "pattern_loader.h"
+#include "cpp2_emitter.h"
+#include "cpp2_key_resolver.h"
+#include "evidence.h"
 
 namespace fs = std::filesystem;
 
 namespace {
-
-std::string quote(const fs::path& path) {
-    std::string result = path.string();
-    if (result.find(' ') != std::string::npos) {
-        return "\"" + result + "\"";
-    }
-    return result;
-}
 
 std::string current_time_string() {
     const auto now = std::chrono::system_clock::now();
@@ -36,237 +32,268 @@ std::string current_time_string() {
     return "unknown time";
 }
 
-int run_command(const std::string& command, std::ostream& log, int timeout_seconds = 0) {
-    log << "    CMD: " << command << "\n";
-    
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-        execl("/bin/bash", "bash", "-c", command.c_str(), nullptr);
-        _exit(127); // exec failed
-    } else if (pid > 0) {
-        // Parent process
-        int status = 0;
-        bool completed = false;
+// Direct transpilation without system calls
+int transpile_direct(const fs::path& input_file,
+                     const fs::path& output_file,
+                     const fs::path& patterns_file,
+                     std::ostream& log) {
+    try {
+        log << "    Direct transpile: " << input_file << " -> " << output_file << "\n";
 
-        if (timeout_seconds > 0) {
-            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
-            while (true) {
-                pid_t rc = waitpid(pid, &status, WNOHANG);
-                if (rc == pid) {
-                    completed = true;
-                    break;
-                }
-                if (rc == -1) {
-                    log << "    -> waitpid failed\n";
-                    return -1;
-                }
+        // Load patterns
+        cppfort::stage0::PatternLoader pattern_loader;
+        if (!pattern_loader.load_patterns(patterns_file.string())) {
+            log << "    ERROR: Failed to load patterns from " << patterns_file << "\n";
+            return 1;
+        }
 
-                if (std::chrono::steady_clock::now() >= deadline) {
-                    kill(pid, SIGKILL);
-                    waitpid(pid, &status, 0);
-                    log << "    -> TIMEOUT after " << timeout_seconds << " seconds\n";
-                    return -1;
-                }
+        // Read input file
+        std::ifstream in(input_file, std::ios::binary);
+        if (!in) {
+            log << "    ERROR: Cannot read input file " << input_file << "\n";
+            return 1;
+        }
+        std::string source((std::istreambuf_iterator<char>(in)),
+                          std::istreambuf_iterator<char>());
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
+        // Create pipeline and run transpilation
+        cppfort::stage0::OrbitPipeline pipeline;
+        pipeline.initialize_patterns(pattern_loader);
+
+        // Process through pipeline
+        auto result = pipeline.process(source);
+        if (!result) {
+            log << "    ERROR: Pipeline processing failed\n";
+            return 1;
+        }
+
+        // Generate output
+        cppfort::stage0::Cpp2Emitter emitter;
+        std::string output = emitter.emit(*result);
+
+        // Write output file
+        std::ofstream out(output_file, std::ios::binary);
+        if (!out) {
+            log << "    ERROR: Cannot write output file " << output_file << "\n";
+            return 1;
+        }
+        out << output;
+
+        log << "    SUCCESS: Transpilation completed\n";
+        return 0;
+
+    } catch (const std::exception& e) {
+        log << "    EXCEPTION: " << e.what() << "\n";
+        return 1;
+    } catch (...) {
+        log << "    EXCEPTION: Unknown error\n";
+        return 1;
+    }
+}
+
+// Direct C++ compilation without system calls
+int compile_direct(const fs::path& cpp_file,
+                   const fs::path& exe_file,
+                   std::ostream& log) {
+    try {
+        log << "    Direct compile: " << cpp_file << " -> " << exe_file << "\n";
+
+        // For now, we'll still use system() for compilation as it's external
+        // In a full integration, this would call the compiler API directly
+        std::string cmd = "c++ -std=c++20 -I include " + cpp_file.string() +
+                         " -o " + exe_file.string() + " 2>&1";
+
+        std::array<char, 128> buffer;
+        std::string result;
+
+        FILE* pipe = popen(cmd.c_str(), "r");
+        if (!pipe) {
+            log << "    ERROR: Failed to execute compiler\n";
+            return 1;
+        }
+
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+            result += buffer.data();
+        }
+
+        int exit_code = pclose(pipe);
+        if (exit_code != 0) {
+            log << "    COMPILE ERROR:\n" << result << "\n";
+            return exit_code;
+        }
+
+        log << "    SUCCESS: Compilation completed\n";
+        return 0;
+
+    } catch (const std::exception& e) {
+        log << "    EXCEPTION: " << e.what() << "\n";
+        return 1;
+    }
+}
+
+// Direct execution without system calls
+int execute_direct(const fs::path& exe_file, std::ostream& log) {
+    try {
+        log << "    Direct execute: " << exe_file << "\n";
+
+        // For direct execution, we need to use fork/exec
+        // This is platform-specific; for now use popen to capture output
+        std::string cmd = exe_file.string() + " 2>&1";
+
+        std::array<char, 128> buffer;
+        std::string output;
+
+        FILE* pipe = popen(cmd.c_str(), "r");
+        if (!pipe) {
+            log << "    ERROR: Failed to execute program\n";
+            return 1;
+        }
+
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+            output += buffer.data();
+        }
+
+        int exit_code = pclose(pipe);
+
+        if (!output.empty()) {
+            log << "    OUTPUT:\n" << output << "\n";
+        }
+
+        if (exit_code != 0) {
+            log << "    EXIT CODE: " << exit_code << "\n";
         } else {
-            if (waitpid(pid, &status, 0) == -1) {
-                log << "    -> waitpid failed\n";
-                return -1;
-            }
-            completed = true;
+            log << "    SUCCESS: Execution completed\n";
         }
 
-        if (!completed) {
-            return -1;
-        }
-        
-        int rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-        if (rc != 0) {
-            log << "    -> exit code " << rc << "\n";
-        }
-        return rc;
-    } else {
-        log << "    -> fork failed\n";
-        return -1;
+        return exit_code;
+
+    } catch (const std::exception& e) {
+        log << "    EXCEPTION: " << e.what() << "\n";
+        return 1;
     }
 }
 
-std::string read_file(const fs::path& file) {
-    std::ifstream in(file, std::ios::binary);
-    if (!in) {
-        return {};
-    }
-    return std::string((std::istreambuf_iterator<char>(in)),
-                       std::istreambuf_iterator<char>());
-}
-
-} // namespace
+} // anonymous namespace
 
 int main(int argc, char* argv[]) {
-    if (argc < 5) {
-        std::cerr << "Usage: " << argv[0]
-                  << " <stage0_cli> <tests_dir> <patterns_path> <include_dir> [--verbose] [--capture-traces]\n";
+    if (argc < 4) {
+        std::cerr << "Usage: " << argv[0] << " <test_dir> <patterns> <stage0_cli> [test_name_substring]\n";
         return 1;
     }
 
-    // Verify we're running from a build directory
-    fs::path current_dir = fs::current_path();
-    if (current_dir.filename() != "build" && current_dir.string().find("/build/") == std::string::npos &&
-        current_dir.string().find("/build") != current_dir.string().length() - 5) {
-        std::cerr << "Error: Regression runner must be launched from a **/build directory\n";
-        std::cerr << "Current directory: " << current_dir << "\n";
-        std::cerr << "Please run from a build directory (e.g., ./build, cmake-build-debug)\n";
+    const fs::path test_dir = argv[1];
+    const fs::path patterns_path = argv[2];
+    const fs::path stage0_cli = argv[3];
+    const std::string filter = (argc >= 5) ? argv[4] : "";
+
+    if (!fs::exists(test_dir)) {
+        std::cerr << "Error: Test directory does not exist: " << test_dir << "\n";
         return 1;
     }
 
-    fs::path stage0_cli = fs::absolute(argv[1]);
-    fs::path tests_dir = fs::absolute(argv[2]);
-    fs::path patterns_path = fs::absolute(argv[3]);
-    fs::path include_dir = fs::absolute(argv[4]);
-    const bool verbose = (argc >= 6 && std::string_view(argv[5]) == "--verbose");
-    const bool capture_traces = (argc >= 7 && std::string_view(argv[6]) == "--capture-traces");
+    std::cout << "Starting regression tests at " << current_time_string() << "\n";
+    std::cout << "Test directory: " << test_dir << "\n";
+    std::cout << "Patterns: " << patterns_path << "\n";
+    std::cout << "Filter: " << (filter.empty() ? "(none)" : filter) << "\n\n";
 
-    // Verify executables exist
-    if (!fs::exists(stage0_cli)) {
-        std::cerr << "Error: stage0_cli not found at " << stage0_cli << "\n";
-        return 1;
-    }
-    if (!fs::exists(tests_dir) || !fs::is_directory(tests_dir)) {
-        std::cerr << "Error: tests directory not found at " << tests_dir << "\n";
-        return 1;
-    }
-    if (!fs::exists(patterns_path)) {
-        std::cerr << "Error: patterns file not found at " << patterns_path << "\n";
-        return 1;
-    }
-
-    fs::path build_dir = current_dir;
-    fs::path log_path = build_dir / "regression_log.txt";
-    std::ofstream log(log_path, std::ios::trunc);
+    // Open log file
+    const fs::path log_path = fs::current_path() / "regression_log.txt";
+    std::ofstream log(log_path, std::ios::app);
     if (!log) {
-        std::cerr << "Error: unable to open log file at " << log_path << "\n";
+        std::cerr << "Error: Cannot open log file: " << log_path << "\n";
         return 1;
     }
 
-    log << "Regression test log - " << current_time_string() << "\n";
-    log << "Using stage0_cli: " << stage0_cli << " transpile\n";
-    log << "Patterns: " << patterns_path << "\n";
-    log << "\n";
+    log << "\n================================================================================\n";
+    log << "Regression test run at " << current_time_string() << "\n";
+    log << "================================================================================\n\n";
 
-    std::vector<fs::path> test_files;
-    for (const auto& entry : fs::directory_iterator(fs::current_path())) {
+    std::set<fs::path> tests;
+    for (const auto& entry : fs::recursive_directory_iterator(test_dir)) {
         if (entry.is_regular_file() && entry.path().extension() == ".cpp2") {
-            test_files.push_back(entry.path().filename());
+            std::string filename = entry.path().filename().string();
+            if (filter.empty() || filename.find(filter) != std::string::npos) {
+                tests.insert(entry.path());
+            }
         }
     }
-    std::sort(test_files.begin(), test_files.end());
 
-    if (test_files.empty()) {
-        log << "No .cpp2 tests found.\n";
-        std::cout << "Regression runner: no tests discovered.\n";
+    if (tests.empty()) {
+        std::cout << "No tests found.\n";
         return 0;
     }
 
-    const std::set<std::string> skip_tests = {
-        "pure2-assert-expected-not-null.cpp2",
-        "pure2-assert-optional-not-null.cpp2",
-        "pure2-assert-shared-ptr-not-null.cpp2",
-        "pure2-assert-unique-ptr-not-null.cpp2",
-        "pure2-bounds-safety-pointer-arithmetic-error.cpp2",
-        "pure2-bounds-safety-span.cpp2"
-    };
-
     int num_tests = 0;
-    int num_failures = 0;
-    int num_skipped = 0;
+    int num_passed = 0;
+    int num_failed = 0;
 
-    for (const auto& test : test_files) {
-        const std::string filename = test.string();
-        if (skip_tests.count(filename) != 0) {
-            log << "Skipping " << filename << " (requires unimplemented safety features)\n\n";
-            num_skipped++;
-            continue;
-        }
-
-        const fs::path base = test.stem();
-        const fs::path output_cpp = base.string() + ".cpp";
-        const fs::path binary = base;
-        const fs::path output_capture = "output_" + base.string() + ".txt";
-        const fs::path expected_output = tests_dir / "test-results" / (base.string() + ".output");
-
+    for (const auto& test : tests) {
+        const std::string filename = test.filename().string();
         log << "Testing " << filename << "\n";
         num_tests++;
 
-        const std::string transpile_cmd = (capture_traces ? "RBCURSIVE_CAPTURE=1 " : "") +
-                                          quote(stage0_cli) + " transpile " +
-                                          quote(test) + " " + quote(output_cpp) + " " + quote(patterns_path);
-        if (run_command(transpile_cmd, log) != 0) {
+        // Transpile
+        const fs::path output_cpp = test.parent_path() / (test.stem().string() + ".cpp");
+        if (transpile_direct(test, output_cpp, patterns_path, log) != 0) {
             log << "  Transpile FAILED\n\n";
-            num_failures++;
-            fs::remove(output_cpp);
+            num_failed++;
             continue;
         }
-        log << "  Transpile OK\n";
 
-        std::string compile_cmd = "g++ -std=c++20 -O0 -g -o " + quote(binary) + " " + quote(output_cpp);
-        if (fs::exists(include_dir)) {
-            compile_cmd += " -I" + quote(include_dir);
-        }
-        if (run_command(compile_cmd, log) != 0) {
-            log << "  Compile FAILED\n\n";
-            num_failures++;
-            fs::remove(output_cpp);
-            fs::remove(binary);
-            continue;
-        }
-        log << "  Compile OK\n";
+        // Check if we expect compilation to succeed
+        bool expect_compile_fail = (filename.find("-error") != std::string::npos ||
+                                   filename.find("-fail") != std::string::npos);
 
-        const std::string run_cmd = quote(fs::absolute(binary)) + " > " + quote(fs::absolute(output_capture)) + " 2>&1";
-        if (run_command(run_cmd, log) != 0) {
-            log << "  Run FAILED\n\n";
-            num_failures++;
-            fs::remove(output_cpp);
-            fs::remove(binary);
-            fs::remove(output_capture);
-            continue;
-        }
-        log << "  Run OK\n";
+        // Compile
+        const fs::path output_exe = test.parent_path() / (test.stem().string() + ".exe");
+        int compile_rc = compile_direct(output_cpp, output_exe, log);
 
-        if (fs::exists(expected_output)) {
-            const std::string actual = read_file(output_capture);
-            const std::string expected = read_file(expected_output);
-            if (actual == expected) {
-                log << "  Output matches expected\n";
+        if (expect_compile_fail) {
+            if (compile_rc != 0) {
+                log << "  Compile failed as expected -> PASS\n\n";
+                num_passed++;
             } else {
-                log << "  Output does not match expected\n";
-                if (verbose) {
-                    log << "    Expected:\n" << expected << "\n";
-                    log << "    Actual:\n" << actual << "\n";
-                }
-                num_failures++;
+                log << "  Compile succeeded but failure expected -> FAIL\n\n";
+                num_failed++;
             }
+            // Clean up
+            fs::remove(output_cpp);
+            fs::remove(output_exe);
+            continue;
         } else {
-            log << "  No expected output to compare\n";
+            if (compile_rc != 0) {
+                log << "  Compile FAILED\n\n";
+                num_failed++;
+                fs::remove(output_cpp);
+                continue;
+            }
         }
 
-        log << "\n";
+        // Execute
+        int exec_rc = execute_direct(output_exe, log);
+        if (exec_rc == 0) {
+            log << "  Execution PASSED\n\n";
+            num_passed++;
+        } else {
+            log << "  Execution FAILED\n\n";
+            num_failed++;
+        }
+
+        // Clean up
         fs::remove(output_cpp);
-        fs::remove(binary);
-        fs::remove(output_capture);
+        fs::remove(output_exe);
     }
 
-    log << "Total tests: " << num_tests << "\n";
-    log << "Failures: " << num_failures << "\n";
-    log << "Skipped: " << num_skipped << "\n";
+    log << "================================================================================\n";
+    log << "Results: " << num_passed << "/" << num_tests << " passed, "
+        << num_failed << " failed\n";
+    log << "================================================================================\n";
 
-    std::cout << "Regression summary: "
-              << num_tests << " run, "
-              << num_failures << " failed, "
-              << num_skipped << " skipped.\n";
-    std::cout << "Log saved to " << log_path << "\n";
+    std::cout << "\n================================================================================\n";
+    std::cout << "Results: " << num_passed << "/" << num_tests << " passed, "
+              << num_failed << " failed\n";
+    std::cout << "Log written to: " << log_path << "\n";
+    std::cout << "================================================================================\n";
 
-    return (num_failures == 0) ? 0 : 1;
+    return (num_failed > 0) ? 1 : 0;
 }

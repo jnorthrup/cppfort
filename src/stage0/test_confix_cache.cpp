@@ -12,7 +12,7 @@ namespace {
 
 int main() {
     ConfixOrbit orbit('{', '}');
-    orbit.remember_combinator_hit(10, 20, "demo_pattern", 0.6, kGrammar, {});
+    orbit.remember_combinator_hit(10, 20, "demo_pattern", 0.6, kGrammar);
 
     auto memo = orbit.recall_combinator_hit(10, 20);
     assert(memo.has_value());
