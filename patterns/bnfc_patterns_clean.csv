@@ -1,0 +1,13 @@
+name,use_alternating,anchor_1,anchor_2,anchor_3,grammar_modes,evidence_type_1,evidence_type_2,evidence_type_3,evidence_type_4,cpp2_template,cpp_template,c_template
+"function_declaration",true,"","","",,"","","","","","",""
+"main_function_void",true,"","","",,"","","","","","",""
+"main_function_void_no_space",true,"","","",,"","","","","","",""
+"function_void_declaration",true,"","","",,"","","","","","",""
+"main_function_with_return",true,"","","",,"","","","","","",""
+"cpp2_nested_function_with_return",true,"","","",,"","","","","","",""
+"cpp2_nested_function_void",true,"","","",,"","","","","","",""
+"cpp2_parameter",true,"","","",,"","","","","","",""
+"cpp2_typed_variable",true,"","","",,"","","","","","",""
+"cpp2_variable",true,"","","",,"","","","","","",""
+"cpp2_type_alias",true,"","","",,"","","","","","",""
+"cpp2_template_type_alias",true,"","","",,"","","","","","",""

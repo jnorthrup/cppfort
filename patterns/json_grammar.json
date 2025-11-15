@@ -1,0 +1,84 @@
+{
+  "patterns": [
+    {
+      "name": "json_object",
+      "use_alternating": true,
+      "alternating_anchors": ["{" , "}", ":"],
+      "grammar_modes": 15,
+      "evidence_types": ["key", "value", "nested_object"],
+      "priority": 100,
+      "transformation_templates": {
+        "1": "{$1:$2,$3}",
+        "2": "{$1:$2,$3}",
+        "4": "{$1:$2,$3}",
+        "8": "{$1:$2,$3}"
+      }
+    },
+    {
+      "name": "json_array",
+      "use_alternating": true,
+      "alternating_anchors": ["[", "]", ","],
+      "grammar_modes": 15,
+      "evidence_types": ["element1", "element2", "remaining"],
+      "priority": 90,
+      "transformation_templates": {
+        "1": "[$1,$2,$3]",
+        "2": "[$1,$2,$3]",
+        "4": "[$1,$2,$3]",
+        "8": "[$1,$2,$3]"
+      }
+    },
+    {
+      "name": "json_string",
+      "use_alternating": false,
+      "grammar_modes": 15,
+      "evidence_types": ["content"],
+      "priority": 200,
+      "transformation_templates": {
+        "1": "\"$1\"",
+        "2": "\"$1\"",
+        "4": "\"$1\"",
+        "8": "\"$1\""
+      }
+    },
+    {
+      "name": "json_number",
+      "use_alternating": false,
+      "grammar_modes": 15,
+      "evidence_types": ["digits"],
+      "priority": 200,
+      "transformation_templates": {
+        "1": "$1",
+        "2": "$1",
+        "4": "$1",
+        "8": "$1"
+      }
+    },
+    {
+      "name": "json_boolean",
+      "use_alternating": false,
+      "grammar_modes": 15,
+      "evidence_types": ["bool_val"],
+      "priority": 200,
+      "transformation_templates": {
+        "1": "$1",
+        "2": "$1",
+        "4": "$1",
+        "8": "$1"
+      }
+    },
+    {
+      "name": "json_null",
+      "use_alternating": false,
+      "grammar_modes": 15,
+      "evidence_types": ["null_val"],
+      "priority": 200,
+      "transformation_templates": {
+        "1": "$1",
+        "2": "$1",
+        "4": "$1",
+        "8": "$1"
+      }
+    }
+  ]
+}

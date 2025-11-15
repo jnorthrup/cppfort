@@ -1,0 +1,340 @@
+{
+  "patterns": [
+    {
+      "name": "cpp2_parameter",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ": "
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "type"
+      ],
+      "priority": 120,
+      "transformation_templates": {
+        "2": "$2 $1"
+      }
+    },
+    {
+      "name": "cpp2_typed_variable",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":",
+        "="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "type_expression",
+        "expression"
+      ],
+      "priority": 80,
+      "transformation_templates": {
+        "2": "$2 $1 = $3;"
+      }
+    },
+    {
+      "name": "cpp2_var_auto",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "expression"
+      ],
+      "priority": 100,
+      "transformation_templates": {
+        "2": "auto $1 = $2;"
+      }
+    },
+    {
+      "name": "cpp2_function_with_return",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "return_type",
+        "body"
+      ],
+      "priority": 200,
+      "transformation_templates": {
+        "2": "$3 $1($2) { $4 }"
+      }
+    },
+    {
+      "name": "cpp2_function_void",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "body"
+      ],
+      "priority": 190,
+      "transformation_templates": {
+        "2": "void $1($2) { $3 }"
+      }
+    },
+    {
+      "name": "cpp2_main_function",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":",
+        "="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "signature",
+        "body"
+      ],
+      "priority": 250,
+      "transformation_templates": {
+        "2": "int main() { $3 }"
+      }
+    },
+    {
+      "name": "cpp2_function_definition",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "function_signature"
+      ],
+      "priority": 220,
+      "transformation_templates": {
+        "2": "$2 $1"
+      }
+    },
+    {
+      "name": "cpp2_template_function",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "<",
+        ">"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "template_parameters",
+        "identifier",
+        "parameters",
+        "return_type",
+        "body"
+      ],
+      "priority": 170,
+      "transformation_templates": {
+        "2": "template<$1> $4 $2($3) { $5 }"
+      }
+    },
+    {
+      "name": "cpp2_function_trailing_return",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "trailing_return",
+        "post_signatures",
+        "body"
+      ],
+      "priority": 210,
+      "transformation_templates": {
+        "2": "$3 $1($2) $4 { $5 }"
+      }
+    },
+    {
+      "name": "cpp2_function_with_qualifiers",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "return_type",
+        "cv_qualifiers",
+        "ref_qualifier",
+        "noexcept_spec",
+        "attributes",
+        "body"
+      ],
+      "priority": 205,
+      "transformation_templates": {
+        "2": "$3 $1($2) $4 $5 $6 { $7 }"
+      }
+    },
+    {
+      "name": "cpp2_function_declaration_vs_definition",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "return_type",
+        "terminator",
+        "body"
+      ],
+      "priority": 180,
+      "transformation_templates": {
+        "2": "$3 $1($2)$4$5"
+      }
+    },
+    {
+      "name": "cpp2_parameter_detailed",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":",
+        "="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "param_identifier",
+        "param_type",
+        "param_default",
+        "param_attributes"
+      ],
+      "priority": 195,
+      "transformation_templates": {
+        "2": "$2 $1$3"
+      }
+    },
+    {
+      "name": "cpp2_function_with_attributes",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "(",
+        ")"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "attributes",
+        "identifier",
+        "parameters",
+        "return_type",
+        "post_signatures",
+        "body"
+      ],
+      "priority": 175,
+      "transformation_templates": {
+        "2": "$4 $2($3) $5 { $6 }"
+      }
+    },
+    {
+      "name": "cpp2_as_expression",
+      "use_alternating": true,
+      "alternating_anchors": [
+        "as"
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "expression",
+        "type"
+      ],
+      "priority": 150,
+      "transformation_templates": {
+        "2": "std::get<$2>($1)"
+      }
+    },
+    {
+      "name": "cpp2_move_expression",
+      "use_alternating": false,
+      "grammar_modes": 7,
+      "evidence_types": [
+        "expression"
+      ],
+      "priority": 140,
+      "transformation_templates": {
+        "2": "std::move($1)"
+      }
+    },
+    {
+      "name": "cpp2_forward_expression",
+      "use_alternating": false,
+      "grammar_modes": 7,
+      "evidence_types": [
+        "expression"
+      ],
+      "priority": 140,
+      "transformation_templates": {
+        "2": "std::forward<decltype($1)>($1)"
+      }
+    },
+    {
+      "name": "cpp2_dotdot_expression",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ".."
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "expression",
+        "method"
+      ],
+      "priority": 130,
+      "transformation_templates": {
+        "2": "$1.$2"
+      }
+    },
+    {
+      "name": "cpp2_function_definition_with_body",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":",
+        "="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "parameters",
+        "body"
+      ],
+      "priority": 90,
+      "transformation_templates": {
+        "2": "void $1($2) { $3 }"
+      }
+    },
+    {
+      "name": "cpp2_function_definition_with_return",
+      "use_alternating": true,
+      "alternating_anchors": [
+        ":",
+        "="
+      ],
+      "grammar_modes": 7,
+      "evidence_types": [
+        "identifier",
+        "function_signature_with_return",
+        "body"
+      ],
+      "priority": 85,
+      "transformation_templates": {
+        "2": "$2 $1 { $3 }"
+      }
+    }
+  ]
+}

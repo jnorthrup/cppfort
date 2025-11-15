@@ -1,0 +1,2 @@
+cpp2_parameter,true,": ","","",7,"identifier","type","","","","$2 $1",""
+cpp2_typed_variable,true,':','=',"",7,identifier,type_expression,expression,'','','',''
