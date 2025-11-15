@@ -1,0 +1,15 @@
+# Add to src/stage0/CMakeLists.txt:
+
+# CSV pattern loader test
+add_executable(test_csv_loader
+    test_csv_loader.cpp
+    csv_pattern_loader.cpp
+)
+
+target_link_libraries(test_csv_loader
+    stage0_lib
+)
+
+# Copy CSV file to build directory for testing
+configure_file(${CMAKE_SOURCE_DIR}/patterns/bnfc_patterns.csv
+               ${CMAKE_BINARY_DIR}/patterns/bnfc_patterns.csv COPYONLY)
