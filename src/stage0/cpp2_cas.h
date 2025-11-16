@@ -1,6 +1,9 @@
 // Simple Content Address Storage (CAS) helper for cpp2 markdown blocks.
-// Currently uses a deterministic non-cryptographic fallback if OpenSSL is
-// unavailable. Intended placeholder for a real BLAKE-based CAS.
+// Implementation order: BLAKE3 -> OpenSSL SHA256 -> deterministic fallback
+// The project aims to use a BLAKE-based CAS (e.g., BLAKE3) for identity and
+// canonicalization. This helper selects BLAKE3 if available and falls back
+// to OpenSSL's SHA256, or a deterministic non-cryptographic fallback for
+// systems lacking those libraries.
 
 #pragma once
 

@@ -71,6 +71,18 @@ std::pair<std::string, size_t> rewrite_cpp2_markdown_blocks_with_cas(std::string
         // copy up to the fence
         out.append(src.substr(pos, fence_start - pos));
         size_t block_start = fence_start + strlen("```cpp2");
+        // If the character immediately after the `cpp2` sequence is a space or tab
+        // (but not a newline or other non-space char), treat this as *not* a fence
+        // (i.e., ` ```cpp2   ` is considered malformed for our scanner).
+        if (block_start < src.size()) {
+            char after = src[block_start];
+            if (after == ' ' || after == '\t') {
+                // copy just the characters up to and including the first backtick and continue
+                out.append(src.substr(fence_start, 1));
+                pos = fence_start + 1;
+                continue;
+            }
+        }
         // find the closing fence
         size_t fence_end = src.find("```", block_start);
         if (fence_end == std::string::npos) {
