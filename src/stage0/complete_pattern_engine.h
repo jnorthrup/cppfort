@@ -6,7 +6,6 @@
 #include <vector>
 #include <map>
 #include <memory>
-#include <regex>
 #include <functional>
 #include <iostream>
 #include <sstream>

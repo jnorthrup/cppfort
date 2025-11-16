@@ -1,0 +1,10 @@
+- name: function_test
+  use_alternating: true
+  alternating_anchors:
+    - "fn"
+    - "{"
+  evidence_types:
+    - "identifier"
+    - "body"
+  weight: 1.0
+  priority: 10

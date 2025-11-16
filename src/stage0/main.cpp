@@ -50,6 +50,14 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Loaded " << source.size() << " bytes from " << input_file << "\n";
 
+    // parse optional extra flags
+    bool emit_graph_yaml = false;
+    bool emit_graph_json = false;
+    for (int i = 3; i < argc; ++i) {
+        if (std::string(argv[i]) == "--emit-graph-yaml") emit_graph_yaml = true;
+        if (std::string(argv[i]) == "--emit-graph-json") emit_graph_json = true;
+    }
+
     if (command == "scan") {
         // Use wide scanner for basic analysis
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
@@ -101,6 +109,21 @@ int main(int argc, char* argv[]) {
                               << " grammar=" << grammar_to_string(confix->selected_grammar())
                               << " pattern=" << confix->selected_pattern()
                               << " confidence=" << confix->confidence << "\n";
+                    // Emit graph node for debug if requested
+                    if (emit_graph_yaml || emit_graph_json) {
+                        if (auto* gn = confix->graph_node()) {
+                            if (emit_graph_yaml) {
+                                auto y = cppfort::stage0::graphNodeToYaml(*gn);
+                                std::cout << "--- GraphNode YAML ---\n" << YAML::Dump(y) << "\n";
+                            }
+#ifdef HAVE_NLOHMANN_JSON
+                            if (emit_graph_json) {
+                                auto j = cppfort::stage0::graphNodeToJson(*gn);
+                                std::cout << "--- GraphNode JSON ---\n" << j.dump(2) << "\n";
+                            }
+#endif
+                        }
+                    }
                 }
             }
 
@@ -181,6 +204,39 @@ int main(int argc, char* argv[]) {
     } else {
         std::cerr << "Unknown command: " << command << "\n";
         return 1;
+    }
+
+    // Support graph-serialize command: emit per-orbit GraphNode as JSON or YAML
+    if (command == "graph-serialize") {
+        // format is optional argument (json|yaml)
+        std::string format = (argc >= 4) ? argv[3] : "yaml";
+
+        auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
+        cppfort::ir::WideScanner scanner;
+        scanner.scanAnchorsWithOrbits(source, anchors);
+        OrbitPipeline orbit_pipeline;
+        std::string pattern_path = (argc >= 5) ? argv[4] : "patterns/bnfc_cpp2_complete.yaml";
+        orbit_pipeline.load_patterns(pattern_path);
+        OrbitIterator iterator(anchors.size());
+        orbit_pipeline.populate_iterator(scanner.fragments(), iterator, source);
+
+        for (cppfort::stage0::Orbit* orbit = iterator.next(); orbit; orbit = iterator.next()) {
+            if (auto* confix = dynamic_cast<cppfort::stage0::ConfixOrbit*>(orbit)) {
+                if (auto* gn = confix->graph_node()) {
+                    if (format == "json") {
+#ifdef HAVE_NLOHMANN_JSON
+                        auto j = cppfort::stage0::graphNodeToJson(*gn);
+                        std::cout << j.dump(2) << "\n";
+#else
+                        std::cerr << "JSON support not compiled in, build with nlohmann_json to enable.\n";
+#endif
+                    } else {
+                        auto y = cppfort::stage0::graphNodeToYaml(*gn);
+                        std::cout << YAML::Dump(y) << "\n";
+                    }
+                }
+            }
+        }
     }
 
     return 0;

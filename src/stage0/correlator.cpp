@@ -107,11 +107,11 @@ void FragmentCorrelator::correlate(OrbitFragment& fragment, std::string_view sou
     if (evidence.total_tokens > 0) {
         uint32_t max_score = 0;
         if (kind == EvidenceGrammarKind::C) {
-            max_score = evidence.c_keyword_hits * 4 + evidence.typedef_hits * 5 + evidence.struct_hits * 4 + evidence.pointer_indicators * 2;
+            max_score = evidence.c_keywords * 4 + evidence.typedef_hits * 5 + evidence.struct_hits * 4 + evidence.pointer_indicators * 2;
         } else if (kind == EvidenceGrammarKind::CPP) {
-            max_score = evidence.cpp_keyword_hits * 3 + evidence.template_hits * 5 + evidence.namespace_hits * 4 + evidence.double_colon * 5 + evidence.lambda_captures * 3 + evidence.concept_hits * 5 + evidence.requires_hits * 4 + evidence.arrow + evidence.angle_open;
+            max_score = evidence.cpp_keywords * 3 + evidence.template_ids * 5 + evidence.namespace_hits * 4 + evidence.double_colon * 5 + evidence.lambda_captures * 3 + evidence.concept_hits * 5 + evidence.requires_hits * 4 + evidence.arrow + evidence.angle_open;
         } else if (kind == EvidenceGrammarKind::CPP2) {
-            max_score = evidence.cpp2_keyword_hits * 4 + evidence.cpp2_signature_hits * 6 + evidence.inspect_hits * 5 + evidence.contract_hits * 5 + (evidence.is_keyword_hits + evidence.as_keyword_hits) * 3 + evidence.flow_keyword_hits * 2 + evidence.arrow;
+            max_score = evidence.cpp2_keywords * 4 + evidence.cpp2_signature_hits * 6 + evidence.inspect_hits * 5 + evidence.contract_keywords * 5 + (evidence.is_keyword_hits + evidence.as_keyword_hits) * 3 + evidence.flow_keywords * 2 + evidence.arrow;
         }
         computed_confidence = static_cast<double>(max_score) / evidence.total_tokens;
         computed_confidence = std::min(computed_confidence, 1.0); // Cap at 1.0

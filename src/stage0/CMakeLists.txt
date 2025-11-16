@@ -28,21 +28,63 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)
 
+# Optionally find nlohmann_json for JSON support
+find_package(nlohmann_json QUIET)
+# Option to enable blake3 for CAS
+option(USE_BLAKE3 "Use BLAKE3 for CAS computation (if available)" OFF)
+if(USE_BLAKE3)
+  find_path(BLAKE3_INCLUDE blake3.h)
+  find_library(BLAKE3_LIB blake3)
+  if(BLAKE3_INCLUDE AND BLAKE3_LIB)
+    add_compile_definitions(HAVE_BLAKE3)
+    message(STATUS "Found BLAKE3: ${BLAKE3_LIB}")
+  else()
+    message(WARNING "BLAKE3 requested but not found; falling back to system crypto or std::hash.")
+  endif()
+endif()
+
+option(USE_OPENSSL_SHA256 "Use OpenSSL SHA256 for CAS computation" ON)
+if(USE_OPENSSL_SHA256)
+  find_path(OPENSSL_INCLUDE openssl/sha.h)
+  find_library(OPENSSL_LIB crypto)
+  if(OPENSSL_INCLUDE AND OPENSSL_LIB)
+    add_compile_definitions(HAVE_OPENSSL_SHA256)
+    message(STATUS "Found OpenSSL for SHA256: ${OPENSSL_LIB}")
+  else()
+    message(WARNING "OpenSSL SHA256 not found; CAS will fall back to std::hash only.")
+  endif()
+endif()
+if(nlohmann_json_FOUND)
+  set(USE_NLOHMANN_JSON TRUE)
+endif()
+
+# Add yaml-cpp include directories
+if(pkg-config_FOUND)
+  pkg_check_modules(YAML_CPP yaml-cpp)
+  if(YAML_CPP_FOUND)
+    include_directories(${YAML_CPP_INCLUDE_DIRS})
+  endif()
+elseif(yaml-cpp_FOUND)
+  get_target_property(YAML_CPP_INCLUDE_DIR yaml-cpp::yaml-cpp INTERFACE_INCLUDE_DIRECTORIES)
+  include_directories(${YAML_CPP_INCLUDE_DIR})
+elseif(EXISTS /opt/homebrew/opt/yaml-cpp/include)
+  include_directories(/opt/homebrew/opt/yaml-cpp/include)
+elseif(EXISTS /opt/homebrew/Cellar/yaml-cpp/0.8.0/include)
+  include_directories(/opt/homebrew/Cellar/yaml-cpp/0.8.0/include)
+endif()
+
 # Collect all source files
 file(GLOB STAGE0_SOURCES "*.cpp")
 
-# Remove main.cpp and test files from library sources
+# Remove all test files and main to keep only library code
+list(FILTER STAGE0_SOURCES EXCLUDE REGEX ".*(test_|reality|correlation|pattern_match|confix_cache|parameter_transform|runner|combinator_pool).*")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/main_minimal.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_reality_check.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_confix_depth.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_correlation.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_tblgen_integration.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_pattern_match.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_depth_matcher.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_runner.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/regression_runner.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_confix_cache.cpp")
-list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/test_parameter_transform.cpp")
+
+# Keep these files as they are needed by the library
+list(INSERT STAGE0_SOURCES 0 "${CMAKE_CURRENT_SOURCE_DIR}/packrat_cache.cpp")
 
 # Add tblgen JSON generation
 add_custom_command(
@@ -63,10 +105,31 @@ list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/orbit_scanner_new.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/pattern_matcher.cpp")
 list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/evidence_winnowing.cpp")  # Temporarily broken - EvidenceSpan API mismatch
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/semantic_transpiler_main.cpp")  # Broken - wrong namespaces
+# Remove MLIR-dependent files for now
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_mlir_assembler.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_mlir_loader.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cpp2_mlir_rewriter.cpp")
+list(REMOVE_ITEM STAGE0_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/graph_to_mlir_walker.cpp")
 
 # Create static library
 add_library(stage0_lib STATIC ${STAGE0_SOURCES})
 add_dependencies(stage0_lib tblgen_semantic_units)
+if(nlohmann_json_FOUND)
+  find_package(nlohmann_json REQUIRED)
+  target_link_libraries(stage0_lib PRIVATE nlohmann_json::nlohmann_json)
+  target_compile_definitions(stage0_lib PRIVATE HAVE_NLOHMANN_JSON)
+endif()
+
+if(DEFINED BLAKE3_LIB AND BLAKE3_LIB)
+  target_include_directories(stage0_lib PRIVATE ${BLAKE3_INCLUDE})
+  target_link_libraries(stage0_lib PRIVATE ${BLAKE3_LIB})
+endif()
+
+if(DEFINED OPENSSL_LIB AND OPENSSL_LIB)
+  target_include_directories(stage0_lib PRIVATE ${OPENSSL_INCLUDE})
+  target_link_libraries(stage0_lib PRIVATE ${OPENSSL_LIB})
+endif()
 
 # Create executable
 add_executable(stage0_cli main.cpp)
@@ -79,12 +142,12 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_reality_check yaml-cpp::yaml-cpp)
 endif()
 
-# Create confix depth test executable
-add_executable(test_confix_depth test_confix_depth.cpp)
-target_link_libraries(test_confix_depth stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(test_confix_depth yaml-cpp::yaml-cpp)
-endif()
+# Create confix depth test executable (FILE MISSING - commented out)
+# add_executable(test_confix_depth test_confix_depth.cpp)
+# target_link_libraries(test_confix_depth stage0_lib)
+# if(yaml-cpp_FOUND)
+#     target_link_libraries(test_confix_depth yaml-cpp::yaml-cpp)
+# endif()
 
 # Create correlation test executable
 add_executable(test_correlation test_correlation.cpp)
@@ -93,12 +156,12 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_correlation yaml-cpp::yaml-cpp)
 endif()
 
-# Create tblgen integration test executable
-add_executable(test_tblgen_integration test_tblgen_integration.cpp)
-target_link_libraries(test_tblgen_integration stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(test_tblgen_integration yaml-cpp::yaml-cpp)
-endif()
+# Create tblgen integration test executable (FILE MISSING - commented out)
+# add_executable(test_tblgen_integration test_tblgen_integration.cpp)
+# target_link_libraries(test_tblgen_integration stage0_lib)
+# if(yaml-cpp_FOUND)
+#     target_link_libraries(test_tblgen_integration yaml-cpp::yaml-cpp)
+# endif()
 
 # Create pattern match test executable
 add_executable(test_pattern_match test_pattern_match.cpp)
@@ -107,15 +170,53 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_pattern_match yaml-cpp::yaml-cpp)
 endif()
 
-# Create confix cache test executable (covers new memoization paths)
-add_executable(test_confix_cache test_confix_cache.cpp)
-target_link_libraries(test_confix_cache stage0_lib)
-
-add_executable(test_parameter_transform test_parameter_transform.cpp)
-target_link_libraries(test_parameter_transform stage0_lib)
+add_executable(test_graph_serde test_graph_serde.cpp)
+target_link_libraries(test_graph_serde stage0_lib)
 if(yaml-cpp_FOUND)
-    target_link_libraries(test_parameter_transform yaml-cpp::yaml-cpp)
+  target_link_libraries(test_graph_serde yaml-cpp::yaml-cpp)
 endif()
+if(nlohmann_json_FOUND)
+  target_link_libraries(test_graph_serde nlohmann_json::nlohmann_json)
+endif()
+
+add_executable(test_pijul_graph_matcher test_pijul_graph_matcher.cpp)
+target_link_libraries(test_pijul_graph_matcher stage0_lib)
+if(yaml-cpp_FOUND)
+  target_link_libraries(test_pijul_graph_matcher yaml-cpp::yaml-cpp)
+endif()
+
+add_executable(test_cpp2_cas test_cpp2_cas.cpp cpp2_cas.cpp)
+target_include_directories(test_cpp2_cas PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# Keep this test as standalone (no stage0_lib) to ease incremental development of the CAS helper
+if(DEFINED OPENSSL_LIB AND OPENSSL_LIB)
+  target_link_libraries(test_cpp2_cas PRIVATE ${OPENSSL_LIB})
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME test_cpp2_cas COMMAND test_cpp2_cas)
+endif()
+
+add_executable(test_pattern_applier_graphmatcher test_pattern_applier_graphmatcher.cpp)
+target_link_libraries(test_pattern_applier_graphmatcher stage0_lib)
+if(yaml-cpp_FOUND)
+  target_link_libraries(test_pattern_applier_graphmatcher yaml-cpp::yaml-cpp)
+endif()
+
+add_executable(test_orbit_pipeline_pattern_selection test_orbit_pipeline_pattern_selection.cpp)
+target_link_libraries(test_orbit_pipeline_pattern_selection stage0_lib)
+if(yaml-cpp_FOUND)
+  target_link_libraries(test_orbit_pipeline_pattern_selection yaml-cpp::yaml-cpp)
+endif()
+
+# Create confix cache test executable (covers new memoization paths) (FILE MISSING - commented out)
+# add_executable(test_confix_cache test_confix_cache.cpp)
+# target_link_libraries(test_confix_cache stage0_lib)
+
+# add_executable(test_parameter_transform test_parameter_transform.cpp)
+# target_link_libraries(test_parameter_transform stage0_lib)
+# if(yaml-cpp_FOUND)
+#     target_link_libraries(test_parameter_transform yaml-cpp::yaml-cpp)
+# endif()
 
 # Create depth matcher test executable (DISABLED - file missing)
 # add_executable(test_depth_matcher test_depth_matcher.cpp)
@@ -131,14 +232,33 @@ if(yaml-cpp_FOUND)
     target_link_libraries(test_runner yaml-cpp::yaml-cpp)
 endif()
 
-# Create RED test for recursive patterns
-add_executable(test_recursive_patterns_RED test_recursive_patterns_RED.cpp)
-target_link_libraries(test_recursive_patterns_RED stage0_lib)
-if(yaml-cpp_FOUND)
-    target_link_libraries(test_recursive_patterns_RED yaml-cpp::yaml-cpp)
-endif()
+# Create RED test for recursive patterns (FILE MISSING - commented out)
+# add_executable(test_recursive_patterns_RED test_recursive_patterns_RED.cpp)
+# target_link_libraries(test_recursive_patterns_RED stage0_lib)
+# if(yaml-cpp_FOUND)
+#     target_link_libraries(test_recursive_patterns_RED yaml-cpp::yaml-cpp)
+# endif()
 
 add_executable(regression_runner regression_runner.cpp)
+add_executable(regression_runner_git regression_runner_git.cpp)
+
+add_executable(test_graph_matcher_stub test_graph_matcher_stub.cpp graph_matcher.cpp pijul_graph_matcher.cpp)
+target_include_directories(test_graph_matcher_stub PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(BUILD_TESTING)
+  add_test(NAME test_graph_matcher_stub COMMAND test_graph_matcher_stub)
+endif()
+
+add_executable(test_graph_matcher_with_pattern test_graph_matcher_with_pattern.cpp graph_matcher.cpp pijul_graph_matcher.cpp)
+target_include_directories(test_graph_matcher_with_pattern PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(BUILD_TESTING)
+  add_test(NAME test_graph_matcher_with_pattern COMMAND test_graph_matcher_with_pattern)
+endif()
+
+add_executable(test_json_scanner_simple test_json_scanner_simple.cpp)
+target_include_directories(test_json_scanner_simple PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(BUILD_TESTING)
+  add_test(NAME test_json_scanner_simple COMMAND test_json_scanner_simple)
+endif()
 
 if(BUILD_TESTING)
   add_test(NAME stage0_confix_cache COMMAND test_confix_cache)
@@ -164,6 +284,19 @@ if(BUILD_TESTING)
     USES_TERMINAL
     COMMENT "Invoke regression suite through CTest (expected to fail until suite is green)"
   )
+  add_test(
+    NAME stage0_regression_suite_git
+    COMMAND regression_runner_git
+            ${CMAKE_CURRENT_SOURCE_DIR}/../.. # repo root / project root
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
+            $<TARGET_FILE:stage0_cli>
+            --limit 200
+  )
+  set_tests_properties(stage0_regression_suite_git
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
+      WILL_FAIL TRUE
+  )
 endif()
 
 # Add round-trip harness for Stage1 (if stage1 target exists)
@@ -185,4 +318,52 @@ add_custom_target(regression_tests
   DEPENDS stage0_cli regression_runner
   USES_TERMINAL
   COMMENT "Run regression suite with stage0 CLI"
+)
+
+add_custom_target(regression_tests_git
+  COMMAND $<TARGET_FILE:regression_runner_git>
+          ${CMAKE_CURRENT_SOURCE_DIR}/../..
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
+          $<TARGET_FILE:stage0_cli>
+          --limit 200
+  DEPENDS stage0_cli regression_runner_git
+  USES_TERMINAL
+  COMMENT "Run regression suite across git history with stage0 CLI"
+)
+
+set(CPPFRONT_BIN "" CACHE PATH "Optional path to built cppfront binary used for reference isomorphism tests")
+
+if (CPPFRONT_BIN)
+  add_test(
+    NAME stage0_regression_suite_git_with_ref
+    COMMAND regression_runner_git
+            ${CMAKE_CURRENT_SOURCE_DIR}/../.. # repo root / project root
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../patterns/bnfc_cpp2_complete.yaml
+            $<TARGET_FILE:stage0_cli>
+            --limit 200
+            --reference ${CPPFRONT_BIN}
+            --reference-cache ${CMAKE_CURRENT_BINARY_DIR}/cppfront_reference_cache
+  )
+  set_tests_properties(stage0_regression_suite_git_with_ref
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../regression-tests
+      WILL_FAIL TRUE
+  )
+endif()
+
+add_custom_target(third_party_cppfront_build
+  COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_cppfront.sh
+  COMMENT "Build cppfront from third_party/cppfront/source"
+)
+
+add_custom_target(third_party_cppfront_fetch_tests
+  COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/grab_cppfront_regression_tests.sh
+  COMMENT "Copy cppfront-provided regression tests into local regression-tests/cppfront"
+)
+
+add_custom_target(third_party_cppfront_run_tests
+  COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/run_cppfront_regression_tests.sh
+  DEPENDS third_party_cppfront_build
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests
+  COMMENT "Run cppfront regression tests with built cppfront"
 )

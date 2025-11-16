@@ -151,11 +151,11 @@ size_t WideScanner::findBoundarySIMD(
     return anchors;
 }
 
-::std::vector<WideScanner::Boundary> WideScanner::scanAnchorsSIMD(
+::std::vector<WideScanner::BoundaryEvent> WideScanner::scanAnchorsSIMD(
     const ::std::string& source,
     const ::std::vector<AnchorPoint>& anchors
 ) {
-    ::std::vector<Boundary> boundaries;
+    ::std::vector<BoundaryEvent> boundaries;
 
     const uint8_t* data = reinterpret_cast<const uint8_t*>(source.data());
 
@@ -165,6 +165,11 @@ size_t WideScanner::findBoundarySIMD(
         size_t end_pos = anchors[i + 1].position;
 
         if (end_pos <= start_pos) continue;
+
+        // Analyze text span for TypeEvidence
+        std::string_view span = source.substr(start_pos, end_pos - start_pos);
+        ::cppfort::stage0::TypeEvidence span_evidence;
+        span_evidence.ingest(span);
 
         size_t pos = start_pos;
         size_t remaining = end_pos - start_pos;
@@ -207,10 +212,11 @@ size_t WideScanner::findBoundarySIMD(
                     bool is_delim = (ch == ';' || ch == ',' || ch == ':' || ch == '{' || ch == '}' ||
                                      ch == '(' || ch == ')' || ch == '[' || ch == ']');
                     if (is_delim || isUTF8Boundary(data, pos + i)) {
-                        Boundary boundary;
+                        BoundaryEvent boundary;
                         boundary.position = pos + i;
                         boundary.delimiter = ch;
                         boundary.is_delimiter = is_delim;
+                        boundary.evidence = span_evidence;
                         boundaries.push_back(boundary);
                         break;
                     }
@@ -264,7 +270,7 @@ size_t WideScanner::findBoundarySIMD(
                 size_t boundary_pos = pos + bit_pos;
 
                 if (boundary_pos < end_pos) {
-                    Boundary boundary;
+                    BoundaryEvent boundary;
                     boundary.position = boundary_pos;
                     boundary.delimiter = static_cast<char>(data[boundary_pos]);
                     boundary.is_delimiter = (
@@ -278,6 +284,7 @@ size_t WideScanner::findBoundarySIMD(
                         boundary.delimiter == '[' ||
                         boundary.delimiter == ']'
                     );
+                    boundary.evidence = span_evidence;
                     boundaries.push_back(boundary);
                 }
             }
@@ -299,10 +306,11 @@ size_t WideScanner::findBoundarySIMD(
             );
 
             if (is_delim || isUTF8Boundary(data, pos)) {
-                Boundary boundary;
+                BoundaryEvent boundary;
                 boundary.position = pos;
                 boundary.delimiter = ch;
                 boundary.is_delimiter = is_delim;
+                boundary.evidence = span_evidence;
                 boundaries.push_back(boundary);
             }
 
@@ -313,11 +321,11 @@ size_t WideScanner::findBoundarySIMD(
     return boundaries;
 }
 
-::std::vector<WideScanner::Boundary> WideScanner::scanAnchorsWithOrbits(
+::std::vector<WideScanner::BoundaryEvent> WideScanner::scanAnchorsWithOrbits(
     const ::std::string& source,
     const ::std::vector<AnchorPoint>& anchors
 ) {
-    ::std::vector<Boundary> boundaries;
+    ::std::vector<BoundaryEvent> boundaries;
     fragments_.clear();
     packrat_cache_.clear();
     reset_stats();
@@ -413,7 +421,7 @@ size_t WideScanner::findBoundarySIMD(
             );
 
             if (is_delim) {
-                Boundary boundary;
+                BoundaryEvent boundary;
                 boundary.position = pos;
                 boundary.delimiter = ch;
                 boundary.is_delimiter = true;
@@ -482,7 +490,7 @@ size_t WideScanner::findBoundarySIMD(
                     bool is_delim = (ch == ';' || ch == ',' || ch == ':' || ch == '{' || ch == '}' ||
                                      ch == '(' || ch == ')' || ch == '[' || ch == ']');
                     if (is_delim) {
-                        Boundary boundary;
+                        BoundaryEvent boundary;
                         boundary.position = pos + i;
                         boundary.delimiter = ch;
                         boundary.is_delimiter = true;
@@ -559,7 +567,7 @@ size_t WideScanner::findBoundarySIMD(
                     );
 
                     if (is_delim) {
-                        Boundary boundary;
+                        BoundaryEvent boundary;
                         boundary.position = pos + i;
                         boundary.delimiter = ch;
                         boundary.is_delimiter = true;
@@ -602,7 +610,7 @@ size_t WideScanner::findBoundarySIMD(
             );
 
             if (is_delim) {
-                Boundary boundary;
+                BoundaryEvent boundary;
                 boundary.position = pos;
                 boundary.delimiter = ch;
                 boundary.is_delimiter = true;

@@ -1,4 +1,6 @@
 #include "orbit_pipeline.h"
+#include "graph_node.h"
+#include "subgraph_matcher.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -91,7 +93,8 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::make_base_orbit(const OrbitFragment&
     orbit->start_pos = fragment.start_pos;
     orbit->end_pos = fragment.end_pos;
     orbit->confidence = fragment.confidence;
-    orbit->set_selected_pattern("default");
+    // No selected pattern by default - pattern selection should be performed
+    // by the combinator / matcher in evaluate_fragment().
 
     if (auto span_memo = recall_span_memento(fragment.start_pos, fragment.end_pos)) {
         orbit->seed_span_memento(*span_memo);
@@ -118,6 +121,15 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::make_base_orbit(const OrbitFragment&
         }
     }
 
+    // Create a graph node for this confix orbit and attach to the orbit
+    auto gnode = std::make_unique<GraphNode>(GraphNodeType::CONFIX);
+    gnode->start_pos = fragment.start_pos;
+    gnode->end_pos = fragment.end_pos;
+    gnode->confidence = orbit->confidence;
+    gnode->payload = ConfixPayload{open_char, close_char};
+    orbit->set_graph_node(gnode.get());
+    // As OrbitPipeline is const here, we can't append to graph_nodes_ directly; caller may own graph nodes
+    // Return orbit with graph node pointer, ownership managed elsewhere by caller
     return orbit;
 }
 
@@ -213,6 +225,24 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
     for (const auto& pattern : patterns) {
         auto candidate = make_base_orbit(fragment, source);
         candidate->parameterize_children(pattern);
+        // Try structural matching using SubgraphMatcher if graph node exists
+        if (candidate->graph_node()) {
+            // Build a minimal pattern graph: CONFIX node with default brace confix
+            auto pattern_node = std::make_unique<GraphNode>(GraphNodeType::CONFIX);
+            pattern_node->payload = ConfixPayload{'{', '}'};
+            // Try match
+            SubgraphMatcher matcher;
+            if (matcher.match(candidate->graph_node(), pattern_node.get())) {
+                // treat structural match as a high confidence hit
+                double confidence_score = 0.9 * pattern.weight;
+                if (confidence_score > best_confidence) {
+                    best_confidence = confidence_score;
+                    best_pattern_name = pattern.name;
+                    best_orbit = std::move(candidate);
+                }
+                continue;
+            }
+        }
         if (candidate->confidence > best_confidence) {
             best_confidence = candidate->confidence;
             best_pattern_name = pattern.name;
@@ -257,6 +287,17 @@ void OrbitPipeline::populate_iterator(const std::vector<OrbitFragment>& fragment
         
         // Create base orbit
         auto orbit = make_base_orbit(enriched, source);
+        // Create and own a GraphNode for this orbit via pipeline's graph_nodes_
+        auto gnode = std::make_unique<GraphNode>(GraphNodeType::CONFIX);
+        gnode->start_pos = enriched.start_pos;
+        gnode->end_pos = enriched.end_pos;
+        gnode->confidence = orbit->confidence;
+        gnode->payload = ConfixPayload{orbit->open_symbol(), orbit->close_symbol()};
+        ConfixOrbit* gnode_owner = orbit.get();
+        // set_graph_node expects raw pointer
+        gnode_owner->set_graph_node(gnode.get());
+        // store for ownership lifetime
+        const_cast<OrbitPipeline*>(this)->graph_nodes_.push_back(std::move(gnode));
         
         // Temporarily set up combinator for speculation during evaluation
         ::cppfort::ir::RBCursiveScanner temp_scanner;

@@ -21,6 +21,10 @@ struct UnifiedPatternMatch {
     // For IR lowering compatibility (simplified - no IR dependency)
     std::string emitted_code;
     int target_language = 0;  // 0=C, 1=CPP, 2=CPP2
+    // Semantic label attached by the matcher - e.g. "function", "block", "return"
+    std::string semantic_label;
+    // Orbit label provides a short identifier for an orbit produced by this match
+    std::string orbit_label;
 };
 
 /**

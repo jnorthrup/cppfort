@@ -35,7 +35,7 @@ public:
         size_t scalar_iterations = 0;
     };
 
-    struct Boundary {
+    struct BoundaryEvent {
         size_t position;
         char delimiter;  // Character at boundary (if delimiter)
         bool is_delimiter; // True if this is a delimiter boundary
@@ -43,6 +43,9 @@ public:
         // XAI 4.2 orbit metadata (populated by scanAnchorsWithOrbits)
         uint16_t lattice_mask;  // Byte-level class (from HeuristicGrid)
         double orbit_confidence; // Composite confidence from 5 anchors
+
+        // TypeEvidence at boundary level for semantic analysis
+        ::cppfort::stage0::TypeEvidence evidence;
     };
 
     // Generate alternating anchor points at UTF-8 boundaries
@@ -54,14 +57,15 @@ public:
 
     // SIMD-accelerated scanning between anchor points
     // Detects UTF-8 boundaries and common delimiters: ; , { } ( ) [ ]
-    static ::std::vector<Boundary> scanAnchorsSIMD(
+    // Returns enriched BoundaryEvent stream with TypeEvidence
+    static ::std::vector<BoundaryEvent> scanAnchorsSIMD(
         const ::std::string& source,
         const ::std::vector<AnchorPoint>& anchors
     );
 
     // XAI 4.2 orbit-aware scanning with 5-anchor tuple detection
-    // Returns boundaries with orbit metadata (lattice mask + confidence)
-    ::std::vector<Boundary> scanAnchorsWithOrbits(
+    // Returns boundaries with orbit metadata (lattice mask + confidence) and TypeEvidence
+    ::std::vector<BoundaryEvent> scanAnchorsWithOrbits(
         const ::std::string& source,
         const ::std::vector<AnchorPoint>& anchors
     );

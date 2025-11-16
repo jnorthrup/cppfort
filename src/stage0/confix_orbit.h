@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "orbit_ring.h"
+#include "graph_node.h"
 #include "function_orbit.h"
 
 namespace cppfort {
@@ -40,6 +41,9 @@ public:
 
     void set_combinator(::cppfort::ir::RBCursiveScanner* c) { combinator_ = c; }
     ::cppfort::ir::RBCursiveScanner* get_combinator() const { return combinator_; }
+
+    void set_graph_node(::cppfort::stage0::GraphNode* n) { graph_node_ = n; }
+    ::cppfort::stage0::GraphNode* graph_node() const { return graph_node_; }
 
     void accumulate_depth(int delta) {
         current_depth_ += delta;
@@ -105,6 +109,7 @@ private:
     std::unordered_map<uint64_t, CombinatorMemento> memento_cache_;
     std::vector<CombinatorMemento> anchor_chain_;
     std::unordered_map<uint64_t, SpanMemento> span_cache_;
+    ::cppfort::stage0::GraphNode* graph_node_ = nullptr;
 };
 
 } // namespace cppfort::stage0

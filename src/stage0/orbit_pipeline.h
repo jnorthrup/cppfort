@@ -13,6 +13,7 @@
 #include "correlator.h"
 #include "grammar_tree.h"
 #include "wide_scanner.h"
+#include "graph_node.h"
 
 namespace cppfort::stage0 {
 
@@ -49,6 +50,8 @@ private:
     mutable std::unordered_map<uint64_t, ConfixOrbit::CombinatorMemento> combinator_memos_;
     mutable std::unordered_map<uint64_t, ConfixOrbit::SpanMemento> span_memos_;
     mutable std::vector<ConfixOrbit::CombinatorMemento> global_anchor_chain_;
+    // Owned graph nodes for the pipeline
+    std::vector<std::unique_ptr<GraphNode>> graph_nodes_;
 };
 
 } // namespace cppfort::stage0

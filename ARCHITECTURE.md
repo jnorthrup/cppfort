@@ -1,280 +1,42 @@
-# CPPfort Architecture - Post-Mortem & Redesign
+we do not use pijul we borrow the graph conveniences and the methodology only.
 
-**Date:** 2025-11-13
-**Status:** Critical issues identified, GraphNode redesign proposed
+we use the pijul reversible graph in libpijul instead of regex in our transpilation.  we can fix a smaller gap of graph specific transforms with a solid reversible graph semantic foundation.
 
----
+While we consider IR a transpilation long term target, we only honor ORBIT SCANNER induction to quantify alternating {tuple<anchor>, evidenceSpan) in order to enforce a highly tiled and locality-oriented diffusion model of parsing from the terminal (meaning "all the way to the end") typeviddence and the anchors which fall out, creating region and block terraced topologies of emission and parent graph data about the artifacts.
 
-## What Went Wrong
+To this end the wide speculative scanner is intended to create a numerical plasma sifter to align with the cadence and delimiting  of tokens assigned or assigning anchors.
 
-### The Bypass
-**Root Cause:** Production build used `main_minimal.cpp` instead of `main.cpp`
+We explicitly limit the IO to the orbit scanner, first creating the terminal typevidence span capable of providing hints about bounded IO input.  This allows for large speculative lojngest-match behaviors with highly local non-pointer counters until the moment of commitment.
 
-```cmake
-# CMakeLists.txt (WRONG)
-add_executable(stage0_cli main_minimal.cpp)  # Line-by-line text processing
+This project has gone on so long, under so much training bias  under claude code, withotu meaningfull progress do to persistent avoidance of novel concepts in order to write demo AST code which doesnt mach the reactor based IO channelization and discrimination from e.g. unammed pipes with ambiguous protocols  and grammers, simultaneously, allowing for packets of network to be the input for the plasma
 
-# Should be:
-add_executable(stage0_cli main.cpp)  # Orbit-based graph processing
-```
+Reversibility in the transpiler is seen as a means to minimize  the gap between isomorphic source constructs and transpiled destination syntax asnd to gain an amount of reflexive symetry as a graph, expli8citly a graph of constructions, while also runtime graph of graph nodes based on the compiled-in scanner orbits.
 
-**Impact:** Entire orbit infrastructure orphaned. 20,000+ lines of graph scanner code unused.
+Some semantic gaps like C macros and C++ templates define language specific conversions, we hope to unify these potentially able to be a real cfront on demand via the scanner, and on par with cppfront, and with llvm c-outputs
 
-### The Disconnect
-**Root Cause:** Pattern matching never connected to orbit system
+MLIR is the middleware conveyance of emitters at this time,  hosting a platform for which front-ir can assume AOT and jit  level c++ move perfection against a reengineered allocationstrategy at compile time to rehome, rescope, and perform, memory safety hueristics and code optimizations prior to final MLIR scaffolding, thus the node structure that was checked in using Sea Of Nodes specifically, having used gh repo ClifClick/Simple compiler  as a jumpstart originally training the llm chapter by chapter.
 
-```cpp
-// orbit_pipeline.cpp line 94 (HARDCODED)
-orbit->set_selected_pattern("default");  // All orbits get "default"
+The strategy is once again, to enable the terminal evidencespan at least to the degree of relevant scope, to supply significant closure of confix recognition
 
-// Should be:
-auto matches = DepthPatternMatcher::find_matches(orbit_text, patterns);
-orbit->set_selected_pattern(matches[0].pattern->name);
-```
+FIRST ON THE LIST IS TO REVIVE OUR CODING STANDARDS out of git
 
-**Impact:** Scanner built correct graph, but patterns never matched to nodes.
+we should be fishing the relevant code out of git, especially the c++ pijul routines
 
-### The Abstraction Explosion
-**Root Cause:** 15+ overlapping classes simulating graph operations
+We have a 3-way isomorphic n-way transpiler c,c++,cpp2 with a initial simpler 2-way json<->yaml you must build into the scanner as a dogfooding serde lib for our semantic graph, which is the basis for the graph-based transpilation.
 
-**Redundant abstractions:**
-- `Orbit`, `ConfixOrbit`, `FunctionOrbit` - 3 classes for tree nodes
-- `OrbitFragment`, `EvidenceSpan`, `SpanMemento` - 3 types for text ranges
-- `OrbitPipeline`, `OrbitIterator`, `OrbitEmitter` - 3 classes for traversal
-- `WideScanner`, `OrbitScanner`, `RBCursiveScanner` - 3 scanners
-- `PatternData`, `GrammarTree` - 2 pattern representations
+based on this architecture, ona  scale from 0 regex, to 11, LLM we want to arrive at the widest most tiled most locality of reference implementatin of using dominant bits as discriminators and eliminators to bake the plasma into  regions like a terraced rice patty.  
+then we switch to the micr and create boundary zones for instance, 1 bit to memoize all the classes that are elimiinated from an input span, in order to extend the reach of cache line retention at conjecture time.  we may arrive at the liuxury of ingesting long range 1 bit fields, closer fields of 2 bits, and 3 bits im told can discriminate ascii efficiently, allowing for meta evidence ranges beyond a dense evidence span
 
-**Impact:** Complexity prevented seeing pattern matching = graph isomorphism.
+imports should be pre-cpreprocessed.
 
----
+Templates and macro relationships should be mapped, catch as catch can ; we want to be able to map the macro and template relationships in a way that allows us to preserve the semantics of the original code while also enabling us to generate efficient and correct C++ code or semantic C from templates and metafunctions , a very rare option.  pragmatic observatinos are as good as a language lawyer until; proven false, and we can use the graph to preserve the relationships between macros and templates, allowing us to generate code that is both correct and efficient and that preserves the semantics of the original code.  This is a key part of our approach to transpilation, and it allows us to handle complex C++ code that makes heavy use of templates and macros.
 
-## What Actually Works
+CPP2 dialect has some unique customizations in this codebase adding a cpp2 markdown block interpreted as a comment, creating a transpiled to NOOP c++ module named <CAS>.cppm or an empty C macro.  
 
-### Orbit Scanner ✓
-```
-WideScanner.scanAnchorsWithOrbits(source)
-→ Finds confix boundaries {}, (), [], <>
-→ Builds tree of OrbitFragments with [start, end) spans
-→ Correctly handles multi-line constructs
-```
+CAS (Content Address Storage) of the markdown is defined as blake hashes on all block's lines catted together, and the hash is used as a unique identifier for the block.  This allows us to preserve the content of the block in the transpiled code, while also allowing us to reference it in a way that is unique and consistent.
 
-### Evidence Extraction ✓
-```
-ConfixOrbit.extract_evidence(source, start, end)
-→ Extracts text spans between delimiters
-→ Preserves source locations
-→ Ready for pattern matching
-```
+NOTE: A minimal placeholder `cpp2_cas` implementation has been added under `src/stage0/` which computes deterministic CAS identifiers and rewrites ` ```cpp2 ... ``` ` blocks into `// CAS:<id>` comments. Replace with a proper BLAKE-based CAS (e.g., BLAKE3) for cryptographic integrity and canonicalization in future iterations.
 
-### Pattern Loading ✓
-```
-PatternLoader.load_yaml("patterns/bnfc_cpp2_complete.yaml")
-→ 16 patterns loaded
-→ Anchors, evidence types, templates all present
-```
+anything to the contrary below is outdates and should be reshaped until otherwise valid
 
-### What Didn't Connect
-- Orbit tree → Pattern matcher (line 94 hardcode)
-- Evidence spans → Pattern anchors (never compared)
-- Matched patterns → Transforms (always "default")
-
----
-
-## The GraphNode Solution
-
-### Single Unified Type
-
-```cpp
-struct GraphNode {
-    // Identity
-    NodeType type;  // CONFIX, PATTERN, EVIDENCE, MLIR_OP
-    std::string id;
-
-    // Span
-    size_t start_pos, end_pos;
-    double confidence;
-
-    // Payload
-    std::variant<
-        ConfixPayload,      // {open, close} delimiter
-        PatternPayload,     // Pattern match metadata
-        EvidencePayload,    // Text span + constraints
-        MLIRPayload        // MLIR operation/region/block
-    > data;
-
-    // Graph structure
-    std::vector<GraphNode*> children;
-    GraphNode* parent;
-    std::unordered_map<std::string, GraphNode*> edges;  // Named edges
-
-    // Grammar context
-    GrammarType grammar;  // C, CPP, CPP2
-};
-```
-
-### What Collapses
-
-| Old Abstraction | New Representation |
-|----------------|-------------------|
-| `ConfixOrbit` | `GraphNode{type=CONFIX}` |
-| `FunctionOrbit` | Removed - just metadata in CONFIX node |
-| `OrbitFragment` | `GraphNode{type=FRAGMENT}` |
-| `EvidenceSpan` | `GraphNode{type=EVIDENCE}` |
-| `PatternData` | `GraphNode{type=PATTERN}` |
-| `OrbitPipeline` | `GraphTraversal` (functions, not class) |
-| `OrbitIterator` | `GraphIterator` |
-| `WideScanner` | `GraphBuilder` |
-
-### Operations
-
-**Pattern Matching = Subgraph Isomorphism**
-```cpp
-bool SubgraphMatcher::match(GraphNode* pattern, GraphNode* source) {
-    // Pattern is a tree, source is a tree
-    // Match structure + constraints
-    if (pattern->type != source->type) return false;
-    if (!match_evidence(pattern, source)) return false;
-
-    for (size_t i = 0; i < pattern->children.size(); ++i) {
-        if (!match(pattern->children[i], source->children[i]))
-            return false;
-    }
-
-    return true;
-}
-```
-
-**Transform = Graph Rewrite**
-```cpp
-GraphNode* GraphTransformer::apply(GraphNode* matched, Transform& t) {
-    // Build replacement subgraph from template
-    auto* replacement = instantiate_template(t.template_str, matched);
-
-    // Preserve source locations
-    replacement->start_pos = matched->start_pos;
-    replacement->end_pos = matched->end_pos;
-
-    // Splice into parent
-    replace_child(matched->parent, matched, replacement);
-    return replacement;
-}
-```
-
-**Emit = Graph Walk**
-```cpp
-void GraphEmitter::emit(GraphNode* root, std::ostream& out) {
-    for (auto* node : traverse_preorder(root)) {
-        if (node->type == MLIR_OP) {
-            emit_mlir(node, out);
-        } else {
-            emit_source(node, out);
-        }
-    }
-}
-```
-
----
-
-## MLIR Integration Path
-
-GraphNode maps directly to MLIR concepts:
-
-| GraphNode | MLIR Concept |
-|-----------|-------------|
-| `CONFIX{scope}` | `mlir::Region` |
-| `CONFIX{function_body}` | `mlir::Block` |
-| `FRAGMENT` | `mlir::Operation` |
-| `EVIDENCE` | Source location metadata |
-
-**Direct conversion:**
-```cpp
-mlir::ModuleOp GraphToMLIR::convert(GraphNode* root) {
-    for (auto* node : traverse(root)) {
-        switch (node->type) {
-            case CONFIX:
-                if (is_scope(node)) {
-                    node->data = MLIRPayload{
-                        .region = builder.createRegion()
-                    };
-                }
-                break;
-            case FRAGMENT:
-                auto ops = lower_to_ops(builder, node);
-                node->data = MLIRPayload{.op = ops.front()};
-                break;
-        }
-    }
-}
-```
-
----
-
-## Migration Plan
-
-**Phase 1: Minimal Fix (DONE)**
-- ✓ Switch CMakeLists to main.cpp
-- ✓ Connect pattern matcher in orbit_pipeline.cpp line 94
-- Result: Basic transpilation works, 1/20 tests pass
-
-**Phase 2: GraphNode Foundation**
-- Write `graph_node.h` with variant payload
-- Implement `SubgraphMatcher` for pattern matching
-- Implement `GraphBuilder` wrapping WideScanner
-
-**Phase 3: Pattern Port**
-- Convert YAML patterns to GraphNode trees
-- Replace string-based matching with structure matching
-- Add missing patterns (type alias, inspect, is)
-
-**Phase 4: Transform Rewrite**
-- Replace string substitution with graph rewrite
-- Preserve all evidence spans
-- Add proper multi-line handling
-
-**Phase 5: MLIR Backend**
-- Add MLIR payload to GraphNode
-- Implement GraphToMLIR converter
-- Direct code generation from graph
-
-**Phase 6: Cleanup**
-- Remove Orbit/Fragment/Pipeline classes
-- Remove emit_depth_based and main_minimal.cpp
-- Consolidate to graph-only operations
-
----
-
-## Current Test Status
-
-**Passing:** 1/20 (simple_mixed.cpp2)
-**Failing:** 19/20
-
-**Failure categories:**
-1. Multi-line constructs (6) - Fixed by orbit scanner
-2. Type aliases (4) - Need pattern
-3. Missing features (4) - inspect, is, forward, templates
-4. Type definitions (2) - i32, cpp2 aliases
-5. Headers (2) - cpp2_inline.h dependency
-6. Statement transforms (1) - Non-declaration statements
-
-**Next actions:**
-1. Add type alias pattern to YAML
-2. Test on pure2-type-safety-1.cpp2 (multi-line main)
-3. Verify pattern matching works on complex cases
-4. Begin GraphNode implementation
-
----
-
-## Key Insights
-
-1. **Graph scanner wasn't broken** - it was bypassed by build system
-2. **Pattern matching wasn't broken** - it was never connected
-3. **Abstractions hide the graph** - 15 classes doing graph ops without admitting it
-4. **Pattern matching = graph isomorphism** - once you see it, everything simplifies
-5. **MLIR integration is natural** - GraphNode maps directly to regions/blocks/ops
-
-The codebase had all the pieces but they were:
-- Not connected (hardcoded "default")
-- Not built (main_minimal.cpp instead of main.cpp)
-- Not recognized as graph operations (abstraction overload)
-
-GraphNode makes the graph explicit and eliminates impedance mismatch.
+for the MLIR intermediary representation, we want to be able to generate MLIR code that is both correct and efficient and that preserves the semantics of the original code.  This is a key part of our approach to transpilation, and it allows us to handle complex C++ code that makes heavy use of templates and macros.  our graph should be precedent but opur files should be tblgen and mlir based, with the graph as a source of truth for the relationships between constructs.  We want to be able to generate MLIR code that is both correct and efficient and that preserves the semantics of the original code.  This is a key part of our approach to transpilation, and it allows us to handle complex C++ code that makes heavy use of templates and macros.

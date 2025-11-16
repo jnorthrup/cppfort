@@ -1,4 +1,6 @@
 build/
+build_ninja/
+build-*/
 *.o
 *.a
 *.so
@@ -11,3 +13,81 @@ cmake_install.cmake
 compile_commands.json
 *.log
 *.bin
+
+# Ignore scripted build artifacts & scripting sources
+# Enforce Ninja-only workflow: ignore Makefiles and shell/python scripts
+Makefile
+GNUmakefile
+makefile
+*.mk
+*.sh
+*.bash
+*.py
+*.pl
+*.rb
+*.ps1
+*.psm1
+*.cmd
+*.bat
+scripts/
+tools/
+ci/
+
+# Editor & IDE
+.vscode/
+.idea/
+*.suo
+*.user
+*.ncb
+*.sdf
+*.opendb
+*.VC.db
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.temp
+*.cache
+__pycache__/
+*.pyc
+
+# Xcode
+*.xcworkspace
+*.xcodeproj
+*.xcuserdata
+
+# Binaries and executables
+*.exe
+*.out
+*.app
+
+# Profiling and coverage
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+*.coverdata
+
+# Stage output directories
+stage1_out/
+stage1_out/*
+
+# Logs and test results
+test-results/
+logs/
+trace_output*
+trace_output_after.txt
+trace_output_before.txt
+trace_output.txt
+
+# Ignore local python virtualenvs and node modules if present
+.venv/
+venv/
+node_modules/
+
+# Ignore temporary or OS files
+*~
+.DS_Store
+Thumbs.db
+

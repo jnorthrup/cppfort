@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libssl-dev clang-format
+      - name: Configure CMake
+        run: cmake -S . -B build -DUSE_OPENSSL_SHA256=ON -DBUILD_TESTING=ON
+      - name: Build smoke tests
+        run: cmake --build build -j 2 --target test_cpp2_cas --target test_graph_matcher_with_pattern --target test_json_scanner_simple --target test_graph_matcher_stub || true
+      - name: Run formatting check
+        run: scripts/check_clang_format.sh
+      - name: Run tests
+        run: cd build && ctest --output-on-failure -R "test_cpp2_cas|test_graph_matcher_with_pattern|test_json_scanner_simple|test_graph_matcher_stub"

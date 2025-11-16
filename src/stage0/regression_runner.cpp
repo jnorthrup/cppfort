@@ -10,6 +10,9 @@
 #include <string_view>
 #include <vector>
 #include <memory>
+#include <sstream>
+#include <array>
+#include <cstdio>
 
 // Direct includes for transpilation
 #include "orbit_pipeline.h"
@@ -173,6 +176,28 @@ int execute_direct(const fs::path& exe_file, std::ostream& log) {
     }
 }
 
+static std::string run_cmd_capture(const std::string& cmd, int& exit_code) {
+    std::array<char, 256> buffer;
+    std::string result;
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        exit_code = -1;
+        return result;
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        result += buffer.data();
+    }
+    exit_code = pclose(pipe);
+    return result;
+}
+
+static bool files_equal(const fs::path& a, const fs::path& b) {
+    if (!fs::exists(a) || !fs::exists(b)) return false;
+    std::ifstream fa(a, std::ios::binary);
+    std::ifstream fb(b, std::ios::binary);
+    return std::equal(std::istreambuf_iterator<char>(fa), std::istreambuf_iterator<char>(), std::istreambuf_iterator<char>(fb));
+}
+
 } // anonymous namespace
 
 int main(int argc, char* argv[]) {
@@ -185,6 +210,23 @@ int main(int argc, char* argv[]) {
     const fs::path patterns_path = argv[2];
     const fs::path stage0_cli = argv[3];
     const std::string filter = (argc >= 5) ? argv[4] : "";
+    fs::path ref_compiler_path;
+    fs::path ref_cache_dir = fs::current_path() / "reference_cache";
+    bool persist_outputs = false;
+    bool ref_refresh = false;
+
+    for (int i = 4; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--reference" && i + 1 < argc) {
+            ref_compiler_path = argv[++i];
+        } else if (a == "--reference-cache" && i + 1 < argc) {
+            ref_cache_dir = argv[++i];
+        } else if (a == "--reference-refresh") {
+            ref_refresh = true;
+        } else if (a == "--persist-outputs") {
+            persist_outputs = true;
+        }
+    }
 
     if (!fs::exists(test_dir)) {
         std::cerr << "Error: Test directory does not exist: " << test_dir << "\n";
@@ -240,7 +282,60 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        // Check if we expect compilation to succeed
+        // If a reference compiler was provided, generate reference (memoized) and compare
+        if (!ref_compiler_path.empty()) {
+            try {
+                fs::create_directories(ref_cache_dir);
+                std::string content;
+                {
+                    std::ifstream in(test, std::ios::binary);
+                    content.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                }
+                std::hash<std::string> hasher;
+                auto h = hasher(content);
+                std::ostringstream oss; oss << std::hex << h;
+                std::string cache_key = oss.str() + "-" + test.filename().string();
+                fs::path cached_ref = ref_cache_dir / (cache_key + ".cpp");
+                if (ref_refresh && fs::exists(cached_ref)) {
+                    fs::remove(cached_ref);
+                }
+                if (!fs::exists(cached_ref)) {
+                    std::ofstream ref_out(cached_ref);
+                    ref_out.close();
+                    int rc;
+                    std::string cmd = ref_compiler_path.string() + " " + test.string() + " -o " + cached_ref.string() + " 2>&1";
+                    std::string out = "";
+                    {
+                        std::array<char, 256> buf;
+                        FILE* pipe = popen(cmd.c_str(), "r");
+                        if (pipe) {
+                            while (fgets(buf.data(), buf.size(), pipe) != nullptr) {
+                                out += buf.data();
+                            }
+                            rc = pclose(pipe);
+                        } else rc = -1;
+                    }
+                    if (rc != 0 || !fs::exists(cached_ref)) {
+                        log << "    WARNING: reference compiler failed -> " << out << "\n";
+                        if (fs::exists(cached_ref)) fs::remove(cached_ref);
+                    }
+                }
+                if (fs::exists(cached_ref)) {
+                    // Compare our output
+                    if (files_equal(output_cpp, cached_ref)) {
+                        log << "    Reference matches -> ISOMORPHISM OK" << "\n";
+                    } else {
+                        log << "    Reference differs -> ISOMORPHISM MISMATCH" << "\n";
+                        int dcrc;
+                        std::string diff_cmd = "git --no-pager --no-index diff --color -U3 -- " + cached_ref.string() + " " + output_cpp.string();
+                        std::string diff_out = run_cmd_capture(diff_cmd, dcrc);
+                        if (!diff_out.empty()) log << diff_out << "\n";
+                    }
+                }
+            } catch (...) {
+                log << "    EXCEPTION: Reference compare failed\n";
+            }
+        }
         bool expect_compile_fail = (filename.find("-error") != std::string::npos ||
                                    filename.find("-fail") != std::string::npos);
 

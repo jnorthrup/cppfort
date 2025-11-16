@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "type.h"
+#include "node_kind.h"
 #include "../utils/multi_index.h"
 
 namespace cppfort::ir {

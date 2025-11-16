@@ -1,0 +1,29 @@
+
+  Implementation Mismatches:
+  - References advanced_graph_solutions.cpp (Step 2a) - file does not exist in repository
+  - Mentions cpp2_mlir_assembler.cpp (Step 5b) - no such file in codebase
+  - References bnfc_cpp2_complete.yaml (Step 4b) - pattern file not present
+  - Step 6b mentions cpp2_emitter.cpp and depth_pattern_matcher.cpp as "brittle" and needing deletion - git status shows these files were already deleted in commit 254fe1f
+
+  Conceptual Flaws:
+  - Step 1 proposes enhancing WideScanner::scanAnchorsSIMD for boundary classification, but provides no mechanism for character class determination beyond token position
+  - Step 3 describes "wobbling window" for confix inference but fails to address escape sequences, string literals, or comments that would break naive depth counting
+  - Step 4's PatternApplier operates on text content of RegionNode while Step 3 suggests regions are determined by boundary events - circular dependency
+
+  Missing Critical Components:
+  - No mention of comment stripping or preprocessor handling (Step 1 boundary classification would detect # as punctuation)
+  - No error recovery strategy when confix depth never returns to zero
+  - No specification for identifier/keyword disambiguation at boundary level
+  - Assumes YAML patterns exist for all language constructs without verification
+
+  Git Status Inconsistencies:
+  - Plan written as if starting fresh, but codebase shows extensive modifications: rbcursive.cpp modified, test_reality_check.cpp modified, multiple new files added
+  - Step 6 deletion instructions are obsolete - files already removed
+
+  Technical Debt Introduced:
+  - Proposes creating parallel infrastructure (OpStub, ValueStub) while MLIR already has these abstractions
+  - Suggests building complete graph representation in memory before MLIR generation - unnecessary intermediate state
+  - No performance analysis of storing boundary stream as std::vector<BoundaryEvent> for large files
+
+  The plan reads as theoretical design document, not executable roadmap matching current repository state.
+

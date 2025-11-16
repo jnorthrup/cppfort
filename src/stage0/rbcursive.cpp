@@ -150,7 +150,14 @@ RBCursiveScanner::scanWithPattern(std::string_view data,
             break;
         }
         case PatternType::Regex: {
-            // REMOVED: Use infix orbits instead
+            // TEMP: Use GraphMatcher for signature-like matching to avoid dependency on std::regex
+            // while we migrate to a graph-first implementation. This maintains a local
+            // substitution until the full ParameterGraph-based matcher is implemented.
+            cppfort::stage0::GraphMatcher gm;
+            if (gm.match(std::string_view(pattern), data)) {
+                // Found a match over the entire text for now
+                out.push_back(Match{0, data.size()});
+            }
             break;
         }
     }
@@ -632,7 +639,7 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
                                 // Recompute traits for the new window
                                 live->ev_traits = cppfort::stage0::TypeEvidence{};
                                 for (std::size_t i = live->ev_start; i < live->ev_end; ++i) {
-                                    live->ev_traits.observe(text[i]);
+                                    live->ev_traits.observe_char(text[i]);
                                 }
 
                                 // Try validation again
@@ -685,7 +692,7 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
                 live->ev_traits = cppfort::stage0::TypeEvidence{};
                 live->saw_alpha = false;
             }
-            live->ev_traits.observe(ch);
+            live->ev_traits.observe_char(ch);
             live->ev_end = pos + 1;
             if (std::isalpha(static_cast<unsigned char>(ch))) {
                 live->saw_alpha = true;
@@ -706,7 +713,7 @@ void RBCursiveScanner::speculate_backchain(std::string_view text) {
                             // Recompute traits
                             live->ev_traits = cppfort::stage0::TypeEvidence{};
                             for (std::size_t i = live->ev_start; i < live->ev_end; ++i) {
-                                live->ev_traits.observe(text[i]);
+                                live->ev_traits.observe_char(text[i]);
                             }
                             std::string_view new_span = text.substr(live->ev_start, live->ev_end - live->ev_start);
                             if (!validate_evidence_type(kind, new_span)) {
@@ -955,13 +962,14 @@ bool RBCursiveScanner::validate_evidence_type(const std::string& type, std::stri
             }
         }
         if (traits.colon > 0 || traits.double_colon > 0 || traits.angle_open > 0 ||
-            traits.brace_open > 0 || traits.paren_open > 0 || traits.arrow > 0 ||
+            traits.confix_open[static_cast<uint8_t>(ConfixType::BRACE)] > 0 ||
+            traits.confix_open[static_cast<uint8_t>(ConfixType::PAREN)] > 0 || traits.arrow > 0 ||
             analysis.contains_any("=;")) {
             return false;
         }
         return true;
     } else if (type == "identifier_template") {
-        if (traits.brace_open > 0 || analysis.contains_any("=;")) {
+        if (traits.confix_open[static_cast<uint8_t>(ConfixType::BRACE)] > 0 || analysis.contains_any("=;")) {
             return false;
         }
         size_t angle_pos = trimmed.find('<');
@@ -1010,9 +1018,6 @@ bool RBCursiveScanner::validate_evidence_type(const std::string& type, std::stri
     }
     return false;
 }
-
-} // namespace ir
-} // namespace cppfort
 
 // Orbit-based anchor position detection (NO string.find())
 std::vector<std::size_t> RBCursiveScanner::find_anchor_positions_orbit(
