@@ -1,2 +1,0 @@
-#include <iostream>
-void main() std::cout << "(std::is_void_v<* i32> && std::is_void_v<const i32>)$\n"

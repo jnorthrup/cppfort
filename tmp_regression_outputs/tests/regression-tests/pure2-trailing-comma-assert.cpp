@@ -1,1 +1,0 @@
-int main() { assert(true, "some_potentially_long_string",); }

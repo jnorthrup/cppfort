@@ -1,3 +1,0 @@
-foo: (inout s: std::string, forward args...: Args) -> std::string = {
-    return s;
-}
