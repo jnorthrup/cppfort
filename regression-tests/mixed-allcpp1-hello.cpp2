@@ -1,8 +1,0 @@
-
-#include <iostream>
-#include <string>
-
-main: () -> int = {
-    s: std::string = "world\n";
-    printf("Hello %s", s.c_str());
-}

@@ -166,8 +166,8 @@ struct TypeEvidence {
 private:
     static bool is_c_identifier(std::string_view token);
     static bool is_c_keyword(std::string_view token);
-    static bool is_cpp_keyword(std::string_view token);
-    static bool is_cpp2_keyword(std::string_view token);
+    static inline bool is_cpp_keyword(std::string_view token);
+    static inline bool is_cpp2_keyword(std::string_view token);
 };
 
 inline EvidenceGrammarKind TypeEvidence::deduce() const {
@@ -184,7 +184,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Observe a character and update character classification
     // Must be called for every character in source
-    void TypeEvidence::observe_char(char ch) {
+    inline void TypeEvidence::observe_char(char ch) {
         // Layer 1: Character classification
         if (ch >= '0' && ch <= '9') {
             ++digits; ++alpha;
@@ -231,7 +231,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Observe opening delimiter of specified type
     // Called when encountering (, [, {, <, ", ', /*, //, etc.
-    void TypeEvidence::observe_confix_open(ConfixType type) {
+    inline void TypeEvidence::observe_confix_open(ConfixType type) {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx < 12) {
             ++confix_open[idx];
@@ -245,7 +245,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Observe closing delimiter of specified type
     // Called when encountering ), ], }, >, ", ', */, etc.
-    void TypeEvidence::observe_confix_close(ConfixType type) {
+    inline void TypeEvidence::observe_confix_close(ConfixType type) {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx < 12) {
             ++confix_close[idx];
@@ -258,7 +258,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
     }
 
     // Observe a complete token (identifier, keyword, etc.)
-    void TypeEvidence::observe_token(std::string_view token) {
+    inline void TypeEvidence::observe_token(std::string_view token) {
         ++total_tokens;
 
         // Check C identifiers
@@ -282,6 +282,11 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         if (is_cpp_keyword(token)) ++cpp_keywords;
         if (is_cpp2_keyword(token)) ++cpp2_keywords;
 
+        // Track some individual cpp2-relevant keywords for scoring
+        if (token == "inspect") ++inspect_hits;
+        if (token == "is") ++is_keyword_hits;
+        if (token == "as") ++as_keyword_hits;
+
         // Count special operators
         for (size_t i = 0; i < token.length() - 1; ++i) {
             if (token[i] == '-' && token[i+1] == '>') ++arrow;
@@ -290,11 +295,14 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Ingest complete text and update all counters
     // Used for correlator compatibility
-    void TypeEvidence::ingest(std::string_view text) {
+    inline void TypeEvidence::ingest(std::string_view text) {
         reset();
 
         std::string token;
-        for (char ch : text) {
+        const char* s = text.data();
+        size_t n = text.size();
+        for (size_t i = 0; i < n; ++i) {
+            char ch = s[i];
             observe_char(ch);
 
             // Simple token extraction
@@ -308,6 +316,16 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
             } else {
                   token += ch;
             }
+
+            // Heuristic: detect Cpp2 signature patterns like ": (" or ":(" at char level
+            if (ch == ':') {
+                // skip spaces and check for '('
+                size_t j = i + 1;
+                while (j < n && std::isspace(static_cast<unsigned char>(s[j]))) ++j;
+                if (j < n && s[j] == '(') {
+                    ++cpp2_signature_hits;
+                }
+            }
         }
         if (!token.empty()) {
             observe_token(token);
@@ -316,7 +334,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Merge with another TypeEvidence (take max of each field)
     // Used for sliding window accumulation
-    void TypeEvidence::merge_max(const TypeEvidence& other) {
+    inline void TypeEvidence::merge_max(const TypeEvidence& other) {
         // Layer 1
         digits = std::max(digits, other.digits);
         periods = std::max(periods, other.periods);
@@ -389,7 +407,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Check if all confix types are balanced (open == close)
     // Returns true if all types balanced
-    bool TypeEvidence::all_confix_balanced() const {
+    inline bool TypeEvidence::all_confix_balanced() const {
         for (size_t i = 0; i < 12; ++i) {
             if (confix_open[i] != confix_close[i]) {
                 return false;
@@ -399,7 +417,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
     }
 
     // Check if specific confix type is balanced
-    bool TypeEvidence::confix_balanced(ConfixType type) const {
+    inline bool TypeEvidence::confix_balanced(ConfixType type) const {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx >= 12) return false;
         return confix_open[idx] == confix_close[idx];
@@ -407,14 +425,14 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Get confix balance delta (open - close) for a type
     // Positive = more opens, Negative = more closes, Zero = balanced
-    int16_t TypeEvidence::confix_delta(ConfixType type) const {
+    inline int16_t TypeEvidence::confix_delta(ConfixType type) const {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx >= 12) return 0;
         return static_cast<int16_t>(confix_open[idx]) - static_cast<int16_t>(confix_close[idx]);
     }
 
     // Get maximum nesting depth for a confix type
-    uint16_t TypeEvidence::get_max_depth(ConfixType type) const {
+    inline uint16_t TypeEvidence::get_max_depth(ConfixType type) const {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx >= 12) return 0;
         return max_confix_depth[idx];
@@ -422,21 +440,21 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // Check for specific nesting patterns
     // Returns true if confix type A encloses type B
-    bool TypeEvidence::encloses(ConfixType outer, ConfixType inner) const {
+    inline bool TypeEvidence::encloses(ConfixType outer, ConfixType inner) const {
         // If outer has greater max depth than inner, it likely encloses
         return get_max_depth(outer) > get_max_depth(inner);
     }
 
     // Detect if this looks like a nested expression pattern
     // e.g., ((())) or {{{}}} or [][][]
-    bool TypeEvidence::has_nested_pattern(ConfixType type) const {
+    inline bool TypeEvidence::has_nested_pattern(ConfixType type) const {
         uint8_t idx = static_cast<uint8_t>(type);
         if (idx >= 12) return false;
         return max_confix_depth[idx] > 1;
     }
 
     // Detect mixed delimiter patterns: (){}[] or {[()]}
-    std::vector<ConfixType> TypeEvidence::get_mixed_patterns() const {
+    inline std::vector<ConfixType> TypeEvidence::get_mixed_patterns() const {
         std::vector<ConfixType> result;
         for (size_t i = 1; i <= 4; ++i) {  // Check PAREN, BRACE, BRACKET, ANGLE
             if (confix_open[i] > 0 || confix_close[i] > 0) {
@@ -447,7 +465,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
     }
 
     // Compute nesting complexity score (higher = more complex)
-    uint32_t TypeEvidence::compute_nesting_complexity() const {
+    inline uint32_t TypeEvidence::compute_nesting_complexity() const {
         uint32_t score = 0;
 
         // Sum of max depths across all types
@@ -472,7 +490,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
 
     // --- Confidence scores for language families ---
 
-    double TypeEvidence::cpp2_confidence() const {
+    inline double TypeEvidence::cpp2_confidence() const {
         if (total_tokens == 0) return 0.0;
 
         double score = 0.0;
@@ -483,7 +501,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return std::min(1.0, score / static_cast<double>(std::max(uint16_t(1), total_tokens)));
     }
 
-    double TypeEvidence::cpp_confidence() const {
+    inline double TypeEvidence::cpp_confidence() const {
         if (total_tokens == 0) return 0.0;
 
         double score = 0.0;
@@ -496,7 +514,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return std::min(1.0, score / static_cast<double>(std::max(uint16_t(1), total_tokens)));
     }
 
-    double TypeEvidence::c_confidence() const {
+    inline double TypeEvidence::c_confidence() const {
         if (total_tokens == 0) return 0.0;
 
         double score = 0.0;
@@ -507,7 +525,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
     }
 
     // Deduce dominant language family
-    TypeEvidence::LanguageFamily TypeEvidence::deduce_language() const {
+    inline TypeEvidence::LanguageFamily TypeEvidence::deduce_language() const {
         double c = c_confidence();
         double cpp = cpp_confidence();
         double cpp2 = cpp2_confidence();
@@ -518,7 +536,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return LanguageFamily::UNKNOWN;
     }
     // Token classification helpers
-    bool TypeEvidence::is_c_identifier(std::string_view token) {
+    inline bool TypeEvidence::is_c_identifier(std::string_view token) {
         // C identifiers: [a-zA-Z_][a-zA-Z0-9_]*
         if (token.empty()) return false;
         if (!std::isalpha(static_cast<unsigned char>(token[0])) && token[0] != '_') {
@@ -532,7 +550,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return true;
     }
 
-    bool TypeEvidence::is_c_keyword(std::string_view token) {
+    inline bool TypeEvidence::is_c_keyword(std::string_view token) {
         static const std::array<std::string_view, 6> keywords{
             "typedef", "struct", "enum", "union", "extern", "sizeof"
         };
@@ -542,7 +560,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return false;
     }
 
-    bool TypeEvidence::is_cpp_keyword(std::string_view token) {
+    inline bool TypeEvidence::is_cpp_keyword(std::string_view token) {
         static const std::array<std::string_view, 14> keywords{
             "class", "template", "typename", "namespace", "constexpr", "concept",
             "requires", "decltype", "noexcept", "operator", "using", "friend",
@@ -554,7 +572,7 @@ inline EvidenceGrammarKind TypeEvidence::deduce() const {
         return false;
     }
 
-    bool TypeEvidence::is_cpp2_keyword(std::string_view token) {
+    inline bool TypeEvidence::is_cpp2_keyword(std::string_view token) {
         static const std::array<std::string_view, 11> keywords{
             "inspect", "let", "mut", "in", "out", "inout", "move", "forward",
             "contract", "pre", "post"

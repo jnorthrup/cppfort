@@ -40,7 +40,11 @@ std::string current_time_string() {
 static std::string run_cmd_capture(const std::string& cmd, int& exit_code) {
     std::array<char, 256> buffer;
     std::string result;
-    FILE* pipe = popen(cmd.c_str(), "r");
+    std::string safe_cmd = cmd;
+    if (safe_cmd.find("< /dev/null") == std::string::npos) {
+        safe_cmd += " < /dev/null";
+    }
+    FILE* pipe = popen(safe_cmd.c_str(), "r");
     if (!pipe) {
         exit_code = -1;
         return result;
@@ -88,8 +92,11 @@ int transpile_direct(const fs::path& input_file,
         }
 
         // Generate output
-        cppfort::stage0::Cpp2Emitter emitter;
-        std::string output = emitter.emit(*result);
+        cppfort::stage0::CPP2Emitter emitter;
+        cppfort::stage0::OrbitIterator iterator = *result;
+        std::ostringstream oss;
+        emitter.emit(iterator, source, oss, pattern_loader.patterns());
+        std::string output = oss.str();
 
         // Write output file
         std::ofstream out(output_file, std::ios::binary);
@@ -119,7 +126,7 @@ int compile_direct(const fs::path& cpp_file,
         log << "    Direct compile: " << cpp_file << " -> " << exe_file << "\n";
 
         std::string cmd = "c++ -std=c++20 -I include " + cpp_file.string() +
-                         " -o " + exe_file.string() + " 2>&1";
+                 " -o " + exe_file.string() + " < /dev/null 2>&1";
 
         std::array<char, 128> buffer;
         std::string result;
@@ -154,7 +161,7 @@ int execute_direct(const fs::path& exe_file, std::ostream& log) {
     try {
         log << "    Direct execute: " << exe_file << "\n";
 
-        std::string cmd = exe_file.string() + " 2>&1";
+        std::string cmd = exe_file.string() + " < /dev/null 2>&1";
 
         std::array<char, 128> buffer;
         std::string output;

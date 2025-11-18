@@ -43,7 +43,9 @@ public:
 
     struct Capabilities {
         bool glob = true;
-        bool regex = true;
+        // Regex support is intentionally disabled in favor of graph-based matching
+        // until we reintroduce a stable, sandboxed regex matcher.
+        bool regex = false;
         bool simd = false; // placeholder until SIMD paths are ported
     };
 

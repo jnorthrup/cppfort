@@ -6,6 +6,7 @@
 #include <memory>
 #include <filesystem>
 #include <mlir_region_node.h>
+#include "rbcursive.h"
 #include "pijul_graph_matcher.h"
 #include "pijul_parameter_graph.h"
 #include "pijul_orbit_builder.h"
@@ -41,7 +42,7 @@ private:
     bool enableDebug_ = false;
     
     // Pattern matching engines
-    std::unique_ptr<class RBCursiveScanner> rbcursiveScanner_;
+    std::unique_ptr<cppfort::ir::RBCursiveScanner> rbcursiveScanner_;
     // Graph matchers per pattern
     std::vector<std::unique_ptr<PijulGraphMatcher>> graphMatchers_;
     // Parameter graph to collect semantic anchors

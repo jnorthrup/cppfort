@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 #include <algorithm>  // for std::min
+#include <cstdio>
 #include <unordered_map>
 #include <optional>
 
@@ -57,6 +58,13 @@ public:
     // Scanner hint propagation to parent depth
     void propagate_scanner_hint_to_parent() {
         if (depth_counter_ > 0) {
+#ifdef STAGE0_SANITIZE
+            // Sanity checks for sanitizer build
+            if (parent_hint_confidence_ < 0.0 || parent_hint_confidence_ > 2.0) {
+                std::fprintf(stderr, "Sanitize: parent_hint_confidence_ out of bounds: %f\n", parent_hint_confidence_);
+                std::abort();
+            }
+#endif
             // Propagate hint to parent depth level - increment confidence for parent scope
             parent_hint_confidence_ = std::min(1.0, parent_hint_confidence_ + 0.1);
         }

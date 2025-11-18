@@ -28,7 +28,9 @@ private:
         int exit_code = 0;
 
         // Use popen to execute command and capture output
-        FILE* pipe = popen((cmd + " 2>&1").c_str(), "r");
+        // Ensure stdin is closed for spawned test processes to avoid blocking
+        // and follow the CODING_STANDARDS.md guideline "DO NOT RUN A TEST PROCESS WITHOUT TIMEOUT or '< /dev/null'".
+        FILE* pipe = popen((cmd + " < /dev/null 2>&1").c_str(), "r");
         if (!pipe) {
             return {"ERROR: Failed to execute command", -1};
         }

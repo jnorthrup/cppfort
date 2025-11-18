@@ -14,7 +14,7 @@ namespace stage0 {
 
 PatternApplier::PatternApplier(const std::filesystem::path& patternsPath)
     : patternsPath_(patternsPath) {
-    rbcursiveScanner_ = std::make_unique<RBCursiveScanner>();
+    rbcursiveScanner_ = std::make_unique<cppfort::ir::RBCursiveScanner>();
 }
 
 PatternApplier::~PatternApplier() = default;
@@ -382,14 +382,14 @@ PatternApplier::ApplicationResult PatternApplier::applyPatternToRegion(
     }
 
     // Run peephole optimizations for this region if any
-    try {
-        ::cppfort::ir::IterPeeps peephole;
-        // iterate expects a Node* stop node - pass region as Node*
-        peephole.iterate(&region);
-    } catch (...) {
-        // Non-fatal, continue on
-        if (enableDebug_) std::cerr << "[PatternApplier] Peephole iteration failed or no peepholes available\n";
-    }
+    // Note: iterpeeps expects Node* but we're working with RegionNode*
+    // This is a temporary stub - proper integration needed
+    // try {
+    //     ::cppfort::ir::IterPeeps peephole;
+    //     peephole.iterate(&region);
+    // } catch (...) {
+    //     if (enableDebug_) std::cerr << "[PatternApplier] Peephole iteration failed or no peepholes available\n";
+    // }
 
     return result;
 }

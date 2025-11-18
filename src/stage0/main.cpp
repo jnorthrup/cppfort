@@ -4,13 +4,21 @@
 #include <vector>
 #include <filesystem>
 
-#include "orbit_scanner.h"
 #include "wide_scanner.h"
 #include "multi_grammar_loader.h"
 #include "orbit_pipeline.h"
 #include "orbit_emitter.h"
 #include "cpp2_emitter.h"
 #include "orbit_ring.h"
+#include "graph_serde.h"
+#include "cpp2_cas.h"
+#include "json_yaml_plasma_transpiler.h"
+#include "debug_helpers.h"
+#include "xai_orbit_types.h"
+#include "evidence_2d.h"
+#include "pijul_graph.h"
+
+using JsonYamlTranspiler = cppfort::stage0::JsonYamlPlasmaTranspiler;
 
 namespace fs = std::filesystem;
 
@@ -18,6 +26,9 @@ using cppfort::stage0::OrbitIterator;
 using cppfort::stage0::OrbitPipeline;
 
 int main(int argc, char* argv[]) {
+    // Install debug signal handlers and optional watchdog
+    cppfort::stage0::debug::install_signal_handlers();
+    cppfort::stage0::debug::start_watchdog_from_env();
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <command> <input_file> [options...]\n";
         std::cerr << "Commands:\n";
@@ -25,6 +36,9 @@ int main(int argc, char* argv[]) {
         std::cerr << "  anchors <file>       - Generate and display anchor points\n";
         std::cerr << "  boundaries <file>    - Scan and display boundaries with orbit data\n";
         std::cerr << "  transpile <input_file> <output_file> [pattern_file] - Transpile file to C++\n";
+        std::cerr << "  plasma-json-yaml <input_file> <output_file> - Convert JSON to YAML using plasma transpiler\n";
+        std::cerr << "  plasma-yaml-json <input_file> <output_file> - Convert YAML to JSON using plasma transpiler\n";
+        std::cerr << "  orbit-scanner <file> - Orbit scanner induction with {anchor, evidenceSpan} tuples\n";
         return 1;
     }
 
@@ -113,9 +127,13 @@ int main(int argc, char* argv[]) {
                     if (emit_graph_yaml || emit_graph_json) {
                         if (auto* gn = confix->graph_node()) {
                             if (emit_graph_yaml) {
-                                auto y = cppfort::stage0::graphNodeToYaml(*gn);
-                                std::cout << "--- GraphNode YAML ---\n" << YAML::Dump(y) << "\n";
-                            }
+        #ifdef HAVE_YAMLCPP
+                                        auto y = cppfort::stage0::graphNodeToYaml(*gn);
+                                        std::cout << "--- GraphNode YAML ---\n" << YAML::Dump(y) << "\n";
+        #else
+                                        std::cout << "(YAML output suppressed - compile with yaml-cpp to enable)\n";
+        #endif
+                                    }
 #ifdef HAVE_NLOHMANN_JSON
                             if (emit_graph_json) {
                                 auto j = cppfort::stage0::graphNodeToJson(*gn);
@@ -167,7 +185,7 @@ int main(int argc, char* argv[]) {
         }
 
     } else if (command == "transpile") {
-        // Transpile to CPP2
+        // Transpile Cpp2-like syntax to C++
         if (argc < 4) {
             std::cerr << "Usage: " << argv[0] << " transpile <input_file> <output_file> [pattern_file]\n";
             return 1;
@@ -178,6 +196,16 @@ int main(int argc, char* argv[]) {
         if (!out) {
             std::cerr << "Error: Cannot open output file '" << output_file << "'\n";
             return 1;
+        }
+
+        // Preprocess markdown-style ```cpp2 blocks into CAS comments so that
+        // the scanner and pattern engine see a clean C++ surface.
+        {
+            auto [rewritten, count] = cppfort::stage0::rewrite_cpp2_markdown_blocks_with_cas(source);
+            if (count > 0) {
+                std::cerr << "Rewrote " << count << " cpp2 markdown block(s) into CAS comments\n";
+                source = std::move(rewritten);
+            }
         }
 
         auto anchors = cppfort::ir::WideScanner::generateAlternatingAnchors(source);
@@ -200,6 +228,135 @@ int main(int argc, char* argv[]) {
             std::cerr << "ERROR: Pattern loading failed\n";
             return 1;
         }
+
+    } else if (command == "plasma-json-yaml") {
+        // Convert JSON to YAML using plasma transpiler
+        if (argc < 4) {
+            std::cerr << "Usage: " << argv[0] << " plasma-json-yaml <input_file> <output_file>\n";
+            return 1;
+        }
+
+        std::string output_file = argv[3];
+        std::ofstream out(output_file);
+        if (!out) {
+            std::cerr << "Error: Cannot open output file '" << output_file << "'\n";
+            return 1;
+        }
+
+        cppfort::stage0::JsonYamlPlasmaTranspiler transpiler;
+        auto yaml_result = transpiler.json_to_yaml_plasma(source);
+
+        if (yaml_result.has_value()) {
+            out << *yaml_result;
+            std::cout << "Successfully converted JSON to YAML using plasma transpiler\n";
+        } else {
+            std::cerr << "Error: " << transpiler.last_error().message << "\n";
+            return 1;
+        }
+
+    } else if (command == "plasma-yaml-json") {
+        // Convert YAML to JSON using plasma transpiler
+        if (argc < 4) {
+            std::cerr << "Usage: " << argv[0] << " plasma-yaml-json <input_file> <output_file>\n";
+            return 1;
+        }
+
+        std::string output_file = argv[3];
+        std::ofstream out(output_file);
+        if (!out) {
+            std::cerr << "Error: Cannot open output file '" << output_file << "'\n";
+            return 1;
+        }
+
+        cppfort::stage0::JsonYamlPlasmaTranspiler transpiler;
+        auto json_result = transpiler.yaml_to_json_plasma(source);
+
+        if (json_result.has_value()) {
+            out << *json_result;
+            std::cout << "Successfully converted YAML to JSON using plasma transpiler\n";
+        } else {
+            std::cerr << "Error: " << transpiler.last_error().message << "\n";
+            return 1;
+        }
+
+    } else if (command == "orbit-scanner") {
+        // Orbit scanner induction with {anchor, evidenceSpan} tuples
+        std::cout << "=== Orbit Scanner Induction with {anchor, evidenceSpan} Tuples ===\n";
+        std::cout << "Loaded " << source.size() << " bytes from " << input_file << "\n";
+
+        // Generate AnchorTuples with 5 anchor types (XAI 4.2 orbit system)
+        std::vector<cppfort::stage0::AnchorTuple> anchor_tuples;
+        const size_t chunk_size = 4096; // 4KB chunks for locality-oriented diffusion
+
+        for (size_t offset = 0; offset < source.size(); offset += chunk_size) {
+            size_t end = std::min(offset + chunk_size, source.size());
+            std::string_view chunk(source.data() + offset, end - offset);
+
+            cppfort::stage0::AnchorTuple tuple(chunk);
+            tuple.interleave_evidence(); // Fire all 5 anchor types concurrently
+            anchor_tuples.push_back(std::move(tuple));
+        }
+
+        std::cout << "Generated " << anchor_tuples.size() << " anchor tuples (5 anchor types each)\n";
+
+        // Create EvidenceSpan2D regions with 2D confix evidence
+        std::vector<cppfort::stage0::EvidenceSpan2D> evidence_spans;
+        const size_t span_size = 512; // Smaller spans for fine-grained analysis
+
+        for (size_t offset = 0; offset < source.size(); offset += span_size) {
+            size_t end = std::min(offset + span_size, source.size());
+            std::string_view span(source.data() + offset, end - offset);
+
+            auto evidence_span = cppfort::stage0::Evidence2DAnalyzer::analyze_span(span, offset);
+            evidence_spans.push_back(std::move(evidence_span));
+        }
+
+        std::cout << "Generated " << evidence_spans.size() << " evidence spans with 2D confix evidence\n";
+
+        // Display AnchorTuple results
+        std::cout << "\n=== Anchor Tuple Analysis ===\n";
+        for (size_t i = 0; i < std::min(size_t(5), anchor_tuples.size()); ++i) {
+            const auto& tuple = anchor_tuples[i];
+            std::cout << "Tuple " << i << " (range: " << tuple.evidence_range.size() << " bytes)\n";
+            std::cout << "  Composite confidence: " << tuple.composite_confidence << "\n";
+
+            for (size_t j = 0; j < 5; ++j) {
+                const auto& anchor = tuple.anchors[j];
+                std::cout << "  Anchor[" << j << "] type=" << static_cast<int>(anchor.anchor_type)
+                         << " confidence=" << anchor.confidence << "\n";
+            }
+        }
+
+        // Display EvidenceSpan2D results
+        std::cout << "\n=== Evidence Span 2D Analysis ===\n";
+        for (size_t i = 0; i < std::min(size_t(5), evidence_spans.size()); ++i) {
+            const auto& span = evidence_spans[i];
+            std::cout << "Span " << i << " (pos " << span.start_pos << "-" << span.end_pos
+                     << ", " << (span.end_pos - span.start_pos) << " bytes)\n";
+            std::cout << "  Confidence: " << span.confidence << "\n";
+            std::cout << "  Confixes: " << span.confixes.size() << "\n";
+            std::cout << "  Dominant type: " << static_cast<int>(span.get_dominant_confix_type()) << "\n";
+            std::cout << "  Balanced: " << (span.has_balanced_confixes() ? "true" : "false") << "\n";
+        }
+
+        // Build pijul graph for reversible semantics (demonstrating graph integration)
+        std::cout << "\n=== Pijul Graph Integration ===\n";
+        cppfort::pijul::Graph graph;
+
+        // Create nodes for each evidence span
+        for (size_t i = 0; i < evidence_spans.size(); ++i) {
+            const auto& span = evidence_spans[i];
+            if (span.confidence > 0.3) { // Only add high-confidence spans
+                std::string key_str = "span_" + std::to_string(i);
+                cppfort::pijul::ExternalKey ext_key(key_str.begin(), key_str.end());
+                auto node_id = graph.ensure_node(ext_key);
+                std::cout << "Created graph node " << node_id << " for " << key_str
+                         << " (confidence: " << span.confidence << ")\n";
+            }
+        }
+
+        std::cout << "Pijul graph nodes: " << source.size() << " bytes\n";
+        std::cout << "Orbit scanner induction completed successfully\n";
 
     } else {
         std::cerr << "Unknown command: " << command << "\n";
@@ -231,8 +388,12 @@ int main(int argc, char* argv[]) {
                         std::cerr << "JSON support not compiled in, build with nlohmann_json to enable.\n";
 #endif
                     } else {
-                        auto y = cppfort::stage0::graphNodeToYaml(*gn);
-                        std::cout << YAML::Dump(y) << "\n";
+    #ifdef HAVE_YAMLCPP
+                            auto y = cppfort::stage0::graphNodeToYaml(*gn);
+                            std::cout << YAML::Dump(y) << "\n";
+    #else
+                            std::cout << "(YAML output suppressed - compile with yaml-cpp to enable)\n";
+    #endif
                     }
                 }
             }

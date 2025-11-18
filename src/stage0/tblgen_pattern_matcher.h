@@ -43,9 +43,15 @@ public:
                 
                 size_t paren_close = source.find(')', paren_open);
                 if (paren_close != std::string::npos) {
-                    segs.push_back(source.substr(paren_open + 1, paren_close - paren_open - 1)); // params
-                    segs.push_back(source.substr(arrow_pos + 2, equal_pos - arrow_pos - 2)); // return type
-                    segs.push_back(source.substr(equal_pos + 1)); // body
+                    auto trim = [](const std::string& s) {
+                        size_t b = 0, e = s.size();
+                        while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+                        while (e > b && std::isspace(static_cast<unsigned char>(s[e-1]))) --e;
+                        return s.substr(b, e-b);
+                    };
+                    segs.push_back(trim(source.substr(paren_open + 1, paren_close - paren_open - 1))); // params
+                    segs.push_back(trim(source.substr(arrow_pos + 2, equal_pos - arrow_pos - 2))); // return type
+                    segs.push_back(trim(source.substr(equal_pos + 1))); // body
                     
                     return MatchResult(true, segs);
                 }

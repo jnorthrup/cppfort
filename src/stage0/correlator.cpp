@@ -53,6 +53,12 @@ EvidenceGrammarKind FragmentCorrelator::classify(const std::string& text) const 
     TypeEvidence evidence;
     evidence.ingest(text);
     EvidenceGrammarKind kind = evidence.deduce();
+    // Use classify_text heuristics as a supplement; if it returns a non-Unknown
+    // classification we prefer that as it includes textual heuristics (e.g. ': (').
+    EvidenceGrammarKind heuristic = classify_text(text);
+    if (heuristic != EvidenceGrammarKind::Unknown) {
+        kind = heuristic;
+    }
     if (kind != EvidenceGrammarKind::Unknown) {
         return kind;
     }
@@ -118,6 +124,14 @@ void FragmentCorrelator::correlate(OrbitFragment& fragment, std::string_view sou
     }
 
     fragment.confidence = computed_confidence;
+    // If evidence deduction returned Unknown, try additional heuristic checks
+    if (kind == EvidenceGrammarKind::Unknown) {
+        std::string trimmed = trim_copy(text);
+        if (is_cpp2_syntax(trimmed)) kind = EvidenceGrammarKind::CPP2;
+        else if (is_cpp_syntax(trimmed)) kind = EvidenceGrammarKind::CPP;
+        else if (is_c_syntax(trimmed)) kind = EvidenceGrammarKind::C;
+    }
+
     switch (kind) {
         case EvidenceGrammarKind::C:
             fragment.classified_grammar = ::cppfort::ir::GrammarType::C;

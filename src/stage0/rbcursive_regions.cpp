@@ -3,6 +3,58 @@
 #include <iostream>
 #include <algorithm>
 
+namespace {
+
+size_t find_line_start(const std::string& source, size_t pos) {
+    if (source.empty()) {
+        return 0;
+    }
+
+    if (pos == 0) {
+        return 0;
+    }
+
+    size_t search_pos = pos - 1;
+    size_t newline = source.rfind('\n', search_pos);
+    if (newline == std::string::npos) {
+        return 0;
+    }
+    return newline + 1;
+}
+
+size_t derive_region_source_start(const std::string& source,
+                                  size_t boundary_pos) {
+    if (source.empty()) {
+        return 0;
+    }
+
+    size_t start = find_line_start(source, boundary_pos);
+
+    if (start > 0) {
+        size_t prev_pos = (start == 0) ? 0 : start - 1;
+        size_t prev_start = find_line_start(source, prev_pos);
+        size_t prev_len = (start > prev_start) ? start - prev_start : 0;
+
+        if (prev_len > 0) {
+            std::string prev_line = source.substr(prev_start, prev_len);
+            bool contains_signature = prev_line.find(':') != std::string::npos ||
+                                      prev_line.find("->") != std::string::npos ||
+                                      prev_line.find('=') != std::string::npos;
+            if (contains_signature) {
+                start = prev_start;
+            }
+        }
+    }
+
+    return start;
+}
+
+size_t clamp_to_source_end(size_t value, size_t source_size) {
+    return (value > source_size) ? source_size : value;
+}
+
+} // namespace
+
 namespace cppfort {
 namespace ir {
 
@@ -100,7 +152,7 @@ mlir::RegionNode::RegionType RBCursiveRegions::inferRegionType(
                 return mlir::RegionNode::RegionType::FUNCTION;
             }
         }
-            return mlir::RegionNode::RegionType::BLOCK;
+        return mlir::RegionNode::RegionType::BLOCK;
     }
     
     // Object literals/scope blocks
@@ -130,9 +182,8 @@ mlir::RegionNode::RegionType RBCursiveRegions::inferRegionType(
         // Heuristic: flow keywords indicate a conditional region
         return mlir::RegionNode::RegionType::CONDITIONAL;
     }
-    }
     
-        return mlir::RegionNode::RegionType::BLOCK;  // Default to block
+    return mlir::RegionNode::RegionType::BLOCK;  // Default to block
 }
 
 // Calculate confidence score for a region boundary
@@ -183,7 +234,7 @@ std::unique_ptr<mlir::RegionNode> RBCursiveRegions::carveRegionRecursive(
     
     // Create a new region starting at this boundary
     auto region = std::make_unique<mlir::RegionNode>();
-    
+
     // Infer region type
     std::vector<WideScanner::BoundaryEvent> followingEvents;
     size_t lookahead = std::min(currentIdx + 20, events.size());
@@ -192,8 +243,10 @@ std::unique_ptr<mlir::RegionNode> RBCursiveRegions::carveRegionRecursive(
     }
     
     region->setType(inferRegionType(startEvent, followingEvents));
-    region->setSourceLocation(startEvent.position, startEvent.position);
-    
+    size_t regionSourceStart = derive_region_source_start(source, startEvent.position);
+    size_t regionSourceEnd = regionSourceStart;
+    region->setSourceLocation(regionSourceStart, regionSourceEnd);
+
     // Calculate initial confidence
     double confidence = calculateBoundaryConfidence(startEvent, currentDepth_);
     region->setOrbitConfidence(confidence);
@@ -233,7 +286,9 @@ std::unique_ptr<mlir::RegionNode> RBCursiveRegions::carveRegionRecursive(
                 // If depth returns to 0, this is our matching closing boundary
                 if (localDepth == 0 && isMatchingClosingConfix(openChar, currentChar)) {
                     regionEnd = idx;
-                    region->setSourceLocation(events[regionStart].position, events[idx].position);
+                    size_t closingPos = clamp_to_source_end(events[idx].position + 1, source.size());
+                    regionSourceEnd = closingPos;
+                    region->setSourceLocation(regionSourceStart, regionSourceEnd);
                     
                     // Add closing orbit position
                     region->addOrbitPosition(events[idx].position);
@@ -248,7 +303,11 @@ std::unique_ptr<mlir::RegionNode> RBCursiveRegions::carveRegionRecursive(
         size_t optimizedEnd = wobbleFindBoundary(events, regionStart, regionEnd, source);
         if (optimizedEnd != regionEnd) {
             regionEnd = optimizedEnd;
-            region->setSourceLocation(events[regionStart].position, events[optimizedEnd].position);
+            if (optimizedEnd < events.size()) {
+                size_t closingPos = clamp_to_source_end(events[optimizedEnd].position + 1, source.size());
+                regionSourceEnd = closingPos;
+                region->setSourceLocation(regionSourceStart, regionSourceEnd);
+            }
         }
     }
     
@@ -271,9 +330,14 @@ std::unique_ptr<mlir::RegionNode> RBCursiveRegions::carveRegionRecursive(
         }
     }
     
+    if (regionSourceEnd <= regionSourceStart) {
+        regionSourceEnd = clamp_to_source_end(regionSourceStart + 1, source.size());
+        region->setSourceLocation(regionSourceStart, regionSourceEnd);
+    }
+
     // Update current index to position after this region
     currentIdx = regionEnd + 1;
-    
+
     return region;
 }
 
@@ -291,8 +355,14 @@ RBCursiveRegions::CarveResult RBCursiveRegions::carveRegions(
     }
     
     try {
-        // Start carving from the beginning
+        // Start carving from the first brace if possible
         size_t currentIdx = 0;
+        while (currentIdx < events.size() && events[currentIdx].delimiter != '{') {
+            ++currentIdx;
+        }
+        if (currentIdx >= events.size()) {
+            currentIdx = 0;
+        }
         auto rootRegion = carveRegionRecursive(events, source, currentIdx, events.size(), 
                                                   mlir::RegionNode::RegionType::FUNCTION);
         
@@ -378,8 +448,7 @@ void RBCursiveRegions::printCarvedRegions(const mlir::RegionNode& root, size_t i
     }
     
     std::cout << ", confidence=" << root.getOrbitConfidence()
-              << ", position=[" << root.getSourceStart() << "-" << root.getSourceEnd() << "])
-";
+              << ", position=[" << root.getSourceStart() << "-" << root.getSourceEnd() << "])" << "\n";
     
     if (!root.getName().empty()) {
         std::cout << indentStr << "  name: \"" << root.getName() << "\"\n";

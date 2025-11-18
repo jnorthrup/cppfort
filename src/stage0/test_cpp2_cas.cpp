@@ -60,13 +60,7 @@ int main() {
     auto [out3, count3] = cppfort::stage0::rewrite_cpp2_markdown_blocks_with_cas(src3);
     assert(count3 == 0);
     assert(out3.find("```cpp2") != std::string::npos);
-#if defined(HAVE_BLAKE3)
-    assert(id.rfind("blake3:", 0) == 0);
-#elif defined(HAVE_OPENSSL_SHA256)
-    assert(id.rfind("sha256:", 0) == 0);
-#else
-    assert(id.rfind("hash:", 0) == 0);
-#endif
+    assert(id.rfind("adler64:", 0) == 0);
     // Run extra checks
     if (extra_tests() != 0) {
         std::cerr << "Extra tests failed" << std::endl;

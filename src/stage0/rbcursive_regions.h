@@ -27,8 +27,6 @@ public:
         bool enableWobbling = true;      // Enable wobbling window for confix deduction
         size_t maxNestingDepth = 100;    // Maximum nested region depth
         bool validateOrbitDepth = true;  // Validate using orbit confix depth
-        
-        CarveConfig() = default;
     };
     
     struct CarveResult {
@@ -89,7 +87,7 @@ public:
     /**
      * Constructor
      */
-    explicit RBCursiveRegions(const CarveConfig& config = CarveConfig())
+    explicit RBCursiveRegions(const CarveConfig& config)
         : config_(config) {}
     
     /**

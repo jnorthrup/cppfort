@@ -1,9 +1,8 @@
 // Simple Content Address Storage (CAS) helper for cpp2 markdown blocks.
-// Implementation order: BLAKE3 -> OpenSSL SHA256 -> deterministic fallback
-// The project aims to use a BLAKE-based CAS (e.g., BLAKE3) for identity and
-// canonicalization. This helper selects BLAKE3 if available and falls back
-// to OpenSSL's SHA256, or a deterministic non-cryptographic fallback for
-// systems lacking those libraries.
+// Implementation: Adler-64 non-cryptographic CAS by default
+// The project now uses a lightweight adler64-based CAS for deterministic
+// content identifiers. This avoids an external dependency on BLAKE3 while
+// still providing a stable content identifier for markdown block rewriting.
 
 #pragma once
 
@@ -14,8 +13,8 @@ namespace cppfort {
 namespace stage0 {
 
 // Compute a CAS identifier for the provided content. The returned string
-// is a hex ASCII string representing the content hash. For now, this uses
-// a deterministic fallback (std::hash) to avoid adding a heavy dependency.
+// is a hex ASCII string representing the adler64 digest (prefixed with
+// "adler64:").
 std::string compute_cas(std::string_view content);
 
 // Replace occurrences of "```cpp2 ... ```" blocks in `src` with a NOOP C++

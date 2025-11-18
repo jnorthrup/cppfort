@@ -1,7 +1,9 @@
 // Thin wrapper to expose MLIR region node to stage0
 #pragma once
 
-#include <mlir_region_node.h>
+// Don't include the system MLIR header; provide a lightweight shim through
+// `mlir_region_node.h` which aliases our RegionNode into the `mlir` namespace
+// when the real MLIR headers are not available.
 
 #pragma once
 
@@ -14,6 +16,7 @@
 
 namespace cppfort {
 namespace ir {
+namespace mlir {
 
 /**
  * Forward declarations for MLIR mapping stubs
@@ -128,13 +131,41 @@ public:
      * Operations and values - SSA form preparation
      */
     size_t addOperation(Operation op) {
+        // Add operation and return its index; additionally update SSA links
         operations_.push_back(std::move(op));
-        return operations_.size() - 1;
+        size_t idx = operations_.size() - 1;
+        // Wire operand uses: ensure each referenced value records this use
+        for (size_t operand_idx : operations_[idx].operand_indices) {
+            if (operand_idx < values_.size()) {
+                values_[operand_idx].use_ops.push_back(idx);
+            }
+        }
+        // If the operation declares a result index which points to an existing
+        // value, set the value's defining_op
+        if (operations_[idx].result_index != SIZE_MAX &&
+            operations_[idx].result_index < values_.size()) {
+            values_[operations_[idx].result_index].defining_op = idx;
+        }
+        return idx;
     }
     
     size_t addValue(Value val) {
+        // Add a value and wire SSA links between the value and any referenced op
         values_.push_back(std::move(val));
-        return values_.size() - 1;
+        size_t idx = values_.size() - 1;
+        // If this value claims to be defined by an existing operation, set that
+        // operation's result index to point back to this value
+        if (values_[idx].defining_op != SIZE_MAX && values_[idx].defining_op < operations_.size()) {
+            operations_[values_[idx].defining_op].result_index = idx;
+        }
+        // If this value has stated uses, for each use operation ensure the op
+        // lists this value as an operand
+        for (size_t use_op : values_[idx].use_ops) {
+            if (use_op < operations_.size()) {
+                operations_[use_op].operand_indices.push_back(idx);
+            }
+        }
+        return idx;
     }
     
     const std::vector<Operation>& getOperations() const { return operations_; }
@@ -310,5 +341,6 @@ struct ValueStub {
         : type(std::move(val_type)), name(std::move(val_name)) {}
 };
 
+} // namespace mlir
 } // namespace ir
 } // namespace cppfort

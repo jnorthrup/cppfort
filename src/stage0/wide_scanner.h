@@ -21,6 +21,13 @@ namespace cppfort::ir {
 // Integrated with XAI 4.2 orbit system (5-anchor tuples)
 class WideScanner {
 public:
+    // Lightweight configuration for future semantic pipeline integration.
+    // Currently only exposes max_orbit_depth but can be extended without
+    // breaking existing call sites.
+    struct ScanConfig {
+        size_t max_orbit_depth = 100;
+    };
+
     // Anchor point structure
     struct AnchorPoint {
         size_t position;      // Byte position in source
@@ -93,6 +100,8 @@ public:
 
     // Constructor to initialize OrbitContext
     WideScanner(size_t max_orbit_depth = 100) : orbit_context_(max_orbit_depth) {}
+    explicit WideScanner(const ScanConfig& config)
+        : orbit_context_(config.max_orbit_depth) {}
 
 private:
     // Orbit context for tracking structural balance during scanning

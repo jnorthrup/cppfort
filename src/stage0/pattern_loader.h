@@ -57,6 +57,7 @@ public:
     PatternLoader() = default;
 
     bool load_yaml(const std::string& path);
+    bool load_patterns(const std::string& path) { return load_yaml(path); }
 
     const std::vector<PatternData>& patterns() const { return patterns_; }
     std::vector<PatternData>& patterns() { return patterns_; }

@@ -23,6 +23,10 @@ public:
 
     bool load_patterns(const std::string& path);
 
+    void initialize_patterns(const PatternLoader& loader) { loader_ = loader; }
+
+    std::optional<OrbitIterator> process(std::string_view source);
+
     size_t pattern_count() const { return loader_.pattern_count(); }
 
     const std::vector<PatternData>& patterns() const { return loader_.patterns(); }

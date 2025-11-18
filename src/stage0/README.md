@@ -79,6 +79,23 @@ indicates imbalanced confix depth and should be treated as a “needs reviewer�
 - Provide tiny helper utilities for translating lattice masks into human-readable tags.
 - Restore regression tests focused solely on scanner accuracy (golden boundary snapshots).
 - Gate optional builds for Stage 1/Stage 2 behind explicit CMake flags if they need to return.
+- Clarify CAS behavior for `cpp2` markdown block rewriting: `compute_cas` uses BLAKE3 when available,
+  falling back to OpenSSL SHA256 or to a deterministic std::hash-based fallback. Use the CMake
+  option `USE_BLAKE3` to disable/enable attempts to find/consume a system BLAKE3 library.
+
+## CAS / Markdown Block Handling
+
+Stage 0 ships a small helper `cpp2_cas` which rewrites markdown code fences that begin with
+the characters `````cpp2```` into `// CAS:<id>` style comments for downstream tools. The CAS is intended to
+be a stable, content-identified hash. This project now uses a lightweight, deterministic
+`adler64` digest for CAS by default, avoiding an external dependency on BLAKE3. OpenSSL
+SHA256 support remains available if explicitly enabled.
+
+## Quick JSON <-> YAML Dogfooding
+
+The project contains lightweight JSON/YAML scanning and loaders under `src/stage0/` and
+`tools/json_yaml_roundtrip.py` can be used to validate two-way serialization during
+local testing (requires `pyyaml` to be installed).
 
 ---
 

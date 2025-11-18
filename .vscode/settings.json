@@ -62,6 +62,22 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "stacktrace": "cpp"
+        "stacktrace": "cpp",
+        "cassert": "cpp",
+        "coroutine": "cpp",
+        "iomanip": "cpp",
+        "fstream": "cpp",
+        "__hash_table": "cpp",
+        "cwctype": "cpp",
+        "deque": "cpp",
+        "istream": "cpp",
+        "queue": "cpp",
+        "sstream": "cpp",
+        "stack": "cpp",
+        "unordered_map": "cpp",
+        "__node_handle": "cpp",
+        "execution": "cpp",
+        "print": "cpp",
+        "thread": "cpp"
     }
 }

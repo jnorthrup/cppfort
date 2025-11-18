@@ -27,6 +27,7 @@ int main() {
     root->addChild(std::move(child1));
 
     // Serialize to YAML
+#ifdef HAVE_YAMLCPP
     YAML::Node y = graphNodeToYaml(*root);
     std::string emitted = YAML::Dump(y);
     std::cout << "YAML: " << emitted << "\n";
@@ -36,6 +37,7 @@ int main() {
     assert(parsed && parsed->id == "root");
     assert(!parsed->children.empty());
     assert(parsed->children[0]->id == "child1");
+#endif
 
 #ifdef HAVE_NLOHMANN_JSON
     auto j = graphNodeToJson(*root);

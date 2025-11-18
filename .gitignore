@@ -1,5 +1,6 @@
 build/
 build_ninja/
+build*/
 build-*/
 *.o
 *.a
@@ -72,6 +73,36 @@ __pycache__/
 # Stage output directories
 stage1_out/
 stage1_out/*
+
+# Regression tests: compiled/test-run outputs that should never be committed
+# Keep test sources (*.cpp2, *.cpp, *.h, *.md, *.txt, *.bat, *.sh) tracked — ignore everything else.
+/tests/regression-tests/**
+!/tests/regression-tests/**/*.cpp2
+!/tests/regression-tests/**/*.cpp
+!/tests/regression-tests/**/*.h
+!/tests/regression-tests/**/*.md
+!/tests/regression-tests/**/*.txt
+!/tests/regression-tests/**/*.bat
+!/tests/regression-tests/**/*.sh
+# Common regression test output artifacts
+/tests/regression-tests/**/test-results/
+/tests/regression-tests/**/test-results/*
+/tests/regression-tests/**/*.out
+/tests/regression-tests/**/*.err
+/tests/regression-tests/**/*.exe
+/tests/regression-tests/**/*.bin
+/tests/regression-tests/**/dSYM/
+/tests/regression-tests/**/*.dSYM
+/tests/regression-tests/**/simple_test*
+/tests/regression-tests/**/*_out
+/tests/**/test-results/
+/tests/**/test-results/*
+/tests/**/.dSYM/
+/tests/**/simple_test*
+/tests/**/run-tests.sh
+/tests/**/rm-empty-files.*
+/tests/**/regression_log.txt
+/tests/**/regression_git_log.txt
 
 # Logs and test results
 test-results/

@@ -1,5 +1,7 @@
 #include "rbcursive.h"
-
+#include "graph_matcher.h"
+#include "rbcursive_regions.h"
+#include "iterpeeps.h"
 #include "evidence.h"
 
 #include <algorithm>
@@ -9,6 +11,8 @@
 
 namespace cppfort {
 namespace ir {
+
+using cppfort::stage0::ConfixType;
 
 namespace {
 

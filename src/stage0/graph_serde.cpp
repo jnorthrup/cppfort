@@ -1,6 +1,8 @@
 #include "graph_serde.h"
 #include "graph_node.h"
+#ifdef HAVE_YAMLCPP
 #include <yaml-cpp/yaml.h>
+#endif
 #include <sstream>
 
 #ifdef HAVE_NLOHMANN_JSON
@@ -30,6 +32,7 @@ static GraphNodeType stringToGraphNodeType(const std::string& s) {
     return GraphNodeType::CONFIX;
 }
 
+#ifdef HAVE_YAMLCPP
 YAML::Node graphNodeToYaml(const GraphNode& node) {
     YAML::Node n;
     n["type"] = graphNodeTypeToString(node.type);
@@ -77,7 +80,9 @@ YAML::Node graphNodeToYaml(const GraphNode& node) {
 
     return n;
 }
+#endif
 
+#ifdef HAVE_YAMLCPP
 std::unique_ptr<GraphNode> yamlToGraphNode(const YAML::Node& n) {
     if (!n.IsMap()) return nullptr;
     std::string type_str = n["type"].as<std::string>("CONFIX");
@@ -123,6 +128,7 @@ std::unique_ptr<GraphNode> yamlToGraphNode(const YAML::Node& n) {
 
     return node;
 }
+#endif
 
 #ifdef HAVE_NLOHMANN_JSON
 json graphNodeToJson(const GraphNode& node) {

@@ -1,9 +1,10 @@
 
 #include <vector>
-#include <cstdio>
 
 main: () -> int = {
-    v : std::vector<int> = {1, 2, 3, 4, 5, -999};
+    std::set_terminate(std::abort);
+
+    v : std::vector = (1, 2, 3, 4, 5, -999);
     v.pop_back();
-    printf("%d\n", v[4]);
+    std::cout << v[5] << "\n";
 }

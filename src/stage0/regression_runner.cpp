@@ -71,8 +71,15 @@ int transpile_direct(const fs::path& input_file,
         }
 
         // Generate output
-        cppfort::stage0::Cpp2Emitter emitter;
-        std::string output = emitter.emit(*result);
+        cppfort::stage0::CPP2Emitter emitter;
+        if (!result) {
+            log << "    ERROR: Pipeline processing failed\n";
+            return 1;
+        }
+        cppfort::stage0::OrbitIterator iterator = *result;
+        std::ostringstream oss;
+        emitter.emit(iterator, source, oss, pattern_loader.patterns());
+        std::string output = oss.str();
 
         // Write output file
         std::ofstream out(output_file, std::ios::binary);
@@ -104,7 +111,7 @@ int compile_direct(const fs::path& cpp_file,
         // For now, we'll still use system() for compilation as it's external
         // In a full integration, this would call the compiler API directly
         std::string cmd = "c++ -std=c++20 -I include " + cpp_file.string() +
-                         " -o " + exe_file.string() + " 2>&1";
+                 " -o " + exe_file.string() + " < /dev/null 2>&1";
 
         std::array<char, 128> buffer;
         std::string result;
@@ -141,7 +148,7 @@ int execute_direct(const fs::path& exe_file, std::ostream& log) {
 
         // For direct execution, we need to use fork/exec
         // This is platform-specific; for now use popen to capture output
-        std::string cmd = exe_file.string() + " 2>&1";
+        std::string cmd = exe_file.string() + " < /dev/null 2>&1";
 
         std::array<char, 128> buffer;
         std::string output;
@@ -179,7 +186,12 @@ int execute_direct(const fs::path& exe_file, std::ostream& log) {
 static std::string run_cmd_capture(const std::string& cmd, int& exit_code) {
     std::array<char, 256> buffer;
     std::string result;
-    FILE* pipe = popen(cmd.c_str(), "r");
+    // Make sure we don't block consuming stdin
+    std::string safe_cmd = cmd;
+    if (safe_cmd.find("< /dev/null") == std::string::npos) {
+        safe_cmd += " < /dev/null";
+    }
+    FILE* pipe = popen(safe_cmd.c_str(), "r");
     if (!pipe) {
         exit_code = -1;
         return result;

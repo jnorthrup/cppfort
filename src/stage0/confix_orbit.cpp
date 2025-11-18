@@ -1,6 +1,7 @@
 #include "confix_orbit.h"
 
 #include <algorithm>
+#include <iostream>
 #include <memory>
 #include <vector>
 #include <limits>
@@ -62,6 +63,7 @@ bool ConfixOrbit::validate_pair(char open, char close) const {
 }
 
 void ConfixOrbit::parameterize_children(const PatternData& pattern) {
+    std::cerr << "DEBUG param: entry\n";
     Orbit::parameterize_children(pattern);
 
     // Create function children based on grammar_modes bitmask
@@ -82,6 +84,7 @@ void ConfixOrbit::parameterize_children(const PatternData& pattern) {
 
     // Set patterns from signature_patterns if available
     if (!pattern.signature_patterns.empty()) {
+        std::cerr << "DEBUG clog: pattern has signature_patterns[0]=" << pattern.signature_patterns[0] << "\n";
         if (c_child) c_child->set_pattern(pattern.signature_patterns[0]);
         if (cpp_child) cpp_child->set_pattern(pattern.signature_patterns[0]);
         if (cpp2_child) cpp2_child->set_pattern(pattern.signature_patterns[0]);
@@ -137,6 +140,7 @@ void ConfixOrbit::parameterize_children(const PatternData& pattern) {
 
     for (size_t idx = 0; idx < evidence_count(); ++idx) {
         const EvidenceSpan* span = get_evidence(idx);
+        std::cerr << "DEBUG param: evidence idx=" << idx << " span=" << (span ? span->content : std::string("<null>")) << "\n";
         if (!span) {
             continue;
         }

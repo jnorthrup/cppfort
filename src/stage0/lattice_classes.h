@@ -236,3 +236,15 @@ inline std::array<int, 12> get_confix_depths(const TypeEvidence& evidence) {
 }
 
 } // namespace cppfort::stage0
+
+// Temporary LatticeClasses for heuristic_grid.h
+enum LatticeClasses : uint16_t {
+    DIGIT = 1 << 1,
+    ALPHA = 1 << 2,
+    PUNCTUATION = 1 << 3,
+    STRUCTURAL = 1 << 5,
+    SEMICOLON = 1 << 3, // same as PUNCTUATION
+    IDENTIFIER = 1 << 2, // same as ALPHA
+    QUOTE = 1 << 7,
+    NUMERIC_OP = 1 << 4,
+};

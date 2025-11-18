@@ -1,0 +1,21 @@
+# ninja log v7
+2	19	1763472838598697362	/Users/jim/work/cppfort/patterns/semantic_units.json	f0cf14250cbf29a1
+20	625	1763472838600024065	src/stage0/CMakeFiles/stage0_lib.dir/packrat_cache.cpp.o	81df01a420433e6f
+20	717	1763472838600237105	src/stage0/CMakeFiles/stage0_lib.dir/complete_pattern_engine.cpp.o	678c350464e6d006
+20	947	1763472838600135981	src/stage0/CMakeFiles/stage0_lib.dir/advanced_graph_solutions.cpp.o	9fc59cfc865ac40d
+6	547	1763472845078654176	src/stage0/CMakeFiles/stage0_lib.dir/correlator.cpp.o	c3fb98e2e38eb787
+6	565	1763472845078776384	src/stage0/CMakeFiles/stage0_lib.dir/cpp2_cas.cpp.o	38a52548cb51fc7
+6	1366	1763472845078108678	src/stage0/CMakeFiles/stage0_lib.dir/json_yaml_plasma_transpiler.cpp.o	9daf52df2809a10b
+6	1458	1763472845078505052	src/stage0/CMakeFiles/stage0_lib.dir/confix_orbit.cpp.o	7dc7869b4a4ab92f
+547	1474	1763472845619604237	src/stage0/CMakeFiles/stage0_lib.dir/cpp2_emitter.cpp.o	82a4620016c041f8
+565	1617	1763472845637096832	src/stage0/CMakeFiles/stage0_lib.dir/cpp2_key_resolver.cpp.o	ba0968d783522d14
+1458	1957	1763472846530103440	src/stage0/CMakeFiles/stage0_lib.dir/debug_helpers.cpp.o	3dc84587e732c226
+1617	2152	1763472846689456366	src/stage0/CMakeFiles/stage0_lib.dir/function_orbit.cpp.o	2ce41cd377337c58
+1366	2334	1763472846438119986	src/stage0/CMakeFiles/stage0_lib.dir/csv_pattern_loader.cpp.o	59e1d23fbc60ae96
+1474	2364	1763472846546150166	src/stage0/CMakeFiles/stage0_lib.dir/dense_orbit_builder.cpp.o	8e6ca6a5aa2e1fb9
+1957	2539	1763472847029878003	src/stage0/CMakeFiles/stage0_lib.dir/grammar_tree.cpp.o	d2dd510f6ea176b2
+2152	2607	1763472847224429993	src/stage0/CMakeFiles/stage0_lib.dir/graph_matcher.cpp.o	86b60a36c70bea2a
+2334	3056	1763472847406639742	src/stage0/CMakeFiles/stage0_lib.dir/graph_nodes.cpp.o	68e769592daa7f9b
+2539	3221	1763472847611008774	src/stage0/CMakeFiles/stage0_lib.dir/heap_limiter.cpp.o	265490373268ff38
+2607	3704	1763472847679544282	src/stage0/CMakeFiles/stage0_lib.dir/json_orbit_scanner.cpp.o	eb765e716f7168a4
+3056	3996	1763472848128322431	src/stage0/CMakeFiles/stage0_lib.dir/json_pattern_loader.cpp.o	e302a66cefe34e05

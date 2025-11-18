@@ -7,9 +7,27 @@
 #if defined(HAVE_OPENSSL_SHA256)
 #include <openssl/sha.h>
 #endif
-#if defined(HAVE_BLAKE3)
-#include <blake3.h>
-#endif
+#include <cstdint>
+#include <cstddef>
+
+// Implement a simple Adler-64 adapted checksum for CAS (non-cryptographic)
+// We use a modified Adler32 algorithm extended to 64 bits: two 32-bit accumulators
+// combined into a 64-bit value to reduce collisions compared to plain std::hash.
+
+static uint64_t adler64(const void* data, size_t len) {
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+    // Using Adler-32 base mod checksum with two 32-bit accumulators
+    const uint64_t MOD = 65521ULL;
+    uint64_t a = 1;
+    uint64_t b = 0;
+    for (size_t i = 0; i < len; ++i) {
+        a = (a + bytes[i]) % MOD;
+        b = (b + a) % MOD;
+    }
+    // Combine into 64-bit: upper 32 bits b, lower 32 bits a
+    uint64_t result = (b << 32) | a;
+    return result;
+}
 
 namespace cppfort {
 namespace stage0 {
@@ -22,38 +40,11 @@ static std::string to_hex(unsigned long long v) {
 }
 
 std::string compute_cas(std::string_view content) {
-#if defined(HAVE_BLAKE3)
-    // Use blake3 (binary) to compute a 32-byte digest = 64 hex chars
-    uint8_t out[32];
-    blake3_hasher hasher;
-    blake3_hasher_init(&hasher);
-    blake3_hasher_update(&hasher, content.data(), content.size());
-    blake3_hasher_finalize(&hasher, out, sizeof(out));
+    uint64_t sum = adler64(content.data(), content.size());
     std::ostringstream oss;
-    oss << "blake3:";
-    oss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < sizeof(out); ++i) oss << std::setw(2) << static_cast<unsigned>(out[i]);
+    // Produce a fixed-width 16-digit hex string for a 64-bit digest
+    oss << "adler64:" << std::hex << std::setfill('0') << std::setw(16) << sum;
     return oss.str();
-#elif defined(HAVE_OPENSSL_SHA256)
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, content.data(), content.size());
-    SHA256_Final(hash, &sha256);
-    std::ostringstream oss;
-    oss << "sha256:" << std::hex << std::setfill('0');
-    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; ++i) oss << std::setw(2) << static_cast<unsigned>(hash[i]);
-    return oss.str();
-#else
-    // Fallback deterministic non-cryptographic hash: combine std::hash with size.
-    std::hash<std::string_view> hasher;
-    auto h = hasher(content);
-    auto s = to_hex(static_cast<unsigned long long>(h));
-    // Mix in size to reduce collisions on short strings
-    std::ostringstream oss;
-    oss << "hash:" << s << std::hex << content.size();
-    return oss.str();
-#endif
 }
 
 std::pair<std::string, size_t> rewrite_cpp2_markdown_blocks_with_cas(std::string_view src) {

@@ -93,6 +93,7 @@ bool PatternLoader::load_yaml(const std::string& path) {
 
     std::ifstream input(path);
     if (!input.is_open()) {
+        std::cerr << "PatternLoader: Failed to open file: " << path << std::endl;
         return false;
     }
 
@@ -137,9 +138,29 @@ bool PatternLoader::load_yaml(const std::string& path) {
 
         // Check for list items first (before key-value pairs)
         if (trimmed.rfind("-", 0) == 0) {
-            if (!current_section.empty()) {
-                // List item
-                std::string item = trim(trimmed.substr(1));
+            // List item
+            std::string item = trim(trimmed.substr(1));
+
+            // Check if this list item contains a key-value pair (e.g., "- name: function_test")
+            if (auto colon_pos = item.find(':'); colon_pos != std::string::npos) {
+                std::string key = trim(item.substr(0, colon_pos));
+                std::string value = trim(item.substr(colon_pos + 1));
+
+                if (key == "name") {
+                    current.name = strip_quotes(value);
+                } else if (key == "use_alternating") {
+                    current.use_alternating = (value == "true" || value == "1");
+                } else if (key == "weight") {
+                    if (auto parsed = parse_double_value(value)) {
+                        current.weight = *parsed;
+                    }
+                } else if (key == "priority") {
+                    if (auto parsed = parse_int_value(value)) {
+                        current.priority = *parsed;
+                    }
+                }
+            }
+            else if (!current_section.empty()) {
                 // Strip comment first (before stripping quotes)
                 size_t comment_pos = item.find('#');
                 if (comment_pos != std::string::npos) {

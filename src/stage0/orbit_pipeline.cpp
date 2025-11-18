@@ -121,20 +121,21 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::make_base_orbit(const OrbitFragment&
         }
     }
 
-    // Create a graph node for this confix orbit and attach to the orbit
-    auto gnode = std::make_unique<GraphNode>(GraphNodeType::CONFIX);
-    gnode->start_pos = fragment.start_pos;
-    gnode->end_pos = fragment.end_pos;
-    gnode->confidence = orbit->confidence;
-    gnode->payload = ConfixPayload{open_char, close_char};
-    orbit->set_graph_node(gnode.get());
-    // As OrbitPipeline is const here, we can't append to graph_nodes_ directly; caller may own graph nodes
+    // We do not create a GraphNode here because ownership needs to be kept by the caller
+    // Attach graph_node to caller-managed storage later; return orbit with null graph_node
     // Return orbit with graph node pointer, ownership managed elsewhere by caller
     return orbit;
 }
 
 std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<ConfixOrbit> base_orbit, const OrbitFragment& fragment, std::string_view source) const {
-    
+    std::cerr << "DEBUG: evaluate_fragment entered for fragment [" << fragment.start_pos << ", " << fragment.end_pos << ")\n";
+    if (base_orbit) {
+        std::cerr << "DEBUG: base_orbit ptr=" << base_orbit.get() << " start=" << base_orbit->start_pos << " end=" << base_orbit->end_pos << " confidence=" << base_orbit->confidence << "\n";
+        std::cerr << "DEBUG: graph_node ptr=" << base_orbit->graph_node() << " combinator ptr=" << base_orbit->get_combinator() << "\n";
+    } else {
+        std::cerr << "DEBUG: base_orbit is null!\n";
+    }
+
     if (auto* confix_cached = base_orbit.get()) {
         auto apply_memo = [&](const ConfixOrbit::CombinatorMemento& memo) -> std::unique_ptr<ConfixOrbit> {
             const auto& patterns = loader_.patterns();
@@ -169,6 +170,17 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
     
     // Try speculation if we have a combinator with patterns
     if (auto* combinator = base_orbit->get_combinator()) {
+        // Sanity checks for sanitized builds
+#ifdef STAGE0_SANITIZE
+        if (fragment.start_pos >= source.size() || fragment.end_pos > source.size() || fragment.start_pos >= fragment.end_pos) {
+            std::fprintf(stderr, "Sanitize: invalid fragment bounds: [%zu, %zu) source=%zu\n", fragment.start_pos, fragment.end_pos, source.size());
+            std::abort();
+        }
+        if (base_orbit->start_pos != fragment.start_pos || base_orbit->end_pos != fragment.end_pos) {
+            std::fprintf(stderr, "Sanitize: base_orbit start/end mismatch: orbit=[%zu,%zu) fragment=[%zu,%zu)\n", base_orbit->start_pos, base_orbit->end_pos, fragment.start_pos, fragment.end_pos);
+            std::abort();
+        }
+#endif
         // Extract fragment text for pattern matching
         std::string_view fragment_text = source.substr(fragment.start_pos, fragment.end_pos - fragment.start_pos);
         std::cerr << "DEBUG evaluate_fragment: Speculating on fragment [" << fragment.start_pos << ", " << fragment.end_pos << "): '"
@@ -194,7 +206,9 @@ std::unique_ptr<ConfixOrbit> OrbitPipeline::evaluate_fragment(std::unique_ptr<Co
 
             if (pattern_it != patterns.end()) {
                 // Use the speculated pattern
+                std::cerr << "DEBUG evaluate_fragment: applying parameterize_children for pattern=" << pattern_it->name << "\n";
                 base_orbit->parameterize_children(*pattern_it);
+                std::cerr << "DEBUG evaluate_fragment: parameterize_children done for pattern=" << pattern_it->name << "\n";
                 base_orbit->set_selected_pattern(best_match->pattern_name);
                 base_orbit->set_selected_grammar(classify_grammar_from_pattern(*pattern_it));
 
@@ -371,6 +385,12 @@ void OrbitPipeline::cache_orbit_state(const ConfixOrbit& orbit) const {
         const uint64_t key = make_memento_key(span_memo->start, span_memo->end);
         span_memos_[key] = *span_memo;
     }
+}
+
+std::optional<OrbitIterator> OrbitPipeline::process(std::string_view source) {
+    // TODO: implement full orbit pipeline processing
+    // For now, return empty iterator
+    return OrbitIterator();
 }
 
 } // namespace cppfort::stage0

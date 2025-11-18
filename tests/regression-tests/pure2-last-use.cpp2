@@ -348,7 +348,7 @@ issue_857_8: @struct type = {
 issue_857_9: @struct type = {
   this: issue_857_8;
 
-  // Error: Compiler limitation:
+  // Error: Cppfront limitation:
   // <https://eel.is/c++draft/class.mfct.non.static#2.sentence-1>.
 //f0: (move this) = f_copy(a);
 //f1: (move this) = _ = b();
