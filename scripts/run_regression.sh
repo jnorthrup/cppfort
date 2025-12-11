@@ -50,51 +50,36 @@ fi
 # Create corpus directory
 mkdir -p "$CORPUS_DIR"
 
-# Run regression runner
-echo "Running regression comparison..."
+# Run regression runner (corpus builder + rule extractor)
+echo "Running regression corpus builder..."
 echo "  Cppfront tests: $CPPFRONT_TESTS"
 echo "  Cppfront binary: $CPPFRONT_BIN"
-echo "  Cppfort binary: $CPPFORT_BIN"
 echo "  Corpus output: $CORPUS_DIR"
 echo ""
 
 "$BUILD_DIR/tests/regression_runner" \
     "$CPPFRONT_TESTS" \
     "$CPPFRONT_BIN" \
-    "$CPPFORT_BIN" \
     "$CORPUS_DIR"
 
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then
-    echo -e "${GREEN}Regression tests completed successfully${NC}"
+    echo -e "${GREEN}Corpus generation completed successfully${NC}"
     echo ""
     echo "Corpus generated at: $CORPUS_DIR"
-    echo "  - cppfront/: Reference outputs from cppfront"
-    echo "  - cppfort/: Outputs from cppfort"
-    echo "  - diffs/: Isomorphic comparison results"
-    echo "  - summary.csv: Statistical summary"
-    echo "  - sha256_database.txt: File integrity checksums"
+    echo "  - outputs/: Cppfront transpiled outputs"
+    echo "  - sha256_database.txt: Input/output integrity checksums"
+    echo "  - transpile_rules.txt: Extracted transformation patterns"
+    echo "  - report.txt: Summary report"
 else
-    echo -e "${RED}Regression tests failed with exit code $RESULT${NC}"
+    echo -e "${RED}Corpus generation failed with exit code $RESULT${NC}"
     exit $RESULT
 fi
 
-# Display summary if available
-if [ -f "$CORPUS_DIR/summary.csv" ]; then
+# Display report if available
+if [ -f "$CORPUS_DIR/report.txt" ]; then
     echo ""
-    echo "=== Summary Statistics ==="
-    # Count lines in summary (excluding header)
-    TOTAL=$(tail -n +2 "$CORPUS_DIR/summary.csv" | wc -l)
-    BOTH_SUCCESS=$(tail -n +2 "$CORPUS_DIR/summary.csv" | awk -F, '$2=="1" && $3=="1"' | wc -l)
-    EQUIVALENT=$(tail -n +2 "$CORPUS_DIR/summary.csv" | awk -F, '$4=="1"' | wc -l)
-
-    echo "Total test cases: $TOTAL"
-    echo "Both transpilers succeeded: $BOTH_SUCCESS"
-    echo "Semantically equivalent: $EQUIVALENT"
-
-    if [ "$BOTH_SUCCESS" -gt 0 ]; then
-        EQUIV_PCT=$(awk "BEGIN {printf \"%.1f\", ($EQUIVALENT / $BOTH_SUCCESS) * 100}")
-        echo "Equivalence rate: $EQUIV_PCT%"
-    fi
+    echo "=== Report ==="
+    cat "$CORPUS_DIR/report.txt"
 fi
