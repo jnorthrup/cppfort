@@ -1,0 +1,8 @@
+// Simple hello world example in Cpp2
+import std;
+
+func main() -> i32 {
+    let message = "Hello, World!";
+    std::print("{}\n", message);
+    return 0;
+}

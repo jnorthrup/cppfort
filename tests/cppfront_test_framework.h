@@ -1,0 +1,80 @@
+#pragma once
+
+#include <string>
+#include <vector>
+#include <filesystem>
+#include <map>
+#include <functional>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
+
+namespace cppfort::tests {
+
+struct TestFile {
+    std::string path;
+    std::string category;
+    std::string name;
+    std::string content;
+    std::string sha256_hash;
+    bool should_pass;
+    size_t size_bytes;
+};
+
+struct TestResult {
+    std::string test_name;
+    bool passed;
+    std::string error_message;
+    std::string transpiler_output;
+    std::chrono::milliseconds duration;
+    std::string category;
+};
+
+class TestCollector {
+public:
+    static std::vector<TestFile> collect_test_files(const std::string& test_dir);
+    static std::string calculate_sha256(const std::string& content);
+    static std::string extract_category(const std::filesystem::path& path);
+    static std::string extract_name(const std::filesystem::path& path);
+    static bool should_pass_by_name(const std::string& name);
+};
+
+class TestRunner {
+private:
+    std::vector<TestFile> test_files_;
+    std::map<std::string, std::function<TestResult(const TestFile&)>> category_handlers_;
+    std::vector<TestResult> results_;
+
+public:
+    TestRunner(const std::vector<TestFile>& test_files);
+
+    void register_category_handler(const std::string& category,
+                                 std::function<TestResult(const TestFile&)> handler);
+
+    void run_all_tests();
+    void run_category(const std::string& category);
+    void run_single_test(const std::string& test_name);
+
+    const std::vector<TestResult>& get_results() const { return results_; }
+
+    void print_summary() const;
+    void print_detailed_results() const;
+
+private:
+    TestResult run_transpiler_test(const TestFile& test_file);
+    TestResult handle_pure2_test(const TestFile& test_file);
+    TestResult handle_mixed_test(const TestFile& test_file);
+
+    void register_default_handlers();
+};
+
+class SHA256Verifier {
+public:
+    static bool verify_file_hash(const TestFile& test_file);
+    static bool verify_all_hashes(const std::vector<TestFile>& test_files);
+    static std::map<std::string, std::string> load_hash_database(const std::string& db_path);
+    static void save_hash_database(const std::string& db_path,
+                                 const std::vector<TestFile>& test_files);
+};
+
+} // namespace cppfort::tests
