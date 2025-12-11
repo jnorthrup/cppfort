@@ -24,6 +24,11 @@ the backend starts with levering Java: the Evaluator (first appears in Chapter
 10) directly slowly interprets the SoN IR.  Code-gen first appears in Chapter
 19.
 
+NOTE: The Sea-of-Nodes parser implementation in this repository uses the
+project's `Lexer` to produce tokens and a token-based parsing pipeline rather
+than ad-hoc character scanning. This keeps parsing logic consistent and
+minimizes textual dependencies.
+
 
 ## Chapters
 

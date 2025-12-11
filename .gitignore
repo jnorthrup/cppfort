@@ -52,10 +52,9 @@ Makefile
 .ninja_deps
 .ninja_log
 
-# MLIR
-*.mlir
-*.td
+# MLIR generated files
 *.inc
+# MLIR source files (.td) are tracked
 
 # Coverage
 *.gcov

@@ -12,6 +12,11 @@
 #include "metafunction_processor.hpp"
 #include "contract_processor.hpp"
 #include "utils.hpp"
+#include "mlir_cpp2_dialect.hpp"
+
+// Forward declaration for the Sea of Nodes codegen helper
+namespace cppfort::mlir_son { class SeaOfNodesBuilder; }
+std::string generate_cpp_from_sea_of_nodes(const cppfort::mlir_son::SeaOfNodesBuilder& builder);
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -49,8 +54,24 @@ int main(int argc, char* argv[]) {
         cpp2_transpiler::ContractProcessor contract_processor;
         contract_processor.process(ast);
 
+        // Default (AST -> Cpp1) code generation
         cpp2_transpiler::CodeGenerator code_generator;
         auto cpp1_code = code_generator.generate(ast);
+
+        // If --son flag provided, use Sea of Nodes pipeline instead
+        for (int i = 1; i < argc; ++i) {
+            if (std::string_view(argv[i]) == "--son") {
+                // Convert AST to Sea of Nodes and schedule
+                cppfort::mlir_son::ASTToSeaOfNodes converter;
+                auto graph = converter.convert(ast);
+                cppfort::mlir_son::SeaOfNodesBuilder builder;
+                // Merge CRDT graph produced by the converter into the builder
+                builder.merge_graph(graph);
+                builder.schedule_graph();
+                // generate C++ from SoN (fallback)
+                cpp1_code = generate_cpp_from_sea_of_nodes(builder);
+            }
+        }
 
         std::ofstream output_file(output_filename);
         if (!output_file) {
