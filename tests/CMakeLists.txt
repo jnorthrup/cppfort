@@ -42,6 +42,13 @@ add_executable(generate_test_hashes
 )
 target_include_directories(generate_test_hashes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Create regression runner (cppfront vs cppfort comparison)
+add_executable(regression_runner
+    regression_runner.cpp
+    sha256.cpp
+)
+target_include_directories(regression_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Existing tests
 add_executable(cpp2_tests test_main.cpp)
 add_executable(cppfront_regression_tests cppfront_regression_tests.cpp)
@@ -98,7 +105,7 @@ add_custom_target(generate_hashes
 )
 
 # Install targets
-install(TARGETS cppfront_full_regression generate_test_hashes
+install(TARGETS cppfront_full_regression generate_test_hashes regression_runner
     RUNTIME DESTINATION bin
 )
 
