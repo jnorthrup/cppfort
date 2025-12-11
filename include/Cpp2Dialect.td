@@ -1,6 +1,6 @@
-#ifndef CPP2_DIALECT
-#define CPP2_DIALECT
+#pragma once
 
+ 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -209,4 +209,4 @@ def Cpp2_ReturnOp : Cpp2_Op<"return", [Terminator]> {
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
-#endif // CPP2_DIALECT
+ 
