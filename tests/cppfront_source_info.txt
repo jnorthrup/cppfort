@@ -1,0 +1,16 @@
+cppfront source repository information
+=======================================
+
+Repository: https://github.com/hsutter/cppfront
+Clone location: /Users/jim/src/cppfront
+Commit: 1a6062a366c4e58ede578fbce02ef271245685a8
+Date: 2025-10-17 16:00:43 -0700
+
+Test files copied: 189
+Source directory: /Users/jim/src/cppfront/regression-tests
+Target directory: /Users/jim/work/cppfort/tests/cppfront_regression
+Checksum file: /Users/jim/work/cppfort/tests/cppfront_tests_sha256.txt
+
+All .cpp2 files from cppfront regression-tests directory have been copied.
+SHA256 checksums computed for verification.
+No code execution or transpilation performed.
