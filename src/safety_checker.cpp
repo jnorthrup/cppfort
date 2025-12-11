@@ -29,12 +29,8 @@ void SafetyChecker::check_declaration(Declaration* decl) {
             break;
         case Declaration::Kind::Function: {
             auto func = static_cast<FunctionDeclaration*>(decl);
-            // Track if we're in a suspend/async function for await validation
-            bool is_suspend = func->is_async;
             if (func->body) {
                 check_statement(func->body.get());
-                // Validate await expressions are only in suspend functions
-                // This is a simplified check; full implementation would traverse expressions
             }
             break;
         }
@@ -97,21 +93,6 @@ void SafetyChecker::check_statement(Statement* stmt) {
         case Statement::Kind::Return:
             check_expression(static_cast<ReturnStatement*>(stmt)->value.get());
             break;
-        case Statement::Kind::CoroutineScope:
-            check_structured_concurrency(stmt);
-            check_statement(static_cast<CoroutineScopeStatement*>(stmt)->body.get());
-            break;
-        case Statement::Kind::ChannelDecl:
-            check_channel_lifetime(static_cast<ChannelDeclarationStatement*>(stmt));
-            break;
-        case Statement::Kind::ParallelFor: {
-            auto pfor = static_cast<ParallelForStatement*>(stmt);
-            check_expression(pfor->lower_bound.get());
-            check_expression(pfor->upper_bound.get());
-            if (pfor->step) check_expression(pfor->step.get());
-            check_statement(pfor->body.get());
-            break;
-        }
         default:
             break;
     }
@@ -167,22 +148,6 @@ void SafetyChecker::check_expression(Expression* expr) {
             check_expression(member->object.get());
             // Check for potential null on object
             check_null_safety(member->object.get());
-            break;
-        }
-        case Expression::Kind::Await: {
-            auto await_expr = static_cast<AwaitExpression*>(expr);
-            check_expression(await_expr->value.get());
-            // Note: await context validation is done at function level
-            break;
-        }
-        case Expression::Kind::Spawn: {
-            auto spawn_expr = static_cast<SpawnExpression*>(expr);
-            check_expression(spawn_expr->task.get());
-            break;
-        }
-        case Expression::Kind::ChannelSend: {
-            auto send_expr = static_cast<ChannelSendExpression*>(expr);
-            check_expression(send_expr->value.get());
             break;
         }
         default:
@@ -247,34 +212,6 @@ void SafetyChecker::check_integer_overflow(BinaryExpression* expr) {
                     expr->line,
                     "Potential integer overflow");
     }
-}
-
-// ============================================================================
-// Concurrency Safety Checks
-// ============================================================================
-
-void SafetyChecker::check_await_context(Expression* expr, bool in_suspend_function) {
-    if (!in_suspend_function) {
-        report_issue(SafetyIssue::Severity::Error,
-                    SafetyIssue::Kind::AwaitOutsideSuspend,
-                    expr->line,
-                    "'await' can only be used in suspend/async functions");
-    }
-}
-
-void SafetyChecker::check_structured_concurrency(Statement* stmt) {
-    // Validate that spawned tasks are properly scoped
-    // This is a placeholder for more sophisticated analysis
-    // In a full implementation, we would track task lifetimes
-}
-
-void SafetyChecker::check_channel_lifetime(ChannelDeclarationStatement* decl) {
-    // Validate channel is properly closed before scope exit
-    // This is a placeholder for dataflow analysis
-    report_issue(SafetyIssue::Severity::Warning,
-                SafetyIssue::Kind::ChannelNotClosed,
-                decl->line,
-                "Channel '" + decl->name + "' should be explicitly closed");
 }
 
 bool SafetyChecker::can_be_null(Expression* expr) const {

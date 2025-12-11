@@ -12,12 +12,11 @@
 #include "../include/safety_checker.hpp"
 #include "../include/metafunction_processor.hpp"
 #include "../include/contract_processor.hpp"
-#include "test_timeout.hpp"
 
 using namespace cpp2_transpiler;
 
 // Test utilities
-static std::string read_file(const std::string& filename) {
+std::string read_file(const std::string& filename) {
     std::ifstream file(filename);
     return std::string(std::istreambuf_iterator<char>(file),
                        std::istreambuf_iterator<char>());
@@ -32,19 +31,19 @@ bool transpile_succeeds(const std::string& cpp2_code) {
         auto ast = parser.parse();
 
         SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.analyze(*ast);
+        semantic_analyzer.analyze(ast);
 
         SafetyChecker safety_checker;
-        safety_checker.check(*ast);
+        safety_checker.check(ast);
 
         MetafunctionProcessor meta_processor;
-        meta_processor.process(*ast);
+        meta_processor.process(ast);
 
         ContractProcessor contract_processor;
-        contract_processor.process(*ast);
+        contract_processor.process(ast);
 
         CodeGenerator code_generator;
-        auto result = code_generator.generate(*ast);
+        auto result = code_generator.generate(ast);
 
         return !result.empty();
     }
@@ -290,24 +289,6 @@ void test_cppforward_uninitialized_variables() {
     std::cout << "✓ Uninitialized variable test passed" << std::endl;
 }
 
-    int cppfront_regression_tests_main() {
-        try {
-            test_cppfront_basic();
-            test_cppfront_contracts();
-            test_cppforward_functions();
-            test_cppforward_assertions();
-            test_cppforward_loops();
-            test_cppforward_break_continue();
-            test_cppforward_fixed_type_aliases();
-            test_cppforward_function_expressions();
-            // test_cppforward_pointer_arithmetic(); // TODO: not implemented (arrays, pointers, &)
-            // test_cppforward_uninitialized_variables(); // TODO: uninitialized variables
-            return 0;
-        } catch (...) {
-            return 1;
-        }
-    }
-
 void test_cppforward_mixed_cpp1_cpp2() {
     std::cout << "Testing mixed Cpp1 and Cpp2..." << std::endl;
 
@@ -448,27 +429,26 @@ void test_cppforward_error_handling() {
     std::cout << "✓ Error handling test passed" << std::endl;
 }
 
-#ifndef COMBINED_TESTS
 int main() {
     try {
         std::cout << "Running Cppfront Regression Tests\n" << std::endl;
 
-        run_with_timeout("test_cppfront_basic", test_cppfront_basic);
-        run_with_timeout("test_cppfront_contracts", test_cppfront_contracts);
-        run_with_timeout("test_cppforward_functions", test_cppforward_functions);
-        run_with_timeout("test_cppforward_assertions", test_cppforward_assertions);
-        run_with_timeout("test_cppforward_loops", test_cppforward_loops);
-        run_with_timeout("test_cppforward_break_continue", test_cppforward_break_continue);
-        run_with_timeout("test_cppforward_fixed_type_aliases", test_cppforward_fixed_type_aliases);
-        run_with_timeout("test_cppforward_function_expressions", test_cppforward_function_expressions);
-        // run_with_timeout("test_cppforward_pointer_arithmetic", test_cppforward_pointer_arithmetic); // TODO: not implemented
-        // run_with_timeout("test_cppforward_uninitialized_variables", test_cppforward_uninitialized_variables); // TODO: not implemented
-        run_with_timeout("test_cppforward_mixed_cpp1_cpp2", test_cppforward_mixed_cpp1_cpp2);
-        run_with_timeout("test_cppforward_string_interpolation", test_cppforward_string_interpolation);
-        run_with_timeout("test_cppforward_inspect_pattern_matching", test_cppforward_inspect_pattern_matching);
-        run_with_timeout("test_cppforward_range_operators", test_cppforward_range_operators);
-        run_with_timeout("test_cppforward_performance_features", test_cppforward_performance_features, std::chrono::seconds(10));
-        run_with_timeout("test_cppforward_error_handling", test_cppforward_error_handling);
+        test_cppfront_basic();
+        test_cppforward_contracts();
+        test_cppforward_functions();
+        test_cppforward_assertions();
+        test_cppforward_loops();
+        test_cppforward_break_continue();
+        test_cppforward_fixed_type_aliases();
+        test_cppforward_function_expressions();
+        test_cppforward_pointer_arithmetic();
+        test_cppforward_uninitialized_variables();
+        test_cppforward_mixed_cpp1_cpp2();
+        test_cppforward_string_interpolation();
+        test_cppforward_inspect_pattern_matching();
+        test_cppforward_range_operators();
+        test_cppforward_performance_features();
+        test_cppforward_error_handling();
 
         std::cout << "\nAll cppfront regression tests passed! ✓" << std::endl;
         return 0;
@@ -478,4 +458,3 @@ int main() {
         return 1;
     }
 }
-#endif

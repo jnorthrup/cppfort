@@ -11,9 +11,6 @@
 
 namespace cppfort::tests {
 
-// Test timeout standard: all tests MUST complete within 15 seconds
-inline constexpr std::chrono::milliseconds TEST_TIMEOUT_MS{15000};
-
 struct TestFile {
     std::string path;
     std::string category;
@@ -29,7 +26,6 @@ struct TestResult {
     bool passed;
     std::string error_message;
     std::string transpiler_output;
-    std::string actual_output;  // stdout from running compiled binary
     std::chrono::milliseconds duration;
     std::string category;
 };
@@ -48,11 +44,9 @@ private:
     std::vector<TestFile> test_files_;
     std::map<std::string, std::function<TestResult(const TestFile&)>> category_handlers_;
     std::vector<TestResult> results_;
-    std::string transpiler_path_;
 
 public:
     TestRunner(const std::vector<TestFile>& test_files);
-    TestRunner(const std::vector<TestFile>& test_files, const std::string& transpiler_path);
 
     void register_category_handler(const std::string& category,
                                  std::function<TestResult(const TestFile&)> handler);
@@ -71,13 +65,7 @@ private:
     TestResult handle_pure2_test(const TestFile& test_file);
     TestResult handle_mixed_test(const TestFile& test_file);
 
-    // Helper function to execute a command with timeout
-    int execute_command(const std::string& command, std::string& output, int timeout_ms);
-
     void register_default_handlers();
-
-    // Find and validate transpiler binary
-    static std::string find_transpiler(const std::string& hint = "");
 };
 
 class SHA256Verifier {

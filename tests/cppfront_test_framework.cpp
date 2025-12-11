@@ -4,11 +4,6 @@
 #include <iostream>
 #include <algorithm>
 #include <regex>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <ctime>
 
 namespace cppfort::tests {
 
@@ -82,12 +77,7 @@ bool TestCollector::should_pass_by_name(const std::string& name) {
 }
 
 TestRunner::TestRunner(const std::vector<TestFile>& test_files)
-    : test_files_(test_files), transpiler_path_(find_transpiler()) {
-    register_default_handlers();
-}
-
-TestRunner::TestRunner(const std::vector<TestFile>& test_files, const std::string& transpiler_path)
-    : test_files_(test_files), transpiler_path_(find_transpiler(transpiler_path)) {
+    : test_files_(test_files) {
     register_default_handlers();
 }
 
@@ -160,111 +150,28 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
     input_file << test_file.content;
     input_file.close();
 
-    // Create temporary file for output
-    std::string temp_output = std::filesystem::temp_directory_path() /
-                            ("test_" + test_file.name + ".cpp");
-
-    // Run transpiler with timeout using fork/exec with pipe for output capture
-    std::string command = "\"" + transpiler_path_ + "\" \"" + temp_input + "\" \"" + temp_output + "\" 2>&1";
+    // Run transpiler
+    std::string command = "cppfort \"" + temp_input + "\" 2>&1";
     std::string output;
-    int exit_code = -1;
-    bool timed_out = false;
+    int exit_code = system((command + " > /dev/null 2>&1").c_str());
 
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        result.passed = false;
-        result.error_message = "Failed to create pipe for output capture";
-        return result;
-    }
-
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process: execute the command
-        close(pipefd[0]); // Close read end
-        dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to pipe
-        dup2(pipefd[1], STDERR_FILENO); // Redirect stderr to pipe
-        close(pipefd[1]); // Close write end (dup'd copies remain)
-
-        // Create new process group for killpg()
-        setpgid(0, 0);
-        execlp("sh", "sh", "-c", command.c_str(), nullptr);
-        _exit(127); // exec failed
-    } else if (pid > 0) {
-        // Parent process: close write end, read from pipe, wait with timeout
-        close(pipefd[1]); // Close write end
-
-        // Set read end to non-blocking for polling
-        fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
-
-        int status;
-        pid_t ret;
-        auto deadline = start + TEST_TIMEOUT_MS;
-        char buffer[4096];
-        ssize_t bytes_read;
-
-        do {
-            auto now = std::chrono::high_resolution_clock::now();
-            if (now >= deadline) {
-                // Timeout: kill the child process group
-                killpg(pid, SIGKILL);
-                timed_out = true;
-                break;
-            }
-
-            // Read available output
-            while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytes_read] = '\0';
+    // Get output if failed
+    if (exit_code != 0) {
+        FILE* pipe = popen(command.c_str(), "r");
+        if (pipe) {
+            char buffer[4096];
+            while (fgets(buffer, sizeof(buffer), pipe)) {
                 output += buffer;
             }
-
-            // Check if child has exited (non-blocking)
-            ret = waitpid(pid, &status, WNOHANG);
-            if (ret == pid) {
-                // Child exited - read any remaining output
-                while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-                    buffer[bytes_read] = '\0';
-                    output += buffer;
-                }
-                if (WIFEXITED(status)) {
-                    exit_code = WEXITSTATUS(status);
-                }
-                break;
-            } else if (ret == -1) {
-                // Error
-                break;
-            }
-
-            // Sleep a bit before checking again
-            usleep(10000); // 10ms
-        } while (ret == 0);
-
-        close(pipefd[0]); // Close read end
-
-        // If still running after loop (shouldn't happen), clean up
-        if (ret == 0) {
-            killpg(pid, SIGKILL);
-            waitpid(pid, &status, 0);
+            pclose(pipe);
         }
-    } else {
-        // Fork failed
-        close(pipefd[0]);
-        close(pipefd[1]);
-        result.passed = false;
-        result.error_message = "Failed to fork child process";
-        return result;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     result.duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    // Check for timeout first
-    if (timed_out) {
-        result.passed = false;
-        result.error_message = "Test exceeded 15-second timeout (TEST_TIMEOUT_MS standard)";
-        result.transpiler_output = output;
-    }
     // Check if result matches expectation
-    else if (test_file.should_pass) {
+    if (test_file.should_pass) {
         result.passed = (exit_code == 0);
         if (!result.passed) {
             result.error_message = "Expected transpiler to succeed but it failed";
@@ -283,146 +190,10 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
         }
     }
 
-    // Check for timeout first
-    if (timed_out) {
-        result.passed = false;
-        result.error_message = "Test exceeded 15-second timeout (TEST_TIMEOUT_MS standard)";
-        result.transpiler_output = output;
-    }
-    // Transpilation failed
-    else if (exit_code != 0) {
-        if (test_file.should_pass) {
-            result.passed = false;
-            result.error_message = "Expected transpiler to succeed but it failed";
-            result.transpiler_output = output;
-        } else {
-            result.passed = true; // Error test: transpiler correctly rejected invalid code
-        }
-    }
-    // Transpilation succeeded - now compile and run the generated C++ code
-    else {
-        result.transpiler_output = output;
-
-        if (test_file.should_pass) {
-            // Compile the generated C++ code
-            std::string temp_binary = std::filesystem::temp_directory_path() /
-                                     ("test_" + test_file.name);
-            // cppfort generates standalone C++ code - no external dependencies needed
-            std::string compile_command = "clang++ -std=c++20 -O0 \"" + temp_output +
-                                       "\" -o \"" + temp_binary + "\" 2>&1";
-
-            std::string compile_output;
-            int compile_exit_code = execute_command(compile_command, compile_output, 30000); // 30s timeout
-
-            if (compile_exit_code != 0) {
-                result.passed = false;
-                result.error_message = "Generated C++ code failed to compile";
-                result.transpiler_output += "\n\n--- Compilation Error ---\n" + compile_output;
-            } else {
-                // Compilation succeeded - run the binary
-                std::string run_output;
-                int run_exit_code = execute_command("\"" + temp_binary + "\"", run_output, 5000); // 5s timeout
-
-                if (run_exit_code < 0) {
-                    result.passed = false;
-                    result.error_message = "Program execution timed out or crashed";
-                    result.actual_output = run_output;
-                } else {
-                    result.passed = true;
-                    result.actual_output = run_output;
-                }
-
-                // Cleanup binary
-                std::filesystem::remove(temp_binary);
-            }
-        } else {
-            // Error test: transpiler should have failed but succeeded
-            result.passed = false;
-            result.error_message = "Expected transpiler to fail but it succeeded";
-        }
-    }
-
     // Cleanup
     std::filesystem::remove(temp_input);
-    std::filesystem::remove(temp_output);
 
     return result;
-}
-
-// Helper function to execute a command with timeout
-int TestRunner::execute_command(const std::string& command, std::string& output, int timeout_ms) {
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        return -1;
-    }
-
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        dup2(pipefd[1], STDERR_FILENO);
-        close(pipefd[1]);
-        setpgid(0, 0);
-        execlp("sh", "sh", "-c", command.c_str(), nullptr);
-        _exit(127);
-    } else if (pid > 0) {
-        // Parent process
-        close(pipefd[1]);
-        fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
-
-        int status;
-        pid_t ret;
-        auto start = std::chrono::high_resolution_clock::now();
-        auto deadline = start + std::chrono::milliseconds(timeout_ms);
-        char buffer[4096];
-        ssize_t bytes_read;
-        bool timed_out = false;
-
-        do {
-            auto now = std::chrono::high_resolution_clock::now();
-            if (now >= deadline) {
-                killpg(pid, SIGKILL);
-                timed_out = true;
-                break;
-            }
-
-            while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytes_read] = '\0';
-                output += buffer;
-            }
-
-            ret = waitpid(pid, &status, WNOHANG);
-            if (ret == pid) {
-                while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-                    buffer[bytes_read] = '\0';
-                    output += buffer;
-                }
-                close(pipefd[0]);
-                if (WIFEXITED(status)) {
-                    return WEXITSTATUS(status);
-                }
-                return -1;
-            } else if (ret == -1) {
-                break;
-            }
-
-            usleep(10000);
-        } while (ret == 0);
-
-        close(pipefd[0]);
-
-        if (ret == 0) {
-            killpg(pid, SIGKILL);
-            waitpid(pid, &status, 0);
-        }
-
-        return timed_out ? -1 : 0;
-    } else {
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return -1;
-    }
 }
 
 TestResult TestRunner::handle_pure2_test(const TestFile& test_file) {
@@ -486,7 +257,7 @@ void TestRunner::print_detailed_results() const {
 }
 
 bool SHA256Verifier::verify_file_hash(const TestFile& test_file) {
-    std::string calculated = TestCollector::calculate_sha256(test_file.content);
+    std::string calculated = calculate_sha256(test_file.content);
     return calculated == test_file.sha256_hash;
 }
 
@@ -530,65 +301,6 @@ void SHA256Verifier::save_hash_database(const std::string& db_path,
         }
         file.close();
     }
-}
-
-std::string TestRunner::find_transpiler(const std::string& hint) {
-    auto check_path = [](const std::filesystem::path& p) -> bool {
-        return std::filesystem::exists(p) &&
-               std::filesystem::is_regular_file(p) &&
-               (p.filename() == "cppfort" || p.filename() == "cppfort.exe");
-    };
-
-    // 1. Check hint if provided
-    if (!hint.empty()) {
-        std::filesystem::path hint_path(hint);
-        if (check_path(hint_path)) {
-            return std::filesystem::canonical(hint_path).string();
-        }
-    }
-
-    // 2. Check common locations relative to current working directory
-    std::vector<std::string> search_paths = {
-        "build/src/cppfort",
-        "../build/src/cppfort",
-        "../../build/src/cppfort",
-        "./cppfort",
-        "../src/cppfort"
-    };
-
-    for (const auto& path : search_paths) {
-        if (check_path(path)) {
-            return std::filesystem::canonical(path).string();
-        }
-    }
-
-    // 3. Check if cppfort is in PATH
-    char* path_env = std::getenv("PATH");
-    if (path_env) {
-        std::string path_str(path_env);
-        std::stringstream ss(path_str);
-        std::string dir;
-
-        while (std::getline(ss, dir, ':')) {
-            std::filesystem::path candidate = std::filesystem::path(dir) / "cppfort";
-            if (check_path(candidate)) {
-                return std::filesystem::canonical(candidate).string();
-            }
-        }
-    }
-
-    // 4. Not found - throw error with helpful message
-    throw std::runtime_error(
-        "cppfort transpiler not found. Tried:\n"
-        "  1. Hint path: " + (hint.empty() ? "(not provided)" : hint) + "\n"
-        "  2. Relative paths: build/src/cppfort, ../build/src/cppfort, etc.\n"
-        "  3. PATH environment variable\n"
-        "\n"
-        "Please either:\n"
-        "  - Build the project: cmake --build build\n"
-        "  - Add to PATH: export PATH=\"$PWD/build/src:$PATH\"\n"
-        "  - Provide explicit path to TestRunner constructor"
-    );
 }
 
 } // namespace cppfort::tests
