@@ -42,9 +42,9 @@ add_executable(generate_test_hashes
 )
 target_include_directories(generate_test_hashes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Create regression runner (cppfront vs cppfort comparison)
+# Create regression runner v2 (corpus builder + rule extractor)
 add_executable(regression_runner
-    regression_runner.cpp
+    regression_runner_v2.cpp
     sha256.cpp
 )
 target_include_directories(regression_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
