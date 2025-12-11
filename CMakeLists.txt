@@ -48,6 +48,22 @@ include(AddMLIR)
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(HandleLLVMOptions)
 
+# Include directories
+include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_BINARY_DIR}/include)
+
+# TableGen for Cpp2 dialect
+set(LLVM_TARGET_DEFINITIONS include/Cpp2Dialect.td)
+mlir_tablegen(Cpp2Ops.h.inc -gen-op-decls)
+mlir_tablegen(Cpp2Ops.cpp.inc -gen-op-defs)
+mlir_tablegen(Cpp2OpsDialect.h.inc -gen-dialect-decls -dialect=cpp2)
+mlir_tablegen(Cpp2OpsDialect.cpp.inc -gen-dialect-defs -dialect=cpp2)
+mlir_tablegen(Cpp2OpsTypes.h.inc -gen-typedef-decls -dialect=cpp2)
+mlir_tablegen(Cpp2OpsTypes.cpp.inc -gen-typedef-defs -dialect=cpp2)
+add_public_tablegen_target(Cpp2OpsIncGen)
+
 # Package configuration
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

@@ -158,6 +158,15 @@ make test
 6. Performance profiling
 7. Standard library compatibility layer
 
+## Recent Fixes (Dec 2025)
+
+- Added a minimal MLIR TableGen dialect (`src/mlir/ODDialect.td`) and placeholder C++ registration files to facilitate MLIR dialect expansion.
+- Refactored Sea-of-Nodes parsing to use the central `Lexer` for tokenization instead of ad-hoc character scanning; updated documentation accordingly.
+- Implemented a simple dominator analysis in the `Scheduler` (see `pijul_crdt.cpp`): `find_dominators`, `find_earliest_dominator`, and related helpers to allow basic scheduling.
+- Exposed `SeaOfNodesBuilder::merge_graph` and `--son` option for `main` to enable ad-hoc integration between the existing AST-based pipeline and the SoN pipeline.
+
+These changes address a subset of the gaps related to dialect definition, scanning strategy, scheduling algorithms, and early-stage integration between `main.cpp` and the Sea-of-Nodes system.
+
 ## Conclusion
 
 This implementation provides a solid foundation for Cpp2-to-C++1 transpilation. All major components are implemented and functional, with comprehensive test coverage. The codebase is well-structured, documented, and ready for further development and enhancement.
