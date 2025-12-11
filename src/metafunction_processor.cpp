@@ -276,10 +276,10 @@ void MetafunctionProcessor::add_operator(TypeDeclaration* type_decl, const std::
     op_decl->return_type->name = return_type;
 
     for (const auto& param : params) {
-        auto p = std::make_unique<FunctionDeclaration::Parameter>();
-        p->name = "param";
-        p->type = std::make_unique<Type>(Type::Kind::UserDefined);
-        p->type->name = param;
+        FunctionDeclaration::Parameter p;
+        p.name = "param";
+        p.type = std::make_unique<Type>(Type::Kind::UserDefined);
+        p.type->name = param;
         op_decl->parameters.push_back(std::move(p));
     }
 

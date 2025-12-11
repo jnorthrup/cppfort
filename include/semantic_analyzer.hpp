@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ast.hpp"
-#include "utils.hpp"
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -18,8 +17,7 @@ struct Symbol {
         Type,
         Namespace,
         Parameter,
-        Member,
-        EnumMember
+        Member
     };
 
     Kind kind;
@@ -72,7 +70,6 @@ private:
 
     // Type checking
     std::unique_ptr<Type> check_type(std::unique_ptr<Type> type);
-    void check_type_ptr(const Type* type);  // Check type without ownership transfer
     bool is_type_compatible(const Type* lhs, const Type* rhs) const;
     std::unique_ptr<Type> deduce_type(Expression* expr);
     void check_expression(Expression* expr);
@@ -88,7 +85,6 @@ private:
     // Type resolution
     Type* resolve_type(const Type* type);
     void resolve_type_declaration(TypeDeclaration* type_decl);
-    void resolve_enum_declaration(TypeDeclaration* enum_decl);
 
     // Function checking
     void check_function(FunctionDeclaration* func);
@@ -117,13 +113,6 @@ private:
     void check_bounds_checking(SubscriptExpression* expr);
     void check_mixed_sign_arithmetic(BinaryExpression* expr);
 
-    // Concurrency expression checking (Kotlin-style structured concurrency)
-    void check_await_expression(AwaitExpression* expr);
-    void check_spawn_expression(SpawnExpression* expr);
-    void check_channel_send_expression(ChannelSendExpression* expr);
-    void check_channel_recv_expression(ChannelRecvExpression* expr);
-    void check_channel_select_expression(ChannelSelectExpression* expr);
-
     // Contract checking
     void check_contract(ContractExpression* contract);
     void check_function_contracts(FunctionDeclaration* func);
@@ -145,17 +134,12 @@ private:
     // State tracking
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
-    std::unordered_set<std::string, SimpleStringHash> undeclared_variables;
+    std::unordered_set<std::string> undeclared_variables;
     std::unordered_map<Declaration*, bool> checked_declarations;
-    bool has_cpp1_passthrough = false;  // Track if AST contains C++1 passthrough declarations
-
-    // Concurrency state tracking
-    bool in_suspend_function = false;         // True when inside a suspend function
-    int in_coroutine_scope_depth = 0;         // Depth of nested coroutineScope blocks
 
     // Built-in types
     void register_builtin_types();
-    std::unordered_map<std::string, std::unique_ptr<Type>, SimpleStringHash> builtin_types;
+    std::unordered_map<std::string, std::unique_ptr<Type>> builtin_types;
 
     // Definite last use tracking
     struct VariableUsage {
@@ -163,7 +147,7 @@ private:
         bool definitely_last_use = false;
         std::size_t last_use_line = 0;
     };
-    std::unordered_map<std::string, VariableUsage, SimpleStringHash> variable_usage;
+    std::unordered_map<std::string, VariableUsage> variable_usage;
     void track_variable_usage(const std::string& name, std::size_t line);
     void check_unused_variables();
 };

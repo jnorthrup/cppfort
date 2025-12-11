@@ -9,34 +9,20 @@
 
 namespace cpp2_transpiler {
 
-// Output mode for generated code
-enum class OutputMode {
-    Inline,      // Inline all runtime code (self-contained, larger output)
-    Header,      // Use #include <cpp2_runtime.h> (smaller, needs header)
-    PCH          // Use #include <cpp2_pch.h> (fastest, needs precompiled header)
-};
-
 class CodeGenerator {
 public:
     CodeGenerator();
-    explicit CodeGenerator(OutputMode mode);
     std::string generate(AST& ast);
-    
-    void set_output_mode(OutputMode mode) { output_mode_ = mode; }
-    OutputMode output_mode() const { return output_mode_; }
 
 private:
     std::ostringstream output;
     int indent_level = 0;
     bool needs_semicolon = true;
-    OutputMode output_mode_ = OutputMode::Inline;
 
     // State tracking
     std::unordered_set<std::string> generated_functions;
     std::unordered_set<std::string> generated_types;
     std::vector<std::string> includes;
-    std::vector<std::string> current_type_metafunctions; // Track metafunctions of current type being generated
-    std::string current_class_name;  // Track class name for operator generation
 
     // Helper methods
     void write_line(const std::string& line);
@@ -48,24 +34,18 @@ private:
     // Generation methods
     void generate_declaration(Declaration* decl);
     void generate_variable_declaration(VariableDeclaration* decl);
-    void generate_function_forward_declaration(FunctionDeclaration* decl);
     void generate_function_declaration(FunctionDeclaration* decl);
-    void generate_special_member_function(FunctionDeclaration* decl);  // operator=: patterns
-    void generate_operator_eq_colon(OperatorDeclaration* decl);       // operator=: for OperatorDeclaration
     void generate_type_declaration(TypeDeclaration* decl);
     void generate_namespace_declaration(NamespaceDeclaration* decl);
     void generate_operator_declaration(OperatorDeclaration* decl);
     void generate_using_declaration(UsingDeclaration* decl);
     void generate_import_declaration(ImportDeclaration* decl);
-    void generate_cpp1_passthrough_declaration(Cpp1PassthroughDeclaration* decl);  // C++1 passthrough
 
     void generate_statement(Statement* stmt);
     void generate_block_statement(BlockStatement* stmt);
-    void generate_scope_block_statement(ScopeBlockStatement* stmt);
     void generate_expression_statement(ExpressionStatement* stmt);
     void generate_if_statement(IfStatement* stmt);
     void generate_while_statement(WhileStatement* stmt);
-    void generate_do_while_statement(DoWhileStatement* stmt);
     void generate_for_statement(ForStatement* stmt);
     void generate_for_range_statement(ForRangeStatement* stmt);
     void generate_switch_statement(SwitchStatement* stmt);
@@ -77,14 +57,8 @@ private:
     void generate_throw_statement(ThrowStatement* stmt);
     void generate_contract_statement(ContractStatement* stmt);
 
-    // Concurrency statement generation (Kotlin-style structured concurrency)
-    void generate_coroutine_scope_statement(CoroutineScopeStatement* stmt);
-    void generate_parallel_for_statement(ParallelForStatement* stmt);
-    void generate_channel_declaration(ChannelDeclarationStatement* stmt);
-
     void generate_expression(Expression* expr);
     std::string generate_expression_to_string(Expression* expr);
-    std::string generate_statement_to_string(Statement* stmt);  // Generate statement to string for lambda bodies
     void generate_literal_expression(LiteralExpression* expr);
     void generate_identifier_expression(IdentifierExpression* expr);
     void generate_binary_expression(BinaryExpression* expr);
@@ -111,10 +85,6 @@ private:
     std::string generate_array_type(Type* type);
     std::string generate_function_type(Type* type);
     std::string generate_template_type(Type* type);
-    std::string convert_function_type_to_cpp(const std::string& func_type);
-
-    // Parameter generation with qualifiers
-    std::string generate_parameter_type(Type* type, const std::vector<ParameterQualifier>& qualifiers);
 
     // Safety check generation
     void generate_bounds_check(SubscriptExpression* expr);
@@ -163,10 +133,6 @@ private:
     // Include management
     void add_include(const std::string& header);
     void write_includes();
-
-    // Markdown module stub generation
-    void generate_markdown_module_stubs(const std::vector<MarkdownBlockAttr>& blocks);
-    void generate_markdown_module_stub(const MarkdownBlockAttr& block);
 
     // Utility
     std::string generate_unique_name(const std::string& base);

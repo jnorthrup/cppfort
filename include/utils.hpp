@@ -7,16 +7,6 @@
 
 namespace cpp2_transpiler {
 
-// Simple FNV-1a string hash to avoid depending on stdlib internals
-struct SimpleStringHash {
-    std::size_t operator()(const std::string& s) const noexcept {
-        uint64_t h = 1469598103934665603ULL;
-        for (unsigned char c : s) h = (h ^ c) * 1099511628211ULL;
-        return static_cast<std::size_t>(h);
-    }
-};
-
-
 class Utils {
 public:
     // String utilities

@@ -24,8 +24,7 @@ std::string SHA256::hash(const std::string& input) {
     std::vector<uint8_t> msg(input.begin(), input.end());
     std::vector<uint8_t> padded = pad(msg);
 
-    uint32_t state[8] = { SHA256::H[0], SHA256::H[1], SHA256::H[2], SHA256::H[3],
-                          SHA256::H[4], SHA256::H[5], SHA256::H[6], SHA256::H[7] };
+    uint32_t H[8] = {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]};
 
     for (size_t chunk = 0; chunk < padded.size(); chunk += 64) {
         uint32_t W[64];
@@ -41,14 +40,14 @@ std::string SHA256::hash(const std::string& input) {
             W[i] = sigma1(W[i-2]) + W[i-7] + sigma0(W[i-15]) + W[i-16];
         }
 
-        uint32_t a = state[0];
-        uint32_t b = state[1];
-        uint32_t c = state[2];
-        uint32_t d = state[3];
-        uint32_t e = state[4];
-        uint32_t f = state[5];
-        uint32_t g = state[6];
-        uint32_t h = state[7];
+        uint32_t a = H[0];
+        uint32_t b = H[1];
+        uint32_t c = H[2];
+        uint32_t d = H[3];
+        uint32_t e = H[4];
+        uint32_t f = H[5];
+        uint32_t g = H[6];
+        uint32_t h = H[7];
 
         for (int i = 0; i < 64; ++i) {
             uint32_t S1 = Sigma1(e);
@@ -68,26 +67,22 @@ std::string SHA256::hash(const std::string& input) {
             a = temp1 + temp2;
         }
 
-        state[0] += a;
-        state[1] += b;
-        state[2] += c;
-        state[3] += d;
-        state[4] += e;
-        state[5] += f;
-        state[6] += g;
-        state[7] += h;
+        H[0] += a;
+        H[1] += b;
+        H[2] += c;
+        H[3] += d;
+        H[4] += e;
+        H[5] += f;
+        H[6] += g;
+        H[7] += h;
     }
 
     std::stringstream ss;
     for (int i = 0; i < 8; ++i) {
-        ss << std::hex << std::setw(8) << std::setfill('0') << state[i];
+        ss << std::hex << std::setw(8) << std::setfill('0') << H[i];
     }
 
     return ss.str();
-}
-
-std::string calculate_sha256(const std::string& input) {
-    return SHA256::hash(input);
 }
 
 } // namespace cppfort::tests

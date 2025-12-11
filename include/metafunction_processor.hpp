@@ -2,7 +2,6 @@
 
 #include "ast.hpp"
 #include <string>
-#include <functional>
 #include <unordered_map>
 #include <vector>
 #include <memory>

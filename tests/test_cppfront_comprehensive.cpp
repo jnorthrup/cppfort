@@ -2,8 +2,6 @@
 #include <string>
 #include <cassert>
 #include <memory>
-#include <vector>
-#include "test_timeout.hpp"
 
 // Test that our transpiler handles cpp2's distinctive syntax patterns
 // These tests verify we understand the semantics correctly
@@ -25,6 +23,11 @@ void test_unified_declaration_syntax() {
 
     // Type declarations
     struct Point { int x, y; };
+
+    // Namespace declarations (conceptual)
+    namespace {
+        int internal_var = 5;
+    }
 
     assert(test_vars.x == 42);
     assert(test_vars.y == 10);
@@ -280,16 +283,16 @@ int main() {
     std::cout << "=====================================\n\n";
 
     try {
-        run_with_timeout("test_unified_declaration_syntax", test_unified_declaration_syntax);
-        run_with_timeout("test_postfix_operators", test_postfix_operators);
-        run_with_timeout("test_ufcs_concept", test_ufcs_concept);
-        run_with_timeout("test_string_interpolation_concept", test_string_interpolation_concept);
-        run_with_timeout("test_range_operators_concept", test_range_operators_concept);
-        run_with_timeout("test_inspect_pattern_matching_concept", test_inspect_pattern_matching_concept);
-        run_with_timeout("test_contracts_concept", test_contracts_concept);
-        run_with_timeout("test_safety_features_concept", test_safety_features_concept);
-        run_with_timeout("test_metafunctions_concept", test_metafunctions_concept);
-        run_with_timeout("test_type_deduction", test_type_deduction);
+        test_unified_declaration_syntax();
+        test_postfix_operators();
+        test_ufcs_concept();
+        test_string_interpolation_concept();
+        test_range_operators_concept();
+        test_inspect_pattern_matching_concept();
+        test_contracts_concept();
+        test_safety_features_concept();
+        test_metafunctions_concept();
+        test_type_deduction();
 
         std::cout << "\n=====================================\n";
         std::cout << "✅ ALL CONCEPT TESTS PASSED\n";
