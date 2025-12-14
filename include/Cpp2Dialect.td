@@ -209,4 +209,76 @@ def Cpp2_ReturnOp : Cpp2_Op<"return", [Terminator]> {
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
+// Additional ops for AST mapping coverage
+def Cpp2_FuncOp : Cpp2_Op<"func"> {
+  let summary = "Function definition";
+  let description = [{
+    Represents a function with name, arguments, and body region.
+    Maps from Clang FunctionDecl AST nodes.
+  }];
+  let arguments = (ins StrAttr:$name);
+  let regions = (region SizedRegion<1>:$body);
+  let results = (outs Variadic<AnyType>:$results);
+  let assemblyFormat = "$name $body attr-dict `:` type($results)";
+}
+
+def Cpp2_VarOp : Cpp2_Op<"var"> {
+  let summary = "Variable declaration with optional initializer";
+  let description = [{
+    Declares a variable with optional initialization expression.
+    Maps from Clang VarDecl AST nodes.
+  }];
+  let arguments = (ins StrAttr:$name, OptionalAttr<AnyAttr>:$init);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$name (`,` $init^)? attr-dict `:` type($result)";
+}
+
+def Cpp2_CallOp : Cpp2_Op<"call"> {
+  let summary = "Function call operation";
+  let description = [{
+    Calls a function with given arguments.
+    Maps from Clang CallExpr AST nodes.
+  }];
+  let arguments = (ins StrAttr:$callee, Variadic<AnyType>:$args);
+  let results = (outs Variadic<AnyType>:$results);
+  let assemblyFormat = "$callee `(` $args `)` attr-dict `:` functional-type($args, $results)";
+}
+
+def Cpp2_BinOpOp : Cpp2_Op<"binop", [Pure]> {
+  let summary = "Generic binary operator";
+  let description = [{
+    Represents binary operations with operator kind.
+    Maps from Clang BinaryOperator AST nodes.
+    Operator kinds: add, sub, mul, div, mod, eq, ne, lt, le, gt, ge, etc.
+  }];
+  let arguments = (ins StrAttr:$op, AnyType:$lhs, AnyType:$rhs);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$op $lhs `,` $rhs attr-dict `:` type($result)";
+  let hasFolder = 1;
+}
+
+def Cpp2_ForOp : Cpp2_Op<"for", [DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
+  let summary = "For loop with init, condition, increment";
+  let description = [{
+    Represents C-style for loop: for(init; cond; inc) { body }
+    Maps from Clang ForStmt AST nodes.
+  }];
+  let arguments = (ins Optional<AnyType>:$init, I1:$cond, Optional<AnyType>:$inc);
+  let regions = (region SizedRegion<1>:$body);
+  let results = (outs Variadic<AnyType>:$results);
+  let assemblyFormat = "(`init` $init^)? `cond` $cond (`inc` $inc^)? $body attr-dict `:` type($results)";
+}
+
+def Cpp2_WhileOp : Cpp2_Op<"while", [DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
+  let summary = "While loop with condition";
+  let description = [{
+    Represents while loop: while(cond) { body }
+    Maps from Clang WhileStmt AST nodes.
+  }];
+  let arguments = (ins I1:$cond);
+  let regions = (region SizedRegion<1>:$body);
+  let results = (outs Variadic<AnyType>:$results);
+  let assemblyFormat = "$cond $body attr-dict `:` type($results)";
+}
+
  
