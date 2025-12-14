@@ -120,7 +120,7 @@ def infer_regions(root: Node):
 def parse_file(path: str, clang_args: List[str]):
     index = cindex.Index.create()
     try:
-        tu = index.parse(path, args=clang_args, options=cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+        tu = index.parse(path, args=clang_args)
     except Exception as e:
         print(f"ERROR parsing {path}: {e}", file=sys.stderr)
         raise
