@@ -17,6 +17,11 @@ ninja -C build
 
 # Run regression tests
 ./scripts/run_regression.sh
+
+# Import upstream cppfront regression tests (if needed)
+```bash
+./scripts/import_cppfront_tests.sh --clone
+```
 ```
 
 ## Architecture
