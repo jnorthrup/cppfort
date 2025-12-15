@@ -86,4 +86,10 @@ docs/doxygen/
 *.idb
 *.pdb
 
-# Submodules__pycache__/
+# Submodules
+third_party/cppfront/source/cppfront
+
+# Corpus artifacts (large, regenerable)
+corpus/isomorphs/
+corpus/tagged/
+corpus/database/
