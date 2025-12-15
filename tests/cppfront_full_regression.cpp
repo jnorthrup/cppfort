@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <getopt.h>
 #include <fstream>
+#include <algorithm>
 
 using namespace cppfort::tests;
 

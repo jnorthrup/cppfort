@@ -41,6 +41,7 @@ struct Type {
     bool is_mut = false;
 
     Type(Kind k) : kind(k) {}
+    ~Type();
 };
 
 // Expressions
@@ -168,6 +169,7 @@ struct LambdaExpression : Expression {
     std::vector<std::unique_ptr<Type>> template_params;
 
     LambdaExpression(std::size_t l) : Expression(Kind::Lambda, l) {}
+    ~LambdaExpression();
 };
 
 struct IsExpression : Expression {
@@ -535,4 +537,9 @@ struct AST {
     std::vector<std::unique_ptr<Declaration>> declarations;
 };
 
+    // Define destructors after dependent types are complete so unique_ptr can
+    // delete the referenced types without triggering "delete of incomplete
+    // type" errors.
+    inline Type::~Type() = default;
+    inline LambdaExpression::~LambdaExpression() = default;
 } // namespace cpp2_transpiler

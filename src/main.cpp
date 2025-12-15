@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
         std::string source_code{std::istreambuf_iterator<char>(input_file),
                                 std::istreambuf_iterator<char>()};
 
-        cpp2_transpiler::Lexer lexer(std::string_view(source_code));
+        cpp2_transpiler::Lexer lexer{std::string_view(source_code)};
         auto tokens = lexer.tokenize();
 
         cpp2_transpiler::Parser parser(tokens);

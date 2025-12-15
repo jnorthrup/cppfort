@@ -5,6 +5,42 @@
 #include <print>
 #include "lexer.hpp"
 
+using namespace cppfort::mlir_son;
+
+// Forward declarations for top-level helpers used by main
+void build_graph_from_tokens(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                            const std::vector<cpp2_transpiler::Token>& tokens);
+std::string generate_cpp_from_sea_of_nodes(const cppfort::mlir_son::SeaOfNodesBuilder& builder);
+
+// Forward declarations for token-based parsing helpers
+size_t parse_return_statement(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                             const std::vector<cpp2_transpiler::Token>& tokens,
+                             size_t idx);
+std::pair<NodeID, size_t> parse_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                          const std::vector<cpp2_transpiler::Token>& tokens,
+                                          size_t idx);
+std::pair<NodeID, size_t> parse_primary(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                       const std::vector<cpp2_transpiler::Token>& tokens,
+                                       size_t idx);
+std::pair<NodeID, size_t> parse_numeric_constant(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                                const std::vector<cpp2_transpiler::Token>& tokens,
+                                                size_t idx);
+std::pair<NodeID, size_t> parse_identifier_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                                     const std::vector<cpp2_transpiler::Token>& tokens,
+                                                     size_t idx);
+size_t parse_block_statement(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                           const std::vector<cpp2_transpiler::Token>& tokens,
+                           size_t idx);
+size_t parse_if_statement(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                        const std::vector<cpp2_transpiler::Token>& tokens,
+                        size_t idx);
+size_t parse_struct_definition(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                             const std::vector<cpp2_transpiler::Token>& tokens,
+                             size_t idx);
+size_t parse_new_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                          const std::vector<cpp2_transpiler::Token>& tokens,
+                          size_t idx);
+
 // Replace traditional transpiler with Sea of Nodes implementation
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -21,8 +57,8 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Cannot open input file: " + input_filename);
         }
 
-        std::string source_code(std::istreambuf_iterator<char>(input_file),
-                                std::istreambuf_iterator<char>());
+        std::string source_code{std::istreambuf_iterator<char>(input_file),
+                    std::istreambuf_iterator<char>()};
 
         // Create Sea of Nodes builder
         cppfort::mlir_son::SeaOfNodesBuilder son_builder;

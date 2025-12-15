@@ -15,7 +15,8 @@ struct Arrow {
 
     Arrow(std::function<B(A)> f) : morphism(std::move(f)) {}
 
-    Arrow<B, C> compose(const Arrow<B, C>& other) const {
+    template<typename C>
+    Arrow<A, C> compose(const Arrow<B, C>& other) const {
         return Arrow<A, C>([=](A a) { return other.morphism(morphism(a)); });
     }
 };
@@ -159,8 +160,7 @@ struct ParseResult {
     static ParseResult failure() {
         return ParseResult{false, T{}, ""};
     }
-
-    static ParseResult success(T v, std::string_view rem) {
+    static ParseResult make_success(T v, std::string_view rem) {
         return ParseResult{true, std::move(v), rem};
     }
 };
@@ -172,7 +172,7 @@ Parser literal(Node::Kind kind) {
     return [kind](std::string_view input) {
         // Simple token matching based on node kind
         // In practice, this would use token information
-        return ParseResult<Node>::success(Node{kind, 0}, input);
+        return ParseResult<Node>::make_success(Node{kind, 0}, input);
     };
 }
 
@@ -193,7 +193,7 @@ Parser seq(Parser first, Parser second) {
         Node seq_node{Node::Kind::Phi, 0};
         seq_node.inputs = {first_result.value.id, second_result.value.id};
 
-        return ParseResult<Node>::success(seq_node, second_result.remaining);
+        return ParseResult<Node>::make_success(seq_node, second_result.remaining);
     };
 }
 
@@ -210,7 +210,7 @@ Parser alt(Parser first, Parser second) {
 
 // Many combinator for parsing
 Parser many(Parser p) {
-    return fix([p](auto self, std::string_view input) -> ParseResult<std::vector<Node>> {
+    return fix([p](auto self, std::string_view input) -> ParseResult<Node> {
         std::vector<Node> nodes;
         auto current = input;
 
@@ -223,7 +223,10 @@ Parser many(Parser p) {
             current = result.remaining;
         }
 
-        return ParseResult<std::vector<Node>>::success(std::move(nodes), current);
+        // Aggregate many results into a single sequence node
+        Node seq_node{Node::Kind::Phi, 0};
+        for (auto& n : nodes) seq_node.inputs.push_back(n.id);
+        return ParseResult<Node>::make_success(seq_node, current);
     });
 }
 

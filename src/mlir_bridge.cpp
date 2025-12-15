@@ -4,6 +4,8 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
 #include <unordered_map>
+#include "llvm/ADT/DenseMap.h"
+#include "mlir/IR/Attributes.h"
 
 namespace cppfort::mlir_son {
 
@@ -12,8 +14,8 @@ class CRDTToMLIRConverter {
 private:
     mlir::MLIRContext* ctx;
     mlir::OpBuilder builder;
-    std::unordered_map<NodeID, mlir::Value> nodeToValue;
-    std::unordered_map<uint64_t, mlir::Type> aliasToMemType;
+    llvm::DenseMap<NodeID, mlir::Value> nodeToValue;
+    llvm::DenseMap<uint64_t, mlir::Type> aliasToMemType;
 
 public:
     explicit CRDTToMLIRConverter(mlir::MLIRContext* context)
@@ -231,7 +233,7 @@ private:
 
         // Extract struct type from node metadata
         auto structType = mlir::cpp2::StructType::get(ctx, "UnknownStruct");
-        auto ptrType = mlir::cpp2::PtrType::get(structType, false);
+        auto ptrType = mlir::cpp2::PtrType::get(ctx, structType, false);
 
         auto newOp = builder.create<mlir::cpp2::NewOp>(
             builder.getUnknownLoc(),
@@ -260,7 +262,7 @@ private:
             mem,
             ptr,
             builder.getStringAttr(fieldName),
-            builder.getUI64IntegerAttr(aliasClass)
+            builder.getI64IntegerAttr(static_cast<int64_t>(aliasClass))
         );
 
         nodeToValue[node.id] = loadOp.getValue();
@@ -285,7 +287,7 @@ private:
             ptr,
             builder.getStringAttr(fieldName),
             val,
-            builder.getUI64IntegerAttr(aliasClass)
+            builder.getI64IntegerAttr(static_cast<int64_t>(aliasClass))
         );
 
         nodeToValue[node.id] = storeOp.getOutMem();
@@ -372,7 +374,7 @@ private:
 class MLIRToCRDTConverter {
 private:
     CRDTGraph graph;
-    std::unordered_map<mlir::Value, NodeID> valueToNode;
+    llvm::DenseMap<mlir::Value, NodeID> valueToNode;
     NodeID nextID = 1;
 
 public:
@@ -404,9 +406,9 @@ private:
         Node node{Node::Kind::Constant, nextID++};
 
         auto attr = op.getValue();
-        if (auto intAttr = attr.dyn_cast<mlir::IntegerAttr>()) {
+        if (auto intAttr = llvm::dyn_cast<mlir::IntegerAttr>(attr)) {
             node.value = intAttr.getInt();
-        } else if (auto floatAttr = attr.dyn_cast<mlir::FloatAttr>()) {
+        } else if (auto floatAttr = llvm::dyn_cast<mlir::FloatAttr>(attr)) {
             node.value = floatAttr.getValueAsDouble();
         }
 
