@@ -86,4 +86,4 @@ docs/doxygen/
 *.idb
 *.pdb
 
-# Submodules
+# Submodules__pycache__/
