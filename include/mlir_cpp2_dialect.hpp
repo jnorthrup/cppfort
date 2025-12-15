@@ -14,13 +14,6 @@ namespace cppfort::mlir_son {
 // Unique node identifier for CRDT tracking
 using NodeID = uint64_t;
 
-// Pijul CRDT patch representation
-struct Patch {
-    NodeID target;
-    enum class Op { AddNode, RemoveNode, AddEdge, RemoveEdge, ModifyNode } operation;
-    std::variant<struct Node, std::pair<NodeID, NodeID>> data;
-};
-
 // Sea of Nodes core node structure
 struct Node {
     NodeID id;
@@ -43,7 +36,19 @@ struct Node {
     uint64_t timestamp;
     std::unordered_set<NodeID> dependencies;
 
-    Node(Kind k, NodeID i) : kind(k), id(i), timestamp(0) {}
+    Node() : id(0), kind(Kind::Start), timestamp(0) {}
+    Node(Kind k, NodeID i) : id(i), kind(k), timestamp(0) {}
+};
+
+// Pijul CRDT patch representation
+struct Patch {
+    NodeID target = 0;
+    enum class Op { AddNode, RemoveNode, AddEdge, RemoveEdge, ModifyNode } operation = Op::AddNode;
+    std::variant<Node, std::pair<NodeID, NodeID>> data;
+
+    Patch() = default;
+    Patch(NodeID t, Op o, std::variant<Node, std::pair<NodeID, NodeID>> d)
+        : target(t), operation(o), data(std::move(d)) {}
 };
 
 // Alias class system for memory management (from Chapter 10)
@@ -83,6 +88,12 @@ struct Type {
         return {Lattice::Top};
     }
 };
+
+// Generate simple Node IDs for combinators
+static NodeID generate_id() {
+    static NodeID counter = 0;
+    return ++counter;
+}
 
 // Combinator base system (category theory inspired)
 namespace combinators {
@@ -142,42 +153,10 @@ public:
     NodeID generate_id() { return ++counter; }
 
     // Pijul-style patch application
-    bool apply_patch(const Patch& patch) {
-        switch (patch.operation) {
-            case Patch::Op::AddNode: {
-                auto node = std::get<Node>(patch.data);
-                nodes[node.id] = node;
-                break;
-            }
-            case Patch::Op::RemoveNode: {
-                nodes.erase(patch.target);
-                break;
-            }
-            case Patch::Op::AddEdge: {
-                auto [from, to] = std::get<std::pair<NodeID, NodeID>>(patch.data);
-                edges[from].insert(to);
-                break;
-            }
-            case Patch::Op::RemoveEdge: {
-                auto [from, to] = std::get<std::pair<NodeID, NodeID>>(patch.data);
-                edges[from].erase(to);
-                break;
-            }
-        }
-        return true;
-    }
+    bool apply_patch(const Patch& patch);
 
     // Merge two CRDT graphs
-    void merge(const CRDTGraph& other) {
-        for (const auto& [id, node] : other.nodes) {
-            if (!nodes.contains(id) || nodes[id].timestamp < node.timestamp) {
-                nodes[id] = node;
-            }
-        }
-        for (const auto& [from, outs] : other.edges) {
-            edges[from].insert(outs.begin(), outs.end());
-        }
-    }
+    void merge(const CRDTGraph& other);
 
     const Node* get_node(NodeID id) const {
         auto it = nodes.find(id);
@@ -217,24 +196,10 @@ public:
     explicit Scheduler(const CRDTGraph& g) : graph(g) {}
 
     // Schedule Early phase
-    void schedule_early() {
-        // Upward DFS from Stop, schedule to first dominated block
-        for (const auto& [id, node] : graph.get_nodes()) {
-            if (node.kind == Node::Kind::Stop) {
-                schedule_early_dfs(id);
-            }
-        }
-    }
+    void schedule_early();
 
     // Schedule Late phase
-    void schedule_late() {
-        // Downward DFS from Start, move to latest valid position
-        for (const auto& [id, node] : graph.get_nodes()) {
-            if (node.kind == Node::Kind::Start) {
-                schedule_late_dfs(id);
-            }
-        }
-    }
+    void schedule_late();
     // Exposed utility (for tests & algorithm implementations)
     std::unordered_set<NodeID> find_dominators(NodeID node_id);
     NodeID find_earliest_dominator(const Node& node);
@@ -245,47 +210,17 @@ public:
     NodeID move_towards_block(NodeID from, NodeID to);
 
     // Insert anti-dependencies
-    void insert_anti_dependencies() {
-        // Add dependencies to preserve Load/Store ordering
-        for (const auto& [id, node] : graph.get_nodes()) {
-            if (node.kind == Node::Kind::Load) {
-                insert_load_anti_deps(id);
-            }
-        }
-    }
+    void insert_anti_dependencies();
 
 private:
-    void schedule_early_dfs(NodeID id) {
-        // Implementation of early schedule algorithm
-    }
-
-    void schedule_late_dfs(NodeID id) {
-        // Implementation of late schedule algorithm
-    }
-
-    void insert_load_anti_deps(NodeID load_id) {
-        // Insert anti-dependencies for load ordering
-    }
+    void schedule_early_dfs(NodeID id, std::unordered_set<NodeID>& visited);
+    void schedule_late_dfs(NodeID id, std::unordered_set<NodeID>& visited);
+    void insert_load_anti_deps(NodeID load_id);
+    bool is_floating_data_node(const Node& node);
+    int get_block_depth(NodeID block_id);
 };
 
 // Forward declaration of high-level SeaOfNodes builder class used by main
-class SeaOfNodesBuilder {
-public:
-    SeaOfNodesBuilder();
-    NodeID create_node(Node::Kind kind);
-    void add_edge(NodeID from, NodeID to);
-    NodeID create_constant(int64_t value);
-    NodeID create_constant(double value);
-    NodeID create_constant(bool value);
-    NodeID create_binary_op(Node::Kind op, NodeID left, NodeID right);
-    NodeID create_variable(const std::string& name, Type type, bool is_mutable = false);
-    NodeID create_new_struct(NodeID struct_type);
-    NodeID create_struct_type(const std::string& name);
-    void resolve_forward_reference(const std::string& type_name, NodeID actual_type);
-    void schedule_graph();
-    const CRDTGraph& get_graph() const;
-    NodeID get_control() const;
-    void merge_graph(const CRDTGraph& other);
-};
+class SeaOfNodesBuilder;
 
 } // namespace cppfort::mlir_son

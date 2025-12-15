@@ -6,6 +6,7 @@
 #include <memory>
 #include <span>
 #include <optional>
+#include <limits>
 
 namespace cpp2_transpiler {
 
@@ -77,8 +78,12 @@ private:
     std::unique_ptr<Expression> logical_or_expression();
     std::unique_ptr<Expression> logical_and_expression();
     std::unique_ptr<Expression> equality_expression();
+    std::unique_ptr<Expression> bitwise_or_expression();
+    std::unique_ptr<Expression> bitwise_xor_expression();
+    std::unique_ptr<Expression> bitwise_and_expression();
     std::unique_ptr<Expression> comparison_expression();
     std::unique_ptr<Expression> range_expression();
+    std::unique_ptr<Expression> shift_expression();
     std::unique_ptr<Expression> addition_expression();
     std::unique_ptr<Expression> multiplication_expression();
     std::unique_ptr<Expression> prefix_expression();
@@ -114,6 +119,8 @@ private:
     void error_at_current(const char* message);
 
     bool panic_mode = false;
+    std::size_t last_error_position = std::numeric_limits<std::size_t>::max();
+    std::string last_error_text;
 };
 
 } // namespace cpp2_transpiler

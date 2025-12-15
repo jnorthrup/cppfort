@@ -5,6 +5,12 @@
 
 namespace cppfort::mlir_son {
 
+// Forward declarations for helper functions
+AliasClass get_alias_class(const Node& node);
+std::vector<NodeID> find_stores_for_alias(NodeID alias_id);
+bool should_add_anti_dependency(NodeID load, NodeID store);
+void add_anti_dependency(NodeID load, NodeID store);
+
 // CRDT Graph implementation
 bool CRDTGraph::apply_patch(const Patch& patch) {
     pending_patches.push_back(patch);

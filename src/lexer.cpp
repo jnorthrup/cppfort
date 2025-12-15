@@ -8,6 +8,9 @@ namespace cpp2_transpiler {
 Lexer::Lexer(std::string_view source)
     : source(source), current(0), line(1), column(1), start(0) {}
 
+Lexer::Lexer(const std::string& source)
+    : Lexer(std::string_view(source)) {}
+
 std::vector<Token> Lexer::tokenize() {
     while (!is_at_end()) {
         start = current;
@@ -53,6 +56,8 @@ void Lexer::scan_token() {
                 add_token(TokenType::Arrow);
             } else if (match('-')) {
                 add_token(TokenType::MinusMinus);
+            } else if (match('=')) {
+                add_token(TokenType::MinusEqual);
             } else {
                 add_token(TokenType::Minus);
             }
@@ -61,6 +66,8 @@ void Lexer::scan_token() {
         case '+': {
             if (match('+')) {
                 add_token(TokenType::PlusPlus);
+            } else if (match('=')) {
+                add_token(TokenType::PlusEqual);
             } else {
                 add_token(TokenType::Plus);
             }
@@ -69,8 +76,18 @@ void Lexer::scan_token() {
         case '*': {
             if (match('*')) {
                 add_token(TokenType::Exponentiation);
+            } else if (match('=')) {
+                add_token(TokenType::AsteriskEqual);
             } else {
                 add_token(TokenType::Asterisk);
+            }
+            break;
+        }
+        case '%': {
+            if (match('=')) {
+                add_token(TokenType::PercentEqual);
+            } else {
+                add_token(TokenType::Percent);
             }
             break;
         }
@@ -97,7 +114,7 @@ void Lexer::scan_token() {
                 add_token(TokenType::LessThanOrEqual);
             } else if (match('<')) {
                 if (match('=')) {
-                    add_token(TokenType::LeftShiftAssign);
+                    add_token(TokenType::LeftShiftEqual);
                 } else {
                     add_token(TokenType::LeftShift);
                 }
@@ -111,7 +128,7 @@ void Lexer::scan_token() {
                 add_token(TokenType::GreaterThanOrEqual);
             } else if (match('>')) {
                 if (match('=')) {
-                    add_token(TokenType::RightShiftAssign);
+                    add_token(TokenType::RightShiftEqual);
                 } else {
                     add_token(TokenType::RightShift);
                 }
@@ -123,6 +140,8 @@ void Lexer::scan_token() {
         case '&': {
             if (match('&')) {
                 add_token(TokenType::DoubleAmpersand);
+            } else if (match('=')) {
+                add_token(TokenType::AmpersandEqual);
             } else {
                 add_token(TokenType::Ampersand);
             }
@@ -131,12 +150,21 @@ void Lexer::scan_token() {
         case '|': {
             if (match('|')) {
                 add_token(TokenType::DoublePipe);
+            } else if (match('=')) {
+                add_token(TokenType::PipeEqual);
             } else {
                 add_token(TokenType::Pipe);
             }
             break;
         }
-        case '^': add_token(TokenType::Caret); break;
+        case '^': {
+            if (match('=')) {
+                add_token(TokenType::CaretEqual);
+            } else {
+                add_token(TokenType::Caret);
+            }
+            break;
+        }
         case '~': add_token(TokenType::Tilde); break;
         case '?': {
             if (match(':')) {
@@ -169,7 +197,7 @@ void Lexer::scan_token() {
             } else if (match('*')) {
                 scan_block_comment();
             } else if (match('=')) {
-                add_token(TokenType::SlashAssign);
+                add_token(TokenType::SlashEqual);
             } else {
                 add_token(TokenType::Slash);
             }
@@ -359,160 +387,24 @@ TokenType Lexer::check_keyword(std::size_t start, std::size_t length,
 }
 
 TokenType Lexer::identifier_type() {
-    switch (source[start]) {
-        case 'a':
-            return check_keyword(1, 4, "s", TokenType::As);
-        case 'b':
-            return check_keyword(1, 4, "ase", TokenType::Base);
-        case 'c':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'a':
-                        return check_keyword(2, 3, "se", TokenType::Case);
-                    case 'l':
-                        return check_keyword(2, 3, "ass", TokenType::Class);
-                    case 'o':
-                        if (current - start > 2) {
-                            switch (source[start + 2]) {
-                                case 'n':
-                                    return check_keyword(3, 4, "cept", TokenType::Concept);
-                                case 'n':
-                                    return check_keyword(3, 4, "st", TokenType::Const);
-                            }
-                        }
-                        break;
-                }
-            }
-            break;
-        case 'd':
-            return check_keyword(1, 3, "o", TokenType::Do);
-        case 'e':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'l':
-                        return check_keyword(2, 2, "se", TokenType::Else);
-                    case 'n':
-                        return check_keyword(2, 2, "um", TokenType::Enum);
-                    case 'x':
-                        return check_keyword(2, 6, "plicit", TokenType::Explicit);
-                }
-            }
-            break;
-        case 'f':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'a':
-                        return check_keyword(2, 3, "lse", TokenType::BooleanLiteral);
-                    case 'i':
-                        return check_keyword(2, 3, "nal", TokenType::Final);
-                    case 'o':
-                        return check_keyword(2, 1, "r", TokenType::For);
-                    case 'u':
-                        return check_keyword(2, 2, "nc", TokenType::Func);
-                }
-            }
-            break;
-        case 'i':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'f':
-                        return check_keyword(2, 0, "", TokenType::If);
-                    case 'm':
-                        return check_keyword(2, 4, "port", TokenType::Import);
-                    case 'n':
-                        return check_keyword(2, 0, "", TokenType::In);
-                    case 'n':
-                        return check_keyword(2, 7, "terface", TokenType::Interface);
-                    case 's':
-                        return check_keyword(2, 0, "", TokenType::Is);
-                    case 'm':
-                        return check_keyword(2, 6, "plicit", TokenType::Implicit);
-                }
-            }
-            break;
-        case 'l':
-            return check_keyword(1, 2, "et", TokenType::Let);
-        case 'm':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'o':
-                        return check_keyword(2, 4, "dule", TokenType::Module);
-                    case 'u':
-                        return check_keyword(2, 1, "t", TokenType::Mut);
-                }
-            }
-            break;
-        case 'n':
-            return check_keyword(1, 7, "amespace", TokenType::Namespace);
-        case 'o':
-            return check_keyword(1, 6, "perator", TokenType::Operator);
-        case 'p':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'r':
-                        return check_keyword(2, 4, "ivate", TokenType::Private);
-                    case 'u':
-                        return check_keyword(2, 5, "blic", TokenType::Public);
-                    case 'o':
-                        return check_keyword(2, 2, "st", TokenType::ContractPost);
-                }
-            }
-            break;
-        case 'r':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'e':
-                        return check_keyword(2, 5, "quire", TokenType::Requires);
-                    case 'e':
-                        return check_keyword(2, 5, "turn", TokenType::Return);
-                }
-            }
-            break;
-        case 's':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 't':
-                        return check_keyword(2, 4, "ruct", TokenType::Struct);
-                    case 'u':
-                        return check_keyword(2, 3, "per", TokenType::Super);
-                    case 'w':
-                        return check_keyword(2, 4, "itch", TokenType::Switch);
-                }
-            }
-            break;
-        case 't':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'h':
-                        return check_keyword(2, 2, "is", TokenType::This);
-                    case 'r':
-                        if (current - start > 2) {
-                            switch (source[start + 2]) {
-                                case 'u':
-                                    return check_keyword(3, 1, "e", TokenType::True);
-                                case 'y':
-                                    return check_keyword(3, 0, "", TokenType::Try);
-                            }
-                        }
-                        break;
-                    case 'y':
-                        return check_keyword(2, 2, "pe", TokenType::Type);
-                }
-            }
-            break;
-        case 'u':
-            return check_keyword(1, 5, "nion", TokenType::Union);
-        case 'w':
-            if (current - start > 1) {
-                switch (source[start + 1]) {
-                    case 'h':
-                        return check_keyword(2, 3, "ile", TokenType::While);
-                    case 'h':
-                        return check_keyword(2, 3, "en", TokenType::When);
-                }
-            }
-            break;
-    }
+    std::string_view text = source.substr(start, current - start);
+    static const std::unordered_map<std::string, TokenType> keywords = {
+        {"as", TokenType::As}, {"base", TokenType::Base}, {"case", TokenType::Case}, {"class", TokenType::Class},
+        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"do", TokenType::Do}, {"else", TokenType::Else},
+        {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
+        {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},
+        {"interface", TokenType::Interface}, {"is", TokenType::Is}, {"implicit", TokenType::Implicit}, {"let", TokenType::Let},
+        {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"operator", TokenType::Operator},
+        {"private", TokenType::Private}, {"public", TokenType::Public}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
+        {"requires", TokenType::Requires}, {"struct", TokenType::Struct}, {"super", TokenType::Super}, {"switch", TokenType::Switch},
+        {"this", TokenType::This}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
+        {"while", TokenType::While}, {"when", TokenType::When}, {"true", TokenType::True}, {"false", TokenType::False},
+        {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
+        {"using", TokenType::Using}, {"template", TokenType::Template}
+    };
+
+    auto it = keywords.find(std::string(text));
+    if (it != keywords.end()) return it->second;
     return TokenType::Identifier;
 }
 

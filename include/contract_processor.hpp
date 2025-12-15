@@ -16,9 +16,9 @@ public:
 private:
     struct ContractGroup {
         std::string name;
-        std::vector<ContractExpression*> preconditions;
-        std::vector<ContractExpression*> postconditions;
-        std::vector<ContractExpression*> assertions;
+        std::vector<std::unique_ptr<ContractExpression>> preconditions;
+        std::vector<std::unique_ptr<ContractExpression>> postconditions;
+        std::vector<std::unique_ptr<ContractExpression>> assertions;
         std::string violation_handler;
     };
 
@@ -31,7 +31,7 @@ private:
 
     // Contract group management
     void create_contract_group(const std::string& function_name, FunctionDeclaration* func);
-    void add_to_contract_group(const std::string& group_name, ContractExpression* contract);
+    void add_to_contract_group(const std::string& group_name, std::unique_ptr<ContractExpression> contract);
     std::string get_contract_group_name(const std::string& function_name);
 
     // Code generation helpers

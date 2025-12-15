@@ -2,6 +2,7 @@
 #include <iostream>
 #include <filesystem>
 #include <getopt.h>
+#include <fstream>
 
 using namespace cppfort::tests;
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(cppfort LANGUAGES CXX VERSION 1.0.0)
+project(cppfort LANGUAGES C CXX VERSION 1.0.0)
 
 # C++23 standard
 set(CMAKE_CXX_STANDARD 23)
@@ -23,8 +23,7 @@ else()
   endif()
 endif()
 
-# Use parallel build
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -j")
+# Use parallel build - controlled by build tool invocation (do not add -j to compiler flags)
 
 # Ninja generator support
 if(CMAKE_GENERATOR STREQUAL "Ninja")
@@ -40,12 +39,13 @@ message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
+# Make sure MLIR's CMake modules are available when including AddMLIR/TableGen
+list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 
 # Check for required MLIR components
-list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(HandleLLVMOptions)
 
 # Include directories
@@ -71,7 +71,11 @@ include(CMakePackageConfigHelpers)
 # Subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
-add_subdirectory(examples)
+if(EXISTS "${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt")
+  add_subdirectory(examples)
+else()
+  message(STATUS "No examples CMakeLists found; skipping examples/")
+endif()
 
 # Installation
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
@@ -84,7 +88,6 @@ configure_package_config_file(
 )
 
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppfortConfigVersion.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfigVersion.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
@@ -98,4 +101,3 @@ install(FILES
 
 # Testing
 enable_testing()
-add_subdirectory(tests)

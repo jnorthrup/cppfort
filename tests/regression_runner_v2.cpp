@@ -30,6 +30,7 @@ struct CorpusEntry {
 struct TranspileRule {
     std::string pattern_name;
     std::regex input_pattern;
+    std::string input_pattern_str;
     std::string output_template;
     std::vector<std::string> example_inputs;
 };
@@ -136,8 +137,8 @@ public:
         int count = 0;
         for (const auto& test : tests) {
             count++;
-            std::print("\rBuilding corpus {}/{}", count, tests.size());
-            std::flush(std::cout);
+            std::cout << "\rBuilding corpus " << count << "/" << tests.size();
+            std::cout.flush();
 
             auto entry = transpile_with_cppfront(test);
             corpus.push_back(entry);
@@ -224,8 +225,8 @@ public:
 
             // Read input file
             std::ifstream ifs(entry.source_file);
-            std::string input(std::istreambuf_iterator<char>(ifs),
-                            std::istreambuf_iterator<char>());
+            std::string input;
+            input.assign(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
 
             // Detect patterns
             detect_return_pattern(input, entry.output_cpp, rules);
@@ -248,7 +249,7 @@ public:
 
         for (const auto& rule : rules) {
             ofs << "[rule:" << rule.pattern_name << "]\n";
-            ofs << "pattern: " << rule.input_pattern.str() << "\n";
+            ofs << "pattern: " << rule.input_pattern_str << "\n";
             ofs << "output: " << rule.output_template << "\n";
 
             if (!rule.example_inputs.empty()) {
@@ -279,6 +280,7 @@ private:
                 TranspileRule rule;
                 rule.pattern_name = "return_statement";
                 rule.input_pattern = std::regex(R"(return\s+(.+);)");
+                rule.input_pattern_str = R"(return\s+(.+);)";
                 rule.output_template = "return $1;";
                 rule.example_inputs.push_back("return " + expr + ";");
                 rules.push_back(rule);
@@ -300,6 +302,7 @@ private:
             TranspileRule rule;
             rule.pattern_name = "function_declaration";
             rule.input_pattern = std::regex(R"((\w+):\s*\(([^)]*)\)\s*->\s*(\w+)\s*=\s*\{)");
+            rule.input_pattern_str = R"((\w+):\s*\(([^)]*)\)\s*->\s*(\w+)\s*=\s*\{)";
             rule.output_template = "auto $1($2) -> $3 {";
             rule.example_inputs.push_back(name + ": (" + params + ") -> " + ret_type + " = {");
             rules.push_back(rule);
@@ -318,6 +321,7 @@ private:
             TranspileRule rule;
             rule.pattern_name = "class_declaration";
             rule.input_pattern = std::regex(R"((\w+):\s*type\s*=\s*\{)");
+            rule.input_pattern_str = R"((\w+):\s*type\s*=\s*\{)";
             rule.output_template = "class $1 {";
             rule.example_inputs.push_back(name + ": type = {");
             rules.push_back(rule);
@@ -336,6 +340,7 @@ private:
             TranspileRule rule;
             rule.pattern_name = "namespace_declaration";
             rule.input_pattern = std::regex(R"((\w+):\s*namespace\s*=\s*\{)");
+            rule.input_pattern_str = R"((\w+):\s*namespace\s*=\s*\{)";
             rule.output_template = "namespace $1 {";
             rule.example_inputs.push_back(name + ": namespace = {");
             rules.push_back(rule);
@@ -356,6 +361,7 @@ private:
             TranspileRule rule;
             rule.pattern_name = "variable_declaration";
             rule.input_pattern = std::regex(R"((\w+):\s*(\w+)\s*=\s*([^;]+);)");
+            rule.input_pattern_str = R"((\w+):\s*(\w+)\s*=\s*([^;]+);)";
             rule.output_template = "$2 $1 = $3;";
             rule.example_inputs.push_back(name + ": " + type + " = " + value + ";");
             rules.push_back(rule);
@@ -450,8 +456,8 @@ private:
 
                 // Compute SHA256
                 std::ifstream ifs(entry.path(), std::ios::binary);
-                std::string content(std::istreambuf_iterator<char>(ifs),
-                                  std::istreambuf_iterator<char>());
+                std::string content;
+                content.assign(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
                 test.sha256_input = cppfort::tests::SHA256::hash(content);
 
                 // Extract category

@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include "mlir_cpp2_dialect.hpp"
-#include "sea_of_nodes_ir.cpp"
-#include "pijul_crdt.cpp"
+#include "../src/sea_of_nodes_ir.cpp"
+#include "../src/pijul_crdt.cpp"
 
 int main() {
     using namespace cppfort::mlir_son;
@@ -20,8 +20,8 @@ int main() {
     builder.add_edge(A, B);
 
     // Add data node D that depends on A and B
-    NodeID valA = builder.create_constant(10);
-    NodeID valB = builder.create_constant(20);
+    NodeID valA = builder.create_constant(int64_t(10));
+    NodeID valB = builder.create_constant(int64_t(20));
     NodeID D = builder.create_binary_op(Node::Kind::Add, valA, valB);
     // Make D depend on control B (simulate that both inputs are dominated by B)
     builder.add_edge(B, D);

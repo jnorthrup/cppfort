@@ -50,17 +50,26 @@ add_executable(regression_runner
 target_include_directories(regression_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Existing tests
-add_executable(cpp2_tests test_main.cpp)
-add_executable(cppfront_regression_tests cppfront_regression_tests.cpp)
-add_executable(test_cppfront_comprehensive test_cppfront_comprehensive.cpp)
-add_executable(run_all_tests run_all_tests.cpp)
+add_library(cpp2_tests_obj OBJECT test_main.cpp)
+add_library(cppfront_regression_tests_obj OBJECT cppfront_regression_tests.cpp)
+add_library(test_cppfront_comprehensive_obj OBJECT test_cppfront_comprehensive.cpp)
+
+add_executable(cpp2_tests $<TARGET_OBJECTS:cpp2_tests_obj>)
+add_executable(cppfront_regression_tests $<TARGET_OBJECTS:cppfront_regression_tests_obj>)
+add_executable(test_cppfront_comprehensive $<TARGET_OBJECTS:test_cppfront_comprehensive_obj>)
 add_executable(test_scheduler test_scheduler.cpp)
 
-target_link_libraries(cpp2_tests PRIVATE cpp2_transpiler)
-target_link_libraries(cppfront_regression_tests PRIVATE cpp2_transpiler)
-target_link_libraries(test_cppfront_comprehensive PRIVATE cpp2_transpiler)
-target_link_libraries(run_all_tests PRIVATE cpp2_tests cppfront_regression_tests test_cppfront_comprehensive)
-target_link_libraries(test_scheduler PRIVATE cpp2_transpiler)
+target_link_libraries(cpp2_tests PRIVATE Cpp2Transpiler)
+target_link_libraries(cppfront_regression_tests PRIVATE Cpp2Transpiler)
+target_link_libraries(test_cppfront_comprehensive PRIVATE Cpp2Transpiler)
+target_link_libraries(test_scheduler PRIVATE Cpp2Transpiler Cpp2Dialect MLIRIR MLIRSupport MLIRParser)
+
+# Build run_all_tests by linking in the object libraries so it can call their main-like functions
+add_executable(run_all_tests run_all_tests.cpp
+    $<TARGET_OBJECTS:cpp2_tests_obj>
+    $<TARGET_OBJECTS:cppfront_regression_tests_obj>
+    $<TARGET_OBJECTS:test_cppfront_comprehensive_obj>
+)
 
 target_include_directories(cpp2_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include

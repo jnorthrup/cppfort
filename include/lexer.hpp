@@ -99,15 +99,25 @@ enum class TokenType : uint8_t {
     Plus,            // +
     Minus,           // -
     Asterisk,        // *
+        Elvis,           // ?:
     Slash,           // /
     Percent,         // %
+        SlashEqual,      // /=
     PlusPlus,        // ++
     MinusMinus,      // --
+    PlusEqual,       // +=
+    MinusEqual,      // -=
+    AsteriskEqual,   // *=
+    PercentEqual,     // %=
+    Exponentiation,  // **
     Ampersand,       // &
     DoubleAmpersand, // &&
+    AmpersandEqual,  // &=
     Pipe,            // |
     DoublePipe,      // ||
+    PipeEqual,       // |=
     Caret,           // ^
+    CaretEqual,      // ^=
     Tilde,           // ~
     Exclamation,     // !
     Question,        // ?
@@ -121,6 +131,11 @@ enum class TokenType : uint8_t {
     RightBracket,    // ]
     LeftBrace,       // {
     RightBrace,      // }
+
+    LeftShift,       // <<
+    LeftShiftEqual,  // <<=
+    RightShift,      // >>
+    RightShiftEqual, // >>=
 
     // Special
     EndOfFile,
@@ -136,6 +151,10 @@ enum class TokenType : uint8_t {
     Meta,            // @meta
     TemplateBegin,   // <
     TemplateEnd,     // >
+    True,
+    False,
+    Using,
+    Template,
 };
 
 struct Token {
@@ -152,6 +171,7 @@ struct Token {
 class Lexer {
 public:
     explicit Lexer(std::string_view source);
+    explicit Lexer(const std::string& source);
 
     std::vector<Token> tokenize();
 

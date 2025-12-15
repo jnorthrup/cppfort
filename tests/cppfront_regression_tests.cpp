@@ -31,19 +31,19 @@ bool transpile_succeeds(const std::string& cpp2_code) {
         auto ast = parser.parse();
 
         SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.analyze(ast);
+        semantic_analyzer.analyze(*ast);
 
         SafetyChecker safety_checker;
-        safety_checker.check(ast);
+        safety_checker.check(*ast);
 
         MetafunctionProcessor meta_processor;
-        meta_processor.process(ast);
+        meta_processor.process(*ast);
 
         ContractProcessor contract_processor;
-        contract_processor.process(ast);
+        contract_processor.process(*ast);
 
         CodeGenerator code_generator;
-        auto result = code_generator.generate(ast);
+        auto result = code_generator.generate(*ast);
 
         return !result.empty();
     }
@@ -434,7 +434,7 @@ int main() {
         std::cout << "Running Cppfront Regression Tests\n" << std::endl;
 
         test_cppfront_basic();
-        test_cppforward_contracts();
+        test_cppfront_contracts();
         test_cppforward_functions();
         test_cppforward_assertions();
         test_cppforward_loops();

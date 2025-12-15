@@ -2,6 +2,7 @@
 #include <string>
 #include <cassert>
 #include <memory>
+#include <vector>
 
 // Test that our transpiler handles cpp2's distinctive syntax patterns
 // These tests verify we understand the semantics correctly
@@ -23,11 +24,6 @@ void test_unified_declaration_syntax() {
 
     // Type declarations
     struct Point { int x, y; };
-
-    // Namespace declarations (conceptual)
-    namespace {
-        int internal_var = 5;
-    }
 
     assert(test_vars.x == 42);
     assert(test_vars.y == 10);

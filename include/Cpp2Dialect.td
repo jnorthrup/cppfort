@@ -1,5 +1,3 @@
-#pragma once
-
  
 include "mlir/IR/OpBase.td"
 include "mlir/IR/AttrTypeBase.td"
@@ -29,10 +27,9 @@ def Cpp2_IntType : TypeDef<Cpp2_Dialect, "Int"> {
 }
 
 def Cpp2_PtrType : TypeDef<Cpp2_Dialect, "Ptr"> {
-  let mnemonic = "ptr";
   let summary = "Pointer type with nullable flag";
   let parameters = (ins "Type":$pointee, "bool":$nullable);
-  let assemblyFormat = "`<` $pointee (`,` `null` $nullable^)? `>`";
+  let typeName = "cpp2.ptr";
 }
 
 def Cpp2_StructType : TypeDef<Cpp2_Dialect, "Struct"> {
@@ -50,7 +47,7 @@ def Cpp2_MemType : TypeDef<Cpp2_Dialect, "Mem"> {
 }
 
 // Control flow operations (Chapter 5-9)
-def Cpp2_StartOp : Cpp2_Op<"start", [NoSideEffect]> {
+def Cpp2_StartOp : Cpp2_Op<"start"> {
   let summary = "Start node producing initial control and memory";
   let description = [{
     Produces initial control flow and memory slices for each alias class.
@@ -68,7 +65,7 @@ def Cpp2_IfOp : Cpp2_Op<"if", [DeclareOpInterfaceMethods<RegionBranchOpInterface
   let assemblyFormat = "$condition $thenRegion `else` $elseRegion attr-dict `:` type($results)";
 }
 
-def Cpp2_RegionOp : Cpp2_Op<"region", [NoSideEffect]> {
+def Cpp2_RegionOp : Cpp2_Op<"region"> {
   let summary = "Control flow merge point (Phi for control)";
   let arguments = (ins Variadic<AnyType>:$inputs);
   let results = (outs AnyType:$result);
@@ -87,7 +84,7 @@ def Cpp2_ConstantOp : Cpp2_Op<"constant", [Pure]> {
   let summary = "Constant value";
   let arguments = (ins AnyAttr:$value);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$value attr-dict `:` type($result)";
+
   let hasFolder = 1;
 }
 
@@ -95,7 +92,6 @@ def Cpp2_AddOp : Cpp2_Op<"add", [Pure, Commutative]> {
   let summary = "Integer addition";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($result)";
   let hasFolder = 1;
   let hasCanonicalizer = 1;
 }
@@ -104,7 +100,6 @@ def Cpp2_SubOp : Cpp2_Op<"sub", [Pure]> {
   let summary = "Integer subtraction";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($result)";
   let hasFolder = 1;
 }
 
@@ -112,7 +107,6 @@ def Cpp2_MulOp : Cpp2_Op<"mul", [Pure, Commutative]> {
   let summary = "Integer multiplication";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($result)";
   let hasFolder = 1;
 }
 
@@ -120,7 +114,8 @@ def Cpp2_DivOp : Cpp2_Op<"div", [Pure]> {
   let summary = "Integer division";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($result)";
+  // Include operand types and result type explicitly so type inference is unambiguous
+  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)";
   let hasFolder = 1;
 }
 
@@ -141,7 +136,7 @@ def Cpp2_NewOp : Cpp2_Op<"new", [MemoryEffects<[MemAlloc]>]> {
   }];
   let arguments = (ins AnyType:$ctrl, TypeAttr:$structType);
   let results = (outs Cpp2_PtrType:$ptr);
-  let assemblyFormat = "$ctrl `,` $structType attr-dict `:` type($ptr)";
+  let assemblyFormat = "$ctrl `,` $structType attr-dict `:` type($ctrl) `,` type($ptr)";
 }
 
 def Cpp2_LoadOp : Cpp2_Op<"load", [MemoryEffects<[MemRead]>]> {
@@ -154,7 +149,7 @@ def Cpp2_LoadOp : Cpp2_Op<"load", [MemoryEffects<[MemRead]>]> {
   let arguments = (ins Cpp2_MemType:$mem, Cpp2_PtrType:$ptr,
                        StrAttr:$field, UI64Attr:$aliasClass);
   let results = (outs AnyType:$value, Cpp2_MemType:$outMem);
-  let assemblyFormat = "$mem `[` $ptr `.` $field `]` attr-dict `:` type($value)";
+  let assemblyFormat = "$mem `[` $ptr `,` $field `]` attr-dict `:` type($mem) `,` type($ptr) `,` type($value) `,` type($outMem)";
 }
 
 def Cpp2_StoreOp : Cpp2_Op<"store", [MemoryEffects<[MemWrite]>]> {
@@ -168,7 +163,7 @@ def Cpp2_StoreOp : Cpp2_Op<"store", [MemoryEffects<[MemWrite]>]> {
                        StrAttr:$field, AnyType:$value,
                        UI64Attr:$aliasClass);
   let results = (outs Cpp2_MemType:$outMem);
-  let assemblyFormat = "$value `->` $mem `[` $ptr `.` $field `]` attr-dict `:` type($value)";
+  let assemblyFormat = "$value `->` $mem `[` $ptr `,` $field `]` attr-dict `:` type($mem) `,` type($ptr) `,` type($value) `,` type($outMem)";
 }
 
 def Cpp2_CastOp : Cpp2_Op<"cast", [Pure]> {

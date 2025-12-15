@@ -35,19 +35,19 @@ bool transpile_and_compare(const std::string& input_file, const std::string& exp
         auto ast = parser.parse();
 
         SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.analyze(ast);
+        semantic_analyzer.analyze(*ast);
 
         SafetyChecker safety_checker;
-        safety_checker.check(ast);
+        safety_checker.check(*ast);
 
         MetafunctionProcessor meta_processor;
-        meta_processor.process(ast);
+        meta_processor.process(*ast);
 
         ContractProcessor contract_processor;
-        contract_processor.process(ast);
+        contract_processor.process(*ast);
 
         CodeGenerator code_generator;
-        auto result = code_generator.generate(ast);
+        auto result = code_generator.generate(*ast);
 
         // Compare
         return result == expected;
@@ -138,10 +138,10 @@ void test_simple_transpilation() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Basic checks
     assert(result.find("int main()") != std::string::npos);
@@ -167,10 +167,10 @@ void test_type_deduction() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Check that types were deduced
     assert(result.find("auto x = 42") != std::string::npos);
@@ -200,10 +200,10 @@ void test_ufcs() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Both should generate the same C++ code
     assert(result.find("length(s)") != std::string::npos);
@@ -230,10 +230,10 @@ void test_postfix_operators() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Postfix operators should be converted to prefix
     assert(result.find("*p") != std::string::npos);
@@ -259,13 +259,13 @@ void test_contracts() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     ContractProcessor contract_processor;
-    contract_processor.process(ast);
+    contract_processor.process(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Contract checks should be generated
     assert(result.find("assert(b != 0)") != std::string::npos);
@@ -289,13 +289,13 @@ void test_safety_checks() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     SafetyChecker safety_checker;
-    safety_checker.check(ast);
+    safety_checker.check(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Bounds checking should be added
     assert(result.find("index >= 0") != std::string::npos ||
@@ -321,10 +321,10 @@ void test_string_interpolation() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // String interpolation should be converted to format
     assert(result.find("std::format") != std::string::npos ||
@@ -354,10 +354,10 @@ void test_range_operators() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Range operators should be converted
     assert(result.find("std::views::iota") != std::string::npos ||
@@ -386,10 +386,10 @@ void test_inspect_pattern_matching() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Pattern matching should be converted to switch/if
     assert(result.find("switch") != std::string::npos ||
@@ -418,13 +418,13 @@ void test_metafunctions() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     MetafunctionProcessor meta_processor;
-    meta_processor.process(ast);
+    meta_processor.process(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Metafunctions should generate additional members
     assert(result.find("operator==") != std::string::npos ||
@@ -447,10 +447,10 @@ void test_templates() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Template syntax should be converted
     assert(result.find("template<typename T>") != std::string::npos);
@@ -500,19 +500,19 @@ void test_integration() {
     auto ast = parser.parse();
 
     SemanticAnalyzer semantic_analyzer;
-    semantic_analyzer.analyze(ast);
+    semantic_analyzer.analyze(*ast);
 
     SafetyChecker safety_checker;
-    safety_checker.check(ast);
+    safety_checker.check(*ast);
 
     MetafunctionProcessor meta_processor;
-    meta_processor.process(ast);
+    meta_processor.process(*ast);
 
     ContractProcessor contract_processor;
-    contract_processor.process(ast);
+    contract_processor.process(*ast);
 
     CodeGenerator code_generator;
-    auto result = code_generator.generate(ast);
+    auto result = code_generator.generate(*ast);
 
     // Basic validation
     assert(!result.empty());

@@ -1,4 +1,5 @@
 #include "mlir_cpp2_dialect.hpp"
+#include "ast.hpp"
 #include <unordered_map>
 #include <queue>
 #include <stack>
@@ -83,7 +84,7 @@ public:
 
     NodeID create_constant(double value) {
         NodeID const_id = create_node(Node::Kind::Constant);
-        Node* node = const_cast<Node*>(const_id);
+        Node* node = const_cast<Node*>(graph.get_node(const_id));
         if (node) {
             node->value = value;
             node_types[const_id] = Type::make_int(); // Floats handled separately
@@ -93,7 +94,7 @@ public:
 
     NodeID create_constant(bool value) {
         NodeID const_id = create_node(Node::Kind::Constant);
-        Node* node = const_cast<Node*>(const_id);
+        Node* node = const_cast<Node*>(graph.get_node(const_id));
         if (node) {
             node->value = value;
             node_types[const_id] = Type::make_int();
@@ -411,6 +412,23 @@ class ASTToSeaOfNodes {
 private:
     SeaOfNodesBuilder builder;
 
+    // Helper to convert types between AST and SeaOfNodes
+    Type convert_type(const cpp2_transpiler::Type& ast_type) {
+        switch (ast_type.kind) {
+            case cpp2_transpiler::Type::Kind::Builtin:
+                if (ast_type.name == "int" || ast_type.name == "i32" || ast_type.name == "i64") {
+                    return Type::make_int();
+                }
+                return Type::make_int(); // Default to int for now
+            case cpp2_transpiler::Type::Kind::Pointer:
+                return Type::make_ptr(ast_type.name);
+            case cpp2_transpiler::Type::Kind::UserDefined:
+                return Type::make_struct(ast_type.name);
+            default:
+                return Type::make_int();
+        }
+    }
+
 public:
     CRDTGraph convert(const cpp2_transpiler::AST& ast) {
         for (const auto& decl : ast.declarations) {
@@ -447,7 +465,7 @@ private:
         // Convert parameters
         std::vector<NodeID> params;
         for (const auto& param : func.parameters) {
-            NodeID param_node = builder.create_variable(param.name, *param.type);
+            NodeID param_node = builder.create_variable(param.name, convert_type(*param.type));
             params.push_back(param_node);
         }
 
@@ -463,7 +481,7 @@ private:
         NodeID value = var.initializer ? convert_expression(*var.initializer)
                                       : create_default_value(*var.type);
 
-        return builder.create_variable(var.name, *var.type, var.is_mut);
+        return builder.create_variable(var.name, convert_type(*var.type), var.is_mut);
     }
 
     void convert_type_declaration(const cpp2_transpiler::TypeDeclaration& type) {
@@ -503,7 +521,7 @@ private:
                 switch (bin.op) {
                     case cpp2_transpiler::TokenType::Plus: op = Node::Kind::Add; break;
                     case cpp2_transpiler::TokenType::Minus: op = Node::Kind::Sub; break;
-                    case cpp2_transpiler::TokenType::Star: op = Node::Kind::Mul; break;
+                    case cpp2_transpiler::TokenType::Asterisk: op = Node::Kind::Mul; break;
                     case cpp2_transpiler::TokenType::Slash: op = Node::Kind::Div; break;
                     default: return 0;
                 }
@@ -584,7 +602,7 @@ private:
         switch (type.kind) {
             case cpp2_transpiler::Type::Kind::Builtin:
                 if (type.name == "int" || type.name == "i32" || type.name == "i64") {
-                    return builder.create_constant(0);
+                    return builder.create_constant(int64_t(0));
                 } else if (type.name == "bool") {
                     return builder.create_constant(false);
                 } else if (type.name == "double" || type.name == "f64") {
@@ -593,7 +611,7 @@ private:
                 break;
             case cpp2_transpiler::Type::Kind::Pointer:
                 // Null pointer for pointer types
-                return builder.create_constant(0);
+                return builder.create_constant(int64_t(0));
             default:
                 break;
         }

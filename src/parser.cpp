@@ -22,6 +22,9 @@ std::unique_ptr<AST> Parser::parse() {
 
 // Parsing utilities
 const Token& Parser::peek() const {
+    if (current >= tokens.size()) {
+        return tokens.back(); // Return EOF token
+    }
     return tokens[current];
 }
 
@@ -31,11 +34,14 @@ const Token& Parser::advance() {
 }
 
 const Token& Parser::previous() const {
+    if (current == 0) {
+        return tokens.front();
+    }
     return tokens[current - 1];
 }
 
 bool Parser::is_at_end() const {
-    return peek().type == TokenType::EndOfFile;
+    return current >= tokens.size() || peek().type == TokenType::EndOfFile;
 }
 
 bool Parser::check(TokenType type) const {
@@ -105,6 +111,26 @@ auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
 // Entry point
 std::unique_ptr<Declaration> Parser::declaration() {
     return synchronize_on_error([this]() -> std::unique_ptr<Declaration> {
+        // Cpp2 unified syntax: identifier: type = initializer
+        if (check(TokenType::Identifier)) {
+            std::size_t saved = current;
+            advance(); // consume identifier
+            if (check(TokenType::Colon)) {
+                current = saved; // backtrack
+                // Could be function or variable
+                advance(); // consume identifier (makes it previous())
+                consume(TokenType::Colon, "Expected ':' after identifier");
+
+                // Check if it's a function (has parameter list)
+                if (check(TokenType::LeftParen)) {
+                    return function_declaration(); // Will parse params, return type, body
+                } else {
+                    return variable_declaration(); // Will parse type and initializer
+                }
+            }
+            current = saved; // backtrack if no colon
+        }
+
         if (match({TokenType::Let, TokenType::Const})) {
             return variable_declaration();
         }
@@ -198,19 +224,28 @@ std::unique_ptr<Expression> Parser::expression() {
 
 // Declarations
 std::unique_ptr<Declaration> Parser::variable_declaration() {
-    Token keyword = previous();
-    bool is_const = keyword.type == TokenType::Const;
+    bool is_const = false;
     bool is_compile_time = false;
     bool is_mut = false;
 
-    // Check for compile-time constant (==)
-    if (match(TokenType::DoubleEqual)) {
-        is_compile_time = true;
+    // Check if called from keyword syntax (let/const) or unified syntax (name:)
+    // In unified syntax, identifier is at previous()-1, colon is at previous()
+    Token name = previous(); // Will be identifier or keyword
+
+    if (name.type == TokenType::Let || name.type == TokenType::Const) {
+        // Keyword syntax: let/const name: type = init;
+        is_const = name.type == TokenType::Const;
+        name = consume(TokenType::Identifier, "Expected variable name");
+        consume(TokenType::Colon, "Expected ':' after variable name");
+    } else if (name.type == TokenType::Colon) {
+        // Unified syntax: colon is previous(), need to go back one more
+        // Actually previous()-1 would be the identifier
+        // But we can't access previous()-1, so get it from tokens
+        if (current >= 2) {
+            name = tokens[current - 2]; // identifier before colon
+        }
     }
-
-    Token name = consume(TokenType::Identifier, "Expected variable name");
-
-    consume(TokenType::Colon, "Expected ':' after variable name");
+    // else: name is already set from some other path
 
     std::unique_ptr<Type> var_type = nullptr;
     if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
@@ -238,16 +273,23 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
 }
 
 std::unique_ptr<Declaration> Parser::function_declaration() {
-    Token name = consume(TokenType::Identifier, "Expected function name");
-
-    // Template parameters
+    Token prev = previous();
+    Token name = prev; // Initialize with prev
     std::vector<std::string> template_params;
-    if (match(TokenType::LessThan)) {
-        template_params = template_parameters();
-        consume(TokenType::GreaterThan, "Expected '>' after template parameters");
-    }
 
-    consume(TokenType::Colon, "Expected ':' after function name");
+    // Check if called from keyword syntax (func) or unified syntax (name:)
+    if (prev.type == TokenType::Func) {
+        // Keyword syntax: func name(...) -> type = body
+        name = consume(TokenType::Identifier, "Expected function name");
+        // Template parameters
+        if (match(TokenType::LessThan)) {
+            template_params = template_parameters();
+            consume(TokenType::GreaterThan, "Expected '>' after template parameters");
+        }
+        consume(TokenType::Colon, "Expected ':' after function name");
+    }
+    // else: Unified syntax: name: (...) -> type = body - name and colon already consumed
+
     consume(TokenType::LeftParen, "Expected '(' after function ':'");
 
     std::vector<FunctionDeclaration::Parameter> parameters;
@@ -395,9 +437,9 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
             consume(TokenType::Colon, "Expected ':' after parameter name");
             auto param_type = type();
 
-            FunctionDeclaration::Parameter param;
-            param.name = std::string(param_name.lexeme);
-            param.type = std::move(param_type);
+            auto param = std::make_unique<FunctionDeclaration::Parameter>();
+            param->name = std::string(param_name.lexeme);
+            param->type = std::move(param_type);
 
             op_decl->parameters.push_back(std::move(param));
         } while (match(TokenType::Comma));
@@ -445,10 +487,9 @@ std::unique_ptr<Declaration> Parser::template_declaration() {
         error_at_current("Expected declaration after template parameters");
     }
 
-    auto template_stmt = std::make_unique<TemplateStatement>(std::move(params), std::move(decl), peek().line);
-    // This should be integrated with the actual declaration
-
-    return decl; // Return the inner declaration with template info attached
+    // TODO: Attach template parameters to declaration
+    // For now, just return the inner declaration
+    return decl;
 }
 
 // Types
@@ -543,11 +584,15 @@ std::unique_ptr<Type> Parser::function_type() {
 // Statements
 std::unique_ptr<Statement> Parser::block_statement() {
     auto block = std::make_unique<BlockStatement>(previous().line);
-
     while (!check(TokenType::RightBrace) && !is_at_end()) {
+        std::size_t before = current;
         auto stmt = statement();
         if (stmt) {
             block->statements.push_back(std::move(stmt));
+        } else if (current == before) {
+            // Avoid infinite loop when a statement cannot be parsed and no tokens
+            // are consumed; advance to allow error recovery to proceed.
+            advance();
         }
     }
 
@@ -594,8 +639,8 @@ std::unique_ptr<Statement> Parser::for_statement() {
 
     std::unique_ptr<Statement> init = nullptr;
     if (!check(TokenType::Semicolon)) {
-        init = declaration();
-        if (!init) {
+        init = statement();
+        if (!init && !check(TokenType::Semicolon)) {
             init = std::make_unique<ExpressionStatement>(expression(), peek().line);
             consume(TokenType::Semicolon, "Expected ';' after for initializer");
         }
@@ -853,11 +898,11 @@ std::unique_ptr<Expression> Parser::logical_or_expression() {
 }
 
 std::unique_ptr<Expression> Parser::logical_and_expression() {
-    auto expr = equality_expression();
+    auto expr = bitwise_or_expression();
 
     while (match(TokenType::DoubleAmpersand)) {
         Token op = previous();
-        auto right = equality_expression();
+        auto right = bitwise_or_expression();
         expr = std::make_unique<BinaryExpression>(
             std::move(expr),
             op.type,
@@ -866,6 +911,36 @@ std::unique_ptr<Expression> Parser::logical_and_expression() {
         );
     }
 
+    return expr;
+}
+
+std::unique_ptr<Expression> Parser::bitwise_and_expression() {
+    auto expr = equality_expression();
+    while (match(TokenType::Ampersand)) {
+        Token op = previous();
+        auto right = equality_expression();
+        expr = std::make_unique<BinaryExpression>(std::move(expr), op.type, std::move(right), expr->line);
+    }
+    return expr;
+}
+
+std::unique_ptr<Expression> Parser::bitwise_xor_expression() {
+    auto expr = bitwise_and_expression();
+    while (match(TokenType::Caret)) {
+        Token op = previous();
+        auto right = bitwise_and_expression();
+        expr = std::make_unique<BinaryExpression>(std::move(expr), op.type, std::move(right), expr->line);
+    }
+    return expr;
+}
+
+std::unique_ptr<Expression> Parser::bitwise_or_expression() {
+    auto expr = bitwise_xor_expression();
+    while (match(TokenType::Pipe)) {
+        Token op = previous();
+        auto right = bitwise_xor_expression();
+        expr = std::make_unique<BinaryExpression>(std::move(expr), op.type, std::move(right), expr->line);
+    }
     return expr;
 }
 
@@ -905,7 +980,7 @@ std::unique_ptr<Expression> Parser::comparison_expression() {
 }
 
 std::unique_ptr<Expression> Parser::range_expression() {
-    auto expr = addition_expression();
+    auto expr = shift_expression();
 
     while (match({TokenType::RangeInclusive, TokenType::RangeExclusive})) {
         Token op = previous();
@@ -920,6 +995,19 @@ std::unique_ptr<Expression> Parser::range_expression() {
         );
     }
 
+    return expr;
+}
+
+std::unique_ptr<Expression> Parser::shift_expression() {
+    auto expr = addition_expression();
+
+    while (match({TokenType::LeftShift, TokenType::RightShift})) {
+        Token op = previous();
+        auto right = addition_expression();
+        expr = std::make_unique<BinaryExpression>(
+            std::move(expr), op.type, std::move(right), expr->line
+        );
+    }
     return expr;
 }
 
@@ -1031,9 +1119,18 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         );
     }
     if (match(TokenType::Identifier)) {
+        std::string qname(previous().lexeme);
+        std::size_t line = previous().line;
+        // Support scope resolution :: chains
+        while (match(TokenType::DoubleColon)) {
+            Token next = consume(TokenType::Identifier, "Expected identifier after '::'");
+            qname += "::";
+            qname += std::string(next.lexeme);
+            line = next.line;
+        }
         return std::make_unique<IdentifierExpression>(
-            std::string(previous().lexeme),
-            previous().line
+            std::move(qname),
+            line
         );
     }
     if (match(TokenType::LeftParen)) {
@@ -1256,7 +1353,7 @@ InspectStatement::Pattern Parser::pattern() {
 std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
     std::vector<std::unique_ptr<ContractExpression>> contracts;
 
-    while (check({TokenType::ContractPre, TokenType::ContractPost, TokenType::ContractAssert})) {
+    while (match({TokenType::ContractPre, TokenType::ContractPost, TokenType::ContractAssert})) {
         Token contract_type = advance();
         ContractExpression::ContractKind kind;
 
@@ -1308,15 +1405,24 @@ void Parser::error(const Token& token, const char* message) {
     } else {
         error_at(token, std::format(" at '{}'", token.lexeme).c_str());
     }
-    error_at_current(message);
 }
 
 void Parser::error_at(const Token& token, const char* message) {
+    std::string msg = message ? message : std::string();
+    // Suppress duplicate error printing for the same token/position
+    if (token.position == last_error_position && msg == last_error_text) {
+        panic_mode = true;
+        return;
+    }
+
+    last_error_position = token.position;
+    last_error_text = msg;
+
     std::cerr << std::format("[line {}] Error", token.line);
     if (message) {
-        std::cerr << message;
+        std::cerr << ": " << message;
     }
-    std::cerr << ": " << message << std::endl;
+    std::cerr << std::endl;
     panic_mode = true;
 }
 

@@ -2,7 +2,7 @@
 #include <fstream>
 #include <span>
 #include <string_view>
-#include <print>
+#include <iostream>
 
 #include "lexer.hpp"
 #include "parser.hpp"
@@ -20,7 +20,7 @@ std::string generate_cpp_from_sea_of_nodes(const cppfort::mlir_son::SeaOfNodesBu
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        std::println("Usage: {} <input.cpp2> <output.cpp>", argv[0]);
+        std::cerr << "Usage: " << argv[0] << " <input.cpp2> <output.cpp>\n";
         return 1;
     }
 
@@ -33,45 +33,32 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Cannot open input file: " + input_filename);
         }
 
-        std::string source_code(std::istreambuf_iterator<char>(input_file),
-                                std::istreambuf_iterator<char>());
+        std::string source_code{std::istreambuf_iterator<char>(input_file),
+                                std::istreambuf_iterator<char>()};
 
-        cpp2_transpiler::Lexer lexer(source_code);
+        cpp2_transpiler::Lexer lexer(std::string_view(source_code));
         auto tokens = lexer.tokenize();
 
         cpp2_transpiler::Parser parser(tokens);
         auto ast = parser.parse();
 
         cpp2_transpiler::SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.analyze(ast);
+        semantic_analyzer.analyze(*ast);
 
         cpp2_transpiler::SafetyChecker safety_checker;
-        safety_checker.check(ast);
+        safety_checker.check(*ast);
 
         cpp2_transpiler::MetafunctionProcessor meta_processor;
-        meta_processor.process(ast);
+        meta_processor.process(*ast);
 
         cpp2_transpiler::ContractProcessor contract_processor;
-        contract_processor.process(ast);
+        contract_processor.process(*ast);
 
         // Default (AST -> Cpp1) code generation
         cpp2_transpiler::CodeGenerator code_generator;
-        auto cpp1_code = code_generator.generate(ast);
+        auto cpp1_code = code_generator.generate(*ast);
 
-        // If --son flag provided, use Sea of Nodes pipeline instead
-        for (int i = 1; i < argc; ++i) {
-            if (std::string_view(argv[i]) == "--son") {
-                // Convert AST to Sea of Nodes and schedule
-                cppfort::mlir_son::ASTToSeaOfNodes converter;
-                auto graph = converter.convert(ast);
-                cppfort::mlir_son::SeaOfNodesBuilder builder;
-                // Merge CRDT graph produced by the converter into the builder
-                builder.merge_graph(graph);
-                builder.schedule_graph();
-                // generate C++ from SoN (fallback)
-                cpp1_code = generate_cpp_from_sea_of_nodes(builder);
-            }
-        }
+        // --son pipeline removed for now (requires additional integration)
 
         std::ofstream output_file(output_filename);
         if (!output_file) {
@@ -80,11 +67,11 @@ int main(int argc, char* argv[]) {
 
         output_file << cpp1_code;
 
-        std::println("Successfully transpiled {} to {}", input_filename, output_filename);
+        std::cout << "Successfully transpiled " << input_filename << " to " << output_filename << "\n";
         return 0;
     }
     catch (const std::exception& e) {
-        std::println("Error: {}", e.what());
+        std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
 }

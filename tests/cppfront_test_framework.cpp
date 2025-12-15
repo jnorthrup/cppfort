@@ -257,7 +257,7 @@ void TestRunner::print_detailed_results() const {
 }
 
 bool SHA256Verifier::verify_file_hash(const TestFile& test_file) {
-    std::string calculated = calculate_sha256(test_file.content);
+    std::string calculated = TestCollector::calculate_sha256(test_file.content);
     return calculated == test_file.sha256_hash;
 }
 

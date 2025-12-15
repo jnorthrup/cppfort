@@ -33,8 +33,8 @@ OpFoldResult AddOp::fold(FoldAdaptor adaptor) {
 
   if (!lhs || !rhs) return {};
 
-  if (auto lhsInt = lhs.dyn_cast<IntegerAttr>()) {
-    if (auto rhsInt = rhs.dyn_cast<IntegerAttr>()) {
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
       auto lhsVal = lhsInt.getInt();
       auto rhsVal = rhsInt.getInt();
       return IntegerAttr::get(lhsInt.getType(), lhsVal + rhsVal);
@@ -50,8 +50,8 @@ OpFoldResult SubOp::fold(FoldAdaptor adaptor) {
 
   if (!lhs || !rhs) return {};
 
-  if (auto lhsInt = lhs.dyn_cast<IntegerAttr>()) {
-    if (auto rhsInt = rhs.dyn_cast<IntegerAttr>()) {
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
       auto lhsVal = lhsInt.getInt();
       auto rhsVal = rhsInt.getInt();
       return IntegerAttr::get(lhsInt.getType(), lhsVal - rhsVal);
@@ -67,8 +67,8 @@ OpFoldResult MulOp::fold(FoldAdaptor adaptor) {
 
   if (!lhs || !rhs) return {};
 
-  if (auto lhsInt = lhs.dyn_cast<IntegerAttr>()) {
-    if (auto rhsInt = rhs.dyn_cast<IntegerAttr>()) {
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
       auto lhsVal = lhsInt.getInt();
       auto rhsVal = rhsInt.getInt();
       return IntegerAttr::get(lhsInt.getType(), lhsVal * rhsVal);
@@ -84,12 +84,12 @@ OpFoldResult DivOp::fold(FoldAdaptor adaptor) {
 
   if (!lhs || !rhs) return {};
 
-  if (auto lhsInt = lhs.dyn_cast<IntegerAttr>()) {
-    if (auto rhsInt = rhs.dyn_cast<IntegerAttr>()) {
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
       auto rhsVal = rhsInt.getInt();
       if (rhsVal == 0) return {};
       auto lhsVal = lhsInt.getInt();
-      return IntegerAttr::get(lhsInt.getType(), lhsVal.sdiv(rhsVal));
+      return IntegerAttr::get(lhsInt.getType(), lhsVal / rhsVal);
     }
   }
   return {};

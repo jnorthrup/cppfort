@@ -6,6 +6,8 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
+#include "mlir/Bytecode/BytecodeOpInterface.h"
+#include "mlir/Bytecode/BytecodeImplementation.h"
 
 #include "Cpp2OpsDialect.h.inc"
 

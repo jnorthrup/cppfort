@@ -47,17 +47,17 @@ void ContractProcessor::process_declaration(Declaration* decl) {
 void ContractProcessor::process_function(FunctionDeclaration* func) {
     if (!func) return;
 
-    // Extract contract statements from function body
-    std::vector<ContractExpression*> contracts;
+    // Extract contract statements from function body and take ownership of the expressions
+    std::vector<std::unique_ptr<ContractExpression>> contracts;
 
     if (func->body) {
         if (auto block = dynamic_cast<BlockStatement*>(func->body.get())) {
             for (auto it = block->statements.begin(); it != block->statements.end();) {
                 if (is_contract_expression(it->get())) {
-                    auto contract_expr = get_contract_expression(it->get());
-                    if (contract_expr) {
-                        contracts.push_back(contract_expr);
-                        process_contract(contract_expr);
+                    auto cs = static_cast<ContractStatement*>(it->get());
+                    if (cs && cs->contract) {
+                        contracts.push_back(std::move(cs->contract));
+                        process_contract(contracts.back().get());
                     }
                     it = block->statements.erase(it); // Remove from original body
                 } else {
@@ -69,8 +69,8 @@ void ContractProcessor::process_function(FunctionDeclaration* func) {
 
     // Add contracts to the function's contract group
     std::string group_name = get_contract_group_name(func->name);
-    for (auto contract : contracts) {
-        add_to_contract_group(group_name, contract);
+    for (auto& contract : contracts) {
+        add_to_contract_group(group_name, std::move(contract));
     }
 
     // Inject contract checks into function body
@@ -103,18 +103,18 @@ void ContractProcessor::create_contract_group(const std::string& function_name, 
     }
 }
 
-void ContractProcessor::add_to_contract_group(const std::string& group_name, ContractExpression* contract) {
+void ContractProcessor::add_to_contract_group(const std::string& group_name, std::unique_ptr<ContractExpression> contract) {
     auto it = contract_groups.find(group_name);
-    if (it != contract_groups.end()) {
+    if (it != contract_groups.end() && contract) {
         switch (contract->kind) {
             case ContractExpression::ContractKind::Pre:
-                it->second.preconditions.push_back(contract);
+                it->second.preconditions.push_back(std::move(contract));
                 break;
             case ContractExpression::ContractKind::Post:
-                it->second.postconditions.push_back(contract);
+                it->second.postconditions.push_back(std::move(contract));
                 break;
             case ContractExpression::ContractKind::Assert:
-                it->second.assertions.push_back(contract);
+                it->second.assertions.push_back(std::move(contract));
                 break;
         }
     }
@@ -183,9 +183,10 @@ void ContractProcessor::inject_contract_violation_check(FunctionDeclaration* fun
     auto new_block = std::make_unique<BlockStatement>(func->line);
 
     // Add precondition checks at the beginning
-    for (auto precond : it->second.preconditions) {
-        auto assert_stmt = std::make_unique<ContractStatement>(std::make_unique<ContractExpression>(*precond), precond->line);
-        new_block->statements.push_back(std::move(assert_stmt));
+    for (auto &precond : it->second.preconditions) {
+        // Move the precondition into the new contract statement and preserve the line
+        std::size_t line = precond->line;
+        new_block->statements.push_back(std::make_unique<ContractStatement>(std::move(precond), line));
     }
 
     // Add original function body
