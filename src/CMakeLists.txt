@@ -6,16 +6,31 @@ add_library(Cpp2Dialect
 target_include_directories(Cpp2Dialect PUBLIC
   ${PROJECT_SOURCE_DIR}/include
   ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
 )
 
 target_link_libraries(Cpp2Dialect PUBLIC
-  MLIRIR
-  MLIRSupport
-  MLIRSideEffectInterfaces
-  MLIRControlFlowInterfaces
+  MLIR
 )
 
 add_dependencies(Cpp2Dialect Cpp2OpsIncGen)
+
+# Cpp2 FIR Dialect library
+add_library(Cpp2FIRDialect
+  Cpp2FIRDialect.cpp
+)
+
+target_include_directories(Cpp2FIRDialect PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
+)
+
+target_link_libraries(Cpp2FIRDialect PUBLIC
+  MLIR
+)
+
+add_dependencies(Cpp2FIRDialect Cpp2FIROpsIncGen)
 
 # CRDT and Sea of Nodes infrastructure
 add_library(SeaOfNodesCore
@@ -32,8 +47,7 @@ target_include_directories(SeaOfNodesCore PUBLIC
 
 target_link_libraries(SeaOfNodesCore PUBLIC
   Cpp2Dialect
-  MLIRIR
-  MLIRSupport
+  MLIR
 )
 
 # Original transpiler components
@@ -66,8 +80,17 @@ target_link_libraries(cppfort-son PRIVATE
   SeaOfNodesCore
 )
 
+# Cppfort Optimizer Tool
+add_executable(cppfort-opt cppfort-opt.cpp)
+target_link_libraries(cppfort-opt PRIVATE
+  Cpp2FIRDialect
+  Cpp2Dialect
+  MLIR
+  MLIRMlirOptMain
+)
+
 # Installation
-install(TARGETS cppfort cppfort-son Cpp2Dialect SeaOfNodesCore Cpp2Transpiler
+install(TARGETS cppfort cppfort-son cppfort-opt Cpp2Dialect Cpp2FIRDialect SeaOfNodesCore Cpp2Transpiler
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
