@@ -60,10 +60,16 @@ add_library(Cpp2Transpiler
   metafunction_processor.cpp
   contract_processor.cpp
   utils.cpp
+  ast_to_fir.cpp
 )
 
 target_include_directories(Cpp2Transpiler PUBLIC
   ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(Cpp2Transpiler PUBLIC
+  Cpp2FIRDialect
+  MLIR
 )
 
 # Main transpiler executable (AST-based)

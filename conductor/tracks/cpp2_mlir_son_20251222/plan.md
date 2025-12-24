@@ -2,12 +2,12 @@
 
 ## Phase 1: Foundational MLIR and FIR Dialect Setup
 
-- [~] **Task:** Define the initial MLIR Dialect for the Front-IR (FIR).
+- [x] **Task:** Define the initial MLIR Dialect for the Front-IR (FIR).
     - [x] **Sub-task:** Write tests for the basic FIR dialect operations and types.
     - [x] **Sub-task:** Implement the basic FIR dialect operations and types.
-- [ ] **Task:** Implement the AST to FIR conversion for a basic "Hello, World" style function.
-    - [ ] **Sub-task:** Write tests for converting a simple function AST node to FIR.
-    - [ ] **Sub-task:** Implement the AST to FIR converter for simple functions.
+- [~] **Task:** Implement the AST to FIR conversion for a basic "Hello, World" style function.
+    - [x] **Sub-task:** Write tests for converting a simple function AST node to FIR.
+    - [~] **Sub-task:** Implement the AST to FIR converter for simple functions.
 - [ ] **Task:** Conductor - User Manual Verification 'Foundational MLIR and FIR Dialect Setup' (Protocol in workflow.md)
 
 ## Phase 2: Sea of Nodes (SON) Dialect and Lowering

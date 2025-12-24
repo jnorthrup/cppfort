@@ -65,11 +65,7 @@ target_link_libraries(test_cppfront_comprehensive PRIVATE Cpp2Transpiler)
 target_link_libraries(test_scheduler PRIVATE Cpp2Transpiler Cpp2Dialect MLIRIR MLIRSupport MLIRParser)
 
 # Build run_all_tests by linking in the object libraries so it can call their main-like functions
-add_executable(run_all_tests run_all_tests.cpp
-    $<TARGET_OBJECTS:cpp2_tests_obj>
-    $<TARGET_OBJECTS:cppfront_regression_tests_obj>
-    $<TARGET_OBJECTS:test_cppfront_comprehensive_obj>
-)
+add_executable(run_all_tests run_all_tests.cpp)
 
 target_include_directories(cpp2_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -83,6 +79,8 @@ target_include_directories(test_cppfront_comprehensive PRIVATE
 target_include_directories(run_all_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
+
+target_link_libraries(run_all_tests PRIVATE Cpp2Transpiler)
 
 # Create a test runner script
 configure_file(
@@ -124,9 +122,15 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cppfront_test_framework.h
 
 enable_testing()
 
+# AST to FIR conversion test
+add_executable(test_ast_to_fir test_ast_to_fir.cpp)
+target_include_directories(test_ast_to_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_ast_to_fir PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIR LLVM)
+
 # Individual tests
 add_test(NAME cpp2_unit_tests COMMAND cpp2_tests)
 add_test(NAME cppfront_regression_tests COMMAND cppfront_regression_tests)
+add_test(NAME ast_to_fir_tests COMMAND test_ast_to_fir)
 
 # Test that verifies all tests can be collected
 add_test(NAME collect_regression_tests
