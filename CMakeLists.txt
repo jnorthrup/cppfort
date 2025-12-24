@@ -21,6 +21,15 @@ else()
   else()
     add_compile_options(-O3 -DNDEBUG)
   endif()
+
+  # Ensure Clang uses libc++ on macOS/Homebrew toolchains to match MLIR/LLVM
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-stdlib=libc++)
+    # Ensure the linker also uses libc++
+    add_link_options(-stdlib=libc++)
+    # Explicitly link libc++abi to satisfy internal libc++ symbols on some macOS toolchains
+    add_link_options(-lc++abi)
+  endif()
 endif()
 
 # Use parallel build - controlled by build tool invocation (do not add -j to compiler flags)
@@ -51,6 +60,9 @@ include(HandleLLVMOptions)
 # Include directories
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
+# Also add project source dir so tablegen-generated .inc files in the source
+# tree (e.g., Cpp2Ops*.inc) are found by includes like "Cpp2Ops.h.inc".
+include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
@@ -63,6 +75,22 @@ mlir_tablegen(Cpp2OpsDialect.cpp.inc -gen-dialect-defs -dialect=cpp2)
 mlir_tablegen(Cpp2OpsTypes.h.inc -gen-typedef-decls -dialect=cpp2)
 mlir_tablegen(Cpp2OpsTypes.cpp.inc -gen-typedef-defs -dialect=cpp2)
 add_public_tablegen_target(Cpp2OpsIncGen)
+
+# TableGen for Cpp2FIR dialect
+set(LLVM_TARGET_DEFINITIONS include/Cpp2FIRDialect.td)
+mlir_tablegen(Cpp2FIROps.h.inc -gen-op-decls)
+mlir_tablegen(Cpp2FIROps.cpp.inc -gen-op-defs)
+mlir_tablegen(Cpp2FIROpsDialect.h.inc -gen-dialect-decls -dialect=cpp2fir)
+mlir_tablegen(Cpp2FIROpsDialect.cpp.inc -gen-dialect-defs -dialect=cpp2fir)
+add_public_tablegen_target(Cpp2FIROpsIncGen)
+
+# TableGen for Cpp2SON dialect
+set(LLVM_TARGET_DEFINITIONS include/Cpp2SONDialect.td)
+mlir_tablegen(Cpp2SONOps.h.inc -gen-op-decls)
+mlir_tablegen(Cpp2SONOps.cpp.inc -gen-op-defs)
+mlir_tablegen(Cpp2SONOpsDialect.h.inc -gen-dialect-decls -dialect=sond)
+mlir_tablegen(Cpp2SONOpsDialect.cpp.inc -gen-dialect-defs -dialect=sond)
+add_public_tablegen_target(Cpp2SONOpsIncGen)
 
 # Package configuration
 include(GNUInstallDirs)

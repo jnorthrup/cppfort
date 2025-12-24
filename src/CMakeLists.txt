@@ -32,6 +32,23 @@ target_link_libraries(Cpp2FIRDialect PUBLIC
 
 add_dependencies(Cpp2FIRDialect Cpp2FIROpsIncGen)
 
+# Cpp2 SON Dialect library
+add_library(Cpp2SONDialect
+  Cpp2SONDialect.cpp
+)
+
+target_include_directories(Cpp2SONDialect PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
+)
+
+target_link_libraries(Cpp2SONDialect PUBLIC
+  MLIR
+)
+
+add_dependencies(Cpp2SONDialect Cpp2SONOpsIncGen)
+
 # CRDT and Sea of Nodes infrastructure
 add_library(SeaOfNodesCore
   pijul_crdt.cpp
@@ -90,6 +107,7 @@ target_link_libraries(cppfort-son PRIVATE
 add_executable(cppfort-opt cppfort-opt.cpp)
 target_link_libraries(cppfort-opt PRIVATE
   Cpp2FIRDialect
+  Cpp2SONDialect
   Cpp2Dialect
   MLIR
   MLIRMlirOptMain

@@ -1,4 +1,5 @@
 #include "Cpp2FIRDialect.h"
+#include "Cpp2SONDialect.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"
@@ -17,8 +18,9 @@ int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   mlir::registerAllDialects(registry);
   registry.insert<mlir::cpp2fir::Cpp2FIRDialect>();
+  registry.insert<mlir::sond::Cpp2SONDialect>();
 
   return mlir::asMainReturnCode(
-      mlir::MlirOptMain(argc, argv, "Cppfort FIR optimizer driver\n", registry));
+      mlir::MlirOptMain(argc, argv, "Cppfort optimizer driver\n", registry));
 }
 
