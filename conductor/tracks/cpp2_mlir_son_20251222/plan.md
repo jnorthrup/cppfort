@@ -1,6 +1,6 @@
 # Plan: Establish Core Cpp2 to MLIR Front-IR Conversion and Sea of Nodes Dialect Integration
 
-## Phase 1: Foundational MLIR and FIR Dialect Setup
+## Phase 1: Foundational MLIR and FIR Dialect Setup [checkpoint: c9bbce2]
 
 - [x] **Task:** Define the initial MLIR Dialect for the Front-IR (FIR).
     - [x] **Sub-task:** Write tests for the basic FIR dialect operations and types.
