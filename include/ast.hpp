@@ -17,6 +17,17 @@ struct Expression;
 struct Statement;
 struct Declaration;
 
+// Cpp2-specific parameter qualifiers (derived from corpus analysis)
+enum class ParameterQualifier {
+    None,
+    InOut,      // inout - pass by reference with definite initialization
+    Out,        // out - definite assignment required
+    Move,       // copy - move semantics
+    Forward,    // forward - perfect forwarding
+    Virtual,    // virtual - for polymorphic types
+    Override    // override - for overriding base functions
+};
+
 // Type system
 struct Type {
     enum class Kind {
@@ -121,6 +132,7 @@ struct UnaryExpression : Expression {
 struct CallExpression : Expression {
     std::unique_ptr<Expression> callee;
     std::vector<std::unique_ptr<Expression>> args;
+    bool is_ufcs = false;  // Cpp2 UFCS (Unified Function Call Syntax)
 
     CallExpression(std::unique_ptr<Expression> c, std::size_t l)
         : Expression(Kind::Call, l), callee(std::move(c)) {}
@@ -137,9 +149,19 @@ struct MemberAccessExpression : Expression {
 struct SubscriptExpression : Expression {
     std::unique_ptr<Expression> array;
     std::unique_ptr<Expression> index;
+    bool has_bounds_check = false;  // Cpp2: automatic bounds safety
 
     SubscriptExpression(std::unique_ptr<Expression> a, std::unique_ptr<Expression> i, std::size_t l)
         : Expression(Kind::Subscript, l), array(std::move(a)), index(std::move(i)) {}
+};
+
+// Corpus-derived: Bounds check expression (CPP2_ASSERT_IN_BOUNDS_LITERAL)
+struct BoundsCheckExpression : Expression {
+    std::unique_ptr<Expression> container;
+    std::unique_ptr<Expression> index;
+
+    BoundsCheckExpression(std::unique_ptr<Expression> c, std::unique_ptr<Expression> i, std::size_t l)
+        : Expression(Kind::Unary, l), container(std::move(c)), index(std::move(i)) {}
 };
 
 struct TernaryExpression : Expression {
@@ -161,6 +183,7 @@ struct LambdaExpression : Expression {
         std::string name;
         std::unique_ptr<Type> type;
         std::unique_ptr<Expression> default_value;
+        std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, etc.
     };
 
     std::vector<Parameter> parameters;
@@ -448,6 +471,7 @@ struct VariableDeclaration : Declaration {
     bool is_const = false;
     bool is_mut = false;
     bool is_compile_time = false;
+    std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, etc.
 
     VariableDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Variable, std::move(n), l) {}
@@ -458,6 +482,7 @@ struct FunctionDeclaration : Declaration {
         std::string name;
         std::unique_ptr<Type> type;
         std::unique_ptr<Expression> default_value;
+        std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, move, forward
     };
 
     std::vector<Parameter> parameters;

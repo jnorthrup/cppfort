@@ -1,0 +1,63 @@
+main: () = {
+    s1 := u"u\"";
+    s2 := U"U\"";
+    s3 := u8"u8\"";
+    s4 := L"L\"";
+    s5 := R"(R")";
+    s6 := uR"(uR")";
+    s7 := u8R"(u8R")";
+    s8 := UR"(UR")";
+    s9 := LR"(LR")";
+    _ = s1;
+    _ = s2;
+    _ = s3;
+    _ = s4;
+    _ = s5;
+    _ = s6;
+    _ = s7;
+    _ = s8;
+    _ = s9;
+}
+
+=== Generated C++1 ===
+
+
+//=== Cpp2 type declarations ====================================================
+
+
+#include "cpp2util.h"
+
+#line 1 "third_party/cppfront/regression-tests/pure2-various-string-literals.cpp2"
+
+
+//=== Cpp2 type definitions and function declarations ===========================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-various-string-literals.cpp2"
+auto main() -> int;
+
+//=== Cpp2 function definitions =================================================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-various-string-literals.cpp2"
+auto main() -> int{
+#line 2 "third_party/cppfront/regression-tests/pure2-various-string-literals.cpp2"
+    auto s1 {u"u\""}; 
+    auto s2 {U"U\""}; 
+    auto s3 {u8"u8\""}; 
+    auto s4 {L"L\""}; 
+    auto s5 {R"(R")"}; 
+    auto s6 {uR"(uR")"}; 
+    auto s7 {u8R"(u8R")"}; 
+    auto s8 {UR"(UR")"}; 
+    auto s9 {LR"(LR")"}; 
+    static_cast<void>(cpp2::move(s1));
+    static_cast<void>(cpp2::move(s2));
+    static_cast<void>(cpp2::move(s3));
+    static_cast<void>(cpp2::move(s4));
+    static_cast<void>(cpp2::move(s5));
+    static_cast<void>(cpp2::move(s6));
+    static_cast<void>(cpp2::move(s7));
+    static_cast<void>(cpp2::move(s8));
+    static_cast<void>(cpp2::move(s9));
+}
+
+

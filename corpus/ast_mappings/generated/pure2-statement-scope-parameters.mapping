@@ -1,0 +1,86 @@
+
+main: (args) = {
+    local_int := 42;
+
+    //  'in' (read-only) statement scope variable
+    (i := local_int) for args do (_) {
+        std::cout << i << "\n";     // prints 42
+    }
+
+    //  'inout' (read-write) statement scope variable
+    (inout i := local_int) {
+        i++;
+    }
+    std::cout << local_int << "\n";     // prints 43
+
+    _: std::chrono::duration<i32> = 0;
+    (copy _: std::chrono::duration<i32> = 0) { }
+    _: std::in_place_t = ();
+    (copy _: std::in_place_t = ()) { }
+}
+
+=== Generated C++1 ===
+
+
+//=== Cpp2 type declarations ====================================================
+
+
+#include "cpp2util.h"
+
+#line 1 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+
+
+//=== Cpp2 type definitions and function declarations ===========================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+
+#line 2 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+auto main(int const argc_, char** argv_) -> int;
+
+//=== Cpp2 function definitions =================================================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+
+#line 2 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+auto main(int const argc_, char** argv_) -> int{
+    auto const args = cpp2::make_args(argc_, argv_); 
+#line 3 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    auto local_int {42}; 
+{
+auto const& i{local_int};
+
+    //  'in' (read-only) statement scope variable
+#line 6 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    for ( [[maybe_unused]] auto const& unnamed_param_1 : args ) {
+        std::cout << i << "\n";     // prints 42
+    }
+}
+{
+auto& i{local_int};
+
+    //  'inout' (read-write) statement scope variable
+#line 11 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    {
+        ++i;
+    }
+}
+#line 14 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    std::cout << cpp2::move(local_int) << "\n";// prints 43
+
+    std::chrono::duration<cpp2::i32> auto_1 {0}; 
+{
+[[maybe_unused]] std::chrono::duration<cpp2::i32> unnamed_param_1{0};
+#line 17 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    {}
+}
+#line 18 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    std::in_place_t auto_2 {}; 
+{
+[[maybe_unused]] std::in_place_t unnamed_param_1{};
+#line 19 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+    {}
+}
+#line 20 "third_party/cppfront/regression-tests/pure2-statement-scope-parameters.cpp2"
+}
+
+

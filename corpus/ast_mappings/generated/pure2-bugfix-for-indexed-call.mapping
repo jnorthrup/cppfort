@@ -1,0 +1,45 @@
+f: (_: i32) = { }
+main: () = {
+  array_of_functions: std::array = (f, f);
+  index := 0;
+  arguments: i32 = 0;
+  array_of_functions[index](arguments);
+  _ = array_of_functions;
+  _ = index;
+  _ = arguments;
+}
+
+=== Generated C++1 ===
+
+
+//=== Cpp2 type declarations ====================================================
+
+
+#include "cpp2util.h"
+
+#line 1 "third_party/cppfront/regression-tests/pure2-bugfix-for-indexed-call.cpp2"
+
+
+//=== Cpp2 type definitions and function declarations ===========================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-bugfix-for-indexed-call.cpp2"
+auto f([[maybe_unused]] cpp2::impl::in<cpp2::i32> unnamed_param_1) -> void;
+#line 2 "third_party/cppfront/regression-tests/pure2-bugfix-for-indexed-call.cpp2"
+auto main() -> int;
+
+//=== Cpp2 function definitions =================================================
+
+#line 1 "third_party/cppfront/regression-tests/pure2-bugfix-for-indexed-call.cpp2"
+auto f([[maybe_unused]] cpp2::impl::in<cpp2::i32> unnamed_param_1) -> void{}
+#line 2 "third_party/cppfront/regression-tests/pure2-bugfix-for-indexed-call.cpp2"
+auto main() -> int{
+  std::array array_of_functions {f, f}; 
+  auto index {0}; 
+  cpp2::i32 arguments {0}; 
+  CPP2_ASSERT_IN_BOUNDS(array_of_functions, index)(arguments);
+  static_cast<void>(cpp2::move(array_of_functions));
+  static_cast<void>(cpp2::move(index));
+  static_cast<void>(cpp2::move(arguments));
+}
+
+

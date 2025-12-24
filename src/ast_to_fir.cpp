@@ -82,7 +82,42 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
             auto attr = builder.getI32IntegerAttr(val);
             auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
             return constOp.getResult();
+        } else if (std::holds_alternative<std::string>(lit->value)) {
+            std::string val = std::get<std::string>(lit->value);
+            // For now, create a constant with 0 (will be extended)
+            auto i32Type = builder.getI32Type();
+            auto attr = builder.getI32IntegerAttr(0);
+            auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
+            return constOp.getResult();
         }
+    } else if (auto* ident = dynamic_cast<const IdentifierExpression*>(&expr)) {
+        // Variable reference - for now return a dummy constant
+        auto i32Type = builder.getI32Type();
+        auto attr = builder.getI32IntegerAttr(0);
+        auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
+        return constOp.getResult();
+    } else if (auto* binop = dynamic_cast<const BinaryExpression*>(&expr)) {
+        Value lhs = convertExpression(*binop->left, builder);
+        Value rhs = convertExpression(*binop->right, builder);
+
+        if (!lhs || !rhs) {
+            return nullptr;
+        }
+
+        // Create FIR add operation for Plus
+        if (binop->op == TokenType::Plus) {
+            // For now, return dummy constant since we don't have FIR add yet
+            auto i32Type = builder.getI32Type();
+            auto attr = builder.getI32IntegerAttr(0);
+            auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
+            return constOp.getResult();
+        }
+
+        // For other operators, return a constant as placeholder
+        auto i32Type = builder.getI32Type();
+        auto attr = builder.getI32IntegerAttr(0);
+        auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
+        return constOp.getResult();
     }
 
     return nullptr;

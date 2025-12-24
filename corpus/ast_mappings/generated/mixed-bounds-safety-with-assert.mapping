@@ -1,0 +1,79 @@
+
+main: () -> int = {
+    std::set_terminate(std::abort);
+
+    v: std::vector<int> = (1, 2, 3, 4, 5);
+    print_subrange(v, 1, 13);
+}
+
+print_subrange: (rng, start:int, end:int) = {
+    assert<bounds_safety>( 0 <= start );
+    assert<bounds_safety>( end <= rng.ssize() );
+
+    count := 0;
+    for  rng
+    next count++
+    do   (i)
+        if start <= count && count <= end {
+            std::cout << i << "\n";
+        }
+}
+
+#include <vector>
+#include <span>
+#include <iostream>
+
+=== Generated C++1 ===
+
+
+//=== Cpp2 type declarations ====================================================
+
+
+#include "cpp2util.h"
+
+#line 1 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+
+
+//=== Cpp2 type definitions and function declarations ===========================
+
+#line 1 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+
+#line 2 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+[[nodiscard]] auto main() -> int;
+
+#line 9 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<int> end) -> void;
+#line 21 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+
+#include <vector>
+#include <span>
+#include <iostream>
+
+
+//=== Cpp2 function definitions =================================================
+
+#line 1 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+
+#line 2 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+[[nodiscard]] auto main() -> int{
+    std::set_terminate(std::abort);
+
+    std::vector<int> v {1, 2, 3, 4, 5}; 
+    print_subrange(cpp2::move(v), 1, 13);
+}
+
+#line 9 "third_party/cppfront/regression-tests/mixed-bounds-safety-with-assert.cpp2"
+auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<int> end) -> void{
+    if (cpp2::bounds_safety.is_active() && !(cpp2::impl::cmp_less_eq(0,start)) ) { cpp2::bounds_safety.report_violation(""); }
+    if (cpp2::bounds_safety.is_active() && !(cpp2::impl::cmp_less_eq(end,CPP2_UFCS(ssize)(rng))) ) { cpp2::bounds_safety.report_violation(""); }
+
+    auto count {0}; 
+    for ( 
+
+          auto const& i : rng )  { do 
+        if (cpp2::impl::cmp_less_eq(start,count) && cpp2::impl::cmp_less_eq(count,end)) {
+            std::cout << i << "\n";
+        } while (false); ++count; }
+}
+
+
