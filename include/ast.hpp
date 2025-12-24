@@ -36,7 +36,7 @@ struct Type {
     std::string name;
     std::vector<std::unique_ptr<Type>> template_args;
     std::unique_ptr<Type> pointee;
-    std::unique_ptr<Expression> size;
+    std::shared_ptr<Expression> size;
     bool is_const = false;
     bool is_mut = false;
 
@@ -165,7 +165,7 @@ struct LambdaExpression : Expression {
 
     std::vector<Parameter> parameters;
     std::unique_ptr<Type> return_type;
-    std::vector<std::unique_ptr<Statement>> body;
+    std::vector<std::shared_ptr<Statement>> body;
     std::vector<std::unique_ptr<Type>> template_params;
 
     LambdaExpression(std::size_t l) : Expression(Kind::Lambda, l) {}

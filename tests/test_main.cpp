@@ -15,7 +15,7 @@
 using namespace cpp2_transpiler;
 
 // Test utilities
-std::string read_file(const std::string& filename) {
+static std::string read_file(const std::string& filename) {
     std::ifstream file(filename);
     return std::string(std::istreambuf_iterator<char>(file),
                        std::istreambuf_iterator<char>());
@@ -398,6 +398,26 @@ void test_inspect_pattern_matching() {
     std::cout << "Pattern matching tests passed!" << std::endl;
 }
 
+// Runner used by combined test harness
+int test_main() {
+    try {
+        test_lexer();
+        test_parser();
+        test_simple_transpilation();
+        test_type_deduction();
+        test_ufcs();
+        test_postfix_operators();
+        test_contracts();
+        test_safety_checks();
+        test_string_interpolation();
+        test_range_operators();
+        test_inspect_pattern_matching();
+        return 0;
+    } catch (...) {
+        return 1;
+    }
+}
+
 void test_metafunctions() {
     std::cout << "Testing metafunctions..." << std::endl;
 
@@ -526,6 +546,7 @@ void test_integration() {
     std::cout << "Integration tests passed!" << std::endl;
 }
 
+ #ifndef COMBINED_TESTS
 int main() {
     try {
         std::cout << "Running Cpp2 Transpiler Tests\n" << std::endl;
@@ -553,3 +574,4 @@ int main() {
         return 1;
     }
 }
+#endif

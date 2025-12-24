@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "utils.hpp"
 #include <unordered_map>
 #include <cassert>
 #include <cctype>
@@ -388,7 +389,7 @@ TokenType Lexer::check_keyword(std::size_t start, std::size_t length,
 
 TokenType Lexer::identifier_type() {
     std::string_view text = source.substr(start, current - start);
-    static const std::unordered_map<std::string, TokenType> keywords = {
+    static const std::unordered_map<std::string, TokenType, cpp2_transpiler::SimpleStringHash> keywords = {
         {"as", TokenType::As}, {"base", TokenType::Base}, {"case", TokenType::Case}, {"class", TokenType::Class},
         {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"do", TokenType::Do}, {"else", TokenType::Else},
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ast.hpp"
+#include "utils.hpp"
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -134,12 +135,12 @@ private:
     // State tracking
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
-    std::unordered_set<std::string> undeclared_variables;
+    std::unordered_set<std::string, SimpleStringHash> undeclared_variables;
     std::unordered_map<Declaration*, bool> checked_declarations;
 
     // Built-in types
     void register_builtin_types();
-    std::unordered_map<std::string, std::unique_ptr<Type>> builtin_types;
+    std::unordered_map<std::string, std::unique_ptr<Type>, SimpleStringHash> builtin_types;
 
     // Definite last use tracking
     struct VariableUsage {
@@ -147,7 +148,7 @@ private:
         bool definitely_last_use = false;
         std::size_t last_use_line = 0;
     };
-    std::unordered_map<std::string, VariableUsage> variable_usage;
+    std::unordered_map<std::string, VariableUsage, SimpleStringHash> variable_usage;
     void track_variable_usage(const std::string& name, std::size_t line);
     void check_unused_variables();
 };

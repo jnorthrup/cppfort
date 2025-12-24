@@ -11,6 +11,17 @@ using namespace cppfort::mlir_son;
 void build_graph_from_tokens(cppfort::mlir_son::SeaOfNodesBuilder& builder,
                             const std::vector<cpp2_transpiler::Token>& tokens);
 std::string generate_cpp_from_sea_of_nodes(const cppfort::mlir_son::SeaOfNodesBuilder& builder);
+// Forward declarations for code generation helpers
+void generate_from_scheduled_blocks(const cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                   std::ostringstream& output);
+void generate_block_code(const cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                        NodeID block_id, std::unordered_set<NodeID>& visited,
+                        std::ostringstream& output);
+void generate_node_code(const cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                       NodeID node_id, std::ostringstream& output);
+bool is_data_node(const cppfort::mlir_son::Node& node);
+bool is_control_node(const cppfort::mlir_son::Node& node);
+bool is_node_in_block(const cppfort::mlir_son::Node& node, NodeID block_id);
 
 // Forward declarations for token-based parsing helpers
 size_t parse_return_statement(cppfort::mlir_son::SeaOfNodesBuilder& builder,
@@ -40,6 +51,127 @@ size_t parse_struct_definition(cppfort::mlir_son::SeaOfNodesBuilder& builder,
 size_t parse_new_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
                           const std::vector<cpp2_transpiler::Token>& tokens,
                           size_t idx);
+
+// Forward declarations for string-based parsing helpers and utilities
+size_t parse_return_statement(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                             const std::string& source, size_t pos);
+std::pair<NodeID, size_t> parse_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                          const std::string& source, size_t pos);
+std::pair<NodeID, size_t> parse_primary(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                       const std::string& source, size_t pos);
+std::pair<NodeID, size_t> parse_numeric_constant(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                                const std::string& source, size_t pos);
+std::pair<NodeID, size_t> parse_identifier_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                                     const std::string& source, size_t pos);
+size_t parse_struct_definition(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                              const std::string& source, size_t pos);
+std::pair<NodeID, size_t> parse_new_expression(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                              const std::string& source, size_t pos);
+
+// Small helpers used by string-based parsers
+size_t skip_whitespace(const std::string& source, size_t pos);
+size_t skip_whitespace_and_comments(const std::string& source, size_t pos);
+size_t parse_field_declaration(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                              const std::string& source, size_t pos, const std::string& struct_name);
+std::pair<NodeID, size_t> parse_function_call(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                             const std::string& source, size_t pos, const std::string& name);
+std::pair<NodeID, size_t> parse_ufcs_call(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                        const std::string& source, size_t pos, const std::string& name);
+
+// Implementations for small string-based parsers
+size_t parse_field_declaration(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                              const std::string& source, size_t pos, const std::string& struct_name) {
+    // Parse: <type> <name> ;
+    pos = skip_whitespace(source, pos);
+    // type
+    size_t tstart = pos;
+    while (pos < source.size() && (isalnum(source[pos]) || source[pos] == '_')) pos++;
+    std::string type_name = source.substr(tstart, pos - tstart);
+
+    pos = skip_whitespace(source, pos);
+    // field name
+    size_t nstart = pos;
+    while (pos < source.size() && (isalnum(source[pos]) || source[pos] == '_')) pos++;
+    std::string field_name = source.substr(nstart, pos - nstart);
+
+    // consume optional semicolon
+    pos = skip_whitespace_and_comments(source, pos);
+    if (pos < source.size() && source[pos] == ';') pos++;
+
+    // We don't yet wire fields into the builder's struct representation here;
+    // that is handled by initialize_struct_fields when instances are created.
+    return pos;
+}
+
+std::pair<NodeID, size_t> parse_function_call(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                             const std::string& source, size_t pos, const std::string& name) {
+    // pos points at '('. Parse comma-separated arg expressions until matching ')'.
+    if (pos >= source.size() || source[pos] != '(') return {0, pos};
+    pos++; // skip '('
+
+    std::vector<NodeID> args;
+    pos = skip_whitespace_and_comments(source, pos);
+    if (pos < source.size() && source[pos] == ')') {
+        pos++; // empty arg list
+    } else {
+        while (pos < source.size()) {
+            auto [arg_node, new_pos] = parse_expression(builder, source, pos);
+            args.push_back(arg_node);
+            pos = new_pos;
+            pos = skip_whitespace_and_comments(source, pos);
+            if (pos < source.size() && source[pos] == ',') {
+                pos++;
+                pos = skip_whitespace_and_comments(source, pos);
+                continue;
+            }
+            if (pos < source.size() && source[pos] == ')') { pos++; break; }
+            break;
+        }
+    }
+
+    // Create a UFCS_Call-style node for calls; use callee name as metadata by creating
+    // a small parameter node for the callee (placeholder).
+    NodeID callee_node = builder.create_node(Node::Kind::Parameter);
+    const_cast<Node*>(builder.get_graph().get_node(callee_node))->value = name;
+
+    // Prepend callee as first input
+    std::vector<NodeID> inputs;
+    inputs.push_back(callee_node);
+    inputs.insert(inputs.end(), args.begin(), args.end());
+
+    NodeID call_node = builder.create_node(Node::Kind::UFCS_Call);
+    const_cast<Node*>(builder.get_graph().get_node(call_node))->inputs = inputs;
+
+    return {call_node, pos};
+}
+
+std::pair<NodeID, size_t> parse_ufcs_call(cppfort::mlir_son::SeaOfNodesBuilder& builder,
+                                        const std::string& source, size_t pos, const std::string& name) {
+    // pos points at '.'
+    if (pos >= source.size() || source[pos] != '.') return {0, pos};
+    pos++; // skip '.'
+
+    // parse member name
+    size_t mstart = pos;
+    while (pos < source.size() && (isalnum(source[pos]) || source[pos] == '_')) pos++;
+    std::string member = source.substr(mstart, pos - mstart);
+
+    pos = skip_whitespace_and_comments(source, pos);
+    if (pos < source.size() && source[pos] == '(') {
+        // parse arguments
+        auto [call_node, new_pos] = parse_function_call(builder, source, pos, member);
+        // Ensure receiver is first argument
+        // Create a receiver placeholder
+        NodeID receiver = builder.create_node(Node::Kind::Parameter);
+        const_cast<Node*>(builder.get_graph().get_node(receiver))->value = name;
+        // Prepend receiver to existing inputs
+        auto* cn = const_cast<Node*>(builder.get_graph().get_node(call_node));
+        if (cn) cn->inputs.insert(cn->inputs.begin(), receiver);
+        return {call_node, new_pos};
+    }
+
+    return {0, pos};
+}
 
 // Replace traditional transpiler with Sea of Nodes implementation
 int main(int argc, char* argv[]) {
@@ -117,14 +249,19 @@ void build_graph_from_tokens(cppfort::mlir_son::SeaOfNodesBuilder& builder,
                 break;
             case cpp2_transpiler::TokenType::IntegerLiteral:
             case cpp2_transpiler::TokenType::FloatLiteral:
-                idx = parse_numeric_constant(builder, tokens, idx);
+            {
+                auto [node, new_idx] = parse_numeric_constant(builder, tokens, idx);
+                idx = new_idx;
+                break;
+            }
                 break;
             case cpp2_transpiler::TokenType::Identifier: {
                 // Check for 'new' lexeme (lexer doesn't include as keyword)
                 if (tk->lexeme == "new") {
                     idx = parse_new_expression(builder, tokens, idx);
                 } else {
-                    idx = parse_identifier_expression(builder, tokens, idx);
+                    auto [node, new_idx] = parse_identifier_expression(builder, tokens, idx);
+                    idx = new_idx;
                 }
                 break;
             }
@@ -622,11 +759,11 @@ void generate_block_code(const cppfort::mlir_son::SeaOfNodesBuilder& builder,
     // Follow control edges to next blocks
     const auto* outputs = graph.get_outputs(block_id);
     if (outputs) {
-        for (NodeID output : *outputs) {
-            const Node* out_node = graph.get_node(output);
+        for (NodeID out_id : *outputs) {
+            const Node* out_node = graph.get_node(out_id);
             if (out_node && is_control_node(*out_node)) {
                 output << "\n";
-                generate_block_code(builder, output, visited, output);
+                generate_block_code(builder, out_id, visited, output);
             }
         }
     }

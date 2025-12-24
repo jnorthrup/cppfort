@@ -16,7 +16,7 @@
 using namespace cpp2_transpiler;
 
 // Test utilities
-std::string read_file(const std::string& filename) {
+static std::string read_file(const std::string& filename) {
     std::ifstream file(filename);
     return std::string(std::istreambuf_iterator<char>(file),
                        std::istreambuf_iterator<char>());
@@ -289,6 +289,24 @@ void test_cppforward_uninitialized_variables() {
     std::cout << "✓ Uninitialized variable test passed" << std::endl;
 }
 
+    int cppfront_regression_tests_main() {
+        try {
+            test_cppfront_basic();
+            test_cppfront_contracts();
+            test_cppforward_functions();
+            test_cppforward_assertions();
+            test_cppforward_loops();
+            test_cppforward_break_continue();
+            test_cppforward_fixed_type_aliases();
+            test_cppforward_function_expressions();
+            test_cppforward_pointer_arithmetic();
+            test_cppforward_uninitialized_variables();
+            return 0;
+        } catch (...) {
+            return 1;
+        }
+    }
+
 void test_cppforward_mixed_cpp1_cpp2() {
     std::cout << "Testing mixed Cpp1 and Cpp2..." << std::endl;
 
@@ -429,6 +447,7 @@ void test_cppforward_error_handling() {
     std::cout << "✓ Error handling test passed" << std::endl;
 }
 
+#ifndef COMBINED_TESTS
 int main() {
     try {
         std::cout << "Running Cppfront Regression Tests\n" << std::endl;
@@ -458,3 +477,4 @@ int main() {
         return 1;
     }
 }
+#endif
