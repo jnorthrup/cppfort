@@ -10,7 +10,7 @@
     - [x] **Sub-task:** Implement the AST to FIR converter for simple functions.
 - [ ] **Task:** Conductor - User Manual Verification 'Foundational MLIR and FIR Dialect Setup' (Protocol in workflow.md)
 
-## Phase 2: Sea of Nodes (SON) Dialect and Lowering
+## Phase 2: Sea of Nodes (SON) Dialect and Lowering [checkpoint: d5b5758]
 
 - [x] **Task:** Define the initial MLIR Dialect for the Sea of Nodes IR (`sond`).
     - [x] **Sub-task:** Write tests for the core `sond` operations (e.g., constants, basic arithmetic).
@@ -18,7 +18,7 @@
 - [x] **Task:** Implement the lowering from the FIR dialect to the `sond` dialect for simple functions.
     - [x] **Sub-task:** Write tests for lowering a simple FIR function to `sond`.
     - [x] **Sub-task:** Implement the FIR to `sond` lowering pass.
-- [ ] **Task:** Conductor - User Manual Verification 'Sea of Nodes (SON) Dialect and Lowering' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Sea of Nodes (SON) Dialect and Lowering' (Protocol in workflow.md)
 
 ## Phase 3: Pijul CRDT and Graph Serialization
 
