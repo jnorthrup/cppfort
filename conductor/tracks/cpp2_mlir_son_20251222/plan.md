@@ -28,7 +28,7 @@
 - [x] **Task:** Implement serialization for the `sond` dialect using the Pijul CRDT implementation.
     - [x] **Sub-task:** Write tests for serializing a simple `sond` graph.
     - [x] **Sub-task:** Implement the `sond` serialization logic.
-- [ ] **Task:** Implement deserialization for the `sond` dialect.
-    - [ ] **Sub-task:** Write tests for deserializing a `sond` graph and verifying its integrity.
-    - [ ] **Sub-task:** Implement the `sond` deserialization logic.
+- [x] **Task:** Implement deserialization for the `sond` dialect.
+    - [x] **Sub-task:** Write tests for deserializing a `sond` graph and verifying its integrity.
+    - [x] **Sub-task:** Implement the `sond` deserialization logic.
 - [ ] **Task:** Conductor - User Manual Verification 'Pijul CRDT and Graph Serialization' (Protocol in workflow.md)
