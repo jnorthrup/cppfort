@@ -1,6 +1,6 @@
 # Plan: Establish Core Cpp2 to MLIR Front-IR Conversion and Sea of Nodes Dialect Integration
 
-## Phase 1: Foundational MLIR and FIR Dialect Setup [checkpoint: c9bbce2]
+## Phase 1: Foundational MLIR and FIR Dialect Setup [checkpoint: 89ca649]
 
 - [x] **Task:** Define the initial MLIR Dialect for the Front-IR (FIR).
     - [x] **Sub-task:** Write tests for the basic FIR dialect operations and types.
@@ -8,6 +8,19 @@
 - [x] **Task:** Implement the AST to FIR conversion for a basic "Hello, World" style function.
     - [x] **Sub-task:** Write tests for converting a simple function AST node to FIR.
     - [x] **Sub-task:** Implement the AST to FIR converter for simple functions.
+- [x] **Task:** Clang AST corpus processing for cppfront regression tests.
+    - [x] **Sub-task:** Process 146 cppfront regression tests (cpp2 → C++1 → Clang AST).
+    - [x] **Sub-task:** Extract 40 function signatures with parameter qualifiers.
+    - [x] **Sub-task:** Integrate corpus-derived patterns into AST definition:
+        - ParameterQualifier enum (InOut, Out, Move, Forward, Virtual, Override)
+        - Qualifiers on FunctionDeclaration::Parameter, LambdaExpression::Parameter, VariableDeclaration
+        - UFCS tracking (is_ufcs flag on CallExpression)
+        - Bounds checking (has_bounds_check on SubscriptExpression, BoundsCheckExpression)
+- [ ] **Task:** Complete semantic mapping from corpus patterns.
+    - [ ] **Sub-task:** Parse Cpp2 qualifiers (inout, out, move, forward, virtual, override).
+    - [ ] **Sub-task:** Convert Clang AST patterns to cpp2 AST nodes using corpus mappings.
+    - [ ] **Sub-task:** AST→FIR conversion using corpus-derived semantics.
+    - [ ] **Sub-task:** MLIR ops tagged with corpus semantics.
 - [ ] **Task:** Conductor - User Manual Verification 'Foundational MLIR and FIR Dialect Setup' (Protocol in workflow.md)
 
 ## Phase 2: Sea of Nodes (SON) Dialect and Lowering [checkpoint: d5b5758]
