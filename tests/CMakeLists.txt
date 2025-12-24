@@ -148,12 +148,24 @@ add_executable(test_crdt_core test_crdt_core.cpp)
 target_include_directories(test_crdt_core PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_crdt_core PRIVATE SeaOfNodesCore MLIR LLVM)
 
+# SON dialect serialization test
+add_executable(test_son_serialization test_son_serialization.cpp)
+target_include_directories(test_son_serialization PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_son_serialization PRIVATE
+    SeaOfNodesCore
+    Cpp2SONDialect
+    MLIR
+    MLIRFuncDialect
+    LLVM
+)
+
 # Individual tests
 add_test(NAME cpp2_unit_tests COMMAND cpp2_tests)
 add_test(NAME cppfront_regression_tests COMMAND cppfront_regression_tests)
 add_test(NAME ast_to_fir_tests COMMAND test_ast_to_fir)
 add_test(NAME fir_to_son_pass_test COMMAND test_fir_to_son_pass)
 add_test(NAME crdt_core_tests COMMAND test_crdt_core)
+add_test(NAME son_serialization_tests COMMAND test_son_serialization)
 
 # Test that verifies all tests can be collected
 add_test(NAME collect_regression_tests

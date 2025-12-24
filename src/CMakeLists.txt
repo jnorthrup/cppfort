@@ -55,6 +55,7 @@ add_library(SeaOfNodesCore
   sea_of_nodes_ir.cpp
   combinator_hierarchy.cpp
   mlir_bridge.cpp
+  son_serialization.cpp
 )
 
 target_include_directories(SeaOfNodesCore PUBLIC
@@ -64,7 +65,9 @@ target_include_directories(SeaOfNodesCore PUBLIC
 
 target_link_libraries(SeaOfNodesCore PUBLIC
   Cpp2Dialect
+  Cpp2SONDialect
   MLIR
+  MLIRFuncDialect
 )
 
 # Original transpiler components
