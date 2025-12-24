@@ -20,7 +20,7 @@
     - [x] **Sub-task:** Implement the FIR to `sond` lowering pass.
 - [x] **Task:** Conductor - User Manual Verification 'Sea of Nodes (SON) Dialect and Lowering' (Protocol in workflow.md)
 
-## Phase 3: Pijul CRDT and Graph Serialization
+## Phase 3: Pijul CRDT and Graph Serialization [checkpoint: 9cd579f]
 
 - [x] **Task:** Implement the core Pijul CRDT logic from first principles.
     - [x] **Sub-task:** Write tests for the core CRDT functionalities (e.g., patch creation, application).
@@ -31,4 +31,4 @@
 - [x] **Task:** Implement deserialization for the `sond` dialect.
     - [x] **Sub-task:** Write tests for deserializing a `sond` graph and verifying its integrity.
     - [x] **Sub-task:** Implement the `sond` deserialization logic.
-- [ ] **Task:** Conductor - User Manual Verification 'Pijul CRDT and Graph Serialization' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Pijul CRDT and Graph Serialization' (Protocol in workflow.md)
