@@ -22,9 +22,9 @@
 
 ## Phase 3: Pijul CRDT and Graph Serialization
 
-- [ ] **Task:** Implement the core Pijul CRDT logic from first principles.
-    - [ ] **Sub-task:** Write tests for the core CRDT functionalities (e.g., patch creation, application).
-    - [ ] **Sub-task:** Implement the Pijul CRDT data structures and algorithms.
+- [x] **Task:** Implement the core Pijul CRDT logic from first principles.
+    - [x] **Sub-task:** Write tests for the core CRDT functionalities (e.g., patch creation, application).
+    - [x] **Sub-task:** Implement the Pijul CRDT data structures and algorithms.
 - [ ] **Task:** Implement serialization for the `sond` dialect using the Pijul CRDT implementation.
     - [ ] **Sub-task:** Write tests for serializing a simple `sond` graph.
     - [ ] **Sub-task:** Implement the `sond` serialization logic.

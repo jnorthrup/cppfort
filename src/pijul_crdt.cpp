@@ -107,6 +107,16 @@ void CRDTGraph::merge(const CRDTGraph& other) {
                 }
             }
         }
+
+        // Update inputs for target nodes
+        for (NodeID to : other_outs) {
+            if (nodes.contains(to)) {
+                auto& to_node = nodes[to];
+                if (std::find(to_node.inputs.begin(), to_node.inputs.end(), from) == to_node.inputs.end()) {
+                    to_node.inputs.push_back(from);
+                }
+            }
+        }
     }
 }
 
