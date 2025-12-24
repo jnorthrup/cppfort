@@ -132,10 +132,22 @@ add_executable(verify_ast_to_fir_output verify_ast_to_fir_output.cpp)
 target_include_directories(verify_ast_to_fir_output PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(verify_ast_to_fir_output PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIR LLVM)
 
+# FIR to SON conversion pass test
+add_executable(test_fir_to_son_pass test_fir_to_son_pass.cpp)
+target_include_directories(test_fir_to_son_pass PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_fir_to_son_pass PRIVATE
+    Cpp2Passes
+    Cpp2FIRDialect
+    Cpp2SONDialect
+    MLIR
+    MLIRFuncDialect
+)
+
 # Individual tests
 add_test(NAME cpp2_unit_tests COMMAND cpp2_tests)
 add_test(NAME cppfront_regression_tests COMMAND cppfront_regression_tests)
 add_test(NAME ast_to_fir_tests COMMAND test_ast_to_fir)
+add_test(NAME fir_to_son_pass_test COMMAND test_fir_to_son_pass)
 
 # Test that verifies all tests can be collected
 add_test(NAME collect_regression_tests

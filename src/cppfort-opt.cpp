@@ -13,8 +13,15 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
+// Forward declare pass registration function
+void registerConvertFIRToSONPass();
+
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
+
+  // Register our custom pass
+  registerConvertFIRToSONPass();
+
   mlir::DialectRegistry registry;
   mlir::registerAllDialects(registry);
   registry.insert<mlir::cpp2fir::Cpp2FIRDialect>();

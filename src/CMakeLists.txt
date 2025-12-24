@@ -103,12 +103,32 @@ target_link_libraries(cppfort-son PRIVATE
   SeaOfNodesCore
 )
 
+# Cpp2 Conversion Passes library
+add_library(Cpp2Passes
+  ConvertFIRToSON.cpp
+)
+
+target_include_directories(Cpp2Passes PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
+)
+
+target_link_libraries(Cpp2Passes PUBLIC
+  Cpp2FIRDialect
+  Cpp2SONDialect
+  MLIR
+  MLIRFuncDialect
+  MLIRTransforms
+)
+
 # Cppfort Optimizer Tool
 add_executable(cppfort-opt cppfort-opt.cpp)
 target_link_libraries(cppfort-opt PRIVATE
   Cpp2FIRDialect
   Cpp2SONDialect
   Cpp2Dialect
+  Cpp2Passes
   MLIR
   MLIRMlirOptMain
 )
