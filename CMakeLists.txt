@@ -1,4 +1,12 @@
 cmake_minimum_required(VERSION 3.28)
+
+# macOS: Use Homebrew LLVM exclusively (must be before project())
+if(APPLE)
+  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
+  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang")
+  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++")
+endif()
+
 project(cppfort LANGUAGES C CXX VERSION 1.0.0)
 
 # C++23 standard
@@ -11,6 +19,24 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# macOS: Homebrew LLVM libc++ configuration
+if(APPLE)
+  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
+
+  # Use Homebrew's libc++ (before SDK paths)
+  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
+  add_compile_options(-stdlib=libc++)
+
+  # Link Homebrew's libc++ and libunwind
+  add_link_options(-stdlib=libc++)
+  add_link_options(-L${HOMEBREW_LLVM_LIB}/c++)
+  add_link_options(-L${HOMEBREW_LLVM_LIB}/unwind)
+  add_link_options(-lunwind)
+
+  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
+  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
+endif()
+
 # Compiler options
 if(MSVC)
   add_compile_options(/W4 /permissive-)
@@ -21,18 +47,7 @@ else()
   else()
     add_compile_options(-O3 -DNDEBUG)
   endif()
-
-  # Ensure Clang uses libc++ on macOS/Homebrew toolchains to match MLIR/LLVM
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-stdlib=libc++)
-    # Ensure the linker also uses libc++
-    add_link_options(-stdlib=libc++)
-    # Explicitly link libc++abi to satisfy internal libc++ symbols on some macOS toolchains
-    add_link_options(-lc++abi)
-  endif()
 endif()
-
-# Use parallel build - controlled by build tool invocation (do not add -j to compiler flags)
 
 # Ninja generator support
 if(CMAKE_GENERATOR STREQUAL "Ninja")
