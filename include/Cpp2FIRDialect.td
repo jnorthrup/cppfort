@@ -54,7 +54,8 @@ def Cpp2FIR_ConstantOp : Cpp2FIR_Op<"constant", [Pure, ConstantLike]> {
   let builders = [
     OpBuilder<(ins "::mlir::Type":$type, "::mlir::Attribute":$value),
     [{
-      build($_builder, $_state, type, value);
+      $_state.addTypes(type);
+      $_state.addAttribute("value", value);
     }]>
   ];
 }
