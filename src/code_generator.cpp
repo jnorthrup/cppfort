@@ -41,8 +41,10 @@ std::string CodeGenerator::get_indent() const {
 }
 
 void CodeGenerator::write_includes() {
+    write_line("#include <cassert>");
     write_line("#include <iostream>");
     write_line("#include <string>");
+    write_line("#include <string_view>");
     write_line("#include <vector>");
     write_line("#include <span>");
     write_line("#include <format>");
@@ -190,6 +192,11 @@ void CodeGenerator::generate_statement(Statement* stmt) {
             write_line(generate_expression_to_string(expr_stmt->expr.get()) + ";");
             break;
         }
+        case Statement::Kind::Declaration: {
+            auto decl_stmt = static_cast<DeclarationStatement*>(stmt);
+            generate_declaration(decl_stmt->declaration.get());
+            break;
+        }
         case Statement::Kind::Block:
             generate_block_statement(static_cast<BlockStatement*>(stmt));
             break;
@@ -208,6 +215,17 @@ void CodeGenerator::generate_statement(Statement* stmt) {
         case Statement::Kind::Return:
             generate_return_statement(static_cast<ReturnStatement*>(stmt));
             break;
+        case Statement::Kind::Contract: {
+            auto contract_stmt = static_cast<ContractStatement*>(stmt);
+            if (contract_stmt->contract && contract_stmt->contract->condition) {
+                auto cond = generate_expression_to_string(contract_stmt->contract->condition.get());
+                if (cond.size() >= 2 && cond.front() == '(' && cond.back() == ')') {
+                    cond = cond.substr(1, cond.size() - 2);
+                }
+                write_line("assert(" + cond + ");");
+            }
+            break;
+        }
         default:
             break;
     }
@@ -324,12 +342,15 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 case TokenType::Minus: expr_output << " - "; break;
                 case TokenType::Asterisk: expr_output << " * "; break;
                 case TokenType::Slash: expr_output << " / "; break;
+                case TokenType::Equal: expr_output << " = "; break;
                 case TokenType::DoubleEqual: expr_output << " == "; break;
                 case TokenType::NotEqual: expr_output << " != "; break;
                 case TokenType::LessThan: expr_output << " < "; break;
                 case TokenType::GreaterThan: expr_output << " > "; break;
                 case TokenType::LessThanOrEqual: expr_output << " <= "; break;
                 case TokenType::GreaterThanOrEqual: expr_output << " >= "; break;
+                case TokenType::LeftShift: expr_output << " << "; break;
+                case TokenType::RightShift: expr_output << " >> "; break;
                 default: expr_output << " ?op? "; break;
             }
 
@@ -362,11 +383,18 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         case Expression::Kind::Unary: {
             auto unary = static_cast<UnaryExpression*>(expr);
             if (unary->is_postfix) {
-                expr_output << generate_expression_to_string(unary->operand.get());
-                switch (unary->op) {
-                    case TokenType::PlusPlus: expr_output << "++"; break;
-                    case TokenType::MinusMinus: expr_output << "--"; break;
-                    default: break;
+                // Cpp2 has some postfix operators (e.g., `p*`, `x&`) that need
+                // to become prefix operators in C++.
+                if (unary->op == TokenType::Asterisk || unary->op == TokenType::Ampersand) {
+                    expr_output << (unary->op == TokenType::Asterisk ? "*" : "&");
+                    expr_output << generate_expression_to_string(unary->operand.get());
+                } else {
+                    expr_output << generate_expression_to_string(unary->operand.get());
+                    switch (unary->op) {
+                        case TokenType::PlusPlus: expr_output << "++"; break;
+                        case TokenType::MinusMinus: expr_output << "--"; break;
+                        default: break;
+                    }
                 }
             } else {
                 switch (unary->op) {
@@ -391,6 +419,15 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
 
 std::string CodeGenerator::generate_type(Type* type) {
     if (!type) return "void";
+
+    // Map common Cpp2-style builtin names to C++ spellings.
+    // Keep this minimal and test-driven.
+    if (type->kind == Type::Kind::Builtin) {
+        if (type->name == "i32" || type->name == "int32") return "int";
+        if (type->name == "u32" || type->name == "uint32") return "unsigned int";
+        if (type->name == "string") return "std::string";
+        if (type->name == "string_view") return "std::string_view";
+    }
 
     switch (type->kind) {
         case Type::Kind::Builtin:

@@ -111,6 +111,12 @@ auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
 // Entry point
 std::unique_ptr<Declaration> Parser::declaration() {
     return synchronize_on_error([this]() -> std::unique_ptr<Declaration> {
+        // Skip preprocessor directives (#include, #define, etc.)
+        if (match(TokenType::Hash)) {
+            // Preprocessor directive - skip it and move to next declaration
+            return nullptr;
+        }
+
         // Cpp2 unified syntax: identifier: type = initializer
         if (check(TokenType::Identifier)) {
             std::size_t saved = current;
@@ -168,6 +174,15 @@ std::unique_ptr<Declaration> Parser::declaration() {
 
 std::unique_ptr<Statement> Parser::statement() {
     return synchronize_on_error([this]() -> std::unique_ptr<Statement> {
+        // Local variable declarations in statement position
+        if (match({TokenType::Let, TokenType::Const})) {
+            auto decl = variable_declaration();
+            if (decl) {
+                return std::make_unique<DeclarationStatement>(std::move(decl), decl->line);
+            }
+            return nullptr;
+        }
+
         if (match(TokenType::LeftBrace)) {
             return block_statement();
         }
@@ -208,6 +223,45 @@ std::unique_ptr<Statement> Parser::statement() {
             return static_assert_statement();
         }
 
+        // Variable declaration with unified syntax: name: type = value;
+        // Check for identifier followed by colon
+        if (check(TokenType::Identifier)) {
+            std::size_t saved = current;
+            advance(); // consume identifier
+            if (check(TokenType::Colon)) {
+                // Found unified syntax variable declaration
+                Token name = previous(); // the identifier we just consumed
+                advance(); // consume the colon
+
+                // Parse type and initializer
+                std::unique_ptr<Type> var_type = nullptr;
+                if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
+                    var_type = type();
+                }
+
+                std::unique_ptr<Expression> initializer = nullptr;
+                bool is_compile_time = false;
+                if (match(TokenType::Equal)) {
+                    initializer = expression();
+                } else if (match(TokenType::DoubleEqual)) {
+                    is_compile_time = true;
+                    initializer = expression();
+                }
+
+                consume(TokenType::Semicolon, "Expected ';' after variable declaration");
+
+                auto decl = std::make_unique<VariableDeclaration>(std::string(name.lexeme), name.line);
+                decl->type = std::move(var_type);
+                decl->initializer = std::move(initializer);
+                decl->is_const = false;
+                decl->is_mut = false;
+                decl->is_compile_time = is_compile_time;
+
+                return std::make_unique<DeclarationStatement>(std::move(decl), previous().line);
+            }
+            current = saved; // backtrack if no colon
+        }
+
         // Expression statement
         auto expr = expression();
         if (expr) {
@@ -229,27 +283,33 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
     bool is_mut = false;
 
     // Check if called from keyword syntax (let/const) or unified syntax (name:)
-    // In unified syntax, identifier is at previous()-1, colon is at previous()
-    Token name = previous(); // Will be identifier or keyword
+    Token start = previous();
+    bool from_keyword = (start.type == TokenType::Let || start.type == TokenType::Const);
+    Token name = start; // Will be identifier or keyword
 
-    if (name.type == TokenType::Let || name.type == TokenType::Const) {
-        // Keyword syntax: let/const name: type = init;
-        is_const = name.type == TokenType::Const;
+    if (from_keyword) {
+        // Keyword syntax: let/const name[: type] (=|==) init;
+        is_const = start.type == TokenType::Const;
         name = consume(TokenType::Identifier, "Expected variable name");
-        consume(TokenType::Colon, "Expected ':' after variable name");
-    } else if (name.type == TokenType::Colon) {
-        // Unified syntax: colon is previous(), need to go back one more
-        // Actually previous()-1 would be the identifier
-        // But we can't access previous()-1, so get it from tokens
+    } else if (start.type == TokenType::Colon) {
+        // Unified syntax from declaration(): colon is previous(), need to get identifier
         if (current >= 2) {
             name = tokens[current - 2]; // identifier before colon
         }
     }
-    // else: name is already set from some other path
+    // else: name is already set from some other path (e.g., function parameter)
 
     std::unique_ptr<Type> var_type = nullptr;
-    if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
-        var_type = type();
+    if (from_keyword) {
+        // Optional type annotation.
+        if (match(TokenType::Colon)) {
+            var_type = type();
+        }
+    } else {
+        // Unified syntax (name: ...) or other contexts: type is expected unless an initializer follows.
+        if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
+            var_type = type();
+        }
     }
 
     std::unique_ptr<Expression> initializer = nullptr;
@@ -258,6 +318,10 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
     } else if (match(TokenType::DoubleEqual)) {
         is_compile_time = true;
         initializer = expression();
+    }
+
+    if (!var_type && !initializer) {
+        error_at_current("Expected ':' type annotation or initializer for variable");
     }
 
     consume(TokenType::Semicolon, "Expected ';' after variable declaration");
@@ -274,27 +338,39 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
 
 std::unique_ptr<Declaration> Parser::function_declaration() {
     Token prev = previous();
-    Token name = prev; // Initialize with prev
+    Token name = prev; // Initialize with prev, will be overridden if needed
     std::vector<std::string> template_params;
 
     // Check if called from keyword syntax (func) or unified syntax (name:)
     if (prev.type == TokenType::Func) {
         // Keyword syntax: func name(...) -> type = body
+        // Historically this parser also accepted/expected a ':' after the function name.
+        // Keep ':' optional for compatibility with existing tests and cppfront-like syntax.
         name = consume(TokenType::Identifier, "Expected function name");
         // Template parameters
         if (match(TokenType::LessThan)) {
             template_params = template_parameters();
             consume(TokenType::GreaterThan, "Expected '>' after template parameters");
         }
-        consume(TokenType::Colon, "Expected ':' after function name");
+        match(TokenType::Colon); // Optional
+    } else {
+        // Unified syntax: name: (...) -> type = body
+        // identifier and colon were already consumed in declaration()
+        // After consuming identifier and colon, tokens[current - 2] is the identifier
+        if (current >= 2 && tokens[current - 2].type == TokenType::Identifier) {
+            name = tokens[current - 2]; // identifier before colon
+        }
+        // else: keep prev as fallback (though this indicates a parsing bug)
     }
-    // else: Unified syntax: name: (...) -> type = body - name and colon already consumed
 
-    consume(TokenType::LeftParen, "Expected '(' after function ':'");
+    consume(TokenType::LeftParen, "Expected '(' after function name");
 
     std::vector<FunctionDeclaration::Parameter> parameters;
     if (!check(TokenType::RightParen)) {
         do {
+            // Parse qualifiers before parameter name
+            std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
+
             Token param_name = consume(TokenType::Identifier, "Expected parameter name");
             consume(TokenType::Colon, "Expected ':' after parameter name");
 
@@ -313,6 +389,8 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
                 std::move(param_type),
                 std::move(default_value)
             });
+            // Add qualifiers to the parameter
+            parameters.back().qualifiers = std::move(qualifiers);
         } while (match(TokenType::Comma));
     }
 
@@ -327,12 +405,56 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     // Contracts
     auto contracts = parse_contracts();
 
-    // Function body
+    // Function body - Cpp2 supports both block bodies and expression bodies.
+    // - name: (params) -> type = { body }
+    // - name: (params) -> type = expr;
     std::unique_ptr<Statement> body = nullptr;
+    bool has_equals = match(TokenType::Equal); // '=' is optional for historical compatibility
     if (match(TokenType::LeftBrace)) {
         body = block_statement();
+    } else if (has_equals) {
+        // Expression-bodied function
+        auto expr = expression();
+        if (expr) {
+            if (return_type && return_type->name != "void") {
+                body = std::make_unique<ReturnStatement>(std::move(expr), previous().line);
+            } else {
+                body = std::make_unique<ExpressionStatement>(std::move(expr), previous().line);
+            }
+        } else {
+            error_at_current("Expected expression");
+        }
+        consume(TokenType::Semicolon, "Expected ';' after function body expression");
     } else {
         consume(TokenType::Semicolon, "Expected ';' or function body");
+    }
+
+    // Lower contracts into the function body as statements so later phases (and
+    // tests that only run CodeGenerator) can see them.
+    if (!contracts.empty()) {
+        if (auto* block = dynamic_cast<BlockStatement*>(body.get())) {
+            std::vector<std::unique_ptr<Statement>> new_stmts;
+            new_stmts.reserve(contracts.size() + block->statements.size());
+            for (auto& c : contracts) {
+                std::size_t line = c ? c->line : name.line;
+                new_stmts.push_back(std::make_unique<ContractStatement>(std::move(c), line));
+            }
+            for (auto& s : block->statements) {
+                new_stmts.push_back(std::move(s));
+            }
+            block->statements = std::move(new_stmts);
+        } else {
+            auto new_block = std::make_unique<BlockStatement>(name.line);
+            new_block->statements.reserve(contracts.size() + (body ? 1 : 0));
+            for (auto& c : contracts) {
+                std::size_t line = c ? c->line : name.line;
+                new_block->statements.push_back(std::make_unique<ContractStatement>(std::move(c), line));
+            }
+            if (body) {
+                new_block->statements.push_back(std::move(body));
+            }
+            body = std::move(new_block);
+        }
     }
 
     auto func = std::make_unique<FunctionDeclaration>(std::string(name.lexeme), name.line);
@@ -433,6 +555,9 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
 
     if (!check(TokenType::RightParen)) {
         do {
+            // Parse qualifiers before parameter name
+            std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
+
             Token param_name = consume(TokenType::Identifier, "Expected parameter name");
             consume(TokenType::Colon, "Expected ':' after parameter name");
             auto param_type = type();
@@ -440,6 +565,7 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
             auto param = std::make_unique<FunctionDeclaration::Parameter>();
             param->name = std::string(param_name.lexeme);
             param->type = std::move(param_type);
+            param->qualifiers = std::move(qualifiers);
 
             op_decl->parameters.push_back(std::move(param));
         } while (match(TokenType::Comma));
@@ -1071,6 +1197,32 @@ std::unique_ptr<Expression> Parser::postfix_expression() {
             expr = member_access_expression(std::move(expr));
         } else if (match(TokenType::LeftBracket)) {
             expr = subscript_expression(std::move(expr));
+        } else if (check(TokenType::Asterisk) || check(TokenType::Ampersand)) {
+            // Cpp2 allows postfix deref/address-of: `p*`, `x&`.
+            // Disambiguate from binary '*' by only treating it as postfix when
+            // the following token cannot start a new expression.
+            TokenType next = TokenType::EndOfFile;
+            if (current + 1 < tokens.size()) {
+                next = tokens[current + 1].type;
+            }
+            bool looks_like_postfix =
+                next == TokenType::Semicolon || next == TokenType::Comma ||
+                next == TokenType::RightParen || next == TokenType::RightBracket ||
+                next == TokenType::RightBrace || next == TokenType::Dot ||
+                next == TokenType::PlusPlus || next == TokenType::MinusMinus;
+
+            if (!looks_like_postfix) {
+                break;
+            }
+
+            advance();
+            Token op = previous();
+            expr = std::make_unique<UnaryExpression>(
+                op.type,
+                std::move(expr),
+                op.line,
+                true // postfix
+            );
         } else if (match({TokenType::PlusPlus, TokenType::MinusMinus})) {
             Token op = previous();
             expr = std::make_unique<UnaryExpression>(
@@ -1107,8 +1259,13 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         );
     }
     if (match(TokenType::StringLiteral)) {
+        // Strip the surrounding quotes from the string literal lexeme
+        std::string_view lexeme = previous().lexeme;
+        if (lexeme.size() >= 2 && lexeme.front() == '"' && lexeme.back() == '"') {
+            lexeme = lexeme.substr(1, lexeme.size() - 2);
+        }
         return std::make_unique<LiteralExpression>(
-            std::string(previous().lexeme),
+            std::string(lexeme),
             previous().line
         );
     }
@@ -1234,6 +1391,10 @@ std::unique_ptr<Expression> Parser::lambda_expression() {
     if (!check(TokenType::RightParen)) {
         do {
             LambdaExpression::Parameter param;
+
+            // Parse qualifiers before parameter name
+            param.qualifiers = parse_parameter_qualifiers();
+
             Token name = consume(TokenType::Identifier, "Expected parameter name");
             param.name = std::string(name.lexeme);
 
@@ -1354,7 +1515,7 @@ std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
     std::vector<std::unique_ptr<ContractExpression>> contracts;
 
     while (match({TokenType::ContractPre, TokenType::ContractPost, TokenType::ContractAssert})) {
-        Token contract_type = advance();
+        Token contract_type = previous();
         ContractExpression::ContractKind kind;
 
         if (contract_type.type == TokenType::ContractPre) {
@@ -1379,6 +1540,32 @@ std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
     }
 
     return contracts;
+}
+
+// Parameter qualifier parsing (Cpp2-specific)
+// Parses: inout, out, move, forward, virtual, override
+std::vector<ParameterQualifier> Parser::parse_parameter_qualifiers() {
+    std::vector<ParameterQualifier> qualifiers;
+
+    while (true) {
+        if (match(TokenType::Inout)) {
+            qualifiers.push_back(ParameterQualifier::InOut);
+        } else if (match(TokenType::Out)) {
+            qualifiers.push_back(ParameterQualifier::Out);
+        } else if (match(TokenType::Move)) {
+            qualifiers.push_back(ParameterQualifier::Move);
+        } else if (match(TokenType::Forward)) {
+            qualifiers.push_back(ParameterQualifier::Forward);
+        } else if (match(TokenType::Virtual)) {
+            qualifiers.push_back(ParameterQualifier::Virtual);
+        } else if (match(TokenType::Override)) {
+            qualifiers.push_back(ParameterQualifier::Override);
+        } else {
+            break;
+        }
+    }
+
+    return qualifiers;
 }
 
 // Template handling

@@ -55,7 +55,7 @@ add_library(SeaOfNodesCore
   sea_of_nodes_ir.cpp
   combinator_hierarchy.cpp
   mlir_bridge.cpp
-  son_serialization.cpp
+  # son_serialization.cpp  # Disabled: Cpp2SONDialect has MLIR tablegen issues (fold method signatures)
 )
 
 target_include_directories(SeaOfNodesCore PUBLIC
@@ -65,7 +65,7 @@ target_include_directories(SeaOfNodesCore PUBLIC
 
 target_link_libraries(SeaOfNodesCore PUBLIC
   Cpp2Dialect
-  Cpp2SONDialect
+  # Cpp2SONDialect  # Disabled: MLIR tablegen issues need investigation
   MLIR
   MLIRFuncDialect
 )

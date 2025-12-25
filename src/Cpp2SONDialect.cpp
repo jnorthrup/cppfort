@@ -3,6 +3,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "llvm/ADT/StringRef.h"
 
 using namespace mlir;
 using namespace mlir::sond;
@@ -17,6 +18,154 @@ void Cpp2SONDialect::initialize() {
 #define GET_OP_LIST
 #include "Cpp2SONOps.cpp.inc"
   >();
+}
+
+// Constant folder for ConstantOp
+::mlir::OpFoldResult ConstantOp::fold(ConstantOp::FoldAdaptor adaptor) {
+  return getValue();
+}
+
+static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t rhs) {
+  if (pred == "lt") return lhs < rhs;
+  if (pred == "le") return lhs <= rhs;
+  if (pred == "gt") return lhs > rhs;
+  if (pred == "ge") return lhs >= rhs;
+  if (pred == "eq") return lhs == rhs;
+  if (pred == "ne") return lhs != rhs;
+  return std::nullopt;
+}
+
+// Constant folder for AddOp
+::mlir::OpFoldResult AddOp::fold(AddOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      return IntegerAttr::get(lhsInt.getType(), lhsInt.getInt() + rhsInt.getInt());
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult SubOp::fold(SubOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      return IntegerAttr::get(lhsInt.getType(), lhsInt.getInt() - rhsInt.getInt());
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult MulOp::fold(MulOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      return IntegerAttr::get(lhsInt.getType(), lhsInt.getInt() * rhsInt.getInt());
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult DivOp::fold(DivOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      auto rhsVal = rhsInt.getInt();
+      if (rhsVal == 0) return {};
+      return IntegerAttr::get(lhsInt.getType(), lhsInt.getInt() / rhsVal);
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult AndOp::fold(AndOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsBool = dyn_cast<BoolAttr>(lhs)) {
+    if (auto rhsBool = dyn_cast<BoolAttr>(rhs)) {
+      return BoolAttr::get(lhsBool.getContext(), lhsBool.getValue() && rhsBool.getValue());
+    }
+  }
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      // Common representation for i1 values
+      bool l = lhsInt.getInt() != 0;
+      bool r = rhsInt.getInt() != 0;
+      return IntegerAttr::get(lhsInt.getType(), (l && r) ? 1 : 0);
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult OrOp::fold(OrOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  if (auto lhsBool = dyn_cast<BoolAttr>(lhs)) {
+    if (auto rhsBool = dyn_cast<BoolAttr>(rhs)) {
+      return BoolAttr::get(lhsBool.getContext(), lhsBool.getValue() || rhsBool.getValue());
+    }
+  }
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      bool l = lhsInt.getInt() != 0;
+      bool r = rhsInt.getInt() != 0;
+      return IntegerAttr::get(lhsInt.getType(), (l || r) ? 1 : 0);
+    }
+  }
+  return {};
+}
+
+::mlir::OpFoldResult NotOp::fold(NotOp::FoldAdaptor adaptor) {
+  auto in = adaptor.getInput();
+  if (!in) return {};
+
+  if (auto b = dyn_cast<BoolAttr>(in)) {
+    return BoolAttr::get(b.getContext(), !b.getValue());
+  }
+  if (auto i = dyn_cast<IntegerAttr>(in)) {
+    return IntegerAttr::get(i.getType(), (i.getInt() == 0) ? 1 : 0);
+  }
+  return {};
+}
+
+::mlir::OpFoldResult CmpOp::fold(CmpOp::FoldAdaptor adaptor) {
+  auto lhs = adaptor.getLhs();
+  auto rhs = adaptor.getRhs();
+  if (!lhs || !rhs) return {};
+
+  auto predAttr = (*this)->getAttrOfType<StringAttr>("predicate");
+  if (!predAttr) return {};
+
+  if (auto lhsInt = dyn_cast<IntegerAttr>(lhs)) {
+    if (auto rhsInt = dyn_cast<IntegerAttr>(rhs)) {
+      auto res = evalICmp(predAttr.getValue(), lhsInt.getInt(), rhsInt.getInt());
+      if (!res.has_value()) return {};
+
+      // Prefer i1 IntegerAttr if result type is integer, otherwise BoolAttr.
+      auto resultTy = getResult().getType();
+      if (auto intTy = dyn_cast<IntegerType>(resultTy)) {
+        return IntegerAttr::get(intTy, *res ? 1 : 0);
+      }
+      return BoolAttr::get(getContext(), *res);
+    }
+  }
+  return {};
 }
 
 // Custom assembly format for ConstantOp
