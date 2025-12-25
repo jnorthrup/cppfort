@@ -43,6 +43,14 @@ struct Type {
         TemplateParameter
     };
 
+    // Null safety annotation (from null_safety analysis)
+    enum class NullAnnotation {
+        Unknown,        // Not yet determined
+        Nullable,       // May be null (default for pointers)
+        NonNull,        // Guaranteed not null
+        NullChecked     // Null check has been performed
+    };
+
     Kind kind;
     std::string name;
     std::vector<std::unique_ptr<Type>> template_args;
@@ -50,6 +58,11 @@ struct Type {
     std::shared_ptr<Expression> size;
     bool is_const = false;
     bool is_mut = false;
+
+    // Semantic attributes from Clang analysis
+    NullAnnotation null_annotation = NullAnnotation::Unknown;  // Null safety
+    bool requires_null_check = false;                          // Requires runtime null check
+    bool is_view = false;                                       // Is a view/reference type
 
     Type(Kind k) : kind(k) {}
     ~Type();
@@ -79,6 +92,12 @@ struct Expression {
 
     Kind kind;
     std::size_t line;
+
+    // Semantic attributes from Clang analysis
+    bool is_definite_last_use = false;           // Marked for move optimization
+    bool has_null_check = false;                  // Null check was inserted
+    bool has_bounds_check = false;                // Bounds check was inserted
+    std::string inferred_type;                    // Type deduced by Clang
 
     Expression(Kind k, std::size_t l) : kind(k), line(l) {}
     virtual ~Expression() = default;
@@ -249,12 +268,29 @@ struct MetafunctionCallExpression : Expression {
         : Expression(Kind::MetafunctionCall, l), name(std::move(n)) {}
 };
 
+// Contract categories (from cpp2 safety categories)
+enum class ContractCategory {
+    TypeSafety,         // type_safety - type correctness
+    BoundsSafety,       // bounds_safety - array bounds checking
+    NullSafety,         // null_safety - null pointer checking
+    LifetimeSafety,     // lifetime_safety - object lifetime
+    InitializationSafety, // initialization_safety - definite initialization
+    ArithmeticSafety,   // arithmetic_safety - overflow/underflow
+    Unevaluated         // unevaluated - compile-time only
+};
+
 struct ContractExpression : Expression {
     enum class ContractKind { Pre, Post, Assert };
     ContractKind kind;
     std::unique_ptr<Expression> condition;
     std::optional<std::string> message;
     std::vector<std::string> captures;
+
+    // Semantic attributes from Clang analysis
+    std::vector<ContractCategory> categories;  // Contract categories
+    bool audit = false;                          // Audit-mode contract
+    bool has_handler = false;                   // Whether a handler is installed
+    std::string source_location;                // Source location for diagnostics
 
     ContractExpression(ContractKind k, std::unique_ptr<Expression> cond, std::size_t l)
         : Expression(Kind::ContractExpression, l), kind(k), condition(std::move(cond)) {}
@@ -469,6 +505,15 @@ struct Declaration {
 };
 
 struct VariableDeclaration : Declaration {
+    // Initialization state (from definite initialization analysis)
+    enum class InitState {
+        Unknown,            // State not yet determined
+        Uninitialized,      // Declared without initializer
+        DefinitelyAssigned, // Assigned on all paths
+        PotentiallyUninitialized, // Not assigned on some paths
+        OutParameter        // 'out' parameter - will be definitely assigned
+    };
+
     std::unique_ptr<Type> type;
     std::unique_ptr<Expression> initializer;
     bool is_const = false;
@@ -476,11 +521,25 @@ struct VariableDeclaration : Declaration {
     bool is_compile_time = false;
     std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, etc.
 
+    // Semantic attributes from Clang analysis
+    InitState init_state = InitState::Unknown;    // Initialization safety state
+    bool requires_definite_assignment = false;    // Requires 'out' semantics
+    bool is_definite_last_use = false;            // Marked for move optimization
+
     VariableDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Variable, std::move(n), l) {}
 };
 
 struct FunctionDeclaration : Declaration {
+    // This-qualifier for member functions (from Clang CXXMethodDecl)
+    enum class ThisQualifier {
+        None,       // Regular function or non-qualified member
+        In,         // 'in this' - read-only access (const this)
+        InOut,      // 'inout this' - mutable access
+        Move,       // 'move this' - rvalue reference (&&)
+        Forward     // 'forward this' - forwarding reference
+    };
+
     struct Parameter {
         std::string name;
         std::unique_ptr<Type> type;
@@ -496,6 +555,11 @@ struct FunctionDeclaration : Declaration {
     bool is_override = false;
     bool is_final = false;
     bool is_explicit = false;
+
+    // Semantic attributes from Clang analysis
+    ThisQualifier this_qualifier = ThisQualifier::None;  // this-qualifier
+    bool is_constexpr = false;                            // constexpr function
+    bool is_noexcept = false;                              // noexcept function
 
     FunctionDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Function, std::move(n), l) {}

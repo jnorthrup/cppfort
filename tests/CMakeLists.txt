@@ -143,6 +143,44 @@ target_link_libraries(test_fir_to_son_pass PRIVATE
     MLIRFuncDialect
 )
 
+# Binary expression FIR tests
+add_executable(test_binary_expression_fir test_binary_expression_fir.cpp)
+target_include_directories(test_binary_expression_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_binary_expression_fir PRIVATE
+    Cpp2FIRDialect
+    Cpp2Transpiler
+    MLIR
+    MLIRFuncDialect
+)
+
+# Call expression FIR tests
+add_executable(test_call_expression_fir test_call_expression_fir.cpp)
+target_include_directories(test_call_expression_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_call_expression_fir PRIVATE
+    Cpp2FIRDialect
+    Cpp2Transpiler
+    MLIR
+    MLIRFuncDialect
+)
+
+# Control flow FIR tests
+add_executable(test_control_flow_fir test_control_flow_fir.cpp)
+target_include_directories(test_control_flow_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_control_flow_fir PRIVATE
+    Cpp2FIRDialect
+    Cpp2Transpiler
+    MLIR
+    MLIRFuncDialect
+)
+
+# Semantic extraction test
+add_executable(test_semantic_extraction test_semantic_extraction.cpp)
+target_include_directories(test_semantic_extraction PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_semantic_extraction PRIVATE
+    Cpp2Transpiler
+    clang-cpp
+)
+
 # CRDT core functionality test
 add_executable(test_crdt_core test_crdt_core.cpp)
 target_include_directories(test_crdt_core PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -174,6 +212,10 @@ target_link_libraries(test_son_deserialization PRIVATE
 add_test(NAME cpp2_unit_tests COMMAND cpp2_tests)
 add_test(NAME cppfront_regression_tests COMMAND cppfront_regression_tests)
 add_test(NAME ast_to_fir_tests COMMAND test_ast_to_fir)
+add_test(NAME binary_expression_fir_tests COMMAND test_binary_expression_fir)
+add_test(NAME call_expression_fir_tests COMMAND test_call_expression_fir)
+add_test(NAME control_flow_fir_tests COMMAND test_control_flow_fir)
+add_test(NAME semantic_extraction_tests COMMAND test_semantic_extraction)
 add_test(NAME fir_to_son_pass_test COMMAND test_fir_to_son_pass)
 add_test(NAME crdt_core_tests COMMAND test_crdt_core)
 add_test(NAME son_serialization_tests COMMAND test_son_serialization)
@@ -219,6 +261,10 @@ set(_cppfort_all_ctest_tests
     cpp2_unit_tests
     cppfront_regression_tests
     ast_to_fir_tests
+    binary_expression_fir_tests
+    call_expression_fir_tests
+    control_flow_fir_tests
+    semantic_extraction_tests
     fir_to_son_pass_test
     crdt_core_tests
     son_serialization_tests

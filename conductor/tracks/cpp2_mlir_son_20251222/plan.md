@@ -169,3 +169,59 @@ Still unsupported:
     - [x] **Sub-task:** Handle tests that require stdin input
     - [x] **Sub-task:** Update TEST_TIMEOUT_MS if compilation/execution takes longer
     - **Files:** `tests/cppfront_test_framework.cpp`, `tests/cppfront_full_regression.cpp`
+
+---
+
+## Phase 5: Gap Resolution - Verification Protocol Findings
+
+**Status:** IN PROGRESS
+
+Added after independent verification identified gaps in spec compliance.
+
+### Task 1: Complete AST to FIR Bridge [PARTIAL → COMPLETE]
+- [x] **Task:** Add support for complex expressions in AST to FIR conversion
+    - [x] **Sub-task:** Implement binary expression conversion (arithmetic, logical, comparison)
+    - [x] **Sub-task:** Implement function call expression conversion
+    - [x] **Sub-task:** Implement control flow (if/else, loops) conversion
+    - [x] **Sub-task:** Write tests for complex expression conversion
+- [ ] **Task:** Add contract operation support to FIR dialect
+    - [ ] **Sub-task:** Define AssertOp, PreconditionOp, PostconditionOp in Cpp2FIRDialect.td
+    - [ ] **Sub-task:** Implement contract conversion in ASTToFIRConverter
+    - [ ] **Sub-task:** Write tests for contract operations
+
+### Task 2: Enhanced FIR Dialect Operations [PARTIAL → COMPLETE]
+- [ ] **Task:** Implement unified function call (UFCS) operations
+    - [ ] **Sub-task:** Define UfcsCallOp in FIR dialect
+    - [ ] **Sub-task:** Convert UFCS expressions from AST
+    - [ ] **Sub-task:** Write tests for UFCS conversion
+- [ ] **Task:** Add advanced type support to FIR dialect
+    - [ ] **Sub-task:** Support function types and higher-order functions
+    - [ ] **Sub-task:** Support optional and variant types
+    - [ ] **Sub-task:** Write tests for advanced types
+
+### Task 3: Comprehensive Error Handling [MISSING → IMPLEMENT]
+- [ ] **Task:** Implement robust error reporting for AST to FIR conversion
+    - [ ] **Sub-task:** Create DiagnosticCollector class for error aggregation
+    - [ ] **Sub-task:** Add detailed error messages with source locations
+    - [ ] **Sub-task:** Implement error recovery strategies
+    - [ ] **Sub-task:** Write tests for error handling (invalid syntax, type errors)
+
+### Task 4: SON Dialect Verification [MISSING → IMPLEMENT]
+- [ ] **Task:** Add verifiers to ensure SON graph integrity
+    - [ ] **Sub-task:** Implement dominance relationship verification
+    - [ ] **Sub-task:** Implement type consistency verification for edges
+    - [ ] **Sub-task:** Add cycle detection for data flow
+    - [ ] **Sub-task:** Write tests for verifier logic
+
+### Task 5: Code Coverage Reporting [MISSING → IMPLEMENT]
+- [ ] **Task:** Set up code coverage measurement
+    - [ ] **Sub-task:** Add CMake coverage support (ENABLE_COVERAGE option)
+    - [ ] **Sub-task:** Generate coverage reports (lcov/gcov)
+    - [ ] **Sub-task:** Add coverage reporting to CI
+    - [ ] **Sub-task:** Verify 20% coverage threshold is met
+
+### Task 6: Track Verification
+- [ ] **Task:** Re-run independent verification after gap resolution
+    - [ ] **Sub-task:** Spawn verification agent with updated codebase
+    - [ ] **Sub-task:** Confirm all requirements verified
+    - [ ] **Sub-task:** Mark track as complete

@@ -386,6 +386,22 @@ ClangToCpp2Visitor::visit_function_decl(const clang::Decl* decl) {
     auto func_decl = std::make_unique<cpp2_transpiler::FunctionDeclaration>(
         func->getNameAsString(), decl->getBeginLoc().getRawEncoding());
 
+    // Extract semantic attributes from Clang
+    func_decl->is_constexpr = func->isConstexpr();
+    if (auto* method = clang::dyn_cast<const clang::CXXMethodDecl>(decl)) {
+        // Extract this-qualifier from CXXMethodDecl
+        if (method->isConst()) {
+            func_decl->this_qualifier = cpp2_transpiler::FunctionDeclaration::ThisQualifier::In;
+        } else if (method->isVolatile()) {
+            func_decl->this_qualifier = cpp2_transpiler::FunctionDeclaration::ThisQualifier::InOut;
+        } else if (method->isRValueReferenceQualified()) {
+            func_decl->this_qualifier = cpp2_transpiler::FunctionDeclaration::ThisQualifier::Move;
+        }
+        func_decl->is_virtual = method->isVirtual();
+        func_decl->is_override = method->size_overridden_methods() > 0;
+    }
+    func_decl->is_noexcept = func->isNoexcept();
+
     // Convert parameters
     for (unsigned i = 0; i < func->getNumParams(); ++i) {
         auto* param = func->getParamDecl(i);
@@ -427,9 +443,29 @@ ClangToCpp2Visitor::visit_variable_decl(const clang::Decl* decl) {
 
     if (var->hasInit()) {
         var_decl->initializer = visit_expression(var->getInit());
+        // If initialized, mark as definitely assigned
+        var_decl->init_state = cpp2_transpiler::VariableDeclaration::InitState::DefinitelyAssigned;
+    } else {
+        // No initializer - uninitialized
+        var_decl->init_state = cpp2_transpiler::VariableDeclaration::InitState::Uninitialized;
     }
 
     var_decl->is_const = var->getType().isConstQualified();
+
+    // Extract null safety annotation for pointer types
+    if (var->getType()->isPointerType()) {
+        // Check for nullability attribute (clang::NullabilityKind)
+        if (auto* ptr_type = var->getType()->getAs<clang::PointerType>()) {
+            // Check for nonnull attribute
+            if (var->hasAttr<clang::NonNullAttr>()) {
+                var_decl->type->null_annotation = cpp2_transpiler::Type::NullAnnotation::NonNull;
+                var_decl->type->requires_null_check = false;
+            } else {
+                var_decl->type->null_annotation = cpp2_transpiler::Type::NullAnnotation::Nullable;
+                var_decl->type->requires_null_check = true;
+            }
+        }
+    }
 
     return var_decl;
 }
