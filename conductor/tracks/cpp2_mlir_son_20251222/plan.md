@@ -1,6 +1,6 @@
 # Plan: Establish Core Cpp2 to MLIR Front-IR Conversion and Sea of Nodes Dialect Integration
 
-## Phase 1: Foundational MLIR and FIR Dialect Setup [checkpoint: 89ca649]
+## Phase 1: Foundational MLIR and FIR Dialect Setup [checkpoint: 5a18d93]
 
 - [x] **Task:** Define the initial MLIR Dialect for the Front-IR (FIR).
     - [x] **Sub-task:** Write tests for the basic FIR dialect operations and types.
@@ -21,7 +21,7 @@
     - [x] **Sub-task:** Convert Clang AST patterns to cpp2 AST nodes using corpus mappings.
     - [x] **Sub-task:** AST→FIR conversion using corpus-derived semantics.
     - [x] **Sub-task:** MLIR ops tagged with corpus semantics.
-- [ ] **Task:** Conductor - User Manual Verification 'Foundational MLIR and FIR Dialect Setup' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Foundational MLIR and FIR Dialect Setup' (Protocol in workflow.md)
 
 ## Phase 2: Sea of Nodes (SON) Dialect and Lowering [checkpoint: d5b5758]
 
