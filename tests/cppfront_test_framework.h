@@ -11,6 +11,9 @@
 
 namespace cppfort::tests {
 
+// Test timeout standard: all tests MUST complete within 15 seconds
+inline constexpr std::chrono::milliseconds TEST_TIMEOUT_MS{15000};
+
 struct TestFile {
     std::string path;
     std::string category;
@@ -26,6 +29,7 @@ struct TestResult {
     bool passed;
     std::string error_message;
     std::string transpiler_output;
+    std::string actual_output;  // stdout from running compiled binary
     std::chrono::milliseconds duration;
     std::string category;
 };
@@ -64,6 +68,9 @@ private:
     TestResult run_transpiler_test(const TestFile& test_file);
     TestResult handle_pure2_test(const TestFile& test_file);
     TestResult handle_mixed_test(const TestFile& test_file);
+
+    // Helper function to execute a command with timeout
+    int execute_command(const std::string& command, std::string& output, int timeout_ms);
 
     void register_default_handlers();
 };

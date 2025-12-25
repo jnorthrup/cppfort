@@ -4,6 +4,11 @@
 #include <iostream>
 #include <algorithm>
 #include <regex>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <ctime>
 
 namespace cppfort::tests {
 
@@ -150,28 +155,111 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
     input_file << test_file.content;
     input_file.close();
 
-    // Run transpiler
-    std::string command = "cppfort \"" + temp_input + "\" 2>&1";
-    std::string output;
-    int exit_code = system((command + " > /dev/null 2>&1").c_str());
+    // Create temporary file for output
+    std::string temp_output = std::filesystem::temp_directory_path() /
+                            ("test_" + test_file.name + ".cpp");
 
-    // Get output if failed
-    if (exit_code != 0) {
-        FILE* pipe = popen(command.c_str(), "r");
-        if (pipe) {
-            char buffer[4096];
-            while (fgets(buffer, sizeof(buffer), pipe)) {
+    // Run transpiler with timeout using fork/exec with pipe for output capture
+    std::string command = "cppfort \"" + temp_input + "\" \"" + temp_output + "\" 2>&1";
+    std::string output;
+    int exit_code = -1;
+    bool timed_out = false;
+
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        result.passed = false;
+        result.error_message = "Failed to create pipe for output capture";
+        return result;
+    }
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process: execute the command
+        close(pipefd[0]); // Close read end
+        dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to pipe
+        dup2(pipefd[1], STDERR_FILENO); // Redirect stderr to pipe
+        close(pipefd[1]); // Close write end (dup'd copies remain)
+
+        // Create new process group for killpg()
+        setpgid(0, 0);
+        execlp("sh", "sh", "-c", command.c_str(), nullptr);
+        _exit(127); // exec failed
+    } else if (pid > 0) {
+        // Parent process: close write end, read from pipe, wait with timeout
+        close(pipefd[1]); // Close write end
+
+        // Set read end to non-blocking for polling
+        fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+
+        int status;
+        pid_t ret;
+        auto deadline = start + TEST_TIMEOUT_MS;
+        char buffer[4096];
+        ssize_t bytes_read;
+
+        do {
+            auto now = std::chrono::high_resolution_clock::now();
+            if (now >= deadline) {
+                // Timeout: kill the child process group
+                killpg(pid, SIGKILL);
+                timed_out = true;
+                break;
+            }
+
+            // Read available output
+            while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
                 output += buffer;
             }
-            pclose(pipe);
+
+            // Check if child has exited (non-blocking)
+            ret = waitpid(pid, &status, WNOHANG);
+            if (ret == pid) {
+                // Child exited - read any remaining output
+                while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+                    buffer[bytes_read] = '\0';
+                    output += buffer;
+                }
+                if (WIFEXITED(status)) {
+                    exit_code = WEXITSTATUS(status);
+                }
+                break;
+            } else if (ret == -1) {
+                // Error
+                break;
+            }
+
+            // Sleep a bit before checking again
+            usleep(10000); // 10ms
+        } while (ret == 0);
+
+        close(pipefd[0]); // Close read end
+
+        // If still running after loop (shouldn't happen), clean up
+        if (ret == 0) {
+            killpg(pid, SIGKILL);
+            waitpid(pid, &status, 0);
         }
+    } else {
+        // Fork failed
+        close(pipefd[0]);
+        close(pipefd[1]);
+        result.passed = false;
+        result.error_message = "Failed to fork child process";
+        return result;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     result.duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    // Check for timeout first
+    if (timed_out) {
+        result.passed = false;
+        result.error_message = "Test exceeded 15-second timeout (TEST_TIMEOUT_MS standard)";
+        result.transpiler_output = output;
+    }
     // Check if result matches expectation
-    if (test_file.should_pass) {
+    else if (test_file.should_pass) {
         result.passed = (exit_code == 0);
         if (!result.passed) {
             result.error_message = "Expected transpiler to succeed but it failed";
@@ -190,10 +278,145 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
         }
     }
 
+    // Check for timeout first
+    if (timed_out) {
+        result.passed = false;
+        result.error_message = "Test exceeded 15-second timeout (TEST_TIMEOUT_MS standard)";
+        result.transpiler_output = output;
+    }
+    // Transpilation failed
+    else if (exit_code != 0) {
+        if (test_file.should_pass) {
+            result.passed = false;
+            result.error_message = "Expected transpiler to succeed but it failed";
+            result.transpiler_output = output;
+        } else {
+            result.passed = true; // Error test: transpiler correctly rejected invalid code
+        }
+    }
+    // Transpilation succeeded - now compile and run the generated C++ code
+    else {
+        result.transpiler_output = output;
+
+        if (test_file.should_pass) {
+            // Compile the generated C++ code
+            std::string temp_binary = std::filesystem::temp_directory_path() /
+                                     ("test_" + test_file.name);
+            std::string compile_command = "clang++ -std=c++20 -O0 \"" + temp_output +
+                                       "\" -o \"" + temp_binary + "\" 2>&1";
+
+            std::string compile_output;
+            int compile_exit_code = execute_command(compile_command, compile_output, 30000); // 30s timeout
+
+            if (compile_exit_code != 0) {
+                result.passed = false;
+                result.error_message = "Generated C++ code failed to compile";
+                result.transpiler_output += "\n\n--- Compilation Error ---\n" + compile_output;
+            } else {
+                // Compilation succeeded - run the binary
+                std::string run_output;
+                int run_exit_code = execute_command("\"" + temp_binary + "\"", run_output, 5000); // 5s timeout
+
+                if (run_exit_code < 0) {
+                    result.passed = false;
+                    result.error_message = "Program execution timed out or crashed";
+                    result.actual_output = run_output;
+                } else {
+                    result.passed = true;
+                    result.actual_output = run_output;
+                }
+
+                // Cleanup binary
+                std::filesystem::remove(temp_binary);
+            }
+        } else {
+            // Error test: transpiler should have failed but succeeded
+            result.passed = false;
+            result.error_message = "Expected transpiler to fail but it succeeded";
+        }
+    }
+
     // Cleanup
     std::filesystem::remove(temp_input);
+    std::filesystem::remove(temp_output);
 
     return result;
+}
+
+// Helper function to execute a command with timeout
+int TestRunner::execute_command(const std::string& command, std::string& output, int timeout_ms) {
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        return -1;
+    }
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        setpgid(0, 0);
+        execlp("sh", "sh", "-c", command.c_str(), nullptr);
+        _exit(127);
+    } else if (pid > 0) {
+        // Parent process
+        close(pipefd[1]);
+        fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+
+        int status;
+        pid_t ret;
+        auto start = std::chrono::high_resolution_clock::now();
+        auto deadline = start + std::chrono::milliseconds(timeout_ms);
+        char buffer[4096];
+        ssize_t bytes_read;
+        bool timed_out = false;
+
+        do {
+            auto now = std::chrono::high_resolution_clock::now();
+            if (now >= deadline) {
+                killpg(pid, SIGKILL);
+                timed_out = true;
+                break;
+            }
+
+            while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
+                output += buffer;
+            }
+
+            ret = waitpid(pid, &status, WNOHANG);
+            if (ret == pid) {
+                while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+                    buffer[bytes_read] = '\0';
+                    output += buffer;
+                }
+                close(pipefd[0]);
+                if (WIFEXITED(status)) {
+                    return WEXITSTATUS(status);
+                }
+                return -1;
+            } else if (ret == -1) {
+                break;
+            }
+
+            usleep(10000);
+        } while (ret == 0);
+
+        close(pipefd[0]);
+
+        if (ret == 0) {
+            killpg(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
+
+        return timed_out ? -1 : 0;
+    } else {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }
 }
 
 TestResult TestRunner::handle_pure2_test(const TestFile& test_file) {
