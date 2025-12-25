@@ -50,14 +50,14 @@
 
 ## Blockers
 
-### [ ] **BLOCKER:** Cppfront Regression Test Parity - Variable Declarations and Code Generation Fixed (2025-12-24)
+### [ ] **BLOCKER:** Cppfront Regression Test Parity - Code Generation Fixes Complete (2025-12-24)
 
 **Category:** cppfront-parity
 
-**Status:** IN PROGRESS - Major fixes completed
+**Status:** IN PROGRESS - Core transpilation working
 
 **Description:**
-Cppfort had critical bugs in parsing and code generation. Fixed unified syntax local variable declarations, string literals, and operator handling.
+Cppfort had critical bugs in parsing and code generation. All major issues fixed - transpiler now generates valid C++ code for basic Cpp2 syntax.
 
 **Fixes Completed (2025-12-24):**
 
@@ -76,24 +76,43 @@ Cppfort had critical bugs in parsing and code generation. Fixed unified syntax l
 - `=` assignment operator - added `Equal` case
 - Result: `?op?` placeholders replaced with correct operators
 
+**Fix 4: Forward Declarations (2025-12-24)**
+- Added `generate_function_forward_declaration()` function
+- Generate forward declarations for all functions (except main) before definitions
+- Functions can now call other functions regardless of declaration order
+
+**Fix 5: [[nodiscard]] Attribute Placement (2025-12-24)**
+- Moved [[nodiscard]] before return type for widest compatibility
+- Exclude main() from getting [[nodiscard]] (entry point restriction)
+- Fixed compile error: "'nodiscard' attribute cannot be applied to types"
+
 **Current Status:**
 - Local variable declarations: ✅ WORKING
 - String literals: ✅ WORKING
 - Stream operators (`<<`): ✅ WORKING
 - Assignment operator (`=`): ✅ WORKING
+- Forward declarations: ✅ WORKING
+- [[nodiscard]] placement: ✅ WORKING
+- **Transpiled code compiles and runs successfully!** ✅
+
+**Test Result:**
+```
+$ ./cppfort pure2-hello.cpp2 | clang++ -x c++ - -o test && ./test
+Hello world
+```
 
 **Remaining Issues:**
-- Forward declarations not generated for functions called before definition
-- `[[nodiscard]]` attribute placement incorrect (should be after function signature)
 - Many Cpp2 features still unsupported (contracts, inspect, UFCS, string interpolation, ranges)
 - Test framework doesn't validate output (only checks exit codes)
+- Only basic function/variable syntax supported
 
 **Blocker Details:**
-Previously broken Cpp2 syntax now working:
+Working Cpp2 syntax:
 - Function declarations (`name: (params) -> type = { body }`) - ✅ WORKING
 - Variable declarations (`name: type = value;`) - ✅ WORKING
 - Stream operators (`<<`, `>>`) - ✅ WORKING
 - Assignment operator (`=`) - ✅ WORKING
+- Forward declarations - ✅ WORKING
 
 Still unsupported:
 - Type declarations (`name: type = { ... }`)
