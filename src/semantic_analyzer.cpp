@@ -147,6 +147,11 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
         case Statement::Kind::Expression:
             check_expression(static_cast<ExpressionStatement*>(stmt)->expr.get());
             break;
+        case Statement::Kind::Declaration: {
+            auto decl_stmt = static_cast<DeclarationStatement*>(stmt);
+            check_declaration(decl_stmt->declaration.get());
+            break;
+        }
         case Statement::Kind::Block: {
             push_scope();
             auto block = static_cast<BlockStatement*>(stmt);
@@ -179,11 +184,28 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
         }
         case Statement::Kind::ForRange: {
             auto range_stmt = static_cast<ForRangeStatement*>(stmt);
+            // Range-for introduces a new variable scope for the loop variable.
+            push_scope();
+
             if (range_stmt->var_type) {
-                check_type(std::move(range_stmt->var_type));
+                range_stmt->var_type = check_type(std::move(range_stmt->var_type));
             }
+
+            // Add loop variable to scope so it can be referenced inside the loop body.
+            {
+                auto symbol = std::make_unique<Symbol>(
+                    Symbol::Kind::Variable,
+                    range_stmt->variable,
+                    range_stmt->var_type.get(),
+                    nullptr);
+                add_symbol(range_stmt->variable, std::move(symbol));
+                variable_usage[range_stmt->variable] = VariableUsage{};
+            }
+
             check_expression(range_stmt->range.get());
             check_statement(range_stmt->body.get());
+
+            pop_scope();
             break;
         }
         case Statement::Kind::Return: {
@@ -215,11 +237,25 @@ void SemanticAnalyzer::check_function(FunctionDeclaration* func) {
 
     push_scope();
 
-    // Add parameters to scope
-    for (const auto& param : func->parameters) {
-        auto param_type = check_type(std::move(const_cast<FunctionDeclaration::Parameter&>(param).type));
+    if (func->return_type) {
+        func->return_type = check_type(std::move(func->return_type));
+    }
+
+    // Cpp2 contracts may reference a special `result` name in postconditions.
+    // Provide it in the function scope so contract expressions type-check.
+    if (func->return_type && func->return_type->name != "void") {
         auto symbol = std::make_unique<Symbol>(
-            Symbol::Kind::Parameter, param.name, param_type.get(), nullptr);
+            Symbol::Kind::Variable, "result", func->return_type.get(), nullptr);
+        add_symbol("result", std::move(symbol));
+    }
+
+    // Add parameters to scope
+    for (auto& param : func->parameters) {
+        if (param.type) {
+            param.type = check_type(std::move(param.type));
+        }
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Parameter, param.name, param.type.get(), nullptr);
         add_symbol(param.name, std::move(symbol));
     }
 
@@ -343,6 +379,11 @@ void SemanticAnalyzer::check_lambda_expression(LambdaExpression* expr) {
 
     // Add parameters
     for (const auto& param : expr->parameters) {
+        if (!param.type) {
+            report_error(expr->line, "Parameter '" + param.name + "' missing type annotation");
+        } else {
+            check_type_ptr(param.type.get());
+        }
         auto symbol = std::make_unique<Symbol>(
             Symbol::Kind::Parameter, param.name, param.type.get(), nullptr);
         add_symbol(param.name, std::move(symbol));
@@ -358,12 +399,12 @@ void SemanticAnalyzer::check_lambda_expression(LambdaExpression* expr) {
 
 void SemanticAnalyzer::check_is_expression(IsExpression* expr) {
     check_expression(expr->expr.get());
-    check_type(std::move(expr->type));
+    expr->type = check_type(std::move(expr->type));
 }
 
 void SemanticAnalyzer::check_as_expression(AsExpression* expr) {
     check_expression(expr->expr.get());
-    check_type(std::move(expr->type));
+    expr->type = check_type(std::move(expr->type));
 }
 
 void SemanticAnalyzer::check_range_expression(RangeExpression* expr) {
@@ -373,6 +414,11 @@ void SemanticAnalyzer::check_range_expression(RangeExpression* expr) {
 
 std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
     if (!type) return nullptr;
+
+    if ((type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) &&
+        is_builtin_type(type->name)) {
+        type->kind = Type::Kind::Builtin;
+    }
 
     // Resolve type names and validate type structure
     if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
@@ -390,6 +436,25 @@ std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
     }
 
     return type;
+}
+
+void SemanticAnalyzer::check_type_ptr(const Type* type) {
+    if (!type) return;
+
+    // Resolve type names and validate type structure
+    if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
+        if (!is_builtin_type(type->name)) {
+            auto symbol = lookup_symbol(type->name);
+            if (!symbol || symbol->kind != Symbol::Kind::Type) {
+                report_error(0, "Undefined type: " + type->name);
+            }
+        }
+    }
+
+    // Check template arguments (without modifying)
+    for (const auto& arg : type->template_args) {
+        check_type_ptr(arg.get());
+    }
 }
 
 void SemanticAnalyzer::check_contract(ContractExpression* contract) {
@@ -464,7 +529,14 @@ bool SemanticAnalyzer::is_builtin_type(const std::string& name) const {
     static const std::unordered_set<std::string> builtins = {
         "bool", "char", "int", "int8", "int16", "int32", "int64",
         "uint", "uint8", "uint16", "uint32", "uint64",
-        "float", "double", "void", "auto", "string", "string_view"
+        // Cpp2-style integer aliases
+        "i8", "i16", "i32", "i64",
+        "u8", "u16", "u32", "u64",
+        "float", "double", "void", "auto", "string", "string_view",
+        // Standard library types
+        "std::string", "std::string_view", "std::ostream", "std::istream",
+        "std::vector", "std::array", "std::span", "std::unique_ptr", "std::shared_ptr",
+        "std::optional", "std::variant", "std::any", "std::tuple"
     };
     return builtins.contains(name);
 }
@@ -476,6 +548,9 @@ void SemanticAnalyzer::register_builtin_types() {
     std::vector<std::string> builtin_names = {
         "bool", "char", "int", "int8", "int16", "int32", "int64",
         "uint", "uint8", "uint16", "uint32", "uint64",
+        // Cpp2-style integer aliases
+        "i8", "i16", "i32", "i64",
+        "u8", "u16", "u32", "u64",
         "float", "double", "void", "auto", "string", "string_view"
     };
 
@@ -488,7 +563,25 @@ void SemanticAnalyzer::register_builtin_types() {
         builtin_types[name] = std::move(type);
     }
 
-    pop_scope(); // Built-in scope
+    // Add std stubs
+    {
+        auto type = std::make_unique<Type>(Type::Kind::Builtin);
+        type->name = "std::string";
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Type, "std::string", type.get(), nullptr);
+        add_symbol("std::string", std::move(symbol));
+        builtin_types["std::string"] = std::move(type);
+    }
+    {
+        auto var_type = std::make_unique<Type>(Type::Kind::Builtin);
+        var_type->name = "std::ostream";
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Variable, "std::cout", var_type.get(), nullptr);
+        add_symbol("std::cout", std::move(symbol));
+    }
+
+    // Do not pop scope, so these remain as the root scope
+    // pop_scope(); // Built-in scope
 }
 
 void SemanticAnalyzer::track_variable_usage(const std::string& name, std::size_t line) {

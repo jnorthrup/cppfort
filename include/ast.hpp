@@ -296,6 +296,9 @@ struct ExpressionStatement : Statement {
         : Statement(Kind::Expression, l), expr(std::move(e)) {}
 };
 
+// Forward declaration - defined after Declaration is complete
+struct DeclarationStatement;
+
 struct BlockStatement : Statement {
     std::vector<std::unique_ptr<Statement>> statements;
 
@@ -555,6 +558,15 @@ struct ImportDeclaration : Declaration {
 
     ImportDeclaration(std::string m, std::size_t l)
         : Declaration(Kind::Import, "", l), module_name(std::move(m)) {}
+};
+
+// Wrapper to use a Declaration as a Statement (e.g., variable declarations in function bodies)
+// Defined here after Declaration is complete to avoid incomplete type errors
+struct DeclarationStatement : Statement {
+    std::unique_ptr<Declaration> declaration;
+
+    DeclarationStatement(std::unique_ptr<Declaration> d, std::size_t l)
+        : Statement(Kind::Declaration, l), declaration(std::move(d)) {}
 };
 
 // AST root

@@ -127,6 +127,7 @@ Before marking any task complete, verify:
 - [ ] Works correctly on mobile (if applicable)
 - [ ] Documentation updated if needed
 - [ ] No security vulnerabilities introduced
+- [ ] No test exceeds the 15-second per-test timeout (timeouts are fatal failures)
 
 ## Development Commands
 
@@ -158,6 +159,7 @@ Before marking any task complete, verify:
 ### Unit Testing
 - Every module must have corresponding tests.
 - Use appropriate test setup/teardown mechanisms (e.g., fixtures, beforeEach/afterEach).
+- Keep tests fast: any single test must complete within 15 seconds (timeouts are treated as fatal failures).
 - Mock external dependencies.
 - Test both success and failure cases.
 

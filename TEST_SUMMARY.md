@@ -64,6 +64,10 @@ These tests verify that our implementation correctly understands Cpp2 concepts:
 
 ## Running Tests
 
+### Timeout Policy (Fatal)
+
+All CTest tests are configured with a **15-second timeout**. If any test exceeds this limit, it is terminated and reported as a failure.
+
 ### Individual Test Suites
 
 ```bash

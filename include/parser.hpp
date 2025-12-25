@@ -109,6 +109,9 @@ private:
     // Contract handling
     std::vector<std::unique_ptr<ContractExpression>> parse_contracts();
 
+    // Parameter qualifier parsing (Cpp2-specific)
+    std::vector<ParameterQualifier> parse_parameter_qualifiers();
+
     // Template handling
     std::vector<std::string> template_parameters();
     bool is_template_start();

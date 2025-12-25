@@ -8,6 +8,13 @@ Cppfort includes a comprehensive regression testing system that:
 2. **Generates corpus** of transpiled outputs from both cppfront and cppfort
 3. **Performs isomorphic comparison** of outputs (semantic equivalence, not textual)
 
+## Timeout Standard (Fatal)
+
+All regression and unit tests are subject to a **15-second per-test timeout**.
+
+- For CTest-registered tests, this is enforced via the CTest `TIMEOUT` property (tests are terminated and marked failed).
+- For cppfront file-based regression runs, each individual `.cpp2` test is also guarded by a 15-second timeout inside the test framework.
+
 ## Quick Start
 
 ```bash

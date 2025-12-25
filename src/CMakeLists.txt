@@ -55,6 +55,9 @@ add_library(SeaOfNodesCore
   sea_of_nodes_ir.cpp
   combinator_hierarchy.cpp
   mlir_bridge.cpp
+  semantic_hash.cpp
+  clang_ast_reverse.cpp
+  crdt_patch.cpp
   # son_serialization.cpp  # Disabled: Cpp2SONDialect has MLIR tablegen issues (fold method signatures)
 )
 
@@ -68,6 +71,9 @@ target_link_libraries(SeaOfNodesCore PUBLIC
   # Cpp2SONDialect  # Disabled: MLIR tablegen issues need investigation
   MLIR
   MLIRFuncDialect
+  clangAST
+  clangBasic
+  clangLex
 )
 
 # Original transpiler components

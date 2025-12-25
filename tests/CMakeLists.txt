@@ -193,3 +193,41 @@ add_test(NAME generate_test_hashes_test
 
 # Combined test runner
 add_test(NAME all_cpp2_tests COMMAND run_all_tests)
+
+# Parameter qualifier lexing test
+add_executable(test_parameter_qualifier_lexing test_parameter_qualifier_lexing.cpp)
+target_include_directories(test_parameter_qualifier_lexing PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_parameter_qualifier_lexing PRIVATE Cpp2Transpiler)
+add_test(NAME parameter_qualifier_lexing_tests COMMAND test_parameter_qualifier_lexing)
+
+# Parameter qualifier parsing test
+add_executable(test_parameter_qualifier_parsing test_parameter_qualifier_parsing.cpp)
+target_include_directories(test_parameter_qualifier_parsing PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_parameter_qualifier_parsing PRIVATE Cpp2Transpiler)
+add_test(NAME parameter_qualifier_parsing_tests COMMAND test_parameter_qualifier_parsing)
+
+# FIR qualifier attribute encoding test
+add_executable(test_fir_qualifier_attributes test_fir_qualifier_attributes.cpp)
+target_include_directories(test_fir_qualifier_attributes PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_fir_qualifier_attributes PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIRIR MLIRSupport)
+add_test(NAME fir_qualifier_attributes_tests COMMAND test_fir_qualifier_attributes)
+
+# Regression test standard: any single CTest test must finish within 15 seconds.
+# If a test exceeds this, CTest will terminate it and mark it as failed.
+set(CPPFORT_TEST_TIMEOUT_SECONDS 15)
+set(_cppfort_all_ctest_tests
+    cpp2_unit_tests
+    cppfront_regression_tests
+    ast_to_fir_tests
+    fir_to_son_pass_test
+    crdt_core_tests
+    son_serialization_tests
+    son_deserialization_tests
+    collect_regression_tests
+    generate_test_hashes_test
+    all_cpp2_tests
+    parameter_qualifier_lexing_tests
+    parameter_qualifier_parsing_tests
+    fir_qualifier_attributes_tests
+)
+set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})

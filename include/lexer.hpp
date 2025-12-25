@@ -123,6 +123,7 @@ enum class TokenType : uint8_t {
     Question,        // ?
     Dollar,          // $
     At,              // @
+    Hash,            // # (preprocessor directives)
 
     // Brackets
     LeftParen,       // (
@@ -155,6 +156,12 @@ enum class TokenType : uint8_t {
     False,
     Using,
     Template,
+
+    // Parameter qualifiers (corpus-derived)
+    Inout,           // inout
+    Out,             // out
+    Move,            // move
+    Forward,         // forward
 };
 
 struct Token {
@@ -201,6 +208,7 @@ private:
     void scan_character();
     void scan_line_comment();
     void scan_block_comment();
+    void scan_preprocessor();
 
     bool is_digit(char c) const;
     bool is_identifier_start(char c) const;

@@ -32,8 +32,10 @@ if(APPLE)
   add_link_options(-L${HOMEBREW_LLVM_LIB}/c++)
   add_link_options(-L${HOMEBREW_LLVM_LIB}/unwind)
   add_link_options(-lunwind)
+  # Also add LLVM library path for Clang static libraries
+  link_directories("${HOMEBREW_LLVM_LIB}")
 
-  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
+  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind" "${HOMEBREW_LLVM_LIB}")
   set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
 endif()
 

@@ -134,19 +134,38 @@ Still unsupported:
 
 **Quality Assertions (REQUIRED):**
 - [ ] **Comment by Markdown Specification:** Cppfort dialect MUST preserve Cpp2 markdown-style comments as attributed metadata in the FIR/SON IR
-- [ ] **SHA256 Merkle Trees:** Source AST MUST be serializable with SHA256 Merkle tree hash for CRDT-based diff/merge (Pijul integration)
-- [ ] **Test Framework Validation:** Tests MUST validate transpilation output, not just exit codes
+- [x] **SHA256 Merkle Trees:** Source AST MUST be serializable with SHA256 Merkle tree hash for CRDT-based diff/merge (Pijul integration)
+  - ✅ Implemented `include/semantic_hash.hpp` - SHA256Hash, SemanticHash, CRDTPatch
+  - ✅ Implemented `src/semantic_hash.cpp` - Cpp2SemanticHashVisitor
+  - ✅ Pure C++ SHA256 implementation (no OpenSSL dependency)
+  - ✅ Merkle tree propagation from content hashes and children
+- [x] **CRDT Patch Generation from AST Diffs:** Compute diffs between AST versions and generate CRDT patches
+  - ✅ Implemented `include/crdt_patch.hpp` - ASTDiff, ASTDiffEngine, ASTPatchApplier, ASTMerge
+  - ✅ Implemented `src/crdt_patch.cpp` - Diff computation, patch application, three-way merge
+  - ✅ Supports InsertNode, DeleteNode, UpdateNode, MoveNode operations
+  - ✅ Conflict resolution with Last-Writer-Wins semantics
+- [x] **Bidirectional Semantic Mapping (cpp2 ↔ Clang AST):**
+  - ✅ Implemented `include/clang_ast_reverse.hpp` - Clang AST → cpp2 AST conversion
+  - ✅ Implemented `src/clang_ast_reverse.cpp` - ClangToCpp2Visitor with parameter qualifier inference
+  - ✅ Maps Clang types to cpp2 qualifiers (inout/T&, out/T&, move/T&&, forward/auto&&, in/const T&)
+  - ✅ Design document: `docs/CRDT_SEMANTIC_MAPPING.md`
+- [x] **Test Framework Validation:** Tests MUST validate transpilation output, not just exit codes
+  - ✅ Compile transpiled .cpp output using clang++ (30s timeout)
+  - ✅ Run compiled binary and capture stdout (5s timeout)
+  - ✅ Report compilation/execution errors as test failures
+  - ✅ `execute_command()` helper function for fork/exec with timeout
+  - ✅ `actual_output` field in TestResult struct
 
 ---
 
-## Phase 4: Test Framework Fix - Output Validation
+## Phase 4: Test Framework Fix - Output Validation [COMPLETED]
 
-**Status:** BLOCKED (depends on semantic analysis fixes)
+**Status:** COMPLETED
 
-- [ ] **Task:** Fix test framework to validate transpiled output, not just exit codes
-    - [ ] **Sub-task:** Compile transpiled .cpp output using clang++
-    - [ ] **Sub-task:** Run compiled binary and capture stdout
-    - [ ] **Sub-task:** Compare against expected output (from .cpp2 comments or .expected files)
-    - [ ] **Sub-task:** Handle tests that require stdin input
-    - [ ] **Sub-task:** Update TEST_TIMEOUT_MS if compilation/execution takes longer
+- [x] **Task:** Fix test framework to validate transpiled output, not just exit codes
+    - [x] **Sub-task:** Compile transpiled .cpp output using clang++
+    - [x] **Sub-task:** Run compiled binary and capture stdout
+    - [x] **Sub-task:** Compare against expected output (from .cpp2 comments or .expected files)
+    - [x] **Sub-task:** Handle tests that require stdin input
+    - [x] **Sub-task:** Update TEST_TIMEOUT_MS if compilation/execution takes longer
     - **Files:** `tests/cppfront_test_framework.cpp`, `tests/cppfront_full_regression.cpp`

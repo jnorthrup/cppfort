@@ -12,6 +12,19 @@ using namespace mlir::cpp2fir;
 ASTToFIRConverter::ASTToFIRConverter(MLIRContext* ctx)
     : context(ctx), builder(ctx) {}
 
+// Helper to convert ParameterQualifier to string attribute
+static StringRef qualifierToString(ParameterQualifier qual) {
+    switch (qual) {
+        case ParameterQualifier::InOut: return "inout";
+        case ParameterQualifier::Out: return "out";
+        case ParameterQualifier::Move: return "move";
+        case ParameterQualifier::Forward: return "forward";
+        case ParameterQualifier::Virtual: return "virtual";
+        case ParameterQualifier::Override: return "override";
+        default: return "";
+    }
+}
+
 ModuleOp ASTToFIRConverter::convertToFIR(const FunctionDeclaration& func) {
     // Create a module
     auto loc = builder.getUnknownLoc();
@@ -30,12 +43,37 @@ ModuleOp ASTToFIRConverter::convertToFIR(const FunctionDeclaration& func) {
     // Create function type
     auto funcType = builder.getFunctionType(paramTypes, {resultType});
 
-    // Create FIR function operation
+    // Build arg_attrs array with corpus-derived qualifier semantics
+    SmallVector<Attribute> argAttrs;
+    for (const auto& param : func.parameters) {
+        SmallVector<NamedAttribute> attrs;
+
+        // Encode parameter qualifiers as attributes (corpus-derived semantics)
+        for (const auto& qual : param.qualifiers) {
+            auto qualStr = qualifierToString(qual);
+            if (!qualStr.empty()) {
+                attrs.push_back(builder.getNamedAttr(
+                    "cpp2.qualifier",
+                    StringAttr::get(context, qualStr)
+                ));
+            }
+        }
+
+        if (!attrs.empty()) {
+            argAttrs.push_back(DictionaryAttr::get(context, attrs));
+        } else {
+            argAttrs.push_back(DictionaryAttr::get(context, {}));
+        }
+    }
+
+    auto argAttrsAttr = ArrayAttr::get(context, argAttrs);
+
+    // Create FIR function operation with corpus semantics
     auto firFunc = builder.create<FuncOp>(
         loc,
         StringAttr::get(context, func.name),
         TypeAttr::get(funcType),
-        ArrayAttr{},  // arg_attrs
+        argAttrsAttr,  // arg_attrs with qualifier semantics
         ArrayAttr{}   // res_attrs
     );
 

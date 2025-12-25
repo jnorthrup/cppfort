@@ -186,6 +186,7 @@ void Lexer::scan_token() {
         case '$': add_token(TokenType::Dollar); break;
         case '@': add_token(TokenType::At); break;
         case '_': add_token(TokenType::Underscore); break;
+        case '#': scan_preprocessor(); break;
 
         // String and character literals
         case '"': scan_string(); break;
@@ -349,6 +350,16 @@ void Lexer::scan_line_comment() {
     }
 }
 
+void Lexer::scan_preprocessor() {
+    // Scan the entire preprocessor directive (from # to end of line)
+    std::size_t start = current - 1; // Include the '#' character
+    while (peek() != '\n' && !is_at_end()) {
+        advance();
+    }
+    // Add the Hash token with the full directive text
+    add_token(TokenType::Hash, source.substr(start, current - start));
+}
+
 void Lexer::scan_block_comment() {
     while (!is_at_end() && !(peek() == '*' && peek_next() == '/')) {
         if (peek() == '\n') {
@@ -401,7 +412,9 @@ TokenType Lexer::identifier_type() {
         {"this", TokenType::This}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
         {"while", TokenType::While}, {"when", TokenType::When}, {"true", TokenType::True}, {"false", TokenType::False},
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
-        {"using", TokenType::Using}, {"template", TokenType::Template}
+        {"using", TokenType::Using}, {"template", TokenType::Template},
+        {"virtual", TokenType::Virtual}, {"override", TokenType::Override},
+        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward}
     };
 
     auto it = keywords.find(std::string(text));

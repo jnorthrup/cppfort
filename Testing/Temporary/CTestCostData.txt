@@ -1,0 +1,8 @@
+cppfront_regression_tests 4 0.000560688
+collect_regression_tests 0 0
+cpp2_unit_tests 0 0
+ast_to_fir_tests 3 0.0405898
+generate_test_hashes_test 0 0
+all_cpp2_tests 0 0
+---
+cpp2_unit_tests

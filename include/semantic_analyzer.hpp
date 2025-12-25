@@ -71,6 +71,7 @@ private:
 
     // Type checking
     std::unique_ptr<Type> check_type(std::unique_ptr<Type> type);
+    void check_type_ptr(const Type* type);  // Check type without ownership transfer
     bool is_type_compatible(const Type* lhs, const Type* rhs) const;
     std::unique_ptr<Type> deduce_type(Expression* expr);
     void check_expression(Expression* expr);
