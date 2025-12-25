@@ -12,6 +12,20 @@ std::string CodeGenerator::generate(AST& ast) {
 
     write_includes();
 
+    // First pass: Generate forward declarations for all functions (except main)
+    for (auto& decl : ast.declarations) {
+        if (decl->kind == Declaration::Kind::Function) {
+            auto* func = static_cast<FunctionDeclaration*>(decl.get());
+            // Don't forward declare main(), and only forward declare if there's a body
+            if (func->name != "main" && func->body) {
+                generate_function_forward_declaration(func);
+            }
+        }
+    }
+
+    write_line("");
+
+    // Second pass: Generate full definitions for all declarations
     for (auto& decl : ast.declarations) {
         generate_declaration(decl.get());
         write_line("");
@@ -94,10 +108,37 @@ void CodeGenerator::generate_variable_declaration(VariableDeclaration* decl) {
               (decl->initializer ? generate_expression_to_string(decl->initializer.get()) : "default") + ";");
 }
 
+void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* decl) {
+    if (!decl) return;
+
+    std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
+
+    // [[nodiscard]] goes before the return type for widest compatibility
+    if (needs_nodiscard(decl)) {
+        write("[[nodiscard]] ");
+    }
+
+    write(return_type + " " + decl->name + "(");
+
+    // Parameters
+    for (size_t i = 0; i < decl->parameters.size(); ++i) {
+        if (i > 0) write(", ");
+        const auto& param = decl->parameters[i];
+        write((param.type ? generate_type(param.type.get()) : "auto") + " " + param.name);
+    }
+
+    write_line(");");
+}
+
 void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     if (!decl) return;
 
     std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
+
+    // [[nodiscard]] goes before the return type for widest compatibility
+    if (needs_nodiscard(decl)) {
+        write("[[nodiscard]] ");
+    }
 
     write(return_type + " " + decl->name + "(");
 
@@ -109,10 +150,6 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     }
 
     write(")");
-
-    if (needs_nodiscard(decl)) {
-        write(" [[nodiscard]]");
-    }
 
     if (decl->body) {
         write(" {\n");
@@ -445,7 +482,11 @@ std::string CodeGenerator::generate_type(Type* type) {
 }
 
 bool CodeGenerator::needs_nodiscard(FunctionDeclaration* func) {
-    // Non-void functions should have [[nodiscard]]
+    // Non-void functions should have [[nodiscard]], except for main()
+    // which is the program entry point and cannot have [[nodiscard]]
+    if (func->name == "main") {
+        return false;
+    }
     return func->return_type && func->return_type->name != "void";
 }
 

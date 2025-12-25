@@ -34,6 +34,7 @@ private:
     // Generation methods
     void generate_declaration(Declaration* decl);
     void generate_variable_declaration(VariableDeclaration* decl);
+    void generate_function_forward_declaration(FunctionDeclaration* decl);
     void generate_function_declaration(FunctionDeclaration* decl);
     void generate_type_declaration(TypeDeclaration* decl);
     void generate_namespace_declaration(NamespaceDeclaration* decl);
