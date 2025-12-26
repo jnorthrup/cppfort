@@ -130,3 +130,44 @@ def Cpp2FIR_PhiOp : Cpp2FIR_Op<"phi", [Pure]> {
   let results = (outs AnyType:$result);
   let assemblyFormat = "$values attr-dict `:` type($values) `->` type($result)";
 }
+
+// Contract Operations (Cpp2 safety contracts)
+
+def Cpp2FIR_AssertOp : Cpp2FIR_Op<"assert"> {
+  let summary = "Runtime assertion contract";
+  let description = [{
+    Asserts that a condition is true at runtime. Can include optional message,
+    contract categories (type_safety, bounds_safety, etc.), and audit flag.
+  }];
+  let arguments = (ins AnyType:$condition,
+                       OptionalAttr<StrAttr>:$message,
+                       OptionalAttr<ArrayAttr>:$categories,
+                       UnitAttr:$audit);
+  let assemblyFormat = "$condition attr-dict `:` type($condition) (`:` $message^)?";
+}
+
+def Cpp2FIR_PreconditionOp : Cpp2FIR_Op<"precondition"> {
+  let summary = "Function precondition contract";
+  let description = [{
+    Specifies a precondition that must be true when a function is called.
+    Checked at function entry (or may be checked statically).
+  }];
+  let arguments = (ins AnyType:$condition,
+                       OptionalAttr<StrAttr>:$message,
+                       OptionalAttr<ArrayAttr>:$categories,
+                       UnitAttr:$audit);
+  let assemblyFormat = "$condition attr-dict `:` type($condition) (`:` $message^)?";
+}
+
+def Cpp2FIR_PostconditionOp : Cpp2FIR_Op<"postcondition"> {
+  let summary = "Function postcondition contract";
+  let description = [{
+    Specifies a postcondition that must be true when a function returns.
+    May reference the return value via special names.
+  }];
+  let arguments = (ins AnyType:$condition,
+                       OptionalAttr<StrAttr>:$message,
+                       OptionalAttr<ArrayAttr>:$categories,
+                       UnitAttr:$audit);
+  let assemblyFormat = "$condition attr-dict `:` type($condition) (`:` $message^)?";
+}

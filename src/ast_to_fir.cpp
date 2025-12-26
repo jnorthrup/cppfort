@@ -115,6 +115,69 @@ LogicalResult ASTToFIRConverter::convertStatement(const Statement& stmt, OpBuild
             builder.create<ReturnOp>(loc, ValueRange{});
         }
         return success();
+    } else if (auto* contractStmt = dynamic_cast<const ContractStatement*>(&stmt)) {
+        // Convert contract statement to FIR contract operation
+        if (!contractStmt->contract) {
+            return failure();
+        }
+
+        const auto& contract = *contractStmt->contract;
+
+        // Convert condition expression
+        Value condition = convertExpression(*contract.condition, builder);
+        if (!condition) {
+            return failure();
+        }
+
+        // Convert categories to string array
+        SmallVector<Attribute> categoryAttrs;
+        for (const auto& cat : contract.categories) {
+            const char* catStr = nullptr;
+            switch (cat) {
+                case ContractCategory::TypeSafety: catStr = "type_safety"; break;
+                case ContractCategory::BoundsSafety: catStr = "bounds_safety"; break;
+                case ContractCategory::NullSafety: catStr = "null_safety"; break;
+                case ContractCategory::LifetimeSafety: catStr = "lifetime_safety"; break;
+                case ContractCategory::InitializationSafety: catStr = "initialization_safety"; break;
+                case ContractCategory::ArithmeticSafety: catStr = "arithmetic_safety"; break;
+                case ContractCategory::Unevaluated: catStr = "unevaluated"; break;
+            }
+            if (catStr) {
+                categoryAttrs.push_back(StringAttr::get(context, catStr));
+            }
+        }
+
+        // Build operation attributes
+        // Add message if present
+        StringAttr messageAttr;
+        if (contract.message.has_value()) {
+            messageAttr = StringAttr::get(context, *contract.message);
+        }
+
+        // Add categories if present
+        ArrayAttr categoriesAttr;
+        if (!categoryAttrs.empty()) {
+            categoriesAttr = ArrayAttr::get(context, categoryAttrs);
+        }
+
+        // Add audit flag if true
+        UnitAttr auditAttr;
+        if (contract.audit) {
+            auditAttr = UnitAttr::get(context);
+        }
+
+        // Create appropriate contract operation based on kind
+        if (contract.kind == ContractExpression::ContractKind::Assert) {
+            builder.create<AssertOp>(loc, condition, messageAttr, categoriesAttr, auditAttr);
+        } else if (contract.kind == ContractExpression::ContractKind::Pre) {
+            builder.create<PreconditionOp>(loc, condition, messageAttr, categoriesAttr, auditAttr);
+        } else if (contract.kind == ContractExpression::ContractKind::Post) {
+            builder.create<PostconditionOp>(loc, condition, messageAttr, categoriesAttr, auditAttr);
+        } else {
+            return failure();
+        }
+
+        return success();
     } else if (auto* ifStmt = dynamic_cast<const IfStatement*>(&stmt)) {
         // Convert condition
         Value condition = convertExpression(*ifStmt->condition, builder);

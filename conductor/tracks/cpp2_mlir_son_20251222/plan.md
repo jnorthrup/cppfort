@@ -184,10 +184,10 @@ Added after independent verification identified gaps in spec compliance.
     - [x] **Sub-task:** Implement function call expression conversion
     - [x] **Sub-task:** Implement control flow (if/else, loops) conversion
     - [x] **Sub-task:** Write tests for complex expression conversion
-- [ ] **Task:** Add contract operation support to FIR dialect
-    - [ ] **Sub-task:** Define AssertOp, PreconditionOp, PostconditionOp in Cpp2FIRDialect.td
-    - [ ] **Sub-task:** Implement contract conversion in ASTToFIRConverter
-    - [ ] **Sub-task:** Write tests for contract operations
+- [x] **Task:** Add contract operation support to FIR dialect
+    - [x] **Sub-task:** Define AssertOp, PreconditionOp, PostconditionOp in Cpp2FIRDialect.td
+    - [x] **Sub-task:** Implement contract conversion in ASTToFIRConverter
+    - [x] **Sub-task:** Write tests for contract operations
 
 ### Task 2: Enhanced FIR Dialect Operations [PARTIAL → COMPLETE]
 - [ ] **Task:** Implement unified function call (UFCS) operations

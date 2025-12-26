@@ -181,6 +181,16 @@ target_link_libraries(test_semantic_extraction PRIVATE
     clang-cpp
 )
 
+# Contract FIR operations test
+add_executable(test_contract_fir test_contract_fir.cpp)
+target_include_directories(test_contract_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_contract_fir PRIVATE
+    Cpp2FIRDialect
+    Cpp2Transpiler
+    MLIR
+    LLVM
+)
+
 # CRDT core functionality test
 add_executable(test_crdt_core test_crdt_core.cpp)
 target_include_directories(test_crdt_core PRIVATE ${CMAKE_SOURCE_DIR}/include)
