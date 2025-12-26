@@ -40,7 +40,9 @@ struct Type {
         Function,
         Auto,
         Deduced,
-        TemplateParameter
+        TemplateParameter,
+        Optional,   // std::optional<T>
+        Variant     // std::variant<Ts...>
     };
 
     // Null safety annotation (from null_safety analysis)
@@ -58,6 +60,10 @@ struct Type {
     std::shared_ptr<Expression> size;
     bool is_const = false;
     bool is_mut = false;
+
+    // Optional and Variant type support
+    std::unique_ptr<Type> base_type;                           // For Optional<T>
+    std::vector<std::unique_ptr<Type>> alternatives;           // For Variant<Ts...>
 
     // Semantic attributes from Clang analysis
     NullAnnotation null_annotation = NullAnnotation::Unknown;  // Null safety

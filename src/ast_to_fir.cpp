@@ -250,6 +250,13 @@ LogicalResult ASTToFIRConverter::convertStatement(const Statement& stmt, OpBuild
         builder.create<scf::YieldOp>(loc, ValueRange{});
 
         return success();
+    } else if (auto* exprStmt = dynamic_cast<const ExpressionStatement*>(&stmt)) {
+        // Convert expression and discard result
+        Value result = convertExpression(*exprStmt->expr, builder);
+        if (!result) {
+            return failure();
+        }
+        return success();
     }
 
     return failure();
@@ -341,12 +348,6 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
                 return nullptr;
         }
     } else if (auto* call = dynamic_cast<const CallExpression*>(&expr)) {
-        // Convert callee
-        Value callee = convertExpression(*call->callee, builder);
-        if (!callee) {
-            return nullptr;
-        }
-
         // Convert arguments
         SmallVector<Value> args;
         for (const auto& arg : call->args) {
@@ -355,6 +356,21 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
                 return nullptr;
             }
             args.push_back(argValue);
+        }
+
+        // Check if this is a UFCS call
+        if (call->is_ufcs) {
+            // UFCS call: create cpp2fir.ufcs_call operation
+            // For now, assume i32 return type
+            mlir::Type resultType = builder.getI32Type();
+            auto ufcsCallOp = builder.create<UfcsCallOp>(loc, resultType, args);
+            return ufcsCallOp.getResult();
+        }
+
+        // Regular call: convert callee
+        Value callee = convertExpression(*call->callee, builder);
+        if (!callee) {
+            return nullptr;
         }
 
         // Get function name from identifier if callee is IdentifierExpression
@@ -386,6 +402,57 @@ mlir::Type ASTToFIRConverter::convertType(const cpp2_transpiler::Type& type) {
         if (type.name == "bool") {
             return builder.getI1Type();
         }
+        if (type.name == "void") {
+            return builder.getNoneType();
+        }
+    }
+
+    // Handle Function types (e.g., "int(int)")
+    if (type.kind == cpp2_transpiler::Type::Kind::Function) {
+        // Parse function type notation "ret(arg1, arg2, ...)"
+        // For now, handle simple cases like "int(int)" -> (i32) -> i32
+        if (type.name.find('(') != std::string::npos) {
+            // Simple function type: return_type(arg_type)
+            size_t paren_pos = type.name.find('(');
+            size_t end_paren = type.name.rfind(')');
+            if (end_paren != std::string::npos && paren_pos < end_paren) {
+                // Extract return type
+                std::string ret_type_str = type.name.substr(0, paren_pos);
+                // Extract args (between parentheses)
+                std::string args_str = type.name.substr(paren_pos + 1, end_paren - paren_pos - 1);
+
+                // Convert return type
+                Type ret_type_ast(Type::Kind::Builtin);
+                ret_type_ast.name = ret_type_str;
+                mlir::Type ret_type = convertType(ret_type_ast);
+
+                // Convert argument types (handle single argument for now)
+                SmallVector<mlir::Type> arg_types;
+                if (!args_str.empty()) {
+                    Type arg_type(Type::Kind::Builtin);
+                    arg_type.name = args_str;
+                    arg_types.push_back(convertType(arg_type));
+                }
+
+                return builder.getFunctionType(arg_types, ret_type);
+            }
+        }
+        // Fallback: use function type with no args
+        return builder.getFunctionType({}, builder.getI32Type());
+    }
+
+    // Handle Optional types
+    if (type.kind == cpp2_transpiler::Type::Kind::Optional && type.base_type) {
+        // For now, represent as the base type
+        // Proper optional support would require a custom MLIR type or tuple representation
+        return convertType(*type.base_type);
+    }
+
+    // Handle Variant types
+    if (type.kind == cpp2_transpiler::Type::Kind::Variant && !type.alternatives.empty()) {
+        // For now, represent as the first alternative
+        // Proper variant support would require a custom MLIR type or tagged union
+        return convertType(*type.alternatives[0]);
     }
 
     // Default to i32

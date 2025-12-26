@@ -171,3 +171,17 @@ def Cpp2FIR_PostconditionOp : Cpp2FIR_Op<"postcondition"> {
                        UnitAttr:$audit);
   let assemblyFormat = "$condition attr-dict `:` type($condition) (`:` $message^)?";
 }
+
+// UFCS (Unified Function Call Syntax) Operation
+
+def Cpp2FIR_UfcsCallOp : Cpp2FIR_Op<"ufcs_call"> {
+  let summary = "Unified Function Call Syntax operation";
+  let description = [{
+    Represents a UFCS call where method(obj, args...) is called as
+    if it were obj.method(args...). The first argument is the object
+    being operated on, followed by the method arguments.
+  }];
+  let arguments = (ins Variadic<AnyType>:$args);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$args attr-dict `:` type($args) `->` type($result)";
+}

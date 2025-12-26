@@ -264,6 +264,18 @@ target_include_directories(test_fir_qualifier_attributes PRIVATE ${CMAKE_SOURCE_
 target_link_libraries(test_fir_qualifier_attributes PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIRIR MLIRSupport)
 add_test(NAME fir_qualifier_attributes_tests COMMAND test_fir_qualifier_attributes)
 
+# UFCS (Unified Function Call Syntax) FIR test
+add_executable(test_ufcs_fir test_ufcs_fir.cpp)
+target_include_directories(test_ufcs_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_ufcs_fir PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIR LLVM)
+add_test(NAME ufcs_fir_tests COMMAND test_ufcs_fir)
+
+# Advanced types FIR test
+add_executable(test_advanced_types_fir test_advanced_types_fir.cpp)
+target_include_directories(test_advanced_types_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_advanced_types_fir PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIR LLVM)
+add_test(NAME advanced_types_fir_tests COMMAND test_advanced_types_fir)
+
 # Regression test standard: any single CTest test must finish within 15 seconds.
 # If a test exceeds this, CTest will terminate it and mark it as failed.
 set(CPPFORT_TEST_TIMEOUT_SECONDS 15)
@@ -285,5 +297,7 @@ set(_cppfort_all_ctest_tests
     parameter_qualifier_lexing_tests
     parameter_qualifier_parsing_tests
     fir_qualifier_attributes_tests
+    ufcs_fir_tests
+    advanced_types_fir_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})

@@ -190,14 +190,14 @@ Added after independent verification identified gaps in spec compliance.
     - [x] **Sub-task:** Write tests for contract operations
 
 ### Task 2: Enhanced FIR Dialect Operations [PARTIAL → COMPLETE]
-- [ ] **Task:** Implement unified function call (UFCS) operations
-    - [ ] **Sub-task:** Define UfcsCallOp in FIR dialect
-    - [ ] **Sub-task:** Convert UFCS expressions from AST
-    - [ ] **Sub-task:** Write tests for UFCS conversion
-- [ ] **Task:** Add advanced type support to FIR dialect
-    - [ ] **Sub-task:** Support function types and higher-order functions
-    - [ ] **Sub-task:** Support optional and variant types
-    - [ ] **Sub-task:** Write tests for advanced types
+- [x] **Task:** Implement unified function call (UFCS) operations
+    - [x] **Sub-task:** Define UfcsCallOp in FIR dialect
+    - [x] **Sub-task:** Convert UFCS expressions from AST
+    - [x] **Sub-task:** Write tests for UFCS conversion
+- [x] **Task:** Add advanced type support to FIR dialect
+    - [x] **Sub-task:** Support function types and higher-order functions
+    - [x] **Sub-task:** Support optional and variant types
+    - [x] **Sub-task:** Write tests for advanced types
 
 ### Task 3: Comprehensive Error Handling [MISSING → IMPLEMENT]
 - [ ] **Task:** Implement robust error reporting for AST to FIR conversion
