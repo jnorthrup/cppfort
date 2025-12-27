@@ -3,12 +3,14 @@
 ## Completed Work
 
 ### 1. Infrastructure Setup
+
 - ✅ Created `tools/inference/` directory structure
 - ✅ Implemented libclang integration with path configuration
 - ✅ Set up virtual environment management via `run_inference.sh`
 - ✅ Added GitHub Copilot instructions (`.github/copilot-instructions.md`)
 
 ### 2. Core Tools
+
 - ✅ **emit_mappings.py**: Emits AST→MLIR mapping candidates conforming to `docs/MAPPING_SPEC.md`
   - Handles 8+ AST node types (FunctionDecl, IfStmt, ForStmt, WhileStmt, ReturnStmt, VarDecl, CallExpr, BinaryOperator)
   - Generates confidence scores and example snippets
@@ -25,6 +27,7 @@
   - Configures LIBCLANG_PATH environment variable
 
 ### 3. Test Samples
+
 - ✅ **samples/sample1.cpp**: Basic C++ with control flow (from original prototype)
 - ✅ **samples/sample_son.cpp**: Comprehensive examples of SoN-relevant patterns
   - Multiple function definitions
@@ -34,12 +37,14 @@
   - Multiple return paths
 
 ### 4. Validation
+
 - ✅ **test_emit_mappings.py**: Schema validation tests
   - Verifies conformance to MAPPING_SPEC schema
   - Tests individual AST node mappings
   - Validates deduplication logic
 
 ### 5. Documentation
+
 - ✅ **tools/inference/README.md**: User guide and workflow documentation
 - ✅ **docs/MAPPING_SPEC.md**: Formal mapping schema (added in previous commit)
 - ✅ **docs/MAPPING_TASK.md**: Task definition (added in previous commit)
@@ -47,6 +52,7 @@
 ## Demonstrated Capabilities
 
 Successfully generated 6,301 mapping candidates from `sample_son.cpp`:
+
 - 2,170 CallExpr mappings
 - 1,497 FunctionDecl mappings
 - 1,021 ReturnStmt mappings
@@ -59,10 +65,12 @@ Successfully generated 6,301 mapping candidates from `sample_son.cpp`:
 ## Known Limitations & Next Steps
 
 ### 1. cpp2 File Support
+
 **Status**: Not yet implemented  
 **Reason**: `.cpp2` files use cppfront syntax that Clang cannot parse directly
 
 **Next Steps**:
+
 - Option A: Pre-transpile `.cpp2` → `.cpp` with `cppfront`, then run inference on generated C++
 - Option B: Extend `emit_mappings.py` to recognize cpp2-specific patterns in transpiled output
 - Option C: Build a dedicated cpp2 parser (long-term)
@@ -70,36 +78,46 @@ Successfully generated 6,301 mapping candidates from `sample_son.cpp`:
 **Workaround**: Process `corpus/` files after they've been transpiled by cppfront
 
 ### 2. MLIR Emitter Integration
+
 **Status**: Schema defined, integration hooks TBD  
 **Next Steps**:
+
 - Create MLIR emitter that consumes mapping artifacts
 - Implement template substitution (placeholders → actual MLIR ops)
 - Add roundtrip validation (C++ → AST → MLIR → C++)
 
 ### 3. Confidence Refinement
+
 **Status**: Static confidence scores (0.85-0.95)  
 **Next Steps**:
+
 - Train/tune confidence scores based on validation results
 - Add heuristics for edge cases (missing else branches, empty loops, etc.)
 - Implement pattern matching quality metrics
 
 ### 4. Sea-of-Nodes Chapter Integration
+
 **Status**: Chapter 24 identified as most complete (300 Java files)  
 **Next Steps**:
+
 - Extract representative patterns from Java source
 - Create C++ equivalents for key SoN concepts
 - Generate golden mappings for validation
 
 ### 5. Corpus-Scale Validation
+
 **Status**: Batch processor ready, corpus unparseable without transpilation  
 **Next Steps**:
+
 - Set up cppfront transpilation pipeline
 - Run batch processor on transpiled corpus
 - Compare inferred mappings against expected MLIR patterns
 
 ### 6. Testing
+
 **Status**: Test files created, pytest installation failed (network issue)  
 **Next Steps**:
+
 - Retry pytest installation or use system pytest
 - Run `pytest tools/inference/tests/ -v`
 - Add CI integration
@@ -107,6 +125,7 @@ Successfully generated 6,301 mapping candidates from `sample_son.cpp`:
 ## Usage Examples
 
 ### Single File
+
 ```bash
 ./tools/inference/run_inference.sh tools/inference/emit_mappings.py \
   -i tools/inference/samples/sample_son.cpp \
@@ -114,6 +133,7 @@ Successfully generated 6,301 mapping candidates from `sample_son.cpp`:
 ```
 
 ### Batch Processing
+
 ```bash
 python3 tools/inference/batch_emit_mappings.py \
   -i corpus/inputs \
@@ -123,6 +143,7 @@ python3 tools/inference/batch_emit_mappings.py \
 ```
 
 ### Inspect Results
+
 ```python
 import json
 with open('/tmp/mappings.json') as f:
@@ -133,6 +154,7 @@ with open('/tmp/mappings.json') as f:
 ```
 
 ## Files Added This Session
+
 - `.github/copilot-instructions.md`
 - `tools/inference/emit_mappings.py`
 - `tools/inference/batch_emit_mappings.py`
@@ -143,6 +165,7 @@ with open('/tmp/mappings.json') as f:
 - `tools/inference/parse_and_infer.py` (enhanced error handling)
 
 ## Commit Summary
+
 ```
 0f12671 Extend Cpp2Dialect with AST-mapped ops and add validation tool
 536213f Document mapping tool progress and next steps
@@ -154,11 +177,13 @@ with open('/tmp/mappings.json') as f:
 ## Validation Results
 
 Ran validation against `Cpp2Dialect.td` with 6,301 test mappings:
+
 - ✅ **100% valid** - All mappings match dialect ops
 - ✅ **0 missing ops** - All referenced ops exist in dialect
 - ✅ **8/24 dialect ops covered** by AST mappings
 
 ### Coverage Breakdown
+
 | Op | Mappings | Purpose |
 |---|---|---|
 | call | 2,170 | Function calls (CallExpr) |
@@ -177,12 +202,14 @@ Uncovered ops (start, region, phi, constant, add/sub/mul/div, new, load, store, 
 The mapping infrastructure is **functionally complete and validated** for standard C++ inputs.
 
 ### Achieved
+
 - ✅ Complete toolchain (emit, batch, validate)
 - ✅ Schema-compliant mapping generation
 - ✅ Full dialect validation (100% pass rate)
 - ✅ Comprehensive test samples
 
 ### Remaining Work
+
 1. **cpp2 Integration**: Pre-transpile `.cpp2` files with cppfront
 2. **MLIR Emitter**: Implement template → MLIR IR code generator
 3. **Corpus Validation**: Run on full cppfront test corpus
