@@ -26,7 +26,12 @@ private:
             UninitializedVariable,
             UnsafePointerCast,
             IntegerOverflow,
-            UseAfterMove
+            UseAfterMove,
+            // Concurrency safety issues
+            AwaitOutsideSuspend,
+            UnstructuredConcurrency,
+            ChannelNotClosed,
+            DataRace
         };
 
         Severity severity;
@@ -53,6 +58,11 @@ private:
     void check_variable_initialization(VariableDeclaration* decl);
     void check_use_after_move(Expression* expr);
     void check_integer_overflow(BinaryExpression* expr);
+
+    // Concurrency safety checks
+    void check_await_context(Expression* expr, bool in_suspend_function);
+    void check_structured_concurrency(Statement* stmt);
+    void check_channel_lifetime(ChannelDeclarationStatement* decl);
 
     // Helper methods
     bool can_be_null(Expression* expr) const;

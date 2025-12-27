@@ -143,7 +143,7 @@ mlir::ModuleOp deserializeSONDialect(const CRDTGraph& graph, mlir::MLIRContext* 
                     Value lhs = nodeToValue[node->inputs[0]];
                     Value rhs = nodeToValue[node->inputs[1]];
 
-                    auto addOp = builder.create<sond::AddOp>(loc, lhs, rhs);
+                    auto addOp = builder.create<sond::AddOp>(loc, i32Type, lhs, rhs);
                     result = addOp.getResult();
                 }
                 break;

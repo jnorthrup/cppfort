@@ -229,46 +229,52 @@ def ParallelForOp : Cpp2Concurrency_Op<"parallel_for", []> {
 }
 
 // ============================================================================
-// Memory Pipeline (PS2-style External Memory Architecture)
+// Memory Pipeline (External Memory Architecture)
 // ============================================================================
 
 def DMATransferOp : Cpp2Concurrency_Op<"dma_transfer"> {
-  let summary = "DMA transfer between memory regions (PS2-style pipeline)";
+  let summary = "DMA transfer between memory regions (async pipeline)";
   let description = [{
     Perform asynchronous DMA transfer between memory regions. Models
-    PS2-style external memory architecture with dedicated transfer paths.
+    external memory pipeline architecture with dedicated transfer paths.
 
-    PS2 Architecture regions:
-      - EE_MAIN: Emotion Engine main memory (32MB)
-      - VIF: Video Interface (for geometry data)
-      - GIF: Graphics Interface (for texture data)
-      - IOP: I/O Processor (2MB)
-      - SPU: Sound Processing Unit (2MB x 2)
+    Transfer types:
+      - "memcpy": Asynchronous memory copy (CPU)
+      - "gpu_memcpy_async": GPU async memory transfer (cudaMemcpyAsync)
+      - "host_to_device": CPU to GPU transfer
+      - "device_to_host": GPU to CPU transfer
+      - "device_to_device": GPU-to-GPU transfer
 
-    Implementation: std::async with memcpy, or GPU cudaMemcpyAsync
+    Supports lifecycle-based super-optimization for SSA state escape avoidance:
+    values that escape their lifecycle region are explicitly transferred
+    rather than being implicitly captured.
   }];
   let arguments = (ins
     AnyType:$src_handle,
     AnyType:$dst_handle,
     I64Attr:$size_bytes,
-    StrAttr:$transfer_kind  // "memcpy", "gpu_memcpy_async", "vif_packet"
+    StrAttr:$transfer_kind
   );
   let results = (outs AnyType:$completion_handle);
   let assemblyFormat = $src_handle `->` $dst_handle `size` $size_bytes `kind` $transfer_kind attr-dict `->` type($completion_handle);
 }
 
 def MemRegionOp : Cpp2Concurrency_Op<"mem_region"> {
-  let summary = "Allocate specialized memory region";
+  let summary = "Allocate specialized memory region for external pipeline";
   let description = [{
     Allocate a memory region with specific characteristics. Different regions
     can have different access patterns and DMA capabilities.
 
-    Region types:
+    Region types (external memory pipeline):
       - "cpu_main": Standard CPU memory (malloc/new)
-      - "gpu_global": GPU global memory
-      - "gpu_shared": GPU shared memory (per-block)
-      - "gpu_constant": GPU constant memory
-      - "dma_buffer": DMA-capable buffer (for transfers)
+      - "gpu_global": GPU global memory (high latency, high bandwidth)
+      - "gpu_shared": GPU shared memory (per-block, low latency)
+      - "gpu_constant": GPU constant memory (read-only, cached)
+      - "dma_buffer": DMA-capable buffer for async transfers
+      - "local_compute": Compute-unit local memory (fast, private)
+
+    Lifecycle-based optimization: Memory regions are annotated with SSA
+    value lifecycles to enable escape analysis and optimal data placement.
   }];
   let arguments = (ins
     StrAttr:$region_type,

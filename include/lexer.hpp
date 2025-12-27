@@ -162,6 +162,16 @@ enum class TokenType : uint8_t {
     Out,             // out
     Move,            // move
     Forward,         // forward
+
+    // Concurrency keywords (Kotlin-style)
+    Suspend,         // suspend - marks function as suspendable
+    Async,           // async - marks function as async
+    Await,           // await - suspend until value ready
+    Launch,          // launch - spawn fire-and-forget coroutine
+    CoroutineScope,  // coroutineScope - structured concurrency block
+    Channel,         // channel - channel declaration
+    Select,          // select - multi-channel select
+    ParallelFor,     // parallel_for - parallel loop
 };
 
 struct Token {

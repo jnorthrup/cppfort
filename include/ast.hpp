@@ -677,7 +677,7 @@ struct FunctionDeclaration : Declaration {
     bool is_async = false;              // async function (uses suspend/await)
     bool is_kernel = false;             // GPU kernel candidate
     std::string launch_config;          // e.g., "grid(256,256) block(32)"
-    std::string memory_policy;          // PS2-style: "ee_local", "vif_stream", etc.
+    std::string memory_policy;          // External memory pipeline policy
     std::vector<std::string> channels;  // Channels used by this function
 
     FunctionDeclaration(std::string n, std::size_t l)

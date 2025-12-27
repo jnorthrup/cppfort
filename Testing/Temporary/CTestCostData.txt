@@ -1,8 +1,25 @@
 cppfront_regression_tests 4 0.000560688
 collect_regression_tests 0 0
 cpp2_unit_tests 0 0
-ast_to_fir_tests 3 0.0405898
+ast_to_fir_tests 4 0.00406311
 generate_test_hashes_test 0 0
 all_cpp2_tests 0 0
+binary_expression_fir_tests 0 0
+call_expression_fir_tests 0 0
+control_flow_fir_tests 0 0
+fir_to_son_pass_test 0 0
+son_serialization_tests 0 0
+son_deserialization_tests 0 0
+fir_qualifier_attributes_tests 0 0
+ufcs_fir_tests 0 0
+advanced_types_fir_tests 0 0
 ---
-cpp2_unit_tests
+binary_expression_fir_tests
+call_expression_fir_tests
+control_flow_fir_tests
+fir_to_son_pass_test
+son_serialization_tests
+son_deserialization_tests
+fir_qualifier_attributes_tests
+ufcs_fir_tests
+advanced_types_fir_tests

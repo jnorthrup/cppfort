@@ -414,7 +414,11 @@ TokenType Lexer::identifier_type() {
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
         {"using", TokenType::Using}, {"template", TokenType::Template},
         {"virtual", TokenType::Virtual}, {"override", TokenType::Override},
-        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward}
+        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward},
+        // Concurrency keywords (Kotlin-style)
+        {"suspend", TokenType::Suspend}, {"async", TokenType::Async}, {"await", TokenType::Await},
+        {"launch", TokenType::Launch}, {"coroutineScope", TokenType::CoroutineScope},
+        {"channel", TokenType::Channel}, {"select", TokenType::Select}, {"parallel_for", TokenType::ParallelFor}
     };
 
     auto it = keywords.find(std::string(text));

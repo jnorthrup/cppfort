@@ -197,15 +197,20 @@ def Cpp2FIR_KernelOp : Cpp2FIR_Op<"kernel", []> {
     Marks a function as a GPU kernel candidate with launch configuration
     and memory policy annotations. The body contains the kernel code that
     will be executed on the GPU.
+
+    Memory policy options for external memory pipeline optimization:
+      - "coherent": Cache-coherent access (default)
+      - "streaming": Sequential access pattern (DMA-friendly)
+      - "private": Per-thread private memory (register file)
   }];
   let arguments = (ins
     StrAttr:$sym_name,
     TypeAttr:$function_type,
     OptionalAttr<StrAttr>:$launch_config,   // e.g., "grid(256,256) block(32)"
-    OptionalAttr<StrAttr>:$memory_policy     // PS2-style: "ee_local", "vif_stream"
+    OptionalAttr<StrAttr>:$memory_policy     // Memory access pattern optimization
   );
   let regions = (region AnyRegion:$body);
-  let assemblyFormat = $sym_name $function_type (`launch` $launch_config^)? (`memory` $memory_policy^)? $regions attr-dict;
+  let assemblyFormat = "$sym_name $function_type (`launch` $launch_config^)? (`memory` $memory_policy^)? $body attr-dict";
 }
 
 // Spawn async task
@@ -217,7 +222,7 @@ def Cpp2FIR_SpawnOp : Cpp2FIR_Op<"spawn"> {
   }];
   let arguments = (ins AnyType:$task, OptionalAttr<StrAttr>:$result_channel);
   let results = (outs AnyType:$future);
-  let assemblyFormat = "$task attr-dict `:` type($task) `->` type($future) (`->` $result_channel^)?;
+  let assemblyFormat = "$task attr-dict `:` type($task) `->` type($future) (`->` $result_channel^)?";
 }
 
 // Await task completion
@@ -229,7 +234,7 @@ def Cpp2FIR_AwaitOp : Cpp2FIR_Op<"await"> {
   }];
   let arguments = (ins AnyType:$future, OptionalAttr<StrAttr>:$source_channel);
   let results = (outs AnyType:$result);
-  let assemblyFormat = $future attr-dict `:` type($future) `->` type($result) (`from` $source_channel^)?;
+  let assemblyFormat = "$future attr-dict `:` type($future) `->` type($result) (`from` $source_channel^)?";
 }
 
 // Channel declaration
@@ -239,9 +244,9 @@ def Cpp2FIR_ChannelOp : Cpp2FIR_Op<"channel"> {
     Creates a channel for communicating between coroutines. Channels can
     be buffered (buffer_size > 0) or unbuffered rendezvous channels (buffer_size = 0).
   }];
-  let arguments = (ins Type:$element_type, OptionalAttr<I32Attr>:$buffer_size);
+  let arguments = (ins TypeAttr:$element_type, OptionalAttr<I32Attr>:$buffer_size);
   let results = (outs AnyType:$channel);
-  let assemblyFormat = $element_type attr-dict (`buffer` $buffer_size^)? `->` type($channel);
+  let assemblyFormat = "$element_type attr-dict (`buffer` $buffer_size^)? `->` type($channel)";
 }
 
 // Channel send operation
@@ -252,7 +257,7 @@ def Cpp2FIR_SendOp : Cpp2FIR_Op<"send"> {
     and no receiver is waiting), the sender suspends until space is available.
   }];
   let arguments = (ins AnyType:$channel, AnyType:$value);
-  let assemblyFormat = "$channel `,` $value attr-dict `:` type($channel) `,` type($value);
+  let assemblyFormat = "$channel `,` $value attr-dict `:` type($channel) `,` type($value)";
 }
 
 // Channel receive operation
@@ -264,7 +269,7 @@ def Cpp2FIR_RecvOp : Cpp2FIR_Op<"recv"> {
   }];
   let arguments = (ins AnyType:$channel, UnitAttr:$non_blocking);
   let results = (outs AnyType:$value, AnyType:$success);
-  let assemblyFormat = $channel attr-dict (`non-blocking` $non_blocking^)? `->` type($value) `,` type($success);
+  let assemblyFormat = "$channel `:` type($channel) attr-dict (`nonblocking` $non_blocking^)? `->` type($value) `,` type($success)";
 }
 
 // Parallel for loop (for GPU kernel conversion)
@@ -275,31 +280,41 @@ def Cpp2FIR_ParallelForOp : Cpp2FIR_Op<"parallel_for"> {
     attribute specifies which GPU dimension to map to (global_x, global_y, etc.).
   }];
   let arguments = (ins
-    AnyType:$lower_bound,
-    AnyType:$upper_bound,
-    AnyType:$step,
+    Index:$lower_bound,
+    Index:$upper_bound,
+    Index:$step,
     StrAttr:$mapping  // "global_x", "global_y", "global_z", "local_x", etc.
   );
   let regions = (region AnyRegion:$body);
-  let assemblyFormat = $lower_bound `..` $upper_bound `step` $step `mapping` $mapping $regions attr-dict;
+  let assemblyFormat = "$lower_bound `to` $upper_bound `step` $step `mapping` $mapping $body attr-dict";
 }
 
-// Memory region annotation (PS2-style DMA pipeline)
+// Memory region annotation for external memory pipeline
 def Cpp2FIR_MemRegionOp : Cpp2FIR_Op<"mem_region"> {
-  let summary = "Memory region annotation for PS2-style pipeline";
+  let summary = "Memory region annotation for external memory pipeline";
   let description = [{
-    Annotates a memory region with specific characteristics matching PS2
-    architecture: EE main memory, VIF (Video Interface), GIF (Graphics Interface),
-    IOP (I/O Processor), or SPU (Sound Processing Unit) local memory.
-    Supports DMA transfers between regions.
+    Annotates a memory region with specific characteristics for external
+    memory pipelines. Different regions have different access patterns,
+    latency characteristics, and DMA capabilities.
+
+    Region types (external memory pipeline):
+      - "cpu_main": Standard CPU-accessible memory
+      - "gpu_global": GPU global memory (high latency)
+      - "gpu_shared": GPU shared memory (per-block, low latency)
+      - "gpu_constant": GPU constant memory (read-only)
+      - "dma_buffer": DMA-capable buffer for async transfers
+      - "local_compute": Compute-unit local memory (fast, private)
+
+    Supports DMA transfers between regions with lifecycle-based
+    super-optimization for SSA state escape avoidance.
   }];
   let arguments = (ins
-    StrAttr:$region_type,  // "ee_main", "vif", "gif", "iop", "spu"
+    StrAttr:$region_type,
     I64Attr:$size_bytes,
     UnitAttr:$dma_enabled   // Enable DMA transfers
   );
   let results = (outs AnyType:$handle);
-  let assemblyFormat = $region_type `size` $size_bytes attr-dict (`dma` $dma_enabled^)? `->` type($handle);
+  let assemblyFormat = "$region_type `size` $size_bytes attr-dict (`dma` $dma_enabled^)? `->` type($handle)";
 }
 
 // Coroutine scope (structured concurrency)
@@ -310,5 +325,5 @@ def Cpp2FIR_CoroutineScopeOp : Cpp2FIR_Op<"coroutine_scope"> {
     This provides structured concurrency guarantees and prevents task leaks.
   }];
   let regions = (region AnyRegion:$body);
-  let assemblyFormat = $regions attr-dict;
+  let assemblyFormat = "$body attr-dict";
 }
