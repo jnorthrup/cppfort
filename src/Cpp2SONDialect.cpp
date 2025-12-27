@@ -20,11 +20,7 @@ void Cpp2SONDialect::initialize() {
   >();
 }
 
-// Constant folder for ConstantOp
-::mlir::OpFoldResult ConstantOp::fold(ConstantOp::FoldAdaptor adaptor) {
-  return getValue();
-}
-
+// Helper for comparison folding
 static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t rhs) {
   if (pred == "lt") return lhs < rhs;
   if (pred == "le") return lhs <= rhs;
@@ -35,8 +31,8 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return std::nullopt;
 }
 
-// Constant folder for AddOp
-::mlir::OpFoldResult AddOp::fold(AddOp::FoldAdaptor adaptor) {
+// Fold implementations using GenericAdaptor<llvm::ArrayRef<Attribute>>
+::mlir::OpFoldResult AddOp::fold(AddOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -49,7 +45,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult SubOp::fold(SubOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult SubOp::fold(SubOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -62,7 +58,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult MulOp::fold(MulOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult MulOp::fold(MulOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -75,7 +71,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult DivOp::fold(DivOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult DivOp::fold(DivOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -90,7 +86,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult AndOp::fold(AndOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult AndOp::fold(AndOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -111,7 +107,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult OrOp::fold(OrOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult OrOp::fold(OrOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};
@@ -131,7 +127,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult NotOp::fold(NotOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult NotOp::fold(NotOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto in = adaptor.getInput();
   if (!in) return {};
 
@@ -144,7 +140,7 @@ static std::optional<bool> evalICmp(llvm::StringRef pred, int64_t lhs, int64_t r
   return {};
 }
 
-::mlir::OpFoldResult CmpOp::fold(CmpOp::FoldAdaptor adaptor) {
+::mlir::OpFoldResult CmpOp::fold(CmpOp::GenericAdaptor<llvm::ArrayRef<mlir::Attribute>> adaptor) {
   auto lhs = adaptor.getLhs();
   auto rhs = adaptor.getRhs();
   if (!lhs || !rhs) return {};

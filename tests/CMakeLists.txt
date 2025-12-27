@@ -282,6 +282,12 @@ target_include_directories(test_error_handling_fir PRIVATE ${CMAKE_SOURCE_DIR}/i
 target_link_libraries(test_error_handling_fir PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIR LLVM)
 add_test(NAME error_handling_fir_tests COMMAND test_error_handling_fir)
 
+# SON verification test
+add_executable(test_son_verification test_son_verification.cpp)
+target_include_directories(test_son_verification PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_son_verification PRIVATE Cpp2SONDialect MLIR MLIRFuncDialect)
+add_test(NAME son_verification_tests COMMAND test_son_verification)
+
 # Regression test standard: any single CTest test must finish within 15 seconds.
 # If a test exceeds this, CTest will terminate it and mark it as failed.
 set(CPPFORT_TEST_TIMEOUT_SECONDS 15)
@@ -306,5 +312,6 @@ set(_cppfort_all_ctest_tests
     ufcs_fir_tests
     advanced_types_fir_tests
     error_handling_fir_tests
+    son_verification_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})
