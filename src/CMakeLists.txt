@@ -87,6 +87,7 @@ add_library(Cpp2Transpiler
   contract_processor.cpp
   utils.cpp
   ast_to_fir.cpp
+  diagnostic_collector.cpp
 )
 
 target_include_directories(Cpp2Transpiler PUBLIC

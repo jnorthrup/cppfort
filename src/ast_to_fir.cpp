@@ -11,8 +11,20 @@ using namespace cpp2_transpiler;
 using namespace mlir;
 using namespace mlir::cpp2fir;
 
-ASTToFIRConverter::ASTToFIRConverter(MLIRContext* ctx)
-    : context(ctx), builder(ctx) {}
+ASTToFIRConverter::ASTToFIRConverter(MLIRContext* ctx, DiagnosticCollector* diag)
+    : context(ctx), builder(ctx), diagnostics(diag) {}
+
+std::string ASTToFIRConverter::getLocationString(const Expression& expr) const {
+    if (!expr.source_location.empty()) {
+        return expr.source_location;
+    }
+    // Fallback to line number
+    return "line:" + std::to_string(expr.line);
+}
+
+std::string ASTToFIRConverter::getLocationString(const Statement& stmt) const {
+    return "line:" + std::to_string(stmt.line);
+}
 
 // Helper to convert ParameterQualifier to string attribute
 static StringRef qualifierToString(ParameterQualifier qual) {
@@ -264,6 +276,7 @@ LogicalResult ASTToFIRConverter::convertStatement(const Statement& stmt, OpBuild
 
 Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& builder) {
     auto loc = builder.getUnknownLoc();
+    std::string exprLoc = getLocationString(expr);
 
     if (auto* lit = dynamic_cast<const LiteralExpression*>(&expr)) {
         if (std::holds_alternative<int64_t>(lit->value)) {
@@ -282,6 +295,10 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
         }
     } else if (auto* ident = dynamic_cast<const IdentifierExpression*>(&expr)) {
         // Variable reference - for now return a dummy constant
+        // TODO: Implement proper symbol table lookup
+        if (diagnostics) {
+            diagnostics->reportNote(exprLoc, "variable reference '" + ident->name + "' (symbol resolution not yet implemented)");
+        }
         auto i32Type = builder.getI32Type();
         auto attr = builder.getI32IntegerAttr(0);
         auto constOp = builder.create<ConstantOp>(loc, i32Type, attr);
@@ -344,7 +361,10 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
                 return cmpOp.getResult();
             }
             default:
-                // Unsupported operator - return null
+                // Unsupported operator - report and return null
+                if (diagnostics) {
+                    diagnostics->reportError(exprLoc, "unsupported binary operator");
+                }
                 return nullptr;
         }
     } else if (auto* call = dynamic_cast<const CallExpression*>(&expr)) {
@@ -388,6 +408,10 @@ Value ASTToFIRConverter::convertExpression(const Expression& expr, OpBuilder& bu
         return callOp.getResult(0);
     }
 
+    // Unknown expression type - report error
+    if (diagnostics) {
+        diagnostics->reportError(exprLoc, "unsupported expression kind");
+    }
     return nullptr;
 }
 
@@ -405,6 +429,11 @@ mlir::Type ASTToFIRConverter::convertType(const cpp2_transpiler::Type& type) {
         if (type.name == "void") {
             return builder.getNoneType();
         }
+        // Unknown builtin type - report and use i32 as fallback
+        if (diagnostics) {
+            diagnostics->reportWarning("", "unknown builtin type '" + type.name + "', using i32 as fallback");
+        }
+        return builder.getI32Type();
     }
 
     // Handle Function types (e.g., "int(int)")
@@ -455,6 +484,9 @@ mlir::Type ASTToFIRConverter::convertType(const cpp2_transpiler::Type& type) {
         return convertType(*type.alternatives[0]);
     }
 
-    // Default to i32
+    // Default to i32 with warning
+    if (diagnostics) {
+        diagnostics->reportWarning("", "unsupported type kind, using i32 as fallback");
+    }
     return builder.getI32Type();
 }

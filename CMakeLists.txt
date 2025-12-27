@@ -19,6 +19,18 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Code coverage support
+option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+
+if(ENABLE_COVERAGE)
+  # Coverage requires Debug build
+  set(CMAKE_BUILD_TYPE Debug)
+  # Add coverage flags for clang/gcc
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+  message(STATUS "Code coverage enabled: ${ENABLE_COVERAGE}")
+endif()
+
 # macOS: Homebrew LLVM libc++ configuration
 if(APPLE)
   set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
@@ -146,3 +158,45 @@ install(FILES
 
 # Testing
 enable_testing()
+
+# Code coverage targets (only when coverage is enabled)
+if(ENABLE_COVERAGE)
+  find_program(LCOV lcov)
+  find_program(GENHTML genhtml)
+
+  if(LCOV AND GENHTML)
+    # Add a target to generate coverage report
+    add_custom_target(coverage
+      COMMAND ${LCOV} --capture --directory . --output-file coverage.info
+      COMMAND ${LCOV} --remove coverage.info '/usr/*' --output-file coverage.info
+      COMMAND ${LCOV} --remove coverage.info '*/build/*' --output-file coverage.info
+      COMMAND ${LCOV} --remove coverage.info '*/tests/*' --output-file coverage.info
+      COMMAND ${LCOV} --remove coverage.info '*/include/*' --output-file coverage.info
+      COMMAND ${LCOV} --list coverage.info
+      COMMAND ${GENHTML} coverage.info --output-directory coverage_html
+      COMMAND echo "Coverage report generated in coverage_html/index.html"
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Generating code coverage report"
+    )
+
+    # Add a target to clean coverage files
+    add_custom_target(coverage-clean
+      COMMAND ${CMAKE_COMMAND} -E remove coverage.info coverage_html
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Cleaning coverage files"
+    )
+
+    # Add a target to run coverage analysis (run tests then generate report)
+    add_custom_target(coverage-all
+      COMMAND ctest --output-on-failure
+      COMMAND ${CMAKE_COMMAND} --build . --target coverage
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Running tests and generating coverage report"
+    )
+
+    message(STATUS "Coverage targets added: coverage, coverage-clean, coverage-all")
+  else()
+    message(WARNING "lcov and/or genhtml not found. Coverage targets not available.")
+    message(STATUS "Install lcov: brew install lcov")
+  endif()
+endif()

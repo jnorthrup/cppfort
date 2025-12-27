@@ -199,12 +199,12 @@ Added after independent verification identified gaps in spec compliance.
     - [x] **Sub-task:** Support optional and variant types
     - [x] **Sub-task:** Write tests for advanced types
 
-### Task 3: Comprehensive Error Handling [MISSING → IMPLEMENT]
-- [ ] **Task:** Implement robust error reporting for AST to FIR conversion
-    - [ ] **Sub-task:** Create DiagnosticCollector class for error aggregation
-    - [ ] **Sub-task:** Add detailed error messages with source locations
-    - [ ] **Sub-task:** Implement error recovery strategies
-    - [ ] **Sub-task:** Write tests for error handling (invalid syntax, type errors)
+### Task 3: Comprehensive Error Handling [MISSING → COMPLETE]
+- [x] **Task:** Implement robust error reporting for AST to FIR conversion
+    - [x] **Sub-task:** Create DiagnosticCollector class for error aggregation
+    - [x] **Sub-task:** Add detailed error messages with source locations
+    - [x] **Sub-task:** Implement error recovery strategies
+    - [x] **Sub-task:** Write tests for error handling (invalid syntax, type errors)
 
 ### Task 4: SON Dialect Verification [MISSING → IMPLEMENT]
 - [ ] **Task:** Add verifiers to ensure SON graph integrity
@@ -214,9 +214,9 @@ Added after independent verification identified gaps in spec compliance.
     - [ ] **Sub-task:** Write tests for verifier logic
 
 ### Task 5: Code Coverage Reporting [MISSING → IMPLEMENT]
-- [ ] **Task:** Set up code coverage measurement
-    - [ ] **Sub-task:** Add CMake coverage support (ENABLE_COVERAGE option)
-    - [ ] **Sub-task:** Generate coverage reports (lcov/gcov)
+- [x] **Task:** Set up code coverage measurement
+    - [x] **Sub-task:** Add CMake coverage support (ENABLE_COVERAGE option)
+    - [x] **Sub-task:** Generate coverage reports (lcov/gcov)
     - [ ] **Sub-task:** Add coverage reporting to CI
     - [ ] **Sub-task:** Verify 20% coverage threshold is met
 

@@ -104,6 +104,7 @@ struct Expression {
     bool has_null_check = false;                  // Null check was inserted
     bool has_bounds_check = false;                // Bounds check was inserted
     std::string inferred_type;                    // Type deduced by Clang
+    std::string source_location;                  // Source location for diagnostics
 
     Expression(Kind k, std::size_t l) : kind(k), line(l) {}
     virtual ~Expression() = default;
