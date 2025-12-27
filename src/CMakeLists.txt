@@ -50,7 +50,9 @@ target_link_libraries(Cpp2SONDialect PUBLIC
 add_dependencies(Cpp2SONDialect Cpp2SONOpsIncGen)
 
 # Cpp2 Concurrency Dialect library (Kotlin-style)
-add_library(Cpp2ConcurrencyDialect)
+add_library(Cpp2ConcurrencyDialect
+  Cpp2ConcurrencyDialect.cpp
+)
 # Note: TableGen will generate the .cpp.inc files
 target_include_directories(Cpp2ConcurrencyDialect PUBLIC
   ${PROJECT_SOURCE_DIR}/include
@@ -70,9 +72,9 @@ add_library(SeaOfNodesCore
   combinator_hierarchy.cpp
   mlir_bridge.cpp
   semantic_hash.cpp
-  clang_ast_reverse.cpp
+  # clang_ast_reverse.cpp  # Disabled: needs API fixes for latest Clang
   crdt_patch.cpp
-  # son_serialization.cpp  # Disabled: Cpp2SONDialect has MLIR tablegen issues (fold method signatures)
+  son_serialization.cpp
 )
 
 target_include_directories(SeaOfNodesCore PUBLIC
@@ -130,6 +132,7 @@ target_link_libraries(cppfort-son PRIVATE
 # Cpp2 Conversion Passes library
 add_library(Cpp2Passes
   ConvertFIRToSON.cpp
+  # SCCPPass.cpp  # Disabled: needs API fixes for latest MLIR
 )
 
 target_include_directories(Cpp2Passes PUBLIC

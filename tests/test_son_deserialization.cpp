@@ -212,7 +212,7 @@ void test_deserialize_roundtrip() {
         loc, builder.getI32Type(), builder.getI32IntegerAttr(7));
     auto c2 = builder.create<sond::ConstantOp>(
         loc, builder.getI32Type(), builder.getI32IntegerAttr(8));
-    auto add = builder.create<sond::AddOp>(loc, c1.getResult(), c2.getResult());
+    auto add = builder.create<sond::AddOp>(loc, builder.getI32Type(), c1.getResult(), c2.getResult());
 
     builder.create<func::ReturnOp>(loc, ValueRange{add.getResult()});
 

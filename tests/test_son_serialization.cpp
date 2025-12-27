@@ -83,7 +83,7 @@ void test_serialize_arithmetic() {
         loc, builder.getI32Type(), builder.getI32IntegerAttr(32));
 
     auto addOp = builder.create<sond::AddOp>(
-        loc, const1.getResult(), const2.getResult());
+        loc, builder.getI32Type(), const1.getResult(), const2.getResult());
 
     builder.create<func::ReturnOp>(loc, ValueRange{addOp.getResult()});
 
@@ -135,7 +135,7 @@ void test_serialize_edges() {
         loc, builder.getI32Type(), builder.getI32IntegerAttr(3));
 
     auto addOp = builder.create<sond::AddOp>(
-        loc, const1.getResult(), const2.getResult());
+        loc, builder.getI32Type(), const1.getResult(), const2.getResult());
 
     builder.create<func::ReturnOp>(loc, ValueRange{addOp.getResult()});
 
@@ -193,8 +193,8 @@ void test_serialize_roundtrip_structure() {
     auto c = builder.create<sond::ConstantOp>(
         loc, builder.getI32Type(), builder.getI32IntegerAttr(3));
 
-    auto add1 = builder.create<sond::AddOp>(loc, a.getResult(), b.getResult());
-    auto add2 = builder.create<sond::AddOp>(loc, add1.getResult(), c.getResult());
+    auto add1 = builder.create<sond::AddOp>(loc, builder.getI32Type(), a.getResult(), b.getResult());
+    auto add2 = builder.create<sond::AddOp>(loc, builder.getI32Type(), add1.getResult(), c.getResult());
 
     builder.create<func::ReturnOp>(loc, ValueRange{add2.getResult()});
 
