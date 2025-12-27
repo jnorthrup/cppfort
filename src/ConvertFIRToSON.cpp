@@ -31,7 +31,8 @@ struct ConvertFIRAddToSON : public OpConversionPattern<cpp2fir::AddOp> {
   using OpConversionPattern<cpp2fir::AddOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::AddOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::AddOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::AddOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -40,7 +41,8 @@ struct ConvertFIRSubToSON : public OpConversionPattern<cpp2fir::SubOp> {
   using OpConversionPattern<cpp2fir::SubOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::SubOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::SubOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::SubOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -49,7 +51,8 @@ struct ConvertFIRMulToSON : public OpConversionPattern<cpp2fir::MulOp> {
   using OpConversionPattern<cpp2fir::MulOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::MulOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::MulOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::MulOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -58,7 +61,8 @@ struct ConvertFIRDivToSON : public OpConversionPattern<cpp2fir::DivOp> {
   using OpConversionPattern<cpp2fir::DivOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::DivOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::DivOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::DivOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -67,7 +71,8 @@ struct ConvertFIRAndToSON : public OpConversionPattern<cpp2fir::AndOp> {
   using OpConversionPattern<cpp2fir::AndOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::AndOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::AndOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::AndOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -76,7 +81,8 @@ struct ConvertFIROrToSON : public OpConversionPattern<cpp2fir::OrOp> {
   using OpConversionPattern<cpp2fir::OrOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::OrOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::OrOp>(op, adaptor.getLhs(), adaptor.getRhs());
+    rewriter.replaceOpWithNewOp<sond::OrOp>(op, op.getResult().getType(),
+                                              adaptor.getLhs(), adaptor.getRhs());
     return success();
   }
 };
@@ -85,7 +91,8 @@ struct ConvertFIRNotToSON : public OpConversionPattern<cpp2fir::NotOp> {
   using OpConversionPattern<cpp2fir::NotOp>::OpConversionPattern;
   LogicalResult matchAndRewrite(cpp2fir::NotOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<sond::NotOp>(op, adaptor.getInput());
+    rewriter.replaceOpWithNewOp<sond::NotOp>(op, op.getResult().getType(),
+                                             adaptor.getInput());
     return success();
   }
 };
@@ -95,8 +102,8 @@ struct ConvertFIRCmpToSON : public OpConversionPattern<cpp2fir::CmpOp> {
   LogicalResult matchAndRewrite(cpp2fir::CmpOp op, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<sond::CmpOp>(op, op.getResult().getType(),
-                                            adaptor.getLhs(), adaptor.getRhs(),
-                                            op.getPredicateAttr());
+                                              adaptor.getLhs(), adaptor.getRhs(),
+                                              op.getPredicateAttr());
     return success();
   }
 };
