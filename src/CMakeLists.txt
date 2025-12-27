@@ -49,6 +49,20 @@ target_link_libraries(Cpp2SONDialect PUBLIC
 
 add_dependencies(Cpp2SONDialect Cpp2SONOpsIncGen)
 
+# Cpp2 Concurrency Dialect library (Kotlin-style)
+add_library(Cpp2ConcurrencyDialect)
+# Note: TableGen will generate the .cpp.inc files
+target_include_directories(Cpp2ConcurrencyDialect PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_BINARY_DIR}/include
+  ${PROJECT_BINARY_DIR}
+)
+target_link_libraries(Cpp2ConcurrencyDialect PUBLIC
+  MLIR
+)
+# Add TableGen generation for concurrency dialect
+# TODO: Add Cpp2ConcurrencyOpsIncGen target when needed
+
 # CRDT and Sea of Nodes infrastructure
 add_library(SeaOfNodesCore
   pijul_crdt.cpp

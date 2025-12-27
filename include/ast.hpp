@@ -93,7 +93,13 @@ struct Expression {
         List,
         StructInitializer,
         MetafunctionCall,
-        ContractExpression
+        ContractExpression,
+        // Concurrency expressions
+        Await,
+        Spawn,
+        ChannelSend,
+        ChannelRecv,
+        ChannelSelect
     };
 
     Kind kind;
@@ -303,6 +309,62 @@ struct ContractExpression : Expression {
         : Expression(Kind::ContractExpression, l), kind(k), condition(std::move(cond)) {}
 };
 
+// ============================================================================
+// Concurrency Expressions (Kotlin-style)
+// ============================================================================
+
+// Await expression - suspend until value is ready
+struct AwaitExpression : Expression {
+    std::unique_ptr<Expression> value;
+    std::string channel;  // Optional: await from specific channel
+
+    AwaitExpression(std::unique_ptr<Expression> v, std::size_t l)
+        : Expression(Kind::Await, l), value(std::move(v)) {}
+};
+
+// Spawn expression - launch async task
+struct SpawnExpression : Expression {
+    std::unique_ptr<Expression> task;
+    std::string result_channel;  // Optional: send result to this channel
+
+    SpawnExpression(std::unique_ptr<Expression> t, std::size_t l)
+        : Expression(Kind::Spawn, l), task(std::move(t)) {}
+};
+
+// Channel send expression
+struct ChannelSendExpression : Expression {
+    std::string channel;
+    std::unique_ptr<Expression> value;
+
+    ChannelSendExpression(std::string ch, std::unique_ptr<Expression> v, std::size_t l)
+        : Expression(Kind::ChannelSend, l), channel(std::move(ch)), value(std::move(v)) {}
+};
+
+// Channel receive expression
+struct ChannelRecvExpression : Expression {
+    std::string channel;
+    bool non_blocking = false;
+
+    ChannelRecvExpression(std::string ch, std::size_t l, bool nb = false)
+        : Expression(Kind::ChannelRecv, l), channel(std::move(ch)), non_blocking(nb) {}
+};
+
+// Channel select expression (Kotlin-style select)
+struct ChannelSelectExpression : Expression {
+    struct SelectCase {
+        std::string channel;
+        enum class Kind { Send, Recv } kind;
+        std::unique_ptr<Expression> value;  // For Send case
+        std::unique_ptr<Expression> action;  // What to do when selected
+    };
+
+    std::vector<SelectCase> cases;
+    std::unique_ptr<Expression> default_case;  // Optional: what to do if none ready
+
+    ChannelSelectExpression(std::vector<SelectCase> c, std::size_t l)
+        : Expression(Kind::ChannelSelect, l), cases(std::move(c)) {}
+};
+
 // Statements
 struct Statement {
     enum class Kind {
@@ -322,7 +384,11 @@ struct Statement {
         Throw,
         Contract,
         Template,
-        StaticAssert
+        StaticAssert,
+        // Concurrency statements
+        ChannelDecl,
+        CoroutineScope,
+        ParallelFor
     };
 
     Kind kind;
@@ -487,6 +553,45 @@ struct StaticAssertStatement : Statement {
         : Statement(Kind::StaticAssert, l), condition(std::move(cond)) {}
 };
 
+// ============================================================================
+// Concurrency Statements (Kotlin-style + Hardware Kernel)
+// ============================================================================
+
+// Channel declaration
+struct ChannelDeclarationStatement : Statement {
+    std::string name;
+    std::unique_ptr<Type> element_type;
+    size_t buffer_size = 0;  // 0 = unbuffered (rendezvous)
+
+    ChannelDeclarationStatement(std::string n, std::unique_ptr<Type> elem, std::size_t l)
+        : Statement(Kind::ChannelDecl, l), name(std::move(n)), element_type(std::move(elem)) {}
+};
+
+// Coroutine scope - structured concurrency region
+struct CoroutineScopeStatement : Statement {
+    std::unique_ptr<Statement> body;
+
+    CoroutineScopeStatement(std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::CoroutineScope, l), body(std::move(b)) {}
+};
+
+// Parallel for loop - for kernel conversion
+struct ParallelForStatement : Statement {
+    std::string loop_variable;
+    std::unique_ptr<Expression> lower_bound;
+    std::unique_ptr<Expression> upper_bound;
+    std::unique_ptr<Expression> step;
+    std::string mapping;  // "global_x", "global_y", "local_x", etc.
+    std::unique_ptr<Statement> body;
+
+    ParallelForStatement(std::string var, std::unique_ptr<Expression> lb,
+                         std::unique_ptr<Expression> ub, std::unique_ptr<Expression> st,
+                         std::string map, std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::ParallelFor, l), loop_variable(std::move(var)),
+          lower_bound(std::move(lb)), upper_bound(std::move(ub)), step(std::move(st)),
+          mapping(std::move(map)), body(std::move(b)) {}
+};
+
 // Declarations
 struct Declaration {
     enum class Kind {
@@ -567,6 +672,13 @@ struct FunctionDeclaration : Declaration {
     ThisQualifier this_qualifier = ThisQualifier::None;  // this-qualifier
     bool is_constexpr = false;                            // constexpr function
     bool is_noexcept = false;                              // noexcept function
+
+    // Concurrency attributes (Kotlin-style + GPU kernel)
+    bool is_async = false;              // async function (uses suspend/await)
+    bool is_kernel = false;             // GPU kernel candidate
+    std::string launch_config;          // e.g., "grid(256,256) block(32)"
+    std::string memory_policy;          // PS2-style: "ee_local", "vif_stream", etc.
+    std::vector<std::string> channels;  // Channels used by this function
 
     FunctionDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Function, std::move(n), l) {}

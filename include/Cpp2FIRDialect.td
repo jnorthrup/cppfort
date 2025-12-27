@@ -185,3 +185,130 @@ def Cpp2FIR_UfcsCallOp : Cpp2FIR_Op<"ufcs_call"> {
   let results = (outs AnyType:$result);
   let assemblyFormat = "$args attr-dict `:` type($args) `->` type($result)";
 }
+
+// ============================================================================
+// Concurrency Operations (Kotlin-style + GPU Kernel)
+// ============================================================================
+
+// GPU kernel function definition
+def Cpp2FIR_KernelOp : Cpp2FIR_Op<"kernel", []> {
+  let summary = "GPU kernel function definition with launch config";
+  let description = [{
+    Marks a function as a GPU kernel candidate with launch configuration
+    and memory policy annotations. The body contains the kernel code that
+    will be executed on the GPU.
+  }];
+  let arguments = (ins
+    StrAttr:$sym_name,
+    TypeAttr:$function_type,
+    OptionalAttr<StrAttr>:$launch_config,   // e.g., "grid(256,256) block(32)"
+    OptionalAttr<StrAttr>:$memory_policy     // PS2-style: "ee_local", "vif_stream"
+  );
+  let regions = (region AnyRegion:$body);
+  let assemblyFormat = $sym_name $function_type (`launch` $launch_config^)? (`memory` $memory_policy^)? $regions attr-dict;
+}
+
+// Spawn async task
+def Cpp2FIR_SpawnOp : Cpp2FIR_Op<"spawn"> {
+  let summary = "Launch an async task in a coroutine scope";
+  let description = [{
+    Spawn an asynchronous task that executes concurrently. The task
+    can be a function call or a lambda. Returns a handle/future for awaiting.
+  }];
+  let arguments = (ins AnyType:$task, OptionalAttr<StrAttr>:$result_channel);
+  let results = (outs AnyType:$future);
+  let assemblyFormat = "$task attr-dict `:` type($task) `->` type($future) (`->` $result_channel^)?;
+}
+
+// Await task completion
+def Cpp2FIR_AwaitOp : Cpp2FIR_Op<"await"> {
+  let summary = "Suspend until async task completes";
+  let description = [{
+    Suspend the current coroutine until the awaited future/channel
+    has a value ready. This is the Kotlin-style await operation.
+  }];
+  let arguments = (ins AnyType:$future, OptionalAttr<StrAttr>:$source_channel);
+  let results = (outs AnyType:$result);
+  let assemblyFormat = $future attr-dict `:` type($future) `->` type($result) (`from` $source_channel^)?;
+}
+
+// Channel declaration
+def Cpp2FIR_ChannelOp : Cpp2FIR_Op<"channel"> {
+  let summary = "Channel declaration for coroutine communication";
+  let description = [{
+    Creates a channel for communicating between coroutines. Channels can
+    be buffered (buffer_size > 0) or unbuffered rendezvous channels (buffer_size = 0).
+  }];
+  let arguments = (ins Type:$element_type, OptionalAttr<I32Attr>:$buffer_size);
+  let results = (outs AnyType:$channel);
+  let assemblyFormat = $element_type attr-dict (`buffer` $buffer_size^)? `->` type($channel);
+}
+
+// Channel send operation
+def Cpp2FIR_SendOp : Cpp2FIR_Op<"send"> {
+  let summary = "Send value to channel (suspends if buffer full)";
+  let description = [{
+    Send a value to a channel. If the channel buffer is full (or unbuffered
+    and no receiver is waiting), the sender suspends until space is available.
+  }];
+  let arguments = (ins AnyType:$channel, AnyType:$value);
+  let assemblyFormat = "$channel `,` $value attr-dict `:` type($channel) `,` type($value);
+}
+
+// Channel receive operation
+def Cpp2FIR_RecvOp : Cpp2FIR_Op<"recv"> {
+  let summary = "Receive value from channel (suspends if buffer empty)";
+  let description = [{
+    Receive a value from a channel. If the channel is empty (or unbuffered
+    and no sender is waiting), the receiver suspends until a value arrives.
+  }];
+  let arguments = (ins AnyType:$channel, UnitAttr:$non_blocking);
+  let results = (outs AnyType:$value, AnyType:$success);
+  let assemblyFormat = $channel attr-dict (`non-blocking` $non_blocking^)? `->` type($value) `,` type($success);
+}
+
+// Parallel for loop (for GPU kernel conversion)
+def Cpp2FIR_ParallelForOp : Cpp2FIR_Op<"parallel_for"> {
+  let summary = "Parallel loop for GPU kernel conversion";
+  let description = [{
+    A parallel loop that can be converted to a GPU kernel launch. The mapping
+    attribute specifies which GPU dimension to map to (global_x, global_y, etc.).
+  }];
+  let arguments = (ins
+    AnyType:$lower_bound,
+    AnyType:$upper_bound,
+    AnyType:$step,
+    StrAttr:$mapping  // "global_x", "global_y", "global_z", "local_x", etc.
+  );
+  let regions = (region AnyRegion:$body);
+  let assemblyFormat = $lower_bound `..` $upper_bound `step` $step `mapping` $mapping $regions attr-dict;
+}
+
+// Memory region annotation (PS2-style DMA pipeline)
+def Cpp2FIR_MemRegionOp : Cpp2FIR_Op<"mem_region"> {
+  let summary = "Memory region annotation for PS2-style pipeline";
+  let description = [{
+    Annotates a memory region with specific characteristics matching PS2
+    architecture: EE main memory, VIF (Video Interface), GIF (Graphics Interface),
+    IOP (I/O Processor), or SPU (Sound Processing Unit) local memory.
+    Supports DMA transfers between regions.
+  }];
+  let arguments = (ins
+    StrAttr:$region_type,  // "ee_main", "vif", "gif", "iop", "spu"
+    I64Attr:$size_bytes,
+    UnitAttr:$dma_enabled   // Enable DMA transfers
+  );
+  let results = (outs AnyType:$handle);
+  let assemblyFormat = $region_type `size` $size_bytes attr-dict (`dma` $dma_enabled^)? `->` type($handle);
+}
+
+// Coroutine scope (structured concurrency)
+def Cpp2FIR_CoroutineScopeOp : Cpp2FIR_Op<"coroutine_scope"> {
+  let summary = "Structured coroutine scope - all children complete before exit";
+  let description = [{
+    A coroutine scope ensures all spawned tasks complete before the scope exits.
+    This provides structured concurrency guarantees and prevents task leaks.
+  }];
+  let regions = (region AnyRegion:$body);
+  let assemblyFormat = $regions attr-dict;
+}
