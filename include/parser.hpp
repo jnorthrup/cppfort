@@ -72,6 +72,11 @@ private:
     std::unique_ptr<Statement> contract_statement();
     std::unique_ptr<Statement> static_assert_statement();
 
+    // Concurrency statements (Kotlin-style)
+    std::unique_ptr<Statement> coroutine_scope_statement();
+    std::unique_ptr<Statement> channel_declaration_statement();
+    std::unique_ptr<Statement> parallel_for_statement();
+
     // Expressions (precedence climbing)
     std::unique_ptr<Expression> assignment_expression();
     std::unique_ptr<Expression> ternary_expression();
@@ -101,6 +106,13 @@ private:
     std::unique_ptr<Expression> metafunction_call();
     std::unique_ptr<Expression> is_expression();
     std::unique_ptr<Expression> as_expression();
+
+    // Concurrency expressions (Kotlin-style)
+    std::unique_ptr<Expression> await_expression();
+    std::unique_ptr<Expression> spawn_expression();
+    std::unique_ptr<Expression> channel_send_expression();
+    std::unique_ptr<Expression> channel_recv_expression();
+    std::unique_ptr<Expression> select_expression();
 
     // Pattern matching for inspect
     std::pair<InspectStatement::Pattern, std::unique_ptr<Statement>> inspect_arm();

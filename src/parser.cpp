@@ -223,6 +223,17 @@ std::unique_ptr<Statement> Parser::statement() {
             return static_assert_statement();
         }
 
+        // Concurrency statements
+        if (match(TokenType::CoroutineScope)) {
+            return coroutine_scope_statement();
+        }
+        if (match(TokenType::Channel)) {
+            return channel_declaration_statement();
+        }
+        if (match(TokenType::ParallelFor)) {
+            return parallel_for_statement();
+        }
+
         // Variable declaration with unified syntax: name: type = value;
         // Check for identifier followed by colon
         if (check(TokenType::Identifier)) {
@@ -965,6 +976,74 @@ std::unique_ptr<Statement> Parser::static_assert_statement() {
     return assert_stmt;
 }
 
+// ============================================================================
+// Concurrency Statements (Kotlin-style)
+// ============================================================================
+
+std::unique_ptr<Statement> Parser::coroutine_scope_statement() {
+    // coroutineScope { ... }
+    consume(TokenType::LeftBrace, "Expected '{' after 'coroutineScope'");
+    auto body = block_statement();
+    return std::make_unique<CoroutineScopeStatement>(std::move(body), previous().line);
+}
+
+std::unique_ptr<Statement> Parser::channel_declaration_statement() {
+    // channel name: Type (capacity N)?;
+    Token name = consume(TokenType::Identifier, "Expected channel name");
+    consume(TokenType::Colon, "Expected ':' after channel name");
+    auto elem_type = type();
+
+    auto channel = std::make_unique<ChannelDeclarationStatement>(
+        std::string(name.lexeme), std::move(elem_type), name.line);
+
+    // Optional buffer size
+    if (match(TokenType::LeftParen)) {
+        Token capacity = consume(TokenType::IntegerLiteral, "Expected capacity");
+        channel->buffer_size = std::stoull(std::string(capacity.lexeme));
+        consume(TokenType::RightParen, "Expected ')' after capacity");
+    }
+
+    consume(TokenType::Semicolon, "Expected ';' after channel declaration");
+    return channel;
+}
+
+std::unique_ptr<Statement> Parser::parallel_for_statement() {
+    // parallel_for (var: lower..upper [step S] [mapping M]) { ... }
+    consume(TokenType::LeftParen, "Expected '(' after 'parallel_for'");
+
+    Token var = consume(TokenType::Identifier, "Expected loop variable");
+    consume(TokenType::Colon, "Expected ':' after loop variable");
+
+    auto lower = expression();
+    consume(TokenType::DoubleDot, "Expected '..' for range");
+    auto upper = expression();
+
+    std::unique_ptr<Expression> step = nullptr;
+    if (check(TokenType::Identifier) && peek().lexeme == "step") {
+        advance();
+        step = expression();
+    }
+
+    std::string mapping = "thread_id";
+    if (check(TokenType::Identifier) && peek().lexeme == "mapping") {
+        advance();
+        Token map_token = consume(TokenType::StringLiteral, "Expected mapping string");
+        std::string_view lexeme = map_token.lexeme;
+        if (lexeme.size() >= 2 && lexeme.front() == '"' && lexeme.back() == '"') {
+            lexeme = lexeme.substr(1, lexeme.size() - 2);
+        }
+        mapping = std::string(lexeme);
+    }
+
+    consume(TokenType::RightParen, "Expected ')' after parallel_for header");
+    consume(TokenType::LeftBrace, "Expected '{' for parallel_for body");
+    auto body = block_statement();
+
+    return std::make_unique<ParallelForStatement>(
+        std::string(var.lexeme), std::move(lower), std::move(upper),
+        std::move(step), std::move(mapping), std::move(body), var.line);
+}
+
 // Expressions (precedence climbing)
 std::unique_ptr<Expression> Parser::assignment_expression() {
     auto expr = ternary_expression();
@@ -1172,6 +1251,17 @@ std::unique_ptr<Expression> Parser::multiplication_expression() {
 }
 
 std::unique_ptr<Expression> Parser::prefix_expression() {
+    // Concurrency prefix expressions
+    if (match(TokenType::Await)) {
+        return await_expression();
+    }
+    if (match(TokenType::Launch)) {
+        return spawn_expression();
+    }
+    if (match(TokenType::Select)) {
+        return select_expression();
+    }
+
     if (match({TokenType::Minus, TokenType::Exclamation, TokenType::Tilde, TokenType::PlusPlus,
                TokenType::MinusMinus, TokenType::Ampersand, TokenType::Asterisk})) {
         Token op = previous();
@@ -1468,6 +1558,95 @@ std::unique_ptr<Expression> Parser::as_expression() {
         std::move(type_expr),
         expr->line
     );
+}
+
+// ============================================================================
+// Concurrency Expressions (Kotlin-style)
+// ============================================================================
+
+std::unique_ptr<Expression> Parser::await_expression() {
+    // await expr
+    auto value = prefix_expression();
+    return std::make_unique<AwaitExpression>(std::move(value), previous().line);
+}
+
+std::unique_ptr<Expression> Parser::spawn_expression() {
+    // launch expr  (fire-and-forget coroutine)
+    auto task = prefix_expression();
+    return std::make_unique<SpawnExpression>(std::move(task), previous().line);
+}
+
+std::unique_ptr<Expression> Parser::channel_send_expression() {
+    // channel <- value
+    // Note: This is called from member access when we see a channel send operator
+    // The channel identifier should be previous()
+    Token channel_name = previous();
+    auto value = expression();
+    return std::make_unique<ChannelSendExpression>(
+        std::string(channel_name.lexeme), std::move(value), channel_name.line);
+}
+
+std::unique_ptr<Expression> Parser::channel_recv_expression() {
+    // <- channel
+    Token channel_name = consume(TokenType::Identifier, "Expected channel name after '<-'");
+    return std::make_unique<ChannelRecvExpression>(
+        std::string(channel_name.lexeme), channel_name.line);
+}
+
+std::unique_ptr<Expression> Parser::select_expression() {
+    // select { onSend(ch, v) { ... } onRecv(ch) { v -> ... } }
+    consume(TokenType::LeftBrace, "Expected '{' after 'select'");
+
+    std::vector<ChannelSelectExpression::SelectCase> cases;
+    std::unique_ptr<Expression> default_case = nullptr;
+
+    while (!check(TokenType::RightBrace) && !is_at_end()) {
+        if (check(TokenType::Identifier) && peek().lexeme == "onSend") {
+            advance();
+            consume(TokenType::LeftParen, "Expected '(' after 'onSend'");
+            Token ch = consume(TokenType::Identifier, "Expected channel name");
+            consume(TokenType::Comma, "Expected ',' after channel name");
+            auto value = expression();
+            consume(TokenType::RightParen, "Expected ')' after onSend arguments");
+            consume(TokenType::LeftBrace, "Expected '{' for onSend body");
+            auto action = expression();
+            consume(TokenType::RightBrace, "Expected '}' after onSend body");
+
+            ChannelSelectExpression::SelectCase case_item;
+            case_item.channel = std::string(ch.lexeme);
+            case_item.kind = ChannelSelectExpression::SelectCase::Kind::Send;
+            case_item.value = std::move(value);
+            case_item.action = std::move(action);
+            cases.push_back(std::move(case_item));
+        } else if (check(TokenType::Identifier) && peek().lexeme == "onRecv") {
+            advance();
+            consume(TokenType::LeftParen, "Expected '(' after 'onRecv'");
+            Token ch = consume(TokenType::Identifier, "Expected channel name");
+            consume(TokenType::RightParen, "Expected ')' after onRecv arguments");
+            consume(TokenType::LeftBrace, "Expected '{' for onRecv body");
+            auto action = expression();
+            consume(TokenType::RightBrace, "Expected '}' after onRecv body");
+
+            ChannelSelectExpression::SelectCase case_item;
+            case_item.channel = std::string(ch.lexeme);
+            case_item.kind = ChannelSelectExpression::SelectCase::Kind::Recv;
+            case_item.action = std::move(action);
+            cases.push_back(std::move(case_item));
+        } else if (check(TokenType::Default)) {
+            advance();
+            consume(TokenType::Arrow, "Expected '=>' after 'default'");
+            default_case = expression();
+        } else {
+            error_at_current("Expected 'onSend', 'onRecv', or 'default' in select");
+            break;
+        }
+    }
+
+    consume(TokenType::RightBrace, "Expected '}' after select");
+
+    auto select = std::make_unique<ChannelSelectExpression>(std::move(cases), previous().line);
+    select->default_case = std::move(default_case);
+    return select;
 }
 
 // Pattern matching for inspect

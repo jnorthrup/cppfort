@@ -25,7 +25,19 @@ struct Node {
         // Memory nodes
         New, Load, Store, Cast,
         // Cpp2 specific
-        UFCS_Call, Metafunction, Contract, TypeCheck
+        UFCS_Call, Metafunction, Contract, TypeCheck,
+        // Concurrency nodes (Kotlin-style structured concurrency)
+        Spawn,          // Launch async task
+        Await,          // Suspend until value ready
+        SuspendPoint,   // Coroutine suspension point
+        Resume,         // Resume suspended coroutine
+        ChannelSend,    // Send value to channel
+        ChannelRecv,    // Receive value from channel
+        ChannelCreate,  // Create channel
+        ChannelClose,   // Close channel
+        Select,         // Multi-channel select
+        CoroutineScope, // Structured concurrency scope
+        ParallelFor     // Parallel loop (GPU/CPU)
     } kind;
 
     std::vector<NodeID> inputs;
