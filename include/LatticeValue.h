@@ -33,6 +33,16 @@ public:
         FloatSpecial /// Special float value (NaN, Infinity)
     };
 
+    /// Comparison predicate for comparison operations
+    enum class CmpPredicate {
+        EQ, /// Equal
+        NE, /// Not equal
+        LT, /// Less than
+        LE, /// Less than or equal
+        GT, /// Greater than
+        GE  /// Greater than or equal
+    };
+
 private:
     Kind kind;
 

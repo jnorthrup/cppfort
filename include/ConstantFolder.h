@@ -249,6 +249,56 @@ public:
         return LatticeValue::getTop();
     }
 
+    /// Fold comparison: a pred b
+    static LatticeValue foldCmp(LatticeValue::CmpPredicate pred,
+                                const LatticeValue& a,
+                                const LatticeValue& b) {
+        // Anything cmp Top = Top
+        if (a.isTop() || b.isTop()) {
+            return LatticeValue::getTop();
+        }
+
+        // Anything cmp Bottom = Bottom
+        if (a.isBottom() || b.isBottom()) {
+            return LatticeValue::getBottom();
+        }
+
+        // Constant cmp Constant = Constant
+        if (a.isConstant() && b.isConstant()) {
+            if (a.intValue.has_value() && b.intValue.has_value()) {
+                int64_t av = a.intValue.value();
+                int64_t bv = b.intValue.value();
+                bool result = false;
+
+                switch (pred) {
+                    case LatticeValue::CmpPredicate::EQ:
+                        result = (av == bv);
+                        break;
+                    case LatticeValue::CmpPredicate::NE:
+                        result = (av != bv);
+                        break;
+                    case LatticeValue::CmpPredicate::LT:
+                        result = (av < bv);
+                        break;
+                    case LatticeValue::CmpPredicate::LE:
+                        result = (av <= bv);
+                        break;
+                    case LatticeValue::CmpPredicate::GT:
+                        result = (av > bv);
+                        break;
+                    case LatticeValue::CmpPredicate::GE:
+                        result = (av >= bv);
+                        break;
+                }
+                return LatticeValue::getConstant(result);
+            }
+            return LatticeValue::getBottom();
+        }
+
+        // Default: Top for unhandled cases
+        return LatticeValue::getTop();
+    }
+
 private:
     // Check if addition would overflow
     static bool wouldOverflowAdd(int64_t a, int64_t b) {
