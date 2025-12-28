@@ -81,6 +81,9 @@ public:
     /// Check if this is a FloatSpecial value
     bool isFloatSpecial() const { return kind == FloatSpecial; }
 
+    // Default constructor creates Top (needed for unordered_map)
+    LatticeValue() : kind(Top) {}
+
     /// Get Top value
     static LatticeValue getTop() {
         return LatticeValue(Top);

@@ -13,8 +13,16 @@
 #include <deque>
 #include <unordered_set>
 #include <cstddef>
+#include <functional>
 
 namespace cppfort::sccp {
+
+// Custom hash for void* - use reinterpret_cast to uintptr_t
+struct VoidPtrHash {
+    size_t operator()(void* ptr) const noexcept {
+        return std::hash<size_t>{}(reinterpret_cast<size_t>(ptr));
+    }
+};
 
 /// Worklist for SCCP dataflow analysis.
 ///
@@ -26,7 +34,7 @@ namespace cppfort::sccp {
 class SCCPWorklist {
 private:
     std::deque<void*> queue;        ///< FIFO queue of items to process
-    std::unordered_set<void*> set;  ///< Set for O(1) duplicate checking
+    std::unordered_set<void*, VoidPtrHash> set;  ///< Set for O(1) duplicate checking
 
 public:
     /// Create an empty worklist

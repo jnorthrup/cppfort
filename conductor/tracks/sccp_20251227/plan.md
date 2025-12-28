@@ -30,9 +30,9 @@
 
 ## Phase 3: SCCP Dataflow Analysis
 
-- [ ] **Task:** Implement forward dataflow analysis engine.
-    - [ ] **Sub-task:** Write tests for dataflow initialization.
-    - [ ] **Sub-task:** Implement dataflow analysis with worklist algorithm.
+- [x] **Task:** Implement forward dataflow analysis engine.
+    - [x] **Sub-task:** Write tests for dataflow initialization.
+    - [x] **Sub-task:** Implement dataflow analysis with worklist algorithm.
 - [ ] **Task:** Implement phi node constant merging.
     - [ ] **Sub-task:** Write tests for phi merging with constant inputs.
     - [ ] **Sub-task:** Implement phi merge logic with meet operations.
