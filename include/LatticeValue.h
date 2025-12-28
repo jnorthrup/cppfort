@@ -43,12 +43,20 @@ public:
         GE  /// Greater than or equal
     };
 
+    /// Special float value types
+    enum class FloatSpecialValue {
+        NaN,         /// Not a Number
+        PosInfinity, /// Positive infinity
+        NegInfinity  /// Negative infinity
+    };
+
 private:
     Kind kind;
 
     // Internal storage for constant values
     std::optional<int64_t> intValue;
     std::optional<bool> boolValue;
+    std::optional<FloatSpecialValue> floatSpecialValue;
 
     // Range tracking for integers
     std::optional<int64_t> min;
@@ -69,6 +77,9 @@ public:
 
     /// Check if this is Bottom (unreachable/conflict)
     bool isBottom() const { return kind == Bottom; }
+
+    /// Check if this is a FloatSpecial value
+    bool isFloatSpecial() const { return kind == FloatSpecial; }
 
     /// Get Top value
     static LatticeValue getTop() {
@@ -112,6 +123,13 @@ public:
         return result;
     }
 
+    /// Get float special value
+    static LatticeValue getFloatSpecial(FloatSpecialValue value) {
+        LatticeValue result(FloatSpecial);
+        result.floatSpecialValue = value;
+        return result;
+    }
+
     /// Get integer constant value if present
     std::optional<int64_t> getAsInteger() const {
         return intValue;
@@ -120,6 +138,11 @@ public:
     /// Get boolean constant value if present
     std::optional<bool> getAsBoolean() const {
         return boolValue;
+    }
+
+    /// Get float special value if present
+    std::optional<FloatSpecialValue> getAsFloatSpecial() const {
+        return floatSpecialValue;
     }
 
     /// Meet operation for lattice values
@@ -178,6 +201,23 @@ public:
                 return getBottom();
             }
             // If types don't match or can't compare -> conflict
+            return getBottom();
+        }
+
+        // meet(FloatSpecial, FloatSpecial) = same value or Bottom
+        if (a.kind == FloatSpecial && b.kind == FloatSpecial) {
+            if (a.floatSpecialValue.has_value() && b.floatSpecialValue.has_value()) {
+                if (a.floatSpecialValue == b.floatSpecialValue) {
+                    return a; // Same special value
+                }
+                // Different special values -> conflict
+                return getBottom();
+            }
+            return getBottom();
+        }
+
+        // meet(FloatSpecial, anything else) = Bottom
+        if (a.kind == FloatSpecial || b.kind == FloatSpecial) {
             return getBottom();
         }
 

@@ -23,10 +23,10 @@
 - [x] **Task:** Implement constant folding for comparison operations.
     - [x] **Sub-task:** Write tests for CmpOp constant folding.
     - [x] **Sub-task:** Implement constant folder for comparisons.
-- [ ] **Task:** Handle special float values (NaN, Infinity).
-    - [ ] **Sub-task:** Write tests for NaN/Infinity propagation.
-    - [ ] **Sub-task:** Implement special float value handling.
-- [ ] **Task:** Conductor - User Manual Verification 'Constant Folding for Operations' (Protocol in workflow.md)
+- [x] **Task:** Handle special float values (NaN, Infinity).
+    - [x] **Sub-task:** Write tests for NaN/Infinity propagation.
+    - [x] **Sub-task:** Implement special float value handling.
+- [~] **Task:** Conductor - User Manual Verification 'Constant Folding for Operations' (Protocol in workflow.md)
 
 ## Phase 3: SCCP Dataflow Analysis
 

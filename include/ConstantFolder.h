@@ -33,6 +33,20 @@ public:
             return LatticeValue::getBottom();
         }
 
+        // FloatSpecial propagation
+        if (a.isFloatSpecial() || b.isFloatSpecial()) {
+            // NaN + anything = NaN
+            if (a.isFloatSpecial() && a.floatSpecialValue == LatticeValue::FloatSpecialValue::NaN) {
+                return a;
+            }
+            if (b.isFloatSpecial() && b.floatSpecialValue == LatticeValue::FloatSpecialValue::NaN) {
+                return b;
+            }
+            // Infinity + anything (non-NaN) = Infinity
+            if (a.isFloatSpecial()) return a;
+            if (b.isFloatSpecial()) return b;
+        }
+
         // Constant + Constant = Constant
         if (a.isConstant() && b.isConstant()) {
             if (a.intValue.has_value() && b.intValue.has_value()) {
@@ -88,6 +102,20 @@ public:
         // Anything - Bottom = Bottom
         if (a.isBottom() || b.isBottom()) {
             return LatticeValue::getBottom();
+        }
+
+        // FloatSpecial propagation
+        if (a.isFloatSpecial() || b.isFloatSpecial()) {
+            // NaN - anything = NaN
+            if (a.isFloatSpecial() && a.floatSpecialValue == LatticeValue::FloatSpecialValue::NaN) {
+                return a;
+            }
+            if (b.isFloatSpecial() && b.floatSpecialValue == LatticeValue::FloatSpecialValue::NaN) {
+                return b;
+            }
+            // Infinity - anything (non-NaN) = Infinity
+            if (a.isFloatSpecial()) return a;
+            if (b.isFloatSpecial()) return b;
         }
 
         // Constant - Constant = Constant
