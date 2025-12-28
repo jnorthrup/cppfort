@@ -20,10 +20,11 @@ struct Declaration;
 // Cpp2-specific parameter qualifiers (derived from corpus analysis)
 enum class ParameterQualifier {
     None,
-    InOut,      // inout - pass by reference with definite initialization
-    Out,        // out - definite assignment required
-    Move,       // copy - move semantics
-    Forward,    // forward - perfect forwarding
+    In,         // in - immutable borrow (const T&)
+    InOut,      // inout - mutable borrow with read/write (T&)
+    Out,        // out - mutable borrow with write-before-return (T&)
+    Move,       // move - ownership transfer (T&&)
+    Forward,    // forward - perfect forwarding (T&&)
     Virtual,    // virtual - for polymorphic types
     Override    // override - for overriding base functions
 };

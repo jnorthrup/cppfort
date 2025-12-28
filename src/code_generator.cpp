@@ -135,7 +135,7 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
     for (size_t i = 0; i < decl->parameters.size(); ++i) {
         if (i > 0) write(", ");
         const auto& param = decl->parameters[i];
-        write((param.type ? generate_type(param.type.get()) : "auto") + " " + param.name);
+        write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
     }
 
     write_line(");");
@@ -167,7 +167,7 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     for (size_t i = 0; i < decl->parameters.size(); ++i) {
         if (i > 0) write(", ");
         const auto& param = decl->parameters[i];
-        write((param.type ? generate_type(param.type.get()) : "auto") + " " + param.name);
+        write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
     }
 
     write(")");
@@ -898,6 +898,29 @@ std::string CodeGenerator::generate_type(Type* type) {
         default:
             return type->name;
     }
+}
+
+std::string CodeGenerator::generate_parameter_type(Type* type, const std::vector<ParameterQualifier>& qualifiers) {
+    std::string base_type = type ? generate_type(type) : "auto";
+
+    // Check for parameter qualifiers
+    for (const auto& qual : qualifiers) {
+        switch (qual) {
+            case ParameterQualifier::In:
+                return "const " + base_type + "&";
+            case ParameterQualifier::InOut:
+            case ParameterQualifier::Out:
+                return base_type + "&";
+            case ParameterQualifier::Move:
+            case ParameterQualifier::Forward:
+                return base_type + "&&";
+            default:
+                break;
+        }
+    }
+
+    // No qualifier - pass by value
+    return base_type;
 }
 
 bool CodeGenerator::needs_nodiscard(FunctionDeclaration* func) {

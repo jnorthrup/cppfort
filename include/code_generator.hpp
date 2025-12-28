@@ -88,6 +88,9 @@ private:
     std::string generate_function_type(Type* type);
     std::string generate_template_type(Type* type);
 
+    // Parameter generation with qualifiers
+    std::string generate_parameter_type(Type* type, const std::vector<ParameterQualifier>& qualifiers);
+
     // Safety check generation
     void generate_bounds_check(SubscriptExpression* expr);
     void generate_null_check(Expression* expr);
