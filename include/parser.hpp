@@ -64,6 +64,7 @@ private:
     std::unique_ptr<Statement> for_range_statement();
     std::unique_ptr<Statement> switch_statement();
     std::unique_ptr<Statement> inspect_statement();
+    std::unique_ptr<Expression> inspect_expression();
     std::unique_ptr<Statement> return_statement();
     std::unique_ptr<Statement> break_statement();
     std::unique_ptr<Statement> continue_statement();

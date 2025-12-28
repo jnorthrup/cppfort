@@ -127,11 +127,17 @@ std::unique_ptr<Declaration> Parser::declaration() {
                 advance(); // consume identifier (makes it previous())
                 consume(TokenType::Colon, "Expected ':' after identifier");
 
-                // Check if it's a function (has parameter list)
-                if (check(TokenType::LeftParen)) {
-                    return function_declaration(); // Will parse params, return type, body
+                // Check what kind of declaration follows
+                if (check(TokenType::LeftParen) || check(TokenType::LessThan)) {
+                    // Function: name: (params) or name: <T> (params)
+                    return function_declaration();
+                } else if (check(TokenType::At) || check(TokenType::Type)) {
+                    // Type with decorators: name: @value @ordered type = {...}
+                    // Or type keyword: name: type = {...}
+                    return type_declaration();
                 } else {
-                    return variable_declaration(); // Will parse type and initializer
+                    // Variable: name: type = value
+                    return variable_declaration();
                 }
             }
             current = saved; // backtrack if no colon
@@ -365,13 +371,19 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
         }
         match(TokenType::Colon); // Optional
     } else {
-        // Unified syntax: name: (...) -> type = body
+        // Unified syntax: name: <T> (...) -> type = body
         // identifier and colon were already consumed in declaration()
         // After consuming identifier and colon, tokens[current - 2] is the identifier
         if (current >= 2 && tokens[current - 2].type == TokenType::Identifier) {
             name = tokens[current - 2]; // identifier before colon
         }
         // else: keep prev as fallback (though this indicates a parsing bug)
+
+        // Template parameters in unified syntax: name: <T> (params)
+        if (match(TokenType::LessThan)) {
+            template_params = template_parameters();
+            consume(TokenType::GreaterThan, "Expected '>' after template parameters");
+        }
     }
 
     consume(TokenType::LeftParen, "Expected '(' after function name");
@@ -472,13 +484,43 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     func->parameters = std::move(parameters);
     func->return_type = std::move(return_type);
     func->body = std::move(body);
+    func->template_parameters = std::move(template_params);
 
     return func;
 }
 
 std::unique_ptr<Declaration> Parser::type_declaration() {
-    Token name = consume(TokenType::Identifier, "Expected type name");
-    consume(TokenType::Colon, "Expected ':' after type name");
+    Token prev = previous();
+    std::vector<std::string> decorators;
+
+    // Get the name token based on syntax
+    Token name = prev; // Initialize with prev as default
+
+    // Check if called from keyword syntax (type) or unified syntax (name: @decorators type)
+    if (prev.type == TokenType::Type) {
+        // Keyword syntax: type Name = { ... }
+        name = consume(TokenType::Identifier, "Expected type name");
+        consume(TokenType::Colon, "Expected ':' after type name");
+    } else {
+        // Unified syntax: Name: @decorators type = { ... }
+        // identifier and colon were already consumed in declaration()
+        if (current >= 2 && tokens[current - 2].type == TokenType::Identifier) {
+            name = tokens[current - 2]; // identifier before colon
+        }
+
+        // Parse decorators: @value @ordered ...
+        while (match(TokenType::At)) {
+            Token decorator = consume(TokenType::Identifier, "Expected decorator name after '@'");
+            decorators.push_back(std::string(decorator.lexeme));
+        }
+
+        // Expect 'type' keyword in unified syntax
+        if (!match(TokenType::Type)) {
+            // If no 'type' keyword, might be using implicit struct syntax
+            // For now, require explicit 'type' keyword
+            error_at_current("Expected 'type' keyword after decorators");
+        }
+    }
 
     TypeDeclaration::TypeKind kind = TypeDeclaration::TypeKind::Struct;
     if (check(TokenType::Identifier)) {
@@ -511,12 +553,17 @@ std::unique_ptr<Declaration> Parser::type_declaration() {
 
         auto type_decl = std::make_unique<TypeDeclaration>(std::string(name.lexeme), kind, name.line);
         type_decl->underlying_type = std::move(underlying_type);
+        type_decl->metafunctions = std::move(decorators);
         return type_decl;
     }
+
+    // Expect '=' before type body in unified syntax, optional in keyword syntax
+    match(TokenType::Equal);
 
     consume(TokenType::LeftBrace, "Expected '{' for type definition");
 
     auto type_decl = std::make_unique<TypeDeclaration>(std::string(name.lexeme), kind, name.line);
+    type_decl->metafunctions = std::move(decorators);
 
     while (!check(TokenType::RightBrace) && !is_at_end()) {
         auto member = declaration();
@@ -526,6 +573,8 @@ std::unique_ptr<Declaration> Parser::type_declaration() {
     }
 
     consume(TokenType::RightBrace, "Expected '}' after type definition");
+    // Optional semicolon after type definition
+    match(TokenType::Semicolon);
 
     return type_decl;
 }
@@ -772,6 +821,31 @@ std::unique_ptr<Statement> Parser::while_statement() {
 }
 
 std::unique_ptr<Statement> Parser::for_statement() {
+    // Check for cpp2 "for collection do(var)" syntax
+    if (!check(TokenType::LeftParen)) {
+        // cpp2: for <collection> do(<var>) { body }
+        auto collection = expression();
+
+        consume(TokenType::Do, "Expected 'do' in for-do loop");
+        consume(TokenType::LeftParen, "Expected '(' after 'do'");
+
+        Token var = consume(TokenType::Identifier, "Expected variable name in do clause");
+
+        consume(TokenType::RightParen, "Expected ')' after variable in do clause");
+
+        auto body = statement();
+
+        // Create a ForRangeStatement to represent this
+        return std::make_unique<ForRangeStatement>(
+            std::string(var.lexeme),
+            nullptr,  // type will be deduced
+            std::move(collection),
+            std::move(body),
+            var.line
+        );
+    }
+
+    // Traditional C-style for loop
     consume(TokenType::LeftParen, "Expected '(' after 'for'");
 
     std::unique_ptr<Statement> init = nullptr;
@@ -874,6 +948,52 @@ std::unique_ptr<Statement> Parser::inspect_statement() {
     if (match(TokenType::Else)) {
         inspect->else_arm = statement();
     }
+
+    return inspect;
+}
+
+std::unique_ptr<Expression> Parser::inspect_expression() {
+    // cpp2 syntax: inspect <value> -> <type> { is <pattern> = <result>; }
+    auto value = expression();
+    std::size_t line = value->line;
+
+    std::unique_ptr<Type> result_type = nullptr;
+    if (match(TokenType::Arrow)) {
+        result_type = type();
+    }
+
+    consume(TokenType::LeftBrace, "Expected '{' after inspect value");
+
+    auto inspect = std::make_unique<InspectExpression>(std::move(value), line);
+    inspect->result_type = std::move(result_type);
+
+    // Parse arms: is <pattern> = <result>;
+    while (!check(TokenType::RightBrace) && !is_at_end()) {
+        consume(TokenType::Is, "Expected 'is' in inspect arm");
+
+        InspectExpression::Arm arm;
+
+        // Parse pattern
+        if (match(TokenType::Underscore)) {
+            arm.pattern_kind = InspectExpression::Arm::PatternKind::Wildcard;
+        } else {
+            // For now, just parse value patterns
+            // Use ternary_expression to avoid parsing '=' as assignment
+            arm.pattern_kind = InspectExpression::Arm::PatternKind::Value;
+            arm.pattern_value = ternary_expression();
+        }
+
+        consume(TokenType::Equal, "Expected '=' after pattern");
+
+        // Parse result value
+        arm.result_value = expression();
+
+        consume(TokenType::Semicolon, "Expected ';' after inspect arm");
+
+        inspect->arms.push_back(std::move(arm));
+    }
+
+    consume(TokenType::RightBrace, "Expected '}' after inspect arms");
 
     return inspect;
 }
@@ -1396,6 +1516,9 @@ std::unique_ptr<Expression> Parser::primary_expression() {
     }
     if (match(TokenType::As)) {
         return as_expression();
+    }
+    if (match(TokenType::Inspect)) {
+        return inspect_expression();
     }
     if (match(TokenType::At)) {
         return metafunction_call();

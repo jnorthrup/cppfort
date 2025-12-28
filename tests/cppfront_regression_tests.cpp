@@ -12,6 +12,7 @@
 #include "../include/safety_checker.hpp"
 #include "../include/metafunction_processor.hpp"
 #include "../include/contract_processor.hpp"
+#include "test_timeout.hpp"
 
 using namespace cpp2_transpiler;
 
@@ -452,22 +453,22 @@ int main() {
     try {
         std::cout << "Running Cppfront Regression Tests\n" << std::endl;
 
-        test_cppfront_basic();
-        test_cppfront_contracts();
-        test_cppforward_functions();
-        test_cppforward_assertions();
-        test_cppforward_loops();
-        test_cppforward_break_continue();
-        test_cppforward_fixed_type_aliases();
-        test_cppforward_function_expressions();
-        test_cppforward_pointer_arithmetic();
-        test_cppforward_uninitialized_variables();
-        test_cppforward_mixed_cpp1_cpp2();
-        test_cppforward_string_interpolation();
-        test_cppforward_inspect_pattern_matching();
-        test_cppforward_range_operators();
-        test_cppforward_performance_features();
-        test_cppforward_error_handling();
+        run_with_timeout("test_cppfront_basic", test_cppfront_basic);
+        run_with_timeout("test_cppfront_contracts", test_cppfront_contracts);
+        run_with_timeout("test_cppforward_functions", test_cppforward_functions);
+        run_with_timeout("test_cppforward_assertions", test_cppforward_assertions);
+        run_with_timeout("test_cppforward_loops", test_cppforward_loops);
+        run_with_timeout("test_cppforward_break_continue", test_cppforward_break_continue);
+        run_with_timeout("test_cppforward_fixed_type_aliases", test_cppforward_fixed_type_aliases);
+        run_with_timeout("test_cppforward_function_expressions", test_cppforward_function_expressions);
+        run_with_timeout("test_cppforward_pointer_arithmetic", test_cppforward_pointer_arithmetic);
+        run_with_timeout("test_cppforward_uninitialized_variables", test_cppforward_uninitialized_variables);
+        run_with_timeout("test_cppforward_mixed_cpp1_cpp2", test_cppforward_mixed_cpp1_cpp2);
+        run_with_timeout("test_cppforward_string_interpolation", test_cppforward_string_interpolation);
+        run_with_timeout("test_cppforward_inspect_pattern_matching", test_cppforward_inspect_pattern_matching);
+        run_with_timeout("test_cppforward_range_operators", test_cppforward_range_operators);
+        run_with_timeout("test_cppforward_performance_features", test_cppforward_performance_features, std::chrono::seconds(10));
+        run_with_timeout("test_cppforward_error_handling", test_cppforward_error_handling);
 
         std::cout << "\nAll cppfront regression tests passed! ✓" << std::endl;
         return 0;

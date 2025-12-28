@@ -94,6 +94,7 @@ struct Expression {
         StructInitializer,
         MetafunctionCall,
         ContractExpression,
+        InspectExpr,  // Cpp2 inspect expression
         // Concurrency expressions
         Await,
         Spawn,
@@ -363,6 +364,24 @@ struct ChannelSelectExpression : Expression {
 
     ChannelSelectExpression(std::vector<SelectCase> c, std::size_t l)
         : Expression(Kind::ChannelSelect, l), cases(std::move(c)) {}
+};
+
+// Inspect expression - cpp2 pattern matching that returns a value
+struct InspectExpression : Expression {
+    struct Arm {
+        enum class PatternKind { Value, Wildcard, Type };
+        PatternKind pattern_kind;
+        std::unique_ptr<Expression> pattern_value;
+        std::unique_ptr<Type> pattern_type;
+        std::unique_ptr<Expression> result_value;
+    };
+
+    std::unique_ptr<Expression> value;
+    std::unique_ptr<Type> result_type;  // Optional: inspect value -> type
+    std::vector<Arm> arms;
+
+    InspectExpression(std::unique_ptr<Expression> v, std::size_t l)
+        : Expression(Kind::InspectExpr, l), value(std::move(v)) {}
 };
 
 // Statements
@@ -663,6 +682,7 @@ struct FunctionDeclaration : Declaration {
     std::unique_ptr<Type> return_type;
     std::unique_ptr<Statement> body;
     std::vector<std::string> contract_groups;
+    std::vector<std::string> template_parameters;  // Template parameters for generic functions
     bool is_virtual = false;
     bool is_override = false;
     bool is_final = false;

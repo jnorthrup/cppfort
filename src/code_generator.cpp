@@ -133,6 +133,16 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
 void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     if (!decl) return;
 
+    // Generate template header if this is a template function
+    if (!decl->template_parameters.empty()) {
+        write("template<");
+        for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
+            if (i > 0) write(", ");
+            write("typename " + decl->template_parameters[i]);
+        }
+        write_line(">");
+    }
+
     std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
 
     // [[nodiscard]] goes before the return type for widest compatibility
@@ -172,6 +182,28 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
             for (auto& member : decl->members) {
                 generate_declaration(member.get());
             }
+
+            // Generate metafunction code for @value, @ordered, etc.
+            for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc == "value") {
+                    // @value: Generate value semantics (defaulted special members)
+                    write_line("");
+                    write_line("// @value metafunction: value semantics");
+                    write_line(decl->name + "(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "(" + decl->name + "&&) = default;");
+                    write_line(decl->name + "& operator=(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "& operator=(" + decl->name + "&&) = default;");
+                    write_line("");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator!=(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "ordered") {
+                    // @ordered: Generate ordering operators
+                    write_line("");
+                    write_line("// @ordered metafunction: ordering operators");
+                    write_line("auto operator<=>(const " + decl->name + "& other) const = default;");
+                }
+            }
+
             dedent();
             write_line("};");
             break;
@@ -183,6 +215,26 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
             for (auto& member : decl->members) {
                 generate_declaration(member.get());
             }
+
+            // Generate metafunction code for classes too
+            for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc == "value") {
+                    write_line("");
+                    write_line("// @value metafunction: value semantics");
+                    write_line(decl->name + "(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "(" + decl->name + "&&) = default;");
+                    write_line(decl->name + "& operator=(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "& operator=(" + decl->name + "&&) = default;");
+                    write_line("");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator!=(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "ordered") {
+                    write_line("");
+                    write_line("// @ordered metafunction: ordering operators");
+                    write_line("auto operator<=>(const " + decl->name + "& other) const = default;");
+                }
+            }
+
             dedent();
             write_line("};");
             break;
@@ -444,6 +496,33 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 }
                 expr_output << generate_expression_to_string(unary->operand.get());
             }
+            break;
+        }
+        case Expression::Kind::InspectExpr: {
+            auto inspect_expr = static_cast<InspectExpression*>(expr);
+            // Generate as immediately invoked lambda for expression context
+            expr_output << "([&]() {\n";
+            expr_output << "    auto __value = " << generate_expression_to_string(inspect_expr->value.get()) << ";\n";
+
+            // Generate if-else chain
+            for (size_t i = 0; i < inspect_expr->arms.size(); ++i) {
+                const auto& arm = inspect_expr->arms[i];
+
+                if (i > 0) expr_output << "    else ";
+                else expr_output << "    ";
+
+                if (arm.pattern_kind == InspectExpression::Arm::PatternKind::Wildcard) {
+                    // Wildcard always matches - make it the final else
+                    expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
+                } else {
+                    // Value pattern
+                    expr_output << "if (__value == " << generate_expression_to_string(arm.pattern_value.get()) << ") ";
+                    expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
+                }
+            }
+
+            expr_output << "    else { throw std::logic_error(\"Non-exhaustive inspect\"); }\n";
+            expr_output << "})()";
             break;
         }
         default:

@@ -237,6 +237,15 @@ void SemanticAnalyzer::check_function(FunctionDeclaration* func) {
 
     push_scope();
 
+    // Add template parameters as types in this scope
+    for (const std::string& tparam : func->template_parameters) {
+        auto template_type = std::make_unique<Type>(Type::Kind::UserDefined);
+        template_type->name = tparam;
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Type, tparam, template_type.get(), nullptr);
+        add_symbol(tparam, std::move(symbol));
+    }
+
     if (func->return_type) {
         func->return_type = check_type(std::move(func->return_type));
     }
