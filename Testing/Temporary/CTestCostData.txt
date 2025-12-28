@@ -13,13 +13,18 @@ son_deserialization_tests 0 0
 fir_qualifier_attributes_tests 0 0
 ufcs_fir_tests 0 0
 advanced_types_fir_tests 0 0
+fir_sccp_pass_test 0 0
+sccp_arithmetic_operations_tests 0 0
+sccp_logical_operations_tests 0 0
+sccp_lattice_tests 0 0
+sccp_comparison_folding_tests 0 0
+sccp_float_special_tests 0 0
+sccp_range_analysis_tests 0 0
 ---
-binary_expression_fir_tests
-call_expression_fir_tests
-control_flow_fir_tests
-fir_to_son_pass_test
-son_serialization_tests
-son_deserialization_tests
-fir_qualifier_attributes_tests
-ufcs_fir_tests
-advanced_types_fir_tests
+fir_sccp_pass_test
+sccp_arithmetic_operations_tests
+sccp_logical_operations_tests
+sccp_lattice_tests
+sccp_comparison_folding_tests
+sccp_float_special_tests
+sccp_range_analysis_tests

@@ -64,4 +64,4 @@
 - [x] **Task:** Performance benchmarking.
     - [x] **Sub-task:** Create benchmarks comparing before/after SCCP.
     - [x] **Sub-task:** Verify no performance regressions.
-- [ ] **Task:** Conductor - User Manual Verification 'Testing and Validation' (Protocol in workflow.md)
+- [~] **Task:** Conductor - User Manual Verification 'Testing and Validation' (Protocol in workflow.md)

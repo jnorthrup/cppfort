@@ -40,14 +40,14 @@ int main() {
         auto funcType = builder.getFunctionType({}, {i64Type});
 
         auto func = builder.create<mlir::cpp2fir::FuncOp>(
-            loc, builder.getStringAttr("test_add"), TypeAttr::get(funcType));
+            loc, builder.getStringAttr("test_add"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
         Block* entry = func.addEntryBlock();
         builder.setInsertionPointToStart(entry);
 
         auto c1 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(5));
         auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(3));
-        auto add = builder.create<mlir::cpp2fir::AddOp>(loc, c1.getResult(), c2.getResult());
+        auto add = builder.create<mlir::cpp2fir::AddOp>(loc, i64Type, c1.getResult(), c2.getResult());
         builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{add.getResult()});
 
         std::cout << "Before SCCP:\n";
@@ -80,14 +80,14 @@ int main() {
         auto funcType = builder.getFunctionType({}, {i1Type});
 
         auto func = builder.create<mlir::cpp2fir::FuncOp>(
-            loc, builder.getStringAttr("test_logical"), TypeAttr::get(funcType));
+            loc, builder.getStringAttr("test_logical"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
         Block* entry = func.addEntryBlock();
         builder.setInsertionPointToStart(entry);
 
-        auto c1 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i1Type, builder.getI1IntegerAttr(1));
-        auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i1Type, builder.getI1IntegerAttr(0));
-        auto andOp = builder.create<mlir::cpp2fir::AndOp>(loc, c1.getResult(), c2.getResult());
+        auto c1 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i1Type, builder.getIntegerAttr(i1Type, 1));
+        auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i1Type, builder.getIntegerAttr(i1Type, 0));
+        auto andOp = builder.create<mlir::cpp2fir::AndOp>(loc, i1Type, c1.getResult(), c2.getResult());
         builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{andOp.getResult()});
 
         PassManager pm(&context);
@@ -113,14 +113,14 @@ int main() {
         auto funcType = builder.getFunctionType({}, {i1Type});
 
         auto func = builder.create<mlir::cpp2fir::FuncOp>(
-            loc, builder.getStringAttr("test_cmp"), TypeAttr::get(funcType));
+            loc, builder.getStringAttr("test_cmp"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
         Block* entry = func.addEntryBlock();
         builder.setInsertionPointToStart(entry);
 
         auto c1 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(5));
         auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(10));
-        auto cmp = builder.create<mlir::cpp2fir::CmpOp>(loc, c1.getResult(), c2.getResult(), builder.getStringAttr("lt"));
+        auto cmp = builder.create<mlir::cpp2fir::CmpOp>(loc, i1Type, c1.getResult(), c2.getResult(), builder.getStringAttr("lt"));
         builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{cmp.getResult()});
 
         PassManager pm(&context);
@@ -145,14 +145,14 @@ int main() {
         auto funcType = builder.getFunctionType({}, {i64Type});
 
         auto func = builder.create<mlir::cpp2fir::FuncOp>(
-            loc, builder.getStringAttr("test_phi"), TypeAttr::get(funcType));
+            loc, builder.getStringAttr("test_phi"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
         Block* entry = func.addEntryBlock();
         builder.setInsertionPointToStart(entry);
 
         auto c1 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(42));
         auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(42));
-        auto phi = builder.create<mlir::cpp2fir::PhiOp>(loc, ValueRange{c1.getResult(), c2.getResult()});
+        auto phi = builder.create<mlir::cpp2fir::PhiOp>(loc, i64Type, ValueRange{c1.getResult(), c2.getResult()});
         builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{phi.getResult()});
 
         PassManager pm(&context);
@@ -177,16 +177,16 @@ int main() {
         auto funcType = builder.getFunctionType({}, {i64Type});
 
         auto func = builder.create<mlir::cpp2fir::FuncOp>(
-            loc, builder.getStringAttr("test_multi"), TypeAttr::get(funcType));
+            loc, builder.getStringAttr("test_multi"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
         Block* entry = func.addEntryBlock();
         builder.setInsertionPointToStart(entry);
 
         auto c10 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(10));
         auto c5 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(5));
-        auto sub = builder.create<mlir::cpp2fir::SubOp>(loc, c10.getResult(), c5.getResult());
+        auto sub = builder.create<mlir::cpp2fir::SubOp>(loc, i64Type, c10.getResult(), c5.getResult());
         auto c2 = builder.create<mlir::cpp2fir::ConstantOp>(loc, i64Type, builder.getI64IntegerAttr(2));
-        auto mul = builder.create<mlir::cpp2fir::MulOp>(loc, sub.getResult(), c2.getResult());
+        auto mul = builder.create<mlir::cpp2fir::MulOp>(loc, i64Type, sub.getResult(), c2.getResult());
         builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{mul.getResult()});
 
         // (10 - 5) * 2 = 10

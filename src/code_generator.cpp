@@ -100,6 +100,17 @@ void CodeGenerator::generate_variable_declaration(VariableDeclaration* decl) {
 
     std::string type_str = decl->type ? generate_type(decl->type.get()) : "auto";
 
+    // Check if we're in a @regex type and this is a regex member
+    for (const auto& metafunc : current_type_metafunctions) {
+        if (metafunc == "regex") {
+            // Transform members named "regex" or "regex_*" to std::regex
+            if (decl->name == "regex" || decl->name.find("regex_") == 0) {
+                type_str = "std::regex";
+            }
+            break;
+        }
+    }
+
     if (decl->is_const) {
         write("const ");
     }
@@ -175,18 +186,28 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
 void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     if (!decl) return;
 
-    // Check for @interface metafunction which needs special handling
+    // Check for @interface and @union metafunctions which need special handling
     bool is_interface = false;
+    bool is_union = false;
     for (const auto& metafunc : decl->metafunctions) {
         if (metafunc == "interface") {
             is_interface = true;
-            break;
+        } else if (metafunc == "union") {
+            is_union = true;
         }
     }
 
+    // Track metafunctions for this type (for context-sensitive generation like @regex)
+    current_type_metafunctions = decl->metafunctions;
+
     switch (decl->type_kind) {
         case TypeDeclaration::TypeKind::Struct:
-            write_line("struct " + decl->name + " {");
+            // Use union if @union metafunction is present
+            if (is_union) {
+                write_line("union " + decl->name + " {");
+            } else {
+                write_line("struct " + decl->name + " {");
+            }
             indent();
 
             // For @interface, make member functions pure virtual
@@ -234,6 +255,12 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                     write_line("// @weakly_ordered metafunction: weak ordering operators");
                     write_line("std::weak_ordering operator<=>(const " + decl->name + "& other) const = default;");
                     write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "partially_ordered" || metafunc == "partially_ordered_value") {
+                    // @partially_ordered: Generate partial ordering operators
+                    write_line("");
+                    write_line("// @partially_ordered metafunction: partial ordering operators");
+                    write_line("std::partial_ordering operator<=>(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
                 } else if (metafunc == "polymorphic_base") {
                     // @polymorphic_base: Generate virtual destructor
                     write_line("");
@@ -254,6 +281,108 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                 } else if (metafunc == "struct") {
                     // @struct: Just a marker, struct is the default
                     // No additional code needed
+                } else if (metafunc == "print") {
+                    // @print: Generate reflection/print functions
+                    write_line("");
+                    write_line("// @print metafunction: to_string() for debugging");
+                    write_line("std::string to_string() const {");
+                    indent();
+                    write_line("std::string result = \"" + decl->name + "{ \";");
+                    // Add members to the string
+                    bool first = true;
+                    for (const auto& member : decl->members) {
+                        if (auto* var_member = dynamic_cast<VariableDeclaration*>(member.get())) {
+                            if (!first) {
+                                write_line("result += \", \";");
+                            }
+                            write_line("result += \"" + var_member->name + " = \" + std::to_string(" + var_member->name + ");");
+                            first = false;
+                        }
+                    }
+                    write_line("result += \" }\";");
+                    write_line("return result;");
+                    dedent();
+                    write_line("}");
+                } else if (metafunc == "regex") {
+                    // @regex: Transform regex_ members into std::regex objects
+                    write_line("");
+                    write_line("// @regex metafunction: compile-time regex validation");
+                    write_line("// Note: regex members are compiled at construction");
+                } else if (metafunc.find("autodiff") == 0) {
+                    // @autodiff: Generate automatic differentiation support
+                    write_line("");
+                    write_line("// @autodiff metafunction: automatic differentiation");
+                    write_line("// Derivative methods with _d suffix for forward mode");
+
+                    // Generate derivative versions of member functions
+                    for (const auto& member : decl->members) {
+                        if (auto* func = dynamic_cast<FunctionDeclaration*>(member.get())) {
+                            // Generate derivative version of the function
+                            write_line("");
+                            write_line("// Derivative of " + func->name);
+
+                            // Build derivative function signature
+                            std::string deriv_name = func->name + "_d";
+                            std::string params_str;
+
+                            for (size_t i = 0; i < func->parameters.size(); ++i) {
+                                if (i > 0) params_str += ", ";
+                                std::string param_type = func->parameters[i].type ? generate_type(func->parameters[i].type.get()) : "auto";
+                                params_str += param_type + " " + func->parameters[i].name;
+                                params_str += ", " + param_type + " " + func->parameters[i].name + "_d";
+                            }
+
+                            std::string return_type = func->return_type ? generate_type(func->return_type.get()) : "void";
+                            if (return_type != "void") {
+                                write_line(return_type + " " + deriv_name + "(" + params_str + ") const {");
+                                indent();
+                                write_line("// Derivative computation placeholder");
+                                write_line("return " + return_type + "{};");
+                                dedent();
+                                write_line("}");
+                            }
+                        }
+                    }
+                } else if (metafunc == "sample_traverser") {
+                    // @sample_traverser: Generate visitor pattern for traversing members
+                    write_line("");
+                    write_line("// @sample_traverser metafunction: visitor pattern");
+                    write_line("template<typename Visitor>");
+                    write_line("void traverse(Visitor&& visitor) {");
+                    indent();
+
+                    // Visit each member
+                    for (const auto& member : decl->members) {
+                        if (auto* var_member = dynamic_cast<VariableDeclaration*>(member.get())) {
+                            write_line("visitor(\"" + var_member->name + "\", " + var_member->name + ");");
+                        } else if (auto* func = dynamic_cast<FunctionDeclaration*>(member.get())) {
+                            write_line("// Function: " + func->name);
+                        }
+                    }
+
+                    dedent();
+                    write_line("}");
+
+                    write_line("");
+                    write_line("template<typename Visitor>");
+                    write_line("void traverse(Visitor&& visitor) const {");
+                    indent();
+
+                    // Visit each member (const version)
+                    for (const auto& member : decl->members) {
+                        if (auto* var_member = dynamic_cast<VariableDeclaration*>(member.get())) {
+                            write_line("visitor(\"" + var_member->name + "\", " + var_member->name + ");");
+                        }
+                    }
+
+                    dedent();
+                    write_line("}");
+                } else if (metafunc == "enum") {
+                    // @enum is handled separately in TypeKind::Enum
+                    // But if used with struct, just mark it
+                } else if (metafunc == "union") {
+                    // @union: Mark as union instead of struct
+                    // This should be handled in the type kind, but we can note it
                 }
             }
 
@@ -316,6 +445,11 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                     write_line("// @weakly_ordered metafunction: weak ordering operators");
                     write_line("std::weak_ordering operator<=>(const " + decl->name + "& other) const = default;");
                     write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "partially_ordered" || metafunc == "partially_ordered_value") {
+                    write_line("");
+                    write_line("// @partially_ordered metafunction: partial ordering operators");
+                    write_line("std::partial_ordering operator<=>(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
                 } else if (metafunc == "polymorphic_base") {
                     write_line("");
                     write_line("// @polymorphic_base metafunction: virtual destructor");
@@ -361,6 +495,87 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
 
             break;
 
+        case TypeDeclaration::TypeKind::Enum: {
+            // Check if it's a flag_enum
+            bool is_flag_enum = false;
+            std::string underlying_type = "int";
+            for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc.find("flag_enum") == 0) {
+                    is_flag_enum = true;
+                    // Extract underlying type if specified: @flag_enum<u8>
+                    size_t lt = metafunc.find('<');
+                    if (lt != std::string::npos) {
+                        size_t gt = metafunc.find('>');
+                        if (gt != std::string::npos) {
+                            underlying_type = metafunc.substr(lt + 1, gt - lt - 1);
+                        }
+                    }
+                    break;
+                }
+            }
+
+            write_line("enum class " + decl->name + " : " + underlying_type + " {");
+            indent();
+
+            // Generate enum values from members
+            for (size_t i = 0; i < decl->members.size(); ++i) {
+                if (auto* var_member = dynamic_cast<VariableDeclaration*>(decl->members[i].get())) {
+                    write(var_member->name);
+                    if (var_member->initializer) {
+                        write(" = " + generate_expression_to_string(var_member->initializer.get()));
+                    }
+                    if (i < decl->members.size() - 1) {
+                        write(",");
+                    }
+                    write_line("");
+                }
+            }
+
+            dedent();
+            write_line("};");
+
+            // For flag_enum, generate bitwise operators
+            if (is_flag_enum) {
+                write_line("");
+                write_line("// @flag_enum: bitwise operators");
+                write_line("constexpr " + decl->name + " operator|(" + decl->name + " a, " + decl->name + " b) {");
+                indent();
+                write_line("return static_cast<" + decl->name + ">(static_cast<" + underlying_type + ">(a) | static_cast<" + underlying_type + ">(b));");
+                dedent();
+                write_line("}");
+
+                write_line("constexpr " + decl->name + " operator&(" + decl->name + " a, " + decl->name + " b) {");
+                indent();
+                write_line("return static_cast<" + decl->name + ">(static_cast<" + underlying_type + ">(a) & static_cast<" + underlying_type + ">(b));");
+                dedent();
+                write_line("}");
+
+                write_line("constexpr " + decl->name + " operator^(" + decl->name + " a, " + decl->name + " b) {");
+                indent();
+                write_line("return static_cast<" + decl->name + ">(static_cast<" + underlying_type + ">(a) ^ static_cast<" + underlying_type + ">(b));");
+                dedent();
+                write_line("}");
+
+                write_line("constexpr " + decl->name + " operator~(" + decl->name + " a) {");
+                indent();
+                write_line("return static_cast<" + decl->name + ">(~static_cast<" + underlying_type + ">(a));");
+                dedent();
+                write_line("}");
+            }
+
+            break;
+        }
+
+        case TypeDeclaration::TypeKind::Union:
+            write_line("union " + decl->name + " {");
+            indent();
+            for (auto& member : decl->members) {
+                generate_declaration(member.get());
+            }
+            dedent();
+            write_line("};");
+            break;
+
         case TypeDeclaration::TypeKind::Alias:
             if (decl->underlying_type) {
                 write_line("using " + decl->name + " = " + generate_type(decl->underlying_type.get()) + ";");
@@ -370,6 +585,9 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
         default:
             break;
     }
+
+    // Clear metafunction context
+    current_type_metafunctions.clear();
 }
 
 void CodeGenerator::generate_namespace_declaration(NamespaceDeclaration* decl) {

@@ -15,6 +15,7 @@
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
@@ -76,10 +77,10 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
     }
 
     // Phase 3: Rewrite IR with discovered constants
-    IRRewriter rewriter(module.getContext());
+    PatternRewriter rewriter(module.getContext());
     module.walk([&](Operation* op) {
       // Skip constants
-      if (isa<Cpp2FIR_ConstantOp>(op)) return;
+      if (isa<ConstantOp>(op)) return;
 
       // Skip operations in unreachable blocks
       Block* block = op->getBlock();
@@ -90,29 +91,24 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
       rewriter.setInsertionPointAfter(op);
 
       // Replace constant results
-      bool changed = false;
       for (Value result : op->getResults()) {
         LatticeValue val = analysis.getLatticeValue(result.getAsOpaquePointer());
 
         if (val.isConstant()) {
           if (auto intVal = val.getAsInteger()) {
             // Replace with constant
-            auto constOp = rewriter.create<Cpp2FIR_ConstantOp>(
+            auto constOp = rewriter.create<ConstantOp>(
               op->getLoc(),
               result.getType(),
               rewriter.getIntegerAttr(result.getType(), intVal.value()));
-            Result replacements[] = {constOp.getResult()};
-            rewriter.replaceOp(op, replacements);
-            changed = true;
+            rewriter.replaceOp(op, {constOp.getResult()});
             break; // Op replaced, stop processing results
           } else if (auto boolVal = val.getAsBoolean()) {
-            auto constOp = rewriter.create<Cpp2FIR_ConstantOp>(
+            auto constOp = rewriter.create<ConstantOp>(
               op->getLoc(),
               result.getType(),
               rewriter.getIntegerAttr(result.getType(), boolVal.value() ? 1 : 0));
-            Result replacements[] = {constOp.getResult()};
-            rewriter.replaceOp(op, replacements);
-            changed = true;
+            rewriter.replaceOp(op, {constOp.getResult()});
             break;
           }
         }
@@ -129,8 +125,8 @@ private:
   /// Compute lattice value for an operation using our ConstantFolder
   LatticeValue computeLatticeValue(Operation* op, DataflowAnalysis& analysis) {
     // Constants are known
-    if (auto constOp = dyn_cast<Cpp2FIR_ConstantOp>(op)) {
-      if (auto intAttr = constOp.getValue().dyn_cast<IntegerAttr>()) {
+    if (auto constOp = dyn_cast<ConstantOp>(op)) {
+      if (auto intAttr = llvm::dyn_cast<mlir::IntegerAttr>(constOp.getValue())) {
         return LatticeValue::getConstant(intAttr.getInt());
       }
       // Could handle other attribute types here
@@ -147,19 +143,19 @@ private:
       LatticeValue lhs = operands[0];
       LatticeValue rhs = operands[1];
 
-      if (isa<Cpp2FIR_AddOp>(op)) {
+      if (isa<AddOp>(op)) {
         return ConstantFolder::foldAdd(lhs, rhs);
-      } else if (isa<Cpp2FIR_SubOp>(op)) {
+      } else if (isa<SubOp>(op)) {
         return ConstantFolder::foldSub(lhs, rhs);
-      } else if (isa<Cpp2FIR_MulOp>(op)) {
+      } else if (isa<MulOp>(op)) {
         return ConstantFolder::foldMul(lhs, rhs);
-      } else if (isa<Cpp2FIR_DivOp>(op)) {
+      } else if (isa<DivOp>(op)) {
         return ConstantFolder::foldDiv(lhs, rhs);
-      } else if (isa<Cpp2FIR_AndOp>(op)) {
+      } else if (isa<AndOp>(op)) {
         return ConstantFolder::foldAnd(lhs, rhs);
-      } else if (isa<Cpp2FIR_OrOp>(op)) {
+      } else if (isa<OrOp>(op)) {
         return ConstantFolder::foldOr(lhs, rhs);
-      } else if (auto cmpOp = dyn_cast<Cpp2FIR_CmpOp>(op)) {
+      } else if (auto cmpOp = dyn_cast<CmpOp>(op)) {
         StringRef pred = cmpOp.getPredicate();
         LatticeValue::CmpPredicate predicate;
 
@@ -177,14 +173,15 @@ private:
 
     // Unary operations
     if (operands.size() == 1) {
-      if (isa<Cpp2FIR_NotOp>(op)) {
+      if (isa<NotOp>(op)) {
         return ConstantFolder::foldNot(operands[0]);
       }
     }
 
     // Phi operation
-    if (auto phiOp = dyn_cast<Cpp2FIR_PhiOp>(op)) {
-      return DataflowAnalysis::mergePhiInputs(operands);
+    if (auto phiOp = dyn_cast<PhiOp>(op)) {
+      std::vector<LatticeValue> phiInputs(operands.begin(), operands.end());
+      return DataflowAnalysis::mergePhiInputs(phiInputs);
     }
 
     // Default: Top (unknown)

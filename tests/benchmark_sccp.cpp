@@ -76,7 +76,7 @@ ModuleOp generateConstantChain(MLIRContext* context, size_t length) {
     auto funcType = builder.getFunctionType({}, {i64Type});
 
     auto func = builder.create<mlir::cpp2fir::FuncOp>(
-        loc, builder.getStringAttr("constant_chain"), TypeAttr::get(funcType));
+        loc, builder.getStringAttr("constant_chain"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
     Block* entry = func.addEntryBlock();
     builder.setInsertionPointToStart(entry);
@@ -89,7 +89,7 @@ ModuleOp generateConstantChain(MLIRContext* context, size_t length) {
         auto constant = builder.create<mlir::cpp2fir::ConstantOp>(
             loc, i64Type, builder.getI64IntegerAttr(i));
         result = builder.create<mlir::cpp2fir::AddOp>(
-            loc, result, constant.getResult()).getResult();
+            loc, i64Type, result, constant.getResult()).getResult();
     }
 
     builder.create<mlir::cpp2fir::ReturnOp>(loc, ValueRange{result});
@@ -109,7 +109,7 @@ ModuleOp generateConstantTree(MLIRContext* context, size_t numLeaves) {
     auto funcType = builder.getFunctionType({}, {i64Type});
 
     auto func = builder.create<mlir::cpp2fir::FuncOp>(
-        loc, builder.getStringAttr("constant_tree"), TypeAttr::get(funcType));
+        loc, builder.getStringAttr("constant_tree"), mlir::TypeAttr::get(funcType), mlir::ArrayAttr{}, mlir::ArrayAttr{});
 
     Block* entry = func.addEntryBlock();
     builder.setInsertionPointToStart(entry);
@@ -127,7 +127,7 @@ ModuleOp generateConstantTree(MLIRContext* context, size_t numLeaves) {
         std::vector<Value> nextLevel;
         for (size_t i = 0; i + 1 < values.size(); i += 2) {
             auto add = builder.create<mlir::cpp2fir::AddOp>(
-                loc, values[i], values[i + 1]);
+                loc, i64Type, values[i], values[i + 1]);
             nextLevel.push_back(add.getResult());
         }
         // Handle odd case

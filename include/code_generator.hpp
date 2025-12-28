@@ -23,6 +23,7 @@ private:
     std::unordered_set<std::string> generated_functions;
     std::unordered_set<std::string> generated_types;
     std::vector<std::string> includes;
+    std::vector<std::string> current_type_metafunctions; // Track metafunctions of current type being generated
 
     // Helper methods
     void write_line(const std::string& line);

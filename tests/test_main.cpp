@@ -560,6 +560,217 @@ void test_advanced_metafunctions() {
     std::cout << "Advanced metafunction tests passed!" << std::endl;
 }
 
+void test_specialized_metafunctions() {
+    std::cout << "Testing specialized metafunctions..." << std::endl;
+
+    // Test @print
+    {
+        std::string source = R"(
+            Data: @print type = {
+                x: int;
+                y: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@print metafunction") != std::string::npos);
+        assert(result.find("to_string()") != std::string::npos);
+        assert(result.find("std::to_string") != std::string::npos);
+    }
+
+    // Test @enum
+    {
+        std::string source = R"(
+            Color: @enum type = {
+                red;
+                green;
+                blue;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("enum class Color") != std::string::npos);
+        assert(result.find("red") != std::string::npos);
+        assert(result.find("green") != std::string::npos);
+        assert(result.find("blue") != std::string::npos);
+    }
+
+    // Test @flag_enum
+    {
+        std::string source = R"(
+            Flags: @flag_enum type = {
+                read;
+                write;
+                execute;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("enum class Flags") != std::string::npos);
+        assert(result.find("@flag_enum: bitwise operators") != std::string::npos);
+        assert(result.find("operator|") != std::string::npos);
+        assert(result.find("operator&") != std::string::npos);
+    }
+
+    // Test @union
+    {
+        std::string source = R"(
+            Value: @union type = {
+                i: int;
+                f: float;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("union Value") != std::string::npos);
+    }
+
+    // Test @partially_ordered
+    {
+        std::string source = R"(
+            Partial: @partially_ordered type = {
+                value: float;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@partially_ordered metafunction") != std::string::npos);
+        assert(result.find("std::partial_ordering operator<=>") != std::string::npos);
+    }
+
+    std::cout << "Specialized metafunction tests passed!" << std::endl;
+}
+
+void test_advanced_specialized_metafunctions() {
+    std::cout << "Testing advanced specialized metafunctions..." << std::endl;
+
+    // Test @regex
+    {
+        std::string source = R"(
+            Matcher: @regex type = {
+                regex: int;
+                regex_test: int;
+                other: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+
+        Parser parser(tokens);
+        auto ast = parser.parse();
+
+        SemanticAnalyzer semantic_analyzer;
+        semantic_analyzer.analyze(*ast);
+
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        // Should transform regex members to std::regex
+        assert(result.find("@regex metafunction") != std::string::npos);
+        assert(result.find("std::regex regex") != std::string::npos);
+        assert(result.find("std::regex regex_test") != std::string::npos);
+        assert(result.find("int other") != std::string::npos);
+
+        std::cout << "  @regex test passed!" << std::endl;
+    }
+
+    // Test @autodiff
+    {
+        std::string source = R"(
+            Differentiable: @autodiff type = {
+                compute: (x: double) -> double = x;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+
+        Parser parser(tokens);
+        auto ast = parser.parse();
+
+        SemanticAnalyzer semantic_analyzer;
+        semantic_analyzer.analyze(*ast);
+
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        // Should generate derivative methods
+        assert(result.find("@autodiff metafunction") != std::string::npos);
+        assert(result.find("automatic differentiation") != std::string::npos);
+        assert(result.find("Derivative of compute") != std::string::npos);
+        assert(result.find("compute_d") != std::string::npos);
+
+        std::cout << "  @autodiff test passed!" << std::endl;
+    }
+
+    // Test @sample_traverser
+    {
+        std::string source = R"(
+            Traversable: @sample_traverser type = {
+                x: int;
+                y: int;
+                z: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+
+        Parser parser(tokens);
+        auto ast = parser.parse();
+
+        SemanticAnalyzer semantic_analyzer;
+        semantic_analyzer.analyze(*ast);
+
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        // Should generate traverse methods
+        assert(result.find("@sample_traverser metafunction") != std::string::npos);
+        assert(result.find("visitor pattern") != std::string::npos);
+        assert(result.find("template<typename Visitor>") != std::string::npos);
+        assert(result.find("void traverse(Visitor&& visitor)") != std::string::npos);
+        assert(result.find("visitor(\"x\", x)") != std::string::npos);
+        assert(result.find("visitor(\"y\", y)") != std::string::npos);
+        assert(result.find("visitor(\"z\", z)") != std::string::npos);
+
+        std::cout << "  @sample_traverser test passed!" << std::endl;
+    }
+
+    std::cout << "Advanced specialized metafunction tests passed!" << std::endl;
+}
+
 void test_templates() {
     std::cout << "Testing templates..." << std::endl;
 
@@ -673,6 +884,8 @@ int main() {
         run_with_timeout("test_inspect_pattern_matching", test_inspect_pattern_matching);
         run_with_timeout("test_metafunctions", test_metafunctions);
         run_with_timeout("test_advanced_metafunctions", test_advanced_metafunctions);
+        run_with_timeout("test_specialized_metafunctions", test_specialized_metafunctions);
+        run_with_timeout("test_advanced_specialized_metafunctions", test_advanced_specialized_metafunctions);
         run_with_timeout("test_templates", test_templates);
         run_with_timeout("test_integration", test_integration, std::chrono::seconds(15));
 

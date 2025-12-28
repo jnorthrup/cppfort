@@ -224,7 +224,8 @@ public:
 
 private:
   std::vector<Operation *> items;
-  llvm::SmallPtrSet<Operation *, 64> onList;
+  // SmallPtrSet's SmallSize must be <= 32 on this toolchain; use 32 instead of 64
+  llvm::SmallPtrSet<Operation *, 32> onList;
   std::mt19937_64 rng;
   size_t totalWork = 0;
 };
