@@ -336,6 +336,22 @@ target_include_directories(test_sccp_range_analysis PRIVATE ${CMAKE_SOURCE_DIR}/
 target_link_libraries(test_sccp_range_analysis PRIVATE Cpp2SCCP)
 add_test(NAME sccp_range_analysis_tests COMMAND test_sccp_range_analysis)
 
+# SCCP performance benchmark - standalone version (no MLIR dependencies)
+add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
+target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(benchmark_sccp_standalone PRIVATE Cpp2SCCP)
+
+# SCCP performance benchmark - full version (with MLIR, currently disabled due to build issues)
+# add_executable(benchmark_sccp benchmark_sccp.cpp)
+# target_include_directories(benchmark_sccp PRIVATE ${CMAKE_SOURCE_DIR}/include)
+# target_link_libraries(benchmark_sccp PRIVATE
+#     Cpp2Passes
+#     Cpp2SCCP
+#     Cpp2FIRDialect
+#     MLIR
+#     MLIRFuncDialect
+# )
+
 # Regression test standard: any single CTest test must finish within 15 seconds.
 # If a test exceeds this, CTest will terminate it and mark it as failed.
 set(CPPFORT_TEST_TIMEOUT_SECONDS 15)
