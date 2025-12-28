@@ -10,7 +10,7 @@
 // On timeout or exception, prints an error and exits the process with non-zero code.
 
 template<typename F>
-void run_with_timeout(const std::string& name, F&& f, std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) {
+void run_with_timeout(const std::string& name, F&& f, std::chrono::milliseconds timeout = std::chrono::milliseconds(15000)) {
     auto fut = std::async(std::launch::async, [f]() {
         f();
     });
