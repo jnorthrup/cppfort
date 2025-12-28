@@ -1,0 +1,30 @@
+=== GAP 1 ANALYSIS: Dead Branch Elimination in FIR Dialect ===
+Date: 2025-12-28
+
+FINDING: Gap does not apply to FIR dialect by design.
+
+INVESTIGATION:
+1. Searched for IfOp definitions in codebase:
+   - Base Cpp2 dialect: Cpp2_IfOp (Cpp2Dialect.td:60)
+   - SON dialect: Cpp2SON_IfOp (Cpp2SONDialect.td:422)
+   - FIR dialect: NO IfOp defined
+
+2. Reviewed FIR dialect definition (Cpp2FIRDialect.td):
+   - Expression operations: AddOp, SubOp, MulOp, DivOp, AndOp, OrOp, NotOp, CmpOp, PhiOp
+   - Contract operations: AssertOp, PreconditionOp, PostconditionOp
+   - Concurrency operations: KernelOp, SpawnOp, AwaitOp, ChannelOp, etc.
+   - NO control flow operations (no IfOp, no branching)
+
+ARCHITECTURAL REASONING:
+- FIR (Front-IR) represents straight-line expression evaluation
+- FIR is a "sea of nodes" representation before full control flow is introduced
+- Control flow operations exist in higher-level dialects (Cpp2, SON)
+- Dead branch elimination is correctly implemented in SCCPPass.cpp for SON dialect
+- FIRSCCPPass.cpp correctly operates only on FIR expression operations
+
+CONCLUSION:
+Gap 1 is VERIFIED - not missing. FIR dialect has no control flow operations by design.
+FIRSCCPPass.cpp correctly implements SCCP for FIR's expression operations only.
+Dead branch elimination is appropriately handled in SCCPPass.cpp for SON dialect.
+
+STATUS: Gap 1 closed - no implementation required.
