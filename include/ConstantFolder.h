@@ -177,6 +177,78 @@ public:
         return LatticeValue::getTop();
     }
 
+    /// Fold logical AND: a && b
+    static LatticeValue foldAnd(const LatticeValue& a, const LatticeValue& b) {
+        // Anything && Top = Top
+        if (a.isTop() || b.isTop()) {
+            return LatticeValue::getTop();
+        }
+
+        // Anything && Bottom = Bottom
+        if (a.isBottom() || b.isBottom()) {
+            return LatticeValue::getBottom();
+        }
+
+        // Constant && Constant = Constant
+        if (a.isConstant() && b.isConstant()) {
+            if (a.boolValue.has_value() && b.boolValue.has_value()) {
+                return LatticeValue::getConstant(a.boolValue.value() && b.boolValue.value());
+            }
+            return LatticeValue::getBottom();
+        }
+
+        // Default: Top for unhandled cases
+        return LatticeValue::getTop();
+    }
+
+    /// Fold logical OR: a || b
+    static LatticeValue foldOr(const LatticeValue& a, const LatticeValue& b) {
+        // Anything || Top = Top
+        if (a.isTop() || b.isTop()) {
+            return LatticeValue::getTop();
+        }
+
+        // Anything || Bottom = Bottom
+        if (a.isBottom() || b.isBottom()) {
+            return LatticeValue::getBottom();
+        }
+
+        // Constant || Constant = Constant
+        if (a.isConstant() && b.isConstant()) {
+            if (a.boolValue.has_value() && b.boolValue.has_value()) {
+                return LatticeValue::getConstant(a.boolValue.value() || b.boolValue.value());
+            }
+            return LatticeValue::getBottom();
+        }
+
+        // Default: Top for unhandled cases
+        return LatticeValue::getTop();
+    }
+
+    /// Fold logical NOT: !a
+    static LatticeValue foldNot(const LatticeValue& a) {
+        // !Top = Top
+        if (a.isTop()) {
+            return LatticeValue::getTop();
+        }
+
+        // !Bottom = Bottom
+        if (a.isBottom()) {
+            return LatticeValue::getBottom();
+        }
+
+        // !Constant = Constant
+        if (a.isConstant()) {
+            if (a.boolValue.has_value()) {
+                return LatticeValue::getConstant(!a.boolValue.value());
+            }
+            return LatticeValue::getBottom();
+        }
+
+        // Default: Top for unhandled cases
+        return LatticeValue::getTop();
+    }
+
 private:
     // Check if addition would overflow
     static bool wouldOverflowAdd(int64_t a, int64_t b) {

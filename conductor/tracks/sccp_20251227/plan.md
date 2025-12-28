@@ -17,9 +17,9 @@
 - [x] **Task:** Implement constant folding for arithmetic operations.
     - [x] **Sub-task:** Write tests for AddOp/SubOp/MulOp/DivOp constant folding.
     - [x] **Sub-task:** Implement constant folders for arithmetic operations.
-- [ ] **Task:** Implement constant folding for logical operations.
-    - [ ] **Sub-task:** Write tests for AndOp/OrOp/NotOp constant folding.
-    - [ ] **Sub-task:** Implement constant folders for logical operations.
+- [x] **Task:** Implement constant folding for logical operations.
+    - [x] **Sub-task:** Write tests for AndOp/OrOp/NotOp constant folding.
+    - [x] **Sub-task:** Implement constant folders for logical operations.
 - [ ] **Task:** Implement constant folding for comparison operations.
     - [ ] **Sub-task:** Write tests for CmpOp constant folding.
     - [ ] **Sub-task:** Implement constant folder for comparisons.
