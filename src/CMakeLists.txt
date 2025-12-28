@@ -104,6 +104,7 @@ add_library(Cpp2Transpiler
   utils.cpp
   ast_to_fir.cpp
   diagnostic_collector.cpp
+  markdown_hash.cpp
 )
 
 target_include_directories(Cpp2Transpiler PUBLIC
@@ -112,6 +113,7 @@ target_include_directories(Cpp2Transpiler PUBLIC
 
 target_link_libraries(Cpp2Transpiler PUBLIC
   Cpp2FIRDialect
+  SeaOfNodesCore
   MLIR
 )
 

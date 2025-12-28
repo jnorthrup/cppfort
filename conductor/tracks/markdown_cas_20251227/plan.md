@@ -12,12 +12,12 @@
 
 ## Phase 2: SHA256 Computation
 
-- [ ] **Task:** Implement trim-and-concatenate algorithm for markdown content.
-    - [ ] **Sub-task:** Write tests for line trimming and concatenation.
-    - [ ] **Sub-task:** Implement string processing algorithm.
-- [ ] **Task:** Integrate SHA256 hashing for markdown blocks.
-    - [ ] **Sub-task:** Write tests with known SHA256 test vectors.
-    - [ ] **Sub-task:** Reuse existing SHA256 implementation from semantic_hash.cpp.
+- [x] **Task:** Implement trim-and-concatenate algorithm for markdown content.
+    - [x] **Sub-task:** Write tests for line trimming and concatenation.
+    - [x] **Sub-task:** Implement string processing algorithm.
+- [x] **Task:** Integrate SHA256 hashing for markdown blocks.
+    - [x] **Sub-task:** Write tests with known SHA256 test vectors.
+    - [x] **Sub-task:** Reuse existing SHA256 implementation from semantic_hash.cpp.
 - [ ] **Task:** Conductor - User Manual Verification 'SHA256 Computation' (Protocol in workflow.md)
 
 ## Phase 3: AST Metadata Support
