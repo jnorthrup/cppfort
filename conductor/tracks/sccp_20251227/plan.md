@@ -41,7 +41,7 @@
     - [x] **Sub-task:** Implement control flow tracking for sparse analysis.
 - [x] **Task:** Automated verification checkpoint 'SCCP Dataflow Analysis'
 
-## Phase 4: MLIR Pass Integration [checkpoint: pending]
+## Phase 4: MLIR Pass Integration [checkpoint: 30c150a]
 
 - [x] **Task:** Create SCCP pass class and registration.
     - [x] **Sub-task:** Write tests for pass registration and pipeline integration.
