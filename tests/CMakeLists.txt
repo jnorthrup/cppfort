@@ -354,6 +354,12 @@ target_include_directories(test_markdown_hash PRIVATE ${CMAKE_SOURCE_DIR}/includ
 target_link_libraries(test_markdown_hash PRIVATE Cpp2Transpiler)
 add_test(NAME markdown_hash_tests COMMAND test_markdown_hash)
 
+# Markdown AST metadata test
+add_executable(test_markdown_ast_metadata test_markdown_ast_metadata.cpp)
+target_include_directories(test_markdown_ast_metadata PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_markdown_ast_metadata PRIVATE Cpp2Transpiler)
+add_test(NAME markdown_ast_metadata_tests COMMAND test_markdown_ast_metadata)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)

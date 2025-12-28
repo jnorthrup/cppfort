@@ -17,6 +17,19 @@ struct Expression;
 struct Statement;
 struct Declaration;
 
+// Markdown block metadata for CAS-linked modules
+struct MarkdownBlockAttr {
+    std::string sha256;      // 64-char lowercase hex SHA256 hash
+    std::string content;     // Original markdown content
+    std::string name;        // Optional identifier from ```name
+    std::size_t line;        // Source location
+    std::size_t column;
+
+    MarkdownBlockAttr() = default;
+    MarkdownBlockAttr(std::string s, std::string c, std::string n, std::size_t l, std::size_t col)
+        : sha256(std::move(s)), content(std::move(c)), name(std::move(n)), line(l), column(col) {}
+};
+
 // Cpp2-specific parameter qualifiers (derived from corpus analysis)
 enum class ParameterQualifier {
     None,
@@ -630,6 +643,9 @@ struct Declaration {
     Kind kind;
     std::size_t line;
     std::string name;
+
+    // Markdown blocks attached to this declaration (CAS-linked modules)
+    std::vector<MarkdownBlockAttr> markdown_blocks;
 
     Declaration(Kind k, std::string n, std::size_t l)
         : kind(k), line(l), name(std::move(n)) {}

@@ -20,6 +20,9 @@ private:
     std::span<Token> tokens;
     std::size_t current = 0;
 
+    // Pending markdown blocks to attach to next declaration
+    std::vector<MarkdownBlockAttr> pending_markdown_blocks;
+
     // Parsing utilities
     const Token& peek() const;
     const Token& advance();
@@ -121,6 +124,10 @@ private:
 
     // Contract handling
     std::vector<std::unique_ptr<ContractExpression>> parse_contracts();
+
+    // Markdown block handling
+    void collect_markdown_blocks();
+    void attach_markdown_blocks(Declaration* decl);
 
     // Parameter qualifier parsing (Cpp2-specific)
     std::vector<ParameterQualifier> parse_parameter_qualifiers();

@@ -22,12 +22,12 @@
 
 ## Phase 3: AST Metadata Support
 
-- [ ] **Task:** Define MarkdownBlockAttr structure in AST.
-    - [ ] **Sub-task:** Write tests for metadata structure creation.
-    - [ ] **Sub-task:** Add MarkdownBlockAttr to include/ast.hpp.
-- [ ] **Task:** Attach markdown metadata to AST nodes during parsing.
-    - [ ] **Sub-task:** Write tests for metadata attachment to declarations.
-    - [ ] **Sub-task:** Implement parser integration with markdown blocks.
+- [x] **Task:** Define MarkdownBlockAttr structure in AST.
+    - [x] **Sub-task:** Write tests for metadata structure creation.
+    - [x] **Sub-task:** Add MarkdownBlockAttr to include/ast.hpp.
+- [x] **Task:** Attach markdown metadata to AST nodes during parsing.
+    - [x] **Sub-task:** Write tests for metadata attachment to declarations.
+    - [x] **Sub-task:** Implement parser integration with markdown blocks.
 - [ ] **Task:** Conductor - User Manual Verification 'AST Metadata Support' (Protocol in workflow.md)
 
 ## Phase 4: Code Generation - Module Stubs

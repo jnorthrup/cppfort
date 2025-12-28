@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "markdown_hash.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <format>
@@ -111,6 +112,9 @@ auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
 // Entry point
 std::unique_ptr<Declaration> Parser::declaration() {
     return synchronize_on_error([this]() -> std::unique_ptr<Declaration> {
+        // Collect any markdown blocks before this declaration
+        collect_markdown_blocks();
+
         // Skip preprocessor directives (#include, #define, etc.)
         if (match(TokenType::Hash)) {
             // Preprocessor directive - skip it and move to next declaration
@@ -130,42 +134,64 @@ std::unique_ptr<Declaration> Parser::declaration() {
                 // Check what kind of declaration follows
                 if (check(TokenType::LeftParen) || check(TokenType::LessThan)) {
                     // Function: name: (params) or name: <T> (params)
-                    return function_declaration();
+                    auto decl = function_declaration();
+                    attach_markdown_blocks(decl.get());
+                    return decl;
                 } else if (check(TokenType::At) || check(TokenType::Type)) {
                     // Type with decorators: name: @value @ordered type = {...}
                     // Or type keyword: name: type = {...}
-                    return type_declaration();
+                    auto decl = type_declaration();
+                    attach_markdown_blocks(decl.get());
+                    return decl;
                 } else {
                     // Variable: name: type = value
-                    return variable_declaration();
+                    auto decl = variable_declaration();
+                    attach_markdown_blocks(decl.get());
+                    return decl;
                 }
             }
             current = saved; // backtrack if no colon
         }
 
         if (match({TokenType::Let, TokenType::Const})) {
-            return variable_declaration();
+            auto decl = variable_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Func)) {
-            return function_declaration();
+            auto decl = function_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Type)) {
-            return type_declaration();
+            auto decl = type_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Namespace)) {
-            return namespace_declaration();
+            auto decl = namespace_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Operator)) {
-            return operator_declaration();
+            auto decl = operator_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Import)) {
-            return import_declaration();
+            auto decl = import_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (match(TokenType::Using)) {
-            return using_declaration();
+            auto decl = using_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
         if (is_template_start()) {
-            return template_declaration();
+            auto decl = template_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
         }
 
         // If we don't recognize the declaration, treat as statement
@@ -1917,6 +1943,51 @@ void Parser::error_at(const Token& token, const char* message) {
 
 void Parser::error_at_current(const char* message) {
     error_at(peek(), message);
+}
+
+void Parser::collect_markdown_blocks() {
+    // Collect all consecutive MarkdownBlock tokens
+    while (check(TokenType::MarkdownBlock)) {
+        Token block_token = advance();
+        std::string_view content = block_token.lexeme;
+
+        // Parse name from content (first word until newline or space)
+        std::string name;
+        std::string actual_content;
+        std::size_t name_end = content.find_first_of(" \n\r\t");
+
+        if (name_end != 0) {
+            // Content starts with a name
+            name = std::string(content.substr(0, name_end));
+            if (name_end < content.length()) {
+                actual_content = std::string(content.substr(name_end));
+            }
+        } else {
+            actual_content = std::string(content);
+        }
+
+        // Compute SHA256 hash
+        std::string sha256 = compute_markdown_hash(actual_content);
+
+        // Create metadata and add to pending blocks
+        pending_markdown_blocks.emplace_back(
+            std::move(sha256),
+            std::string(content),
+            std::move(name),
+            block_token.line,
+            block_token.column
+        );
+    }
+}
+
+void Parser::attach_markdown_blocks(Declaration* decl) {
+    if (!decl || pending_markdown_blocks.empty()) {
+        return;
+    }
+
+    // Move all pending blocks to the declaration
+    decl->markdown_blocks = std::move(pending_markdown_blocks);
+    pending_markdown_blocks.clear();
 }
 
 } // namespace cpp2_transpiler
