@@ -28,7 +28,7 @@
     - [x] **Sub-task:** Implement special float value handling.
 - [x] **Task:** Conductor - User Manual Verification 'Constant Folding for Operations' (Protocol in workflow.md)
 
-## Phase 3: SCCP Dataflow Analysis
+## Phase 3: SCCP Dataflow Analysis [checkpoint: 1bb820b]
 
 - [x] **Task:** Implement forward dataflow analysis engine.
     - [x] **Sub-task:** Write tests for dataflow initialization.
