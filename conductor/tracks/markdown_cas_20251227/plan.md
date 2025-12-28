@@ -45,11 +45,11 @@
 
 ## Phase 5: Testing and Validation
 
-- [ ] **Task:** Create comprehensive test suite for markdown blocks.
-    - [ ] **Sub-task:** Write unit tests for lexer edge cases (empty blocks, Unicode).
-    - [ ] **Sub-task:** Write unit tests for SHA256 computation edge cases.
-    - [ ] **Sub-task:** Write integration tests with complete Cpp2 programs.
-- [ ] **Task:** Verify generated modules compile with C++20 compiler.
-    - [ ] **Sub-task:** Create build tests with g++/clang++.
-    - [ ] **Sub-task:** Verify module imports work correctly.
+- [x] **Task:** Create comprehensive test suite for markdown blocks.
+    - [x] **Sub-task:** Write unit tests for lexer edge cases (empty blocks, Unicode).
+    - [x] **Sub-task:** Write unit tests for SHA256 computation edge cases.
+    - [x] **Sub-task:** Write integration tests with complete Cpp2 programs.
+- [x] **Task:** Verify generated modules compile with C++20 compiler.
+    - [x] **Sub-task:** Create build tests with g++/clang++.
+    - [x] **Sub-task:** Verify module imports work correctly.
 - [ ] **Task:** Conductor - User Manual Verification 'Testing and Validation' (Protocol in workflow.md)

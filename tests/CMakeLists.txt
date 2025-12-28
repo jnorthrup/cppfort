@@ -366,6 +366,12 @@ target_include_directories(test_markdown_code_generation PRIVATE ${CMAKE_SOURCE_
 target_link_libraries(test_markdown_code_generation PRIVATE Cpp2Transpiler)
 add_test(NAME markdown_code_generation_tests COMMAND test_markdown_code_generation)
 
+# Markdown integration test
+add_executable(test_markdown_integration test_markdown_integration.cpp)
+target_include_directories(test_markdown_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_markdown_integration PRIVATE Cpp2Transpiler)
+add_test(NAME markdown_integration_tests COMMAND test_markdown_integration)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)
