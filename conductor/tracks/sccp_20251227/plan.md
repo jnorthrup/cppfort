@@ -14,9 +14,9 @@
 
 ## Phase 2: Constant Folding for Operations
 
-- [ ] **Task:** Implement constant folding for arithmetic operations.
-    - [ ] **Sub-task:** Write tests for AddOp/SubOp/MulOp/DivOp constant folding.
-    - [ ] **Sub-task:** Implement constant folders for arithmetic operations.
+- [x] **Task:** Implement constant folding for arithmetic operations.
+    - [x] **Sub-task:** Write tests for AddOp/SubOp/MulOp/DivOp constant folding.
+    - [x] **Sub-task:** Implement constant folders for arithmetic operations.
 - [ ] **Task:** Implement constant folding for logical operations.
     - [ ] **Sub-task:** Write tests for AndOp/OrOp/NotOp constant folding.
     - [ ] **Sub-task:** Implement constant folders for logical operations.

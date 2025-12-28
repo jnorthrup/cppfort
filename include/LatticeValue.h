@@ -15,10 +15,15 @@
 
 namespace cppfort::sccp {
 
+// Forward declaration
+class ConstantFolder;
+
 /// Lattice value for SCCP analysis.
 /// Represents values in the lattice: Top (unknown), Constant (known value),
 /// Bottom (unreachable/conflict), IntegerRange (bounded integer), FloatSpecial.
 class LatticeValue {
+    friend class ConstantFolder;
+
 public:
     enum Kind {
         Top,        /// Unknown value, needs analysis
