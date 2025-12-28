@@ -300,6 +300,42 @@ target_include_directories(test_son_verification PRIVATE ${CMAKE_SOURCE_DIR}/inc
 target_link_libraries(test_son_verification PRIVATE Cpp2SONDialect MLIR MLIRFuncDialect)
 add_test(NAME son_verification_tests COMMAND test_son_verification)
 
+# SCCP arithmetic operations test
+add_executable(test_sccp_arithmetic_operations test_sccp_arithmetic_operations.cpp)
+target_include_directories(test_sccp_arithmetic_operations PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_arithmetic_operations PRIVATE Cpp2SCCP)
+add_test(NAME sccp_arithmetic_operations_tests COMMAND test_sccp_arithmetic_operations)
+
+# SCCP logical operations test
+add_executable(test_sccp_logical_operations test_sccp_logical_operations.cpp)
+target_include_directories(test_sccp_logical_operations PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_logical_operations PRIVATE Cpp2SCCP)
+add_test(NAME sccp_logical_operations_tests COMMAND test_sccp_logical_operations)
+
+# SCCP lattice tests
+add_executable(test_sccp_lattice test_sccp_lattice.cpp)
+target_include_directories(test_sccp_lattice PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_lattice PRIVATE Cpp2SCCP)
+add_test(NAME sccp_lattice_tests COMMAND test_sccp_lattice)
+
+# SCCP comparison folding tests
+add_executable(test_sccp_comparison_folding test_sccp_comparison_folding.cpp)
+target_include_directories(test_sccp_comparison_folding PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_comparison_folding PRIVATE Cpp2SCCP)
+add_test(NAME sccp_comparison_folding_tests COMMAND test_sccp_comparison_folding)
+
+# SCCP float special tests
+add_executable(test_sccp_float_special test_sccp_float_special.cpp)
+target_include_directories(test_sccp_float_special PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_float_special PRIVATE Cpp2SCCP)
+add_test(NAME sccp_float_special_tests COMMAND test_sccp_float_special)
+
+# SCCP range analysis tests
+add_executable(test_sccp_range_analysis test_sccp_range_analysis.cpp)
+target_include_directories(test_sccp_range_analysis PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_range_analysis PRIVATE Cpp2SCCP)
+add_test(NAME sccp_range_analysis_tests COMMAND test_sccp_range_analysis)
+
 # Regression test standard: any single CTest test must finish within 15 seconds.
 # If a test exceeds this, CTest will terminate it and mark it as failed.
 set(CPPFORT_TEST_TIMEOUT_SECONDS 15)
@@ -325,5 +361,11 @@ set(_cppfort_all_ctest_tests
     advanced_types_fir_tests
     error_handling_fir_tests
     son_verification_tests
+    sccp_arithmetic_operations_tests
+    sccp_logical_operations_tests
+    sccp_lattice_tests
+    sccp_comparison_folding_tests
+    sccp_float_special_tests
+    sccp_range_analysis_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})
