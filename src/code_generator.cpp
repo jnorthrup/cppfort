@@ -175,16 +175,43 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
 void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     if (!decl) return;
 
+    // Check for @interface metafunction which needs special handling
+    bool is_interface = false;
+    for (const auto& metafunc : decl->metafunctions) {
+        if (metafunc == "interface") {
+            is_interface = true;
+            break;
+        }
+    }
+
     switch (decl->type_kind) {
         case TypeDeclaration::TypeKind::Struct:
             write_line("struct " + decl->name + " {");
             indent();
+
+            // For @interface, make member functions pure virtual
+            if (is_interface) {
+                write_line("// @interface metafunction: pure interface");
+                write_line("virtual ~" + decl->name + "() = default;");
+                write_line("");
+                write_line("// Delete copy and move");
+                write_line(decl->name + "(const " + decl->name + "&) = delete;");
+                write_line(decl->name + "(" + decl->name + "&&) = delete;");
+                write_line(decl->name + "& operator=(const " + decl->name + "&) = delete;");
+                write_line(decl->name + "& operator=(" + decl->name + "&&) = delete;");
+                write_line("");
+            }
+
             for (auto& member : decl->members) {
                 generate_declaration(member.get());
             }
 
             // Generate metafunction code for @value, @ordered, etc.
             for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc == "interface") {
+                    // Already handled above
+                    continue;
+                }
                 if (metafunc == "value") {
                     // @value: Generate value semantics (defaulted special members)
                     write_line("");
@@ -201,11 +228,61 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                     write_line("");
                     write_line("// @ordered metafunction: ordering operators");
                     write_line("auto operator<=>(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "weakly_ordered" || metafunc == "weakly_ordered_value") {
+                    // @weakly_ordered: Generate weak ordering operators
+                    write_line("");
+                    write_line("// @weakly_ordered metafunction: weak ordering operators");
+                    write_line("std::weak_ordering operator<=>(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "polymorphic_base") {
+                    // @polymorphic_base: Generate virtual destructor
+                    write_line("");
+                    write_line("// @polymorphic_base metafunction: virtual destructor");
+                    write_line("virtual ~" + decl->name + "() = default;");
+                } else if (metafunc == "copyable") {
+                    // @copyable: Explicitly defaulted copy operations
+                    write_line("");
+                    write_line("// @copyable metafunction: copy semantics");
+                    write_line(decl->name + "(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "& operator=(const " + decl->name + "&) = default;");
+                } else if (metafunc == "movable") {
+                    // @movable: Explicitly defaulted move operations
+                    write_line("");
+                    write_line("// @movable metafunction: move semantics");
+                    write_line(decl->name + "(" + decl->name + "&&) = default;");
+                    write_line(decl->name + "& operator=(" + decl->name + "&&) = default;");
+                } else if (metafunc == "struct") {
+                    // @struct: Just a marker, struct is the default
+                    // No additional code needed
                 }
             }
 
             dedent();
             write_line("};");
+
+            // Generate std::hash specialization for @hashable
+            for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc == "hashable") {
+                    write_line("");
+                    write_line("// @hashable metafunction: std::hash specialization");
+                    write_line("namespace std {");
+                    indent();
+                    write_line("template<>");
+                    write_line("struct hash<" + decl->name + "> {");
+                    indent();
+                    write_line("size_t operator()(const " + decl->name + "& value) const {");
+                    indent();
+                    write_line("// TODO: Implement actual hash combination");
+                    write_line("return 0;");
+                    dedent();
+                    write_line("}");
+                    dedent();
+                    write_line("};");
+                    dedent();
+                    write_line("}");
+                }
+            }
+
             break;
 
         case TypeDeclaration::TypeKind::Class:
@@ -218,7 +295,9 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
 
             // Generate metafunction code for classes too
             for (const auto& metafunc : decl->metafunctions) {
-                if (metafunc == "value") {
+                if (metafunc == "interface") {
+                    continue; // Already handled
+                } else if (metafunc == "value") {
                     write_line("");
                     write_line("// @value metafunction: value semantics");
                     write_line(decl->name + "(const " + decl->name + "&) = default;");
@@ -232,11 +311,54 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                     write_line("");
                     write_line("// @ordered metafunction: ordering operators");
                     write_line("auto operator<=>(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "weakly_ordered" || metafunc == "weakly_ordered_value") {
+                    write_line("");
+                    write_line("// @weakly_ordered metafunction: weak ordering operators");
+                    write_line("std::weak_ordering operator<=>(const " + decl->name + "& other) const = default;");
+                    write_line("bool operator==(const " + decl->name + "& other) const = default;");
+                } else if (metafunc == "polymorphic_base") {
+                    write_line("");
+                    write_line("// @polymorphic_base metafunction: virtual destructor");
+                    write_line("virtual ~" + decl->name + "() = default;");
+                } else if (metafunc == "copyable") {
+                    write_line("");
+                    write_line("// @copyable metafunction: copy semantics");
+                    write_line(decl->name + "(const " + decl->name + "&) = default;");
+                    write_line(decl->name + "& operator=(const " + decl->name + "&) = default;");
+                } else if (metafunc == "movable") {
+                    write_line("");
+                    write_line("// @movable metafunction: move semantics");
+                    write_line(decl->name + "(" + decl->name + "&&) = default;");
+                    write_line(decl->name + "& operator=(" + decl->name + "&&) = default;");
                 }
             }
 
             dedent();
             write_line("};");
+
+            // Generate std::hash specialization for @hashable
+            for (const auto& metafunc : decl->metafunctions) {
+                if (metafunc == "hashable") {
+                    write_line("");
+                    write_line("// @hashable metafunction: std::hash specialization");
+                    write_line("namespace std {");
+                    indent();
+                    write_line("template<>");
+                    write_line("struct hash<" + decl->name + "> {");
+                    indent();
+                    write_line("size_t operator()(const " + decl->name + "& value) const {");
+                    indent();
+                    write_line("// TODO: Implement actual hash combination");
+                    write_line("return 0;");
+                    dedent();
+                    write_line("}");
+                    dedent();
+                    write_line("};");
+                    dedent();
+                    write_line("}");
+                }
+            }
+
             break;
 
         case TypeDeclaration::TypeKind::Alias:

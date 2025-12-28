@@ -455,6 +455,111 @@ void test_metafunctions() {
     std::cout << "Metafunction tests passed!" << std::endl;
 }
 
+void test_advanced_metafunctions() {
+    std::cout << "Testing advanced metafunctions..." << std::endl;
+
+    // Test @interface
+    {
+        std::string source = R"(
+            Animal: @interface type = {
+                name: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        SemanticAnalyzer semantic_analyzer;
+        semantic_analyzer.analyze(*ast);
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@interface metafunction") != std::string::npos);
+        assert(result.find("virtual ~Animal()") != std::string::npos);
+        assert(result.find("= delete") != std::string::npos);
+    }
+
+    // Test @polymorphic_base
+    {
+        std::string source = R"(
+            Base: @polymorphic_base type = {
+                x: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@polymorphic_base metafunction") != std::string::npos);
+        assert(result.find("virtual ~Base()") != std::string::npos);
+    }
+
+    // Test @weakly_ordered
+    {
+        std::string source = R"(
+            Data: @weakly_ordered type = {
+                value: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@weakly_ordered metafunction") != std::string::npos);
+        assert(result.find("std::weak_ordering operator<=>") != std::string::npos);
+    }
+
+    // Test @copyable and @movable
+    {
+        std::string source = R"(
+            Resource: @copyable @movable type = {
+                data: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@copyable metafunction") != std::string::npos);
+        assert(result.find("@movable metafunction") != std::string::npos);
+    }
+
+    // Test @hashable
+    {
+        std::string source = R"(
+            Key: @hashable type = {
+                id: int;
+            };
+        )";
+
+        Lexer lexer(source);
+        auto tokens = lexer.tokenize();
+        Parser parser(tokens);
+        auto ast = parser.parse();
+        CodeGenerator code_generator;
+        auto result = code_generator.generate(*ast);
+
+        assert(result.find("@hashable metafunction") != std::string::npos);
+        assert(result.find("namespace std") != std::string::npos);
+        assert(result.find("struct hash<Key>") != std::string::npos);
+    }
+
+    std::cout << "Advanced metafunction tests passed!" << std::endl;
+}
+
 void test_templates() {
     std::cout << "Testing templates..." << std::endl;
 
@@ -567,6 +672,7 @@ int main() {
         run_with_timeout("test_range_operators", test_range_operators);
         run_with_timeout("test_inspect_pattern_matching", test_inspect_pattern_matching);
         run_with_timeout("test_metafunctions", test_metafunctions);
+        run_with_timeout("test_advanced_metafunctions", test_advanced_metafunctions);
         run_with_timeout("test_templates", test_templates);
         run_with_timeout("test_integration", test_integration, std::chrono::seconds(15));
 
