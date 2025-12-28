@@ -33,9 +33,9 @@
 - [x] **Task:** Implement forward dataflow analysis engine.
     - [x] **Sub-task:** Write tests for dataflow initialization.
     - [x] **Sub-task:** Implement dataflow analysis with worklist algorithm.
-- [ ] **Task:** Implement phi node constant merging.
-    - [ ] **Sub-task:** Write tests for phi merging with constant inputs.
-    - [ ] **Sub-task:** Implement phi merge logic with meet operations.
+- [x] **Task:** Implement phi node constant merging.
+    - [x] **Sub-task:** Write tests for phi merging with constant inputs.
+    - [x] **Sub-task:** Implement phi merge logic with meet operations.
 - [ ] **Task:** Implement control flow reachability analysis.
     - [ ] **Sub-task:** Write tests for dead branch detection.
     - [ ] **Sub-task:** Implement control flow tracking for sparse analysis.

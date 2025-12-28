@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <cstddef>
 #include <functional>
+#include <vector>
 
 namespace cppfort::sccp {
 
@@ -135,6 +136,38 @@ public:
     void clear() {
         latticeValues.clear();
         worklist.clear();
+    }
+
+    /// Merge phi node inputs using the meet operation.
+    /// Phi nodes represent values from different control flow paths merging.
+    /// This function combines all input values using the lattice meet operation.
+    static LatticeValue mergePhiInputs(const std::vector<LatticeValue>& inputs) {
+        if (inputs.empty()) {
+            return LatticeValue::getTop();
+        }
+
+        // Check for any Top inputs (unknown paths) - Top "wins"
+        for (const auto& input : inputs) {
+            if (input.isTop()) {
+                return LatticeValue::getTop();
+            }
+        }
+
+        // Check for any Bottom inputs (unreachable) - Bottom "wins"
+        for (const auto& input : inputs) {
+            if (input.isBottom()) {
+                return LatticeValue::getBottom();
+            }
+        }
+
+        // No Top or Bottom - use standard meet for remaining values
+        LatticeValue result = inputs[0];
+
+        for (size_t i = 1; i < inputs.size(); ++i) {
+            result = LatticeValue::meet(result, inputs[i]);
+        }
+
+        return result;
     }
 };
 
