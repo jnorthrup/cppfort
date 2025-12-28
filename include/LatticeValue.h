@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <string>
 #include <variant>
 
 namespace cppfort::sccp {
@@ -146,6 +147,40 @@ public:
     /// Get float special value if present
     std::optional<FloatSpecialValue> getAsFloatSpecial() const {
         return floatSpecialValue;
+    }
+
+    /// Convert lattice value to string for debugging
+    std::string toString() const {
+        switch (kind) {
+            case Top:
+                return "Top";
+            case Bottom:
+                return "Bottom";
+            case Constant:
+                if (intValue.has_value()) {
+                    return "Constant(" + std::to_string(intValue.value()) + ")";
+                }
+                if (boolValue.has_value()) {
+                    return "Constant(" + std::string(boolValue.value() ? "true" : "false") + ")";
+                }
+                return "Constant(?)";
+            case IntegerRange:
+                return "Range[" +
+                       (min.has_value() ? std::to_string(min.value()) : "-inf") +
+                       ", " +
+                       (max.has_value() ? std::to_string(max.value()) : "+inf") +
+                       "]";
+            case FloatSpecial:
+                if (floatSpecialValue.has_value()) {
+                    switch (floatSpecialValue.value()) {
+                        case FloatSpecialValue::NaN: return "NaN";
+                        case FloatSpecialValue::PosInfinity: return "+Infinity";
+                        case FloatSpecialValue::NegInfinity: return "-Infinity";
+                    }
+                }
+                return "FloatSpecial(?)";
+        }
+        return "Unknown";
     }
 
     /// Meet operation for lattice values

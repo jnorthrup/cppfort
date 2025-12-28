@@ -17,6 +17,9 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "fir-sccp"
 
 using namespace mlir;
 using namespace mlir::cpp2fir;
@@ -37,10 +40,14 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
     ModuleOp module = getOperation();
     DataflowAnalysis analysis;
 
+    LLVM_DEBUG(llvm::dbgs() << "=== FIR SCCP Pass Start ===\n");
+
     // Phase 1: Initialize - all values start at Top
     // Mark entry blocks as reachable
     module.walk([&](FuncOp func) {
       if (func.getBody().empty()) return;
+
+      LLVM_DEBUG(llvm::dbgs() << "Initializing function: " << func.getSymName() << "\n");
 
       // Mark entry block as reachable
       analysis.markBlockReachable(&func.getBody().front());
@@ -48,26 +55,34 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
       // Add all operations in function to worklist
       for (Operation &op : func.getBody().front()) {
         analysis.getWorklist().enqueue(&op);
+        LLVM_DEBUG(llvm::dbgs() << "  Enqueued op: " << op.getName() << "\n");
       }
     });
 
     // Phase 2: Process worklist to fixed point
+    LLVM_DEBUG(llvm::dbgs() << "\n=== Phase 2: Dataflow Analysis ===\n");
+    [[maybe_unused]] int iterations = 0;
     while (!analysis.getWorklist().empty()) {
       Operation* op = static_cast<Operation*>(analysis.getWorklist().dequeue());
       if (!op) continue;
 
+      LLVM_DEBUG(llvm::dbgs() << "Processing op [" << iterations++ << "]: " << op->getName() << "\n");
+
       // Skip operations in unreachable blocks
       Block* block = op->getBlock();
       if (block && !analysis.isBlockReachable(block)) {
+        LLVM_DEBUG(llvm::dbgs() << "  Skipping unreachable op\n");
         continue;
       }
 
       // Compute lattice value for this operation
       LatticeValue result = computeLatticeValue(op, analysis);
+      LLVM_DEBUG(llvm::dbgs() << "  Computed lattice: " << result.toString() << "\n");
 
       // Update results
       for (Value v : op->getResults()) {
         if (analysis.updateLatticeValue(v.getAsOpaquePointer(), result)) {
+          LLVM_DEBUG(llvm::dbgs() << "  Lattice changed - adding users to worklist\n");
           // Value changed - add users to worklist
           for (Operation* user : v.getUsers()) {
             analysis.getWorklist().enqueue(user);
@@ -75,9 +90,12 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
         }
       }
     }
+    LLVM_DEBUG(llvm::dbgs() << "Dataflow converged after " << iterations << " iterations\n");
 
     // Phase 3: Rewrite IR with discovered constants
+    LLVM_DEBUG(llvm::dbgs() << "\n=== Phase 3: IR Rewriting ===\n");
     PatternRewriter rewriter(module.getContext());
+    int replacements = 0;
     module.walk([&](Operation* op) {
       // Skip constants
       if (isa<ConstantOp>(op)) return;
@@ -96,24 +114,32 @@ struct FIRSCCPPass : public PassWrapper<FIRSCCPPass, OperationPass<ModuleOp>> {
 
         if (val.isConstant()) {
           if (auto intVal = val.getAsInteger()) {
+            LLVM_DEBUG(llvm::dbgs() << "Replacing " << op->getName()
+                       << " with constant: " << intVal.value() << "\n");
             // Replace with constant
             auto constOp = rewriter.create<ConstantOp>(
               op->getLoc(),
               result.getType(),
               rewriter.getIntegerAttr(result.getType(), intVal.value()));
             rewriter.replaceOp(op, {constOp.getResult()});
+            replacements++;
             break; // Op replaced, stop processing results
           } else if (auto boolVal = val.getAsBoolean()) {
+            LLVM_DEBUG(llvm::dbgs() << "Replacing " << op->getName()
+                       << " with constant: " << (boolVal.value() ? "true" : "false") << "\n");
             auto constOp = rewriter.create<ConstantOp>(
               op->getLoc(),
               result.getType(),
               rewriter.getIntegerAttr(result.getType(), boolVal.value() ? 1 : 0));
             rewriter.replaceOp(op, {constOp.getResult()});
+            replacements++;
             break;
           }
         }
       }
     });
+    LLVM_DEBUG(llvm::dbgs() << "Replaced " << replacements << " operations with constants\n");
+    LLVM_DEBUG(llvm::dbgs() << "=== FIR SCCP Pass End ===\n\n");
   }
 
   StringRef getArgument() const final { return "fir-sccp"; }

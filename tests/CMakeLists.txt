@@ -336,6 +336,12 @@ target_include_directories(test_sccp_range_analysis PRIVATE ${CMAKE_SOURCE_DIR}/
 target_link_libraries(test_sccp_range_analysis PRIVATE Cpp2SCCP)
 add_test(NAME sccp_range_analysis_tests COMMAND test_sccp_range_analysis)
 
+# SCCP debug logging tests
+add_executable(test_sccp_debug_logging test_sccp_debug_logging.cpp)
+target_include_directories(test_sccp_debug_logging PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_sccp_debug_logging PRIVATE Cpp2SCCP)
+add_test(NAME sccp_debug_logging_tests COMMAND test_sccp_debug_logging)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)
