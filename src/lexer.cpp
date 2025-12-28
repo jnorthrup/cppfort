@@ -206,6 +206,18 @@ void Lexer::scan_token() {
             break;
         }
 
+        // Markdown blocks (bare ``` syntax)
+        case '`': {
+            if (peek() == '`' && peek_next() == '`') {
+                advance(); // second `
+                advance(); // third `
+                scan_markdown_block();
+            } else {
+                add_token(TokenType::Unknown);
+            }
+            break;
+        }
+
         default:
             if (is_digit(c)) {
                 scan_number();
@@ -375,6 +387,63 @@ void Lexer::scan_block_comment() {
 
     advance(); // *
     advance(); // /
+}
+
+void Lexer::scan_markdown_block() {
+    // At this point we've already consumed: ```
+    // Now we need to capture everything until closing ```
+
+    std::size_t content_start = current;
+
+    // Skip optional name/identifier immediately after opening ```
+    while (!is_at_end() && peek() != '\n' && !std::isspace(static_cast<unsigned char>(peek()))) {
+        advance();
+    }
+
+    // Skip whitespace/newline after name
+    if (peek() == '\n' || std::isspace(static_cast<unsigned char>(peek()))) {
+        if (peek() == '\n') {
+            line++;
+            column = 1;
+        }
+        advance();
+    }
+
+    // Now capture content until we find closing ```
+    while (!is_at_end()) {
+        // Check for closing delimiter: ```
+        if (peek() == '`' && current + 2 < source.length()) {
+            if (source[current] == '`' &&
+                source[current + 1] == '`' &&
+                source[current + 2] == '`') {
+                // Found closing delimiter
+                std::size_t content_end = current;
+
+                // Extract the full markdown block content (including name if present)
+                std::string_view content = source.substr(content_start, content_end - content_start);
+
+                // Skip past ```
+                advance(); // first `
+                advance(); // second `
+                advance(); // third `
+
+                // Add token with content
+                add_token(TokenType::MarkdownBlock, content);
+                return;
+            }
+        }
+
+        if (peek() == '\n') {
+            line++;
+            column = 1;
+        }
+        advance();
+    }
+
+    // Unterminated markdown block
+    // Still add what we have as a token
+    std::string_view content = source.substr(content_start, current - content_start);
+    add_token(TokenType::MarkdownBlock, content);
 }
 
 bool Lexer::is_digit(char c) const {

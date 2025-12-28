@@ -2,12 +2,12 @@
 
 ## Phase 1: Lexer Support for Markdown Blocks
 
-- [ ] **Task:** Add MARKDOWN_BLOCK token type to lexer.
-    - [ ] **Sub-task:** Write tests for recognizing markdown block delimiters.
-    - [ ] **Sub-task:** Implement markdown block tokenization in lexer.
-- [ ] **Task:** Implement markdown block content extraction.
-    - [ ] **Sub-task:** Write tests for content extraction with various delimiters.
-    - [ ] **Sub-task:** Implement content capture between triple backticks.
+- [x] **Task:** Add MARKDOWN_BLOCK token type to lexer.
+    - [x] **Sub-task:** Write tests for recognizing markdown block delimiters.
+    - [x] **Sub-task:** Implement markdown block tokenization in lexer.
+- [x] **Task:** Implement markdown block content extraction.
+    - [x] **Sub-task:** Write tests for content extraction with various delimiters.
+    - [x] **Sub-task:** Implement content capture between triple backticks.
 - [ ] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
 
 ## Phase 2: SHA256 Computation

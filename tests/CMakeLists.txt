@@ -342,6 +342,12 @@ target_include_directories(test_sccp_debug_logging PRIVATE ${CMAKE_SOURCE_DIR}/i
 target_link_libraries(test_sccp_debug_logging PRIVATE Cpp2SCCP)
 add_test(NAME sccp_debug_logging_tests COMMAND test_sccp_debug_logging)
 
+# Markdown blocks test
+add_executable(test_markdown_blocks test_markdown_blocks.cpp)
+target_include_directories(test_markdown_blocks PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_markdown_blocks PRIVATE Cpp2Transpiler)
+add_test(NAME markdown_blocks_tests COMMAND test_markdown_blocks)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)

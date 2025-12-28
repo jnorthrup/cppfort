@@ -172,6 +172,9 @@ enum class TokenType : uint8_t {
     Channel,         // channel - channel declaration
     Select,          // select - multi-channel select
     ParallelFor,     // parallel_for - parallel loop
+
+    // Markdown blocks for CAS-linked modules
+    MarkdownBlock,   // markdown block with embedded content
 };
 
 struct Token {
@@ -218,6 +221,7 @@ private:
     void scan_character();
     void scan_line_comment();
     void scan_block_comment();
+    void scan_markdown_block();
     void scan_preprocessor();
 
     bool is_digit(char c) const;
