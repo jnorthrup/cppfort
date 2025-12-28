@@ -143,6 +143,17 @@ target_link_libraries(test_fir_to_son_pass PRIVATE
     MLIRFuncDialect
 )
 
+# FIR SCCP pass test
+add_executable(test_fir_sccp_pass test_fir_sccp_pass.cpp)
+target_include_directories(test_fir_sccp_pass PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_fir_sccp_pass PRIVATE
+    Cpp2Passes
+    Cpp2SCCP
+    Cpp2FIRDialect
+    MLIR
+    MLIRFuncDialect
+)
+
 # Binary expression FIR tests
 add_executable(test_binary_expression_fir test_binary_expression_fir.cpp)
 target_include_directories(test_binary_expression_fir PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -227,6 +238,7 @@ add_test(NAME call_expression_fir_tests COMMAND test_call_expression_fir)
 add_test(NAME control_flow_fir_tests COMMAND test_control_flow_fir)
 add_test(NAME semantic_extraction_tests COMMAND test_semantic_extraction)
 add_test(NAME fir_to_son_pass_test COMMAND test_fir_to_son_pass)
+add_test(NAME fir_sccp_pass_test COMMAND test_fir_sccp_pass)
 add_test(NAME crdt_core_tests COMMAND test_crdt_core)
 add_test(NAME son_serialization_tests COMMAND test_son_serialization)
 add_test(NAME son_deserialization_tests COMMAND test_son_deserialization)

@@ -115,6 +115,13 @@ target_link_libraries(Cpp2Transpiler PUBLIC
   MLIR
 )
 
+# Standalone SCCP Analysis Library
+# Interface-only library for headers (LatticeValue, ConstantFolder, DataflowAnalysis, SCCPWorklist)
+add_library(Cpp2SCCP INTERFACE)
+target_include_directories(Cpp2SCCP INTERFACE
+  ${PROJECT_SOURCE_DIR}/include
+)
+
 # Main transpiler executable (AST-based)
 add_executable(cppfort main.cpp)
 target_link_libraries(cppfort PRIVATE
@@ -132,7 +139,8 @@ target_link_libraries(cppfort-son PRIVATE
 # Cpp2 Conversion Passes library
 add_library(Cpp2Passes
   ConvertFIRToSON.cpp
-  # SCCPPass.cpp  # Disabled: needs API fixes for latest MLIR
+  SCCPPass.cpp
+  FIRSCCPPass.cpp  # SCCP pass for FIR dialect using standalone library
 )
 
 target_include_directories(Cpp2Passes PUBLIC
@@ -144,6 +152,7 @@ target_include_directories(Cpp2Passes PUBLIC
 target_link_libraries(Cpp2Passes PUBLIC
   Cpp2FIRDialect
   Cpp2SONDialect
+  Cpp2SCCP  # Link standalone SCCP library
   MLIR
   MLIRFuncDialect
   MLIRTransforms

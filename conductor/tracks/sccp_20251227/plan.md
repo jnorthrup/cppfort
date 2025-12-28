@@ -41,18 +41,18 @@
     - [x] **Sub-task:** Implement control flow tracking for sparse analysis.
 - [x] **Task:** Automated verification checkpoint 'SCCP Dataflow Analysis'
 
-## Phase 4: MLIR Pass Integration
+## Phase 4: MLIR Pass Integration [checkpoint: pending]
 
-- [ ] **Task:** Create SCCP pass class and registration.
-    - [ ] **Sub-task:** Write tests for pass registration and pipeline integration.
-    - [ ] **Sub-task:** Implement SCCPPass with MLIR Pass infrastructure.
-- [ ] **Task:** Implement IR mutation and constant replacement.
-    - [ ] **Sub-task:** Write tests for IR rewriting with constant values.
-    - [ ] **Sub-task:** Implement PatternRewriter for safe IR modification.
-- [ ] **Task:** Integrate with FIR dialect pipeline.
-    - [ ] **Sub-task:** Write integration tests with FIR programs.
-    - [ ] **Sub-task:** Register pass in FIR dialect and CMake build.
-- [ ] **Task:** Conductor - User Manual Verification 'MLIR Pass Integration' (Protocol in workflow.md)
+- [x] **Task:** Create SCCP pass class and registration.
+    - [x] **Sub-task:** Write tests for pass registration and pipeline integration.
+    - [x] **Sub-task:** Implement SCCPPass with MLIR Pass infrastructure.
+- [x] **Task:** Implement IR mutation and constant replacement.
+    - [x] **Sub-task:** Write tests for IR rewriting with constant values.
+    - [x] **Sub-task:** Implement PatternRewriter for safe IR modification.
+- [x] **Task:** Integrate with FIR dialect pipeline.
+    - [x] **Sub-task:** Write integration tests with FIR programs.
+    - [x] **Sub-task:** Register pass in FIR dialect and CMake build.
+- [x] **Task:** Automated verification checkpoint 'MLIR Pass Integration'
 
 ## Phase 5: Testing and Validation
 

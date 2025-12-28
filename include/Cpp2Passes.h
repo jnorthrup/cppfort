@@ -16,6 +16,10 @@ std::unique_ptr<Pass> createConvertFIRToSONPass();
 /// Initialize FIR to SON pass registration
 void initConvertFIRToSONPass();
 
+/// Create SCCP pass for FIR dialect
+/// Uses standalone SCCP library (LatticeValue, DataflowAnalysis, ConstantFolder)
+std::unique_ptr<Pass> createFIRSCCPPass();
+
 //===----------------------------------------------------------------------===//
 // Sea of Nodes Optimization Passes (from Chapter 24)
 //===----------------------------------------------------------------------===//
