@@ -36,10 +36,10 @@
 - [x] **Task:** Implement phi node constant merging.
     - [x] **Sub-task:** Write tests for phi merging with constant inputs.
     - [x] **Sub-task:** Implement phi merge logic with meet operations.
-- [ ] **Task:** Implement control flow reachability analysis.
-    - [ ] **Sub-task:** Write tests for dead branch detection.
-    - [ ] **Sub-task:** Implement control flow tracking for sparse analysis.
-- [ ] **Task:** Conductor - User Manual Verification 'SCCP Dataflow Analysis' (Protocol in workflow.md)
+- [x] **Task:** Implement control flow reachability analysis.
+    - [x] **Sub-task:** Write tests for dead branch detection.
+    - [x] **Sub-task:** Implement control flow tracking for sparse analysis.
+- [x] **Task:** Automated verification checkpoint 'SCCP Dataflow Analysis'
 
 ## Phase 4: MLIR Pass Integration
 

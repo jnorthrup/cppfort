@@ -31,6 +31,9 @@ private:
     /// Worklist for tracking operations that need processing
     SCCPWorklist worklist;
 
+    /// Set of reachable basic blocks (for control flow analysis)
+    std::unordered_set<void*, VoidPtrHash> reachableBlocks;
+
 public:
     /// Create an empty dataflow analysis
     DataflowAnalysis() = default;
@@ -168,6 +171,45 @@ public:
         }
 
         return result;
+    }
+
+    /// Check if a basic block is reachable
+    bool isBlockReachable(void* block) const {
+        return reachableBlocks.find(block) != reachableBlocks.end();
+    }
+
+    /// Mark a basic block as reachable
+    void markBlockReachable(void* block) {
+        reachableBlocks.insert(block);
+    }
+
+    /// Get the number of reachable blocks
+    size_t getReachableBlockCount() const {
+        return reachableBlocks.size();
+    }
+
+    /// Clear all reachable blocks
+    void clearReachableBlocks() {
+        reachableBlocks.clear();
+    }
+
+    /// Evaluate a conditional branch.
+    /// If the condition is a constant true, marks trueBlock as reachable.
+    /// If the condition is a constant false, marks falseBlock as reachable.
+    /// If the condition is Top (unknown), neither block is marked.
+    void evaluateBranch(void* condition, void* trueBlock, void* falseBlock) {
+        LatticeValue condValue = getLatticeValue(condition);
+
+        if (condValue.isConstant() && condValue.getAsBoolean().has_value()) {
+            if (condValue.getAsBoolean().value()) {
+                // Condition is true - mark true block reachable
+                markBlockReachable(trueBlock);
+            } else {
+                // Condition is false - mark false block reachable
+                markBlockReachable(falseBlock);
+            }
+        }
+        // If condition is Top, we don't mark either block (sparse analysis)
     }
 };
 
