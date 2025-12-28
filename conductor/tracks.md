@@ -6,13 +6,63 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Establish Core Cpp2 to MLIR Front-IR Conversion and Sea of Nodes Dialect Integration
 *Link: [./conductor/tracks/cpp2_mlir_son_20251222/](./conductor/tracks/cpp2_mlir_son_20251222/)*
+*Status: COMPLETE*
 
 ---
 
-## [~] Track: SCCP pass implementation
+## [x] Track: SCCP pass implementation
 *Link: [./conductor/tracks/sccp_20251227/](./conductor/tracks/sccp_20251227/)*
+*Status: COMPLETE* - All 5 phases verified, 3 verification gaps resolved
+- Code coverage: 72.9% (exceeds >20% requirement by 3.6x)
+- Debug logging: Full LLVM_DEBUG support implemented
+- All 7 SCCP tests passing
+- Checkpoints: Phase 4 (30c150a), Phase 5 (c1b08c8)
+- Gap resolutions: 2b1021d, 5df7fe3, 8554cf1, 82305f0
 
 ---
 
 ## [ ] Track: Markdown comments with CAS-linked module stubs
 *Link: [./conductor/tracks/markdown_cas_20251227/](./conductor/tracks/markdown_cas_20251227/)*
+*Status: PENDING*
+
+---
+
+## [ ] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
+*Spec: [../docs/SEMANTIC_AST_ENHANCEMENTS.md](../docs/SEMANTIC_AST_ENHANCEMENTS.md)*
+*Status: PLANNED* - 6-phase roadmap (15-18 days)
+
+**Objectives**:
+- Escape analysis framework (track value lifetimes and escape points)
+- Borrowing and ownership tracking (Rust-like semantics)
+- External memory pipeline integration (GPU/DMA transfers, lifecycle optimization)
+- Channelized concurrency integration (ownership through channels, data race detection)
+- Unified semantic representation (SemanticInfo attached to all AST nodes)
+
+**Target Metrics**:
+- Parameter semantics: 0% → 100%
+- Escape analysis coverage: 0% → 100%
+- Average corpus semantic loss: 1.0 → <0.15
+
+---
+
+## [ ] Track: Regression Test Corpus Semantic Preservation
+*Status: [../docs/REGRESSION_TEST_STATUS.md](../docs/REGRESSION_TEST_STATUS.md)*
+*Status: BLOCKED* - Infrastructure complete, transpiler fixes required
+
+**Blockers**:
+1. P0: Parameter semantics lost (inout → by-value instead of by-reference)
+2. P1: Mixed-mode C++1 syntax support (50/189 tests blocked)
+3. P2: Semantic loss scoring accuracy
+
+**Current Results**:
+- pure2-hello.cpp2: Transpiles but semantic loss = 1.0 (max)
+- Corpus infrastructure: 1.4M isomorphs, 13.5K unique patterns, 100% MLIR coverage
+- Test status: pure2 works, mixed fails
+
+---
+
+*Total Tracks: 5*
+*Completed: 2*
+*In Progress: 0*
+*Planned: 2*
+*Blocked: 1*

@@ -1,52 +1,125 @@
 # Product Guide
 
-## Initial Concept
-
-This project is a comprehensive C++23 source-to-source transpiler that converts Cpp2 code to modern C++ (C++20/23).
-
 ## Vision
 
-To provide developers with a robust and reliable tool for migrating and developing C++ applications using the Cpp2 language, leveraging modern C++ features and ensuring high levels of code safety and performance.
+Comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nodes backend, and semantic preservation via Clang AST analysis.
+
+## Core Objectives
+
+1. **Full Cpp2 Language Support**: All major features (UFCS, contracts, metafunctions, pattern matching)
+2. **Semantic Isomorphism**: Preserve Cpp2 semantics in generated C++ via Clang AST diffusion from cppfront reference
+3. **MLIR Front-IR Pipeline**: Cpp2 → FIR dialect → SON dialect → optimizations → C++
+4. **Safety-First**: Escape analysis, borrowing, bounds checking, contract validation
+5. **Performance**: SCCP optimization, Sea-of-Nodes IR, lifecycle-based memory management
+
+## Architecture (5 Layers)
+
+```
+Cpp2 Source
+    ↓
+[Lexer/Parser] → Cpp2 AST (with SemanticInfo)
+    ↓
+[Semantic Analysis] → Escape/Borrow/Ownership tracking
+    ↓
+[MLIR FIR Dialect] → Front-IR (expression-level)
+    ↓
+[MLIR SON Dialect] → Sea-of-Nodes IR (SSA, control flow)
+    ↓
+[SCCP + Optimizations] → Dead code elimination, constant propagation
+    ↓
+[Code Generator] → C++20/23 output
+```
+
+## Current State
+
+### ✅ Working
+- **Lexer/Parser**: Full Cpp2 grammar (pure2 mode)
+- **AST**: Complete node definitions with semantic info scaffolding
+- **Type System**: Deduction, templates, UFCS resolution
+- **MLIR Dialects**: FIR (Front-IR) + SON (Sea-of-Nodes) operational
+- **SCCP Pass**: Sparse Conditional Constant Propagation (72.9% code coverage)
+- **Code Generation**: pure2 files transpile successfully
+- **Safety Checks**: Bounds, null, division-by-zero, integer overflow warnings
+- **Metafunctions**: 14+ implemented (@value, @ordered, @interface, @regex, @autodiff, etc.)
+- **Test Infrastructure**: 17 unit tests passing, regression framework operational
+
+### 🔧 In Progress
+- **Semantic AST Enhancements**: Escape analysis, borrowing, external memory integration
+- **Parameter Semantics**: Fix in/out/inout → C++ type mapping (currently losing inout)
+- **Mixed-Mode Support**: Parser support for C++1 syntax intermixed with Cpp2
+
+### 📊 Corpus Analysis
+- **Reference Corpus**: 189 .cpp2 files from cppfront (158 transpiled, 31 expected errors)
+- **AST Database**: 1.4M isomorphs extracted, 13.5K unique patterns, 100% MLIR region coverage
+- **Semantic Loss**: Current 1.0 (max) for pure2-hello.cpp2, target <0.15
+- **Test Results**: pure2 files work, mixed files blocked (50/189 tests)
 
 ## Guiding Principles
 
-*   **Developer Experience over C++ Idiom:** When in doubt, the project should prioritize a developer experience closer to TypeScript in its ergonomics and type-handling, even if it diverges from traditional C++ conventions.
+1. **Semantic Intent over Syntax**: Preserve Cpp2's safety and ownership semantics in C++
+2. **Developer Experience**: TypeScript-like ergonomics, not traditional C++ idioms
+3. **Isomorphic Mapping**: Clang AST from cppfront output guides Cpp2 semantic assignments
+4. **Safety by Default**: Escape analysis, borrow checking, bounds validation automatic
+5. **Performance Through IR**: Sea-of-Nodes enables aggressive optimization
 
-## Core Features
+## Key Features
 
-*   **Full Cpp2 Language Support**: Implements all major Cpp2 features including unified declaration syntax, UFCS, contracts, metafunctions, and pattern matching.
-*   **Modern C++ Generation**: Produces idiomatic C++20/23 code with move semantics, concepts, and ranges.
-*   **Contract System**: Full support for preconditions, postconditions, and assertions with customizable violation handlers.
-*   **Metafunction System**: Compile-time code generation for common patterns (value semantics, ordering, copyability, etc.).
-*   **Template Support**: Full C++ template generation from Cpp2 template syntax.
-*   **CAS-driven Module Generation**: A custom markdown block comment syntax will be supported. The content of this block will be used for Content-Addressable Storage (CAS) linking, while the presence of the block itself will trigger the creation of an empty C++20 module, irrespective of the block's content.
+### Language Support
+- Unified declaration syntax (`name: type = value`)
+- Parameter qualifiers (`in`, `out`, `inout`, `move`, `forward`)
+- UFCS (Unified Function Call Syntax)
+- Contracts (preconditions, postconditions, assertions)
+- Metafunctions (compile-time code generation)
+- Template support
+- String interpolation
 
-### Advanced Front-IR Features
-*   **Object Lifespan Perfection**: Utilize escape analysis and priority borrower handling within the Front-IR to achieve perfect object lifespans and optimize memory management.
-*   **Fractal JIT Injection**: A novel method for injecting Just-In-Time compiled code, utilizing Content-Addressable Storage (CAS) for caching and propagation.
+### Safety Features (Implemented)
+- Null pointer checking
+- Array bounds checking
+- Division by zero prevention
+- Mixed-sign arithmetic warnings
+- Use-after-move detection
+- Integer overflow warnings (Safety 6)
 
-## Architecture Highlights
+### Safety Features (Planned - SEMANTIC_AST_ENHANCEMENTS.md)
+- **Escape Analysis**: Track value lifetime and escape points (heap/return/channel/GPU/DMA)
+- **Borrowing**: Rust-like ownership with exclusive mutable borrows
+- **Lifetime Regions**: Borrow outlives owner enforcement
+- **External Memory**: GPU/DMA transfer tracking, lifecycle optimization
+- **Channel Safety**: Ownership transfer through coroutine channels, data race detection
 
-The transpiler is built with a clean, modular architecture comprising:
-1.  **Lexer**: Tokenizes Cpp2 source code.
-2.  **Parser**: Builds an Abstract Syntax Tree (AST) from tokens.
-3.  **Semantic Analyzer**: Performs type checking and symbol resolution.
-4.  **Metafunction Processor**: Expands metafunction annotations.
-5.  **Contract Processor**: Processes and generates contract checks.
-6.  **Code Generator**: Generates C++20/23 code from the processed AST.
-
-The project utilizes MLIR as a frontend IR. The Sea of Nodes IR will be presented as a set of MLIR dialects, pushing down abstractions to the dialect level. Graph serialization will be handled using a Pijul CRDT-based format.
-
-A core architectural principle is to establish an isomorphic mapping between Cpp2 and C++ semantics. This is achieved by analyzing the AST contours generated by Clang from the output C++, and using `hsutter/cppfront` as a reference implementation for semantic interpretation. Specifically, the `cppfront` C++ corpus will be used to diffuse clang AST semantics backward, informing the Cpp2 semantic assignments to AST constructions.
+### Advanced Features
+- **CAS-Driven Modules**: Markdown block comments trigger C++20 module generation
+- **Fractal JIT**: Content-addressable caching for JIT-compiled code
+- **Concurrency**: Kotlin-style channels, coroutine scopes, spawn/await
+- **GPU Kernels**: Parallel loops with launch config, memory policy annotations
+- **External Memory Pipeline**: DMA buffers, memory regions (CPU/GPU global/shared/constant)
 
 ## Target Users
 
-C++ developers interested in using the Cpp2 language, migrating existing C++ codebases, or experimenting with modern C++ paradigms and enhanced safety features.
+C++ developers seeking:
+- Modern syntax with safety guarantees
+- Migration from C++ to Cpp2
+- Performance-critical systems with memory safety
+- Concurrent/parallel programming with channels
+- GPU kernel development
 
-## High-Level Goals
+## Success Metrics
 
-*   Achieve full compliance with Cpp2 language specification.
-*   Generate high-quality, performant, and idiomatic C++20/23 code.
-*   Provide a well-tested and robust transpiler for production use.
-*   Progressively integrate a Sea of Nodes compiler backend for performance optimization, exposing it to MLIR as a set of dialects.
-*   Leverage the `hsutter/cppfront` regression test suite to validate the semantic isomorphism between Cpp2 and the generated C++.
+| Metric | Current | Target |
+|--------|---------|--------|
+| pure2 tests passing | 1/139 (manual) | 139/139 |
+| mixed tests passing | 0/50 | 50/50 |
+| Parameter semantics correct | 0% | 100% |
+| Average corpus semantic loss | 1.0 | <0.15 |
+| SCCP code coverage | 72.9% | >80% |
+| Escape analysis coverage | 0% | 100% |
+
+## Documentation
+
+- **conductor/tech-stack.md**: Tools and infrastructure
+- **conductor/workflow.md**: Development process and quality gates
+- **conductor/tracks.md**: Active feature tracks
+- **docs/SEMANTIC_AST_ENHANCEMENTS.md**: Semantic analysis roadmap
+- **docs/REGRESSION_TEST_STATUS.md**: Corpus regression testing status
+- **IMPLEMENTATION_STATUS.md**: Feature-by-feature completion status
