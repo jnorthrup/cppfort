@@ -12,7 +12,7 @@
     - [x] **Sub-task:** Implement worklist with change detection.
 - [x] **Task:** Conductor - User Manual Verification 'Lattice Value Foundation' (Protocol in workflow.md)
 
-## Phase 2: Constant Folding for Operations
+## Phase 2: Constant Folding for Operations [checkpoint: 17a8434]
 
 - [x] **Task:** Implement constant folding for arithmetic operations.
     - [x] **Sub-task:** Write tests for AddOp/SubOp/MulOp/DivOp constant folding.
@@ -26,7 +26,7 @@
 - [x] **Task:** Handle special float values (NaN, Infinity).
     - [x] **Sub-task:** Write tests for NaN/Infinity propagation.
     - [x] **Sub-task:** Implement special float value handling.
-- [~] **Task:** Conductor - User Manual Verification 'Constant Folding for Operations' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Constant Folding for Operations' (Protocol in workflow.md)
 
 ## Phase 3: SCCP Dataflow Analysis
 
