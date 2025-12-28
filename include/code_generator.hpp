@@ -139,6 +139,10 @@ private:
     void add_include(const std::string& header);
     void write_includes();
 
+    // Markdown module stub generation
+    void generate_markdown_module_stubs(const std::vector<MarkdownBlockAttr>& blocks);
+    void generate_markdown_module_stub(const MarkdownBlockAttr& block);
+
     // Utility
     std::string generate_unique_name(const std::string& base);
     std::string get_cpp_keyword(const std::string& cpp2_keyword);

@@ -32,15 +32,15 @@
 
 ## Phase 4: Code Generation - Module Stubs
 
-- [ ] **Task:** Implement empty C++20 module stub generation.
-    - [ ] **Sub-task:** Write tests for module stub output format.
-    - [ ] **Sub-task:** Implement module emission with export module directive.
-- [ ] **Task:** Add SHA256 constant to generated modules.
-    - [ ] **Sub-task:** Write tests for SHA256 constant emission.
-    - [ ] **Sub-task:** Implement inline constexpr char array generation.
-- [ ] **Task:** Integrate module stub emission into code generator.
-    - [ ] **Sub-task:** Write integration tests with full Cpp2 files.
-    - [ ] **Sub-task:** Connect AST metadata to code generation pipeline.
+- [x] **Task:** Implement empty C++20 module stub generation.
+    - [x] **Sub-task:** Write tests for module stub output format.
+    - [x] **Sub-task:** Implement module emission with export module directive.
+- [x] **Task:** Add SHA256 constant to generated modules.
+    - [x] **Sub-task:** Write tests for SHA256 constant emission.
+    - [x] **Sub-task:** Implement inline constexpr char array generation.
+- [x] **Task:** Integrate module stub emission into code generator.
+    - [x] **Sub-task:** Write integration tests with full Cpp2 files.
+    - [x] **Sub-task:** Connect AST metadata to code generation pipeline.
 - [ ] **Task:** Conductor - User Manual Verification 'Code Generation - Module Stubs' (Protocol in workflow.md)
 
 ## Phase 5: Testing and Validation

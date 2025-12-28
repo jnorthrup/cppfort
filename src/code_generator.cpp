@@ -31,6 +31,13 @@ std::string CodeGenerator::generate(AST& ast) {
         write_line("");
     }
 
+    // Third pass: Generate C++20 module stubs for markdown blocks
+    for (auto& decl : ast.declarations) {
+        if (!decl->markdown_blocks.empty()) {
+            generate_markdown_module_stubs(decl->markdown_blocks);
+        }
+    }
+
     return output.str();
 }
 
@@ -65,6 +72,27 @@ void CodeGenerator::write_includes() {
     write_line("#include <ranges>");
     write_line("#include <memory>");
     write_line("#include <optional>");
+    write_line("");
+}
+
+void CodeGenerator::generate_markdown_module_stubs(const std::vector<MarkdownBlockAttr>& blocks) {
+    for (const auto& block : blocks) {
+        generate_markdown_module_stub(block);
+    }
+}
+
+void CodeGenerator::generate_markdown_module_stub(const MarkdownBlockAttr& block) {
+    // Module name: use block name or generate __cas_<first 16 chars of hash>
+    std::string module_name;
+    if (!block.name.empty()) {
+        module_name = block.name;
+    } else {
+        module_name = "__cas_" + block.sha256.substr(0, 16);
+    }
+
+    write_line("export module " + module_name + ";");
+    write_line("");
+    write_line("inline constexpr char cas_sha256[] = \"" + block.sha256 + "\";");
     write_line("");
 }
 
