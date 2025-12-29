@@ -463,6 +463,7 @@ struct IfStatement : Statement {
 };
 
 struct WhileStatement : Statement {
+    std::string label;  // Optional label for labeled break/continue
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> increment; // Cpp2 'next' clause
     std::unique_ptr<Statement> body;
@@ -480,9 +481,28 @@ struct WhileStatement : Statement {
           condition(std::move(cond)),
           increment(std::move(inc)),
           body(std::move(b)) {}
+
+    WhileStatement(std::string label,
+                  std::unique_ptr<Expression> cond,
+                  std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::While, l),
+          label(std::move(label)),
+          condition(std::move(cond)),
+          body(std::move(b)) {}
+
+    WhileStatement(std::string label,
+                  std::unique_ptr<Expression> cond,
+                  std::unique_ptr<Expression> inc,
+                  std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::While, l),
+          label(std::move(label)),
+          condition(std::move(cond)),
+          increment(std::move(inc)),
+          body(std::move(b)) {}
 };
 
 struct ForStatement : Statement {
+    std::string label;  // Optional label for labeled break/continue
     std::unique_ptr<Statement> init;
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> increment;
@@ -497,9 +517,22 @@ struct ForStatement : Statement {
           condition(std::move(cond)),
           increment(std::move(inc)),
           body(std::move(b)) {}
+
+    ForStatement(std::string label,
+                std::unique_ptr<Statement> i,
+                std::unique_ptr<Expression> cond,
+                std::unique_ptr<Expression> inc,
+                std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::For, l),
+          label(std::move(label)),
+          init(std::move(i)),
+          condition(std::move(cond)),
+          increment(std::move(inc)),
+          body(std::move(b)) {}
 };
 
 struct ForRangeStatement : Statement {
+    std::string label;  // Optional label for labeled break/continue
     std::string variable;
     std::unique_ptr<Type> var_type;
     std::unique_ptr<Expression> range;
@@ -509,6 +542,16 @@ struct ForRangeStatement : Statement {
                      std::unique_ptr<Expression> r,
                      std::unique_ptr<Statement> b, std::size_t l)
         : Statement(Kind::ForRange, l),
+          variable(std::move(var)),
+          var_type(std::move(t)),
+          range(std::move(r)),
+          body(std::move(b)) {}
+
+    ForRangeStatement(std::string label, std::string var, std::unique_ptr<Type> t,
+                     std::unique_ptr<Expression> r,
+                     std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::ForRange, l),
+          label(std::move(label)),
           variable(std::move(var)),
           var_type(std::move(t)),
           range(std::move(r)),
@@ -549,11 +592,17 @@ struct ReturnStatement : Statement {
 };
 
 struct BreakStatement : Statement {
+    std::string label;  // Optional label for breaking to specific loop
+
     BreakStatement(std::size_t l) : Statement(Kind::Break, l) {}
+    BreakStatement(std::string label, std::size_t l) : Statement(Kind::Break, l), label(std::move(label)) {}
 };
 
 struct ContinueStatement : Statement {
+    std::string label;  // Optional label for continuing to specific loop
+
     ContinueStatement(std::size_t l) : Statement(Kind::Continue, l) {}
+    ContinueStatement(std::string label, std::size_t l) : Statement(Kind::Continue, l), label(std::move(label)) {}
 };
 
 struct TryStatement : Statement {
@@ -647,7 +696,8 @@ struct Declaration {
         Using,
         Contract,
         Import,
-        Export
+        Export,
+        Cpp1Passthrough  // C++1 code to pass through unchanged
     };
 
     Kind kind;
@@ -788,6 +838,14 @@ struct ImportDeclaration : Declaration {
 
     ImportDeclaration(std::string m, std::size_t l)
         : Declaration(Kind::Import, "", l), module_name(std::move(m)) {}
+};
+
+// C++1 passthrough declaration - stores raw C++1 code to emit unchanged
+struct Cpp1PassthroughDeclaration : Declaration {
+    std::string raw_code;  // Raw C++1 source code
+
+    Cpp1PassthroughDeclaration(std::string code, std::size_t l)
+        : Declaration(Kind::Cpp1Passthrough, "", l), raw_code(std::move(code)) {}
 };
 
 // Wrapper to use a Declaration as a Statement (e.g., variable declarations in function bodies)

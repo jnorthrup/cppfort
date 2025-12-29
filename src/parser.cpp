@@ -203,6 +203,17 @@ std::unique_ptr<Declaration> Parser::declaration() {
             return decl;
         }
 
+        // C++1 passthrough detection: detect C++1 function syntax
+        // Patterns: "auto name(...) -> type {" or "type name(...)"
+        // Only trigger if NOT preceded by Cpp2 ':' marker
+        if (check_cpp1_function_syntax()) {
+            auto decl = cpp1_passthrough_declaration();
+            if (decl) {
+                attach_markdown_blocks(decl.get());
+                return decl;
+            }
+        }
+
         // If we don't recognize the declaration, treat as statement
         auto stmt = statement();
         if (stmt) {
@@ -2043,6 +2054,134 @@ std::vector<std::string> Parser::template_parameters() {
 bool Parser::is_template_start() {
     return check(TokenType::Template) ||
            (check(TokenType::Identifier) && peek().lexeme == "template");
+}
+
+bool Parser::check_cpp1_function_syntax() {
+    // Check for C++1 function patterns (per docs/cppfront/mixed.md):
+    // - "auto name(...) -> type {" - trailing return type
+    // - "type name(...) {" - standard function
+    //
+    // Key distinction from Cpp2: Cpp2 uses ':' after name, C++1 does NOT
+    // We only trigger this if we're NOT at a Cpp2 declaration
+
+    std::size_t saved = current;
+
+    // Check for "auto name(..." pattern - C++1 trailing return type
+    if (check(TokenType::Auto) ||
+        (check(TokenType::Identifier) && peek().lexeme == "auto")) {
+        advance(); // consume 'auto'
+        if (check(TokenType::Identifier)) {
+            advance(); // consume function name
+            if (check(TokenType::LeftParen)) {
+                current = saved;
+                return true; // "auto name(..." - C++1
+            }
+        }
+    }
+    current = saved;
+
+    // Check for "type name(..." pattern - C++1 standard function
+    // Need to skip: Cpp2 keywords (func, type, namespace, let, const, etc.)
+    if (check(TokenType::Identifier)) {
+        std::string_view first_lexeme = peek().lexeme;
+        // Skip Cpp2 keywords
+        if (first_lexeme == "func" || first_lexeme == "type" ||
+            first_lexeme == "namespace" || first_lexeme == "struct" ||
+            first_lexeme == "class" || first_lexeme == "union" ||
+            first_lexeme == "interface" || first_lexeme == "enum" ||
+            first_lexeme == "operator" || first_lexeme == "let" ||
+            first_lexeme == "const" || first_lexeme == "import" ||
+            first_lexeme == "using" || first_lexeme == "template") {
+            return false;
+        }
+
+        advance(); // consume type name
+
+        // Skip template arguments: type<...>
+        if (check(TokenType::LessThan)) {
+            int depth = 1;
+            advance();
+            while (depth > 0 && !is_at_end()) {
+                if (check(TokenType::LessThan)) depth++;
+                else if (check(TokenType::GreaterThan)) depth--;
+                advance();
+            }
+        }
+
+        // Skip pointers/references: type*, type&, type&&
+        while (check(TokenType::Asterisk) || check(TokenType::Ampersand)) {
+            advance();
+        }
+
+        // Now we expect function name
+        if (check(TokenType::Identifier)) {
+            advance(); // consume function name
+            if (check(TokenType::LeftParen)) {
+                current = saved;
+                return true; // "type name(..." - C++1
+            }
+        }
+    }
+    current = saved;
+
+    return false;
+}
+
+std::unique_ptr<Declaration> Parser::cpp1_passthrough_declaration() {
+    // Capture all tokens until matching closing brace
+    std::size_t start_pos = current;
+    std::string raw_code;
+
+    // Build raw source from token lexemes
+    while (!is_at_end()) {
+        const Token& tok = peek();
+        raw_code += tok.lexeme;
+
+        // Add whitespace based on token positions for readability
+        if (!is_at_end() && current + 1 < tokens.size()) {
+            const Token& next_tok = tokens[current + 1];
+            if (next_tok.line == tok.line && next_tok.column > tok.column + tok.lexeme.length()) {
+                // Same line, add space
+                raw_code += " ";
+            } else if (next_tok.line > tok.line) {
+                // Different line, add newline
+                raw_code += "\n";
+            }
+        }
+
+        advance();
+
+        // Stop at semicolon or matching closing brace
+        if (tok.type == TokenType::Semicolon) {
+            break;
+        }
+        if (tok.type == TokenType::LeftBrace) {
+            // Find matching closing brace
+            int depth = 1;
+            while (!is_at_end() && depth > 0) {
+                const Token& inner = peek();
+                if (inner.type == TokenType::LeftBrace) depth++;
+                else if (inner.type == TokenType::RightBrace) depth--;
+                raw_code += inner.lexeme;
+
+                advance();
+
+                // Add whitespace
+                if (!is_at_end() && current < tokens.size()) {
+                    const Token& next_tok = peek();
+                    if (next_tok.line == inner.line && next_tok.column > inner.column + inner.lexeme.length()) {
+                        raw_code += " ";
+                    } else if (next_tok.line > inner.line) {
+                        raw_code += "\n";
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    auto decl = std::make_unique<Cpp1PassthroughDeclaration>(raw_code, tokens[start_pos].line);
+    return decl;
 }
 
 // Error handling

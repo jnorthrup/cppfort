@@ -121,6 +121,9 @@ void CodeGenerator::generate_declaration(Declaration* decl) {
         case Declaration::Kind::Import:
             generate_import_declaration(static_cast<ImportDeclaration*>(decl));
             break;
+        case Declaration::Kind::Cpp1Passthrough:
+            generate_cpp1_passthrough_declaration(static_cast<Cpp1PassthroughDeclaration*>(decl));
+            break;
         default:
             break;
     }
@@ -730,6 +733,12 @@ void CodeGenerator::generate_using_declaration(UsingDeclaration* decl) {
 void CodeGenerator::generate_import_declaration(ImportDeclaration* decl) {
     if (!decl) return;
     write_line("// import " + decl->module_name);
+}
+
+void CodeGenerator::generate_cpp1_passthrough_declaration(Cpp1PassthroughDeclaration* decl) {
+    if (!decl) return;
+    // Emit the raw C++1 code as-is
+    write_line(decl->raw_code);
 }
 
 void CodeGenerator::generate_statement(Statement* stmt) {

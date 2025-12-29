@@ -51,6 +51,10 @@ private:
     std::unique_ptr<Declaration> using_declaration();
     std::unique_ptr<Declaration> import_declaration();
     std::unique_ptr<Declaration> template_declaration();
+    std::unique_ptr<Declaration> cpp1_passthrough_declaration();  // C++1 passthrough
+
+    // C++1 detection
+    bool check_cpp1_function_syntax();
 
     // Types
     std::unique_ptr<Type> type();

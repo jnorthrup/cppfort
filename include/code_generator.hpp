@@ -43,6 +43,7 @@ private:
     void generate_operator_declaration(OperatorDeclaration* decl);
     void generate_using_declaration(UsingDeclaration* decl);
     void generate_import_declaration(ImportDeclaration* decl);
+    void generate_cpp1_passthrough_declaration(Cpp1PassthroughDeclaration* decl);  // C++1 passthrough
 
     void generate_statement(Statement* stmt);
     void generate_block_statement(BlockStatement* stmt);
