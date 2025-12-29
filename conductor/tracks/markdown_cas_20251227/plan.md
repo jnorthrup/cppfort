@@ -1,6 +1,6 @@
 # Plan: Markdown Comments with CAS-Linked Module Stubs
 
-## Phase 1: Lexer Support for Markdown Blocks [checkpoint: 3af991c]
+## Phase 1: Lexer Support for Markdown Blocks [COMPLETE]
 
 - [x] **Task:** Add MARKDOWN_BLOCK token type to lexer.
     - [x] **Sub-task:** Write tests for recognizing markdown block delimiters.
@@ -8,9 +8,12 @@
 - [x] **Task:** Implement markdown block content extraction.
     - [x] **Sub-task:** Write tests for content extraction with various delimiters.
     - [x] **Sub-task:** Implement content capture between triple backticks.
+- [x] **Task:** Support comment-wrapped syntax `/*```...```*/`
+    - [x] **Sub-task:** Write tests for `/*```...```*/` syntax
+    - [x] **Sub-task:** Update lexer to detect comment-wrapped markdown blocks
 - [x] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
 
-## Phase 2: SHA256 Computation
+## Phase 2: SHA256 Computation [COMPLETE]
 
 - [x] **Task:** Implement trim-and-concatenate algorithm for markdown content.
     - [x] **Sub-task:** Write tests for line trimming and concatenation.
@@ -18,9 +21,9 @@
 - [x] **Task:** Integrate SHA256 hashing for markdown blocks.
     - [x] **Sub-task:** Write tests with known SHA256 test vectors.
     - [x] **Sub-task:** Reuse existing SHA256 implementation from semantic_hash.cpp.
-- [ ] **Task:** Conductor - User Manual Verification 'SHA256 Computation' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'SHA256 Computation' (Protocol in workflow.md)
 
-## Phase 3: AST Metadata Support
+## Phase 3: AST Metadata Support [COMPLETE]
 
 - [x] **Task:** Define MarkdownBlockAttr structure in AST.
     - [x] **Sub-task:** Write tests for metadata structure creation.
@@ -28,9 +31,9 @@
 - [x] **Task:** Attach markdown metadata to AST nodes during parsing.
     - [x] **Sub-task:** Write tests for metadata attachment to declarations.
     - [x] **Sub-task:** Implement parser integration with markdown blocks.
-- [ ] **Task:** Conductor - User Manual Verification 'AST Metadata Support' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'AST Metadata Support' (Protocol in workflow.md)
 
-## Phase 4: Code Generation - Module Stubs
+## Phase 4: Code Generation - Module Stubs [COMPLETE]
 
 - [x] **Task:** Implement empty C++20 module stub generation.
     - [x] **Sub-task:** Write tests for module stub output format.
@@ -41,9 +44,9 @@
 - [x] **Task:** Integrate module stub emission into code generator.
     - [x] **Sub-task:** Write integration tests with full Cpp2 files.
     - [x] **Sub-task:** Connect AST metadata to code generation pipeline.
-- [ ] **Task:** Conductor - User Manual Verification 'Code Generation - Module Stubs' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Code Generation - Module Stubs' (Protocol in workflow.md)
 
-## Phase 5: Testing and Validation
+## Phase 5: Testing and Validation [COMPLETE]
 
 - [x] **Task:** Create comprehensive test suite for markdown blocks.
     - [x] **Sub-task:** Write unit tests for lexer edge cases (empty blocks, Unicode).
@@ -52,4 +55,4 @@
 - [x] **Task:** Verify generated modules compile with C++20 compiler.
     - [x] **Sub-task:** Create build tests with g++/clang++.
     - [x] **Sub-task:** Verify module imports work correctly.
-- [ ] **Task:** Conductor - User Manual Verification 'Testing and Validation' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Testing and Validation' (Protocol in workflow.md)

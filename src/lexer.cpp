@@ -377,6 +377,22 @@ void Lexer::scan_preprocessor() {
 }
 
 void Lexer::scan_block_comment() {
+    // Check for markdown block syntax: /*```
+    if (peek() == '`' && peek_next() == '`' && current + 2 < source.length() && source[current + 2] == '`') {
+        // This is a markdown block wrapped in comment
+        advance(); // first `
+        advance(); // second `
+        advance(); // third `
+        scan_markdown_block();
+        // After scan_markdown_block, verify closing */
+        if (peek() == '*' && peek_next() == '/') {
+            advance(); // *
+            advance(); // /
+        }
+        return;
+    }
+
+    // Regular block comment
     while (!is_at_end() && !(peek() == '*' && peek_next() == '/')) {
         if (peek() == '\n') {
             line++;

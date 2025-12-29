@@ -21,9 +21,18 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Markdown comments with CAS-linked module stubs
+## [x] Track: Markdown comments with CAS-linked module stubs
 *Link: [./conductor/tracks/markdown_cas_20251227/](./conductor/tracks/markdown_cas_20251227/)*
-*Status: IN PROGRESS*
+*Status: COMPLETE - All phases verified, comment-wrapped syntax implemented*
+
+**Implementation Summary:**
+- **Lexer:** MARKDOWN_BLOCK token with comment-wrapped syntax (`/*```...```*/`)
+- **SHA256:** Trim-and-concatenate algorithm with known test vectors
+- **AST:** MarkdownBlockAttr metadata structure attached to declarations
+- **Code Generation:** Empty C++20 module stubs with SHA256 constants
+- **Testing:** 5 test suites, 31 total tests, all passing
+- **Quality:** Edge cases covered (empty blocks, Unicode, special characters, nested code)
+- **Verification:** Independent gap analysis confirms 8/8 requirements met
 
 ---
 
