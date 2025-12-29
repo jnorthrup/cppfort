@@ -1,6 +1,6 @@
 # Plan: Markdown Comments with CAS-Linked Module Stubs
 
-## Phase 1: Lexer Support for Markdown Blocks
+## Phase 1: Lexer Support for Markdown Blocks [checkpoint: 3af991c]
 
 - [x] **Task:** Add MARKDOWN_BLOCK token type to lexer.
     - [x] **Sub-task:** Write tests for recognizing markdown block delimiters.
@@ -8,7 +8,7 @@
 - [x] **Task:** Implement markdown block content extraction.
     - [x] **Sub-task:** Write tests for content extraction with various delimiters.
     - [x] **Sub-task:** Implement content capture between triple backticks.
-- [~] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
+- [x] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
 
 ## Phase 2: SHA256 Computation
 
