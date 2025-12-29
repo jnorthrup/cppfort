@@ -122,10 +122,19 @@ std::unique_ptr<Declaration> Parser::declaration() {
         }
 
         // Cpp2 unified syntax: identifier: type = initializer
+        // Cpp2 type-deduced syntax: identifier := initializer
         if (check(TokenType::Identifier)) {
             std::size_t saved = current;
             advance(); // consume identifier
-            if (check(TokenType::Colon)) {
+            if (check(TokenType::ColonEqual)) {
+                // Type-deduced variable: name := initializer
+                current = saved; // backtrack
+                advance(); // consume identifier (makes it previous())
+                consume(TokenType::ColonEqual, "Expected ':=' after identifier");
+                auto decl = variable_declaration();
+                attach_markdown_blocks(decl.get());
+                return decl;
+            } else if (check(TokenType::Colon)) {
                 current = saved; // backtrack
                 // Could be function or variable
                 advance(); // consume identifier (makes it previous())
@@ -150,7 +159,7 @@ std::unique_ptr<Declaration> Parser::declaration() {
                     return decl;
                 }
             }
-            current = saved; // backtrack if no colon
+            current = saved; // backtrack if no colon or colon-equal
         }
 
         if (match({TokenType::Let, TokenType::Const})) {
@@ -267,7 +276,8 @@ std::unique_ptr<Statement> Parser::statement() {
         }
 
         // Variable declaration with unified syntax: name: type = value;
-        // Check for identifier followed by colon
+        // Variable declaration with type-deduced syntax: name := value;
+        // Check for identifier followed by colon or colon-equal
         if (check(TokenType::Identifier)) {
             std::size_t saved = current;
             advance(); // consume identifier
@@ -301,8 +311,33 @@ std::unique_ptr<Statement> Parser::statement() {
                 decl->is_compile_time = is_compile_time;
 
                 return std::make_unique<DeclarationStatement>(std::move(decl), previous().line);
+            } else if (check(TokenType::ColonEqual)) {
+                // Found type-deduced variable declaration: name := value
+                Token name = previous(); // the identifier we just consumed
+                advance(); // consume the :=
+
+                // Type is auto
+                auto var_type = std::make_unique<Type>(Type::Kind::Auto);
+                var_type->name = "auto";
+
+                // Parse initializer
+                std::unique_ptr<Expression> initializer = expression();
+                if (!initializer) {
+                    error_at_current("Expected initializer after ':='");
+                }
+
+                consume(TokenType::Semicolon, "Expected ';' after variable declaration");
+
+                auto decl = std::make_unique<VariableDeclaration>(std::string(name.lexeme), name.line);
+                decl->type = std::move(var_type);
+                decl->initializer = std::move(initializer);
+                decl->is_const = false;
+                decl->is_mut = false;
+                decl->is_compile_time = false;
+
+                return std::make_unique<DeclarationStatement>(std::move(decl), previous().line);
             }
-            current = saved; // backtrack if no colon
+            current = saved; // backtrack if no colon or colon-equal
         }
 
         // Expression statement
@@ -325,9 +360,10 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
     bool is_compile_time = false;
     bool is_mut = false;
 
-    // Check if called from keyword syntax (let/const) or unified syntax (name:)
+    // Check if called from keyword syntax (let/const), unified syntax (name:), or type-deduced syntax (name:=)
     Token start = previous();
     bool from_keyword = (start.type == TokenType::Let || start.type == TokenType::Const);
+    bool from_colon_equal = (start.type == TokenType::ColonEqual);
     Token name = start; // Will be identifier or keyword
 
     if (from_keyword) {
@@ -339,11 +375,21 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
         if (current >= 2) {
             name = tokens[current - 2]; // identifier before colon
         }
+    } else if (from_colon_equal) {
+        // Type-deduced syntax: := was consumed, get identifier before it
+        if (current >= 2) {
+            name = tokens[current - 2]; // identifier before :=
+        }
     }
     // else: name is already set from some other path (e.g., function parameter)
 
     std::unique_ptr<Type> var_type = nullptr;
-    if (from_keyword) {
+    if (from_colon_equal) {
+        // Type-deduced declaration: name := initializer
+        // Treat as if type was 'auto' - create Auto type
+        var_type = std::make_unique<Type>(Type::Kind::Auto);
+        var_type->name = "auto";
+    } else if (from_keyword) {
         // Optional type annotation.
         if (match(TokenType::Colon)) {
             var_type = type();

@@ -90,6 +90,7 @@ enum class TokenType : uint8_t {
     FatArrow,        // =>
     DoubleArrow,     // =>
     Equal,           // =
+    ColonEqual,      // := (type-deduced declaration)
     DoubleEqual,     // ==
     NotEqual,        // !=
     LessThan,        // <
