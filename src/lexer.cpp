@@ -178,6 +178,8 @@ void Lexer::scan_token() {
         case ':': {
             if (match(':')) {
                 add_token(TokenType::DoubleColon);
+            } else if (match('=')) {
+                add_token(TokenType::ColonEqual);
             } else {
                 add_token(TokenType::Colon);
             }
@@ -475,7 +477,7 @@ TokenType Lexer::identifier_type() {
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
         {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},
         {"inspect", TokenType::Inspect}, {"interface", TokenType::Interface}, {"is", TokenType::Is}, {"implicit", TokenType::Implicit}, {"let", TokenType::Let},
-        {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"operator", TokenType::Operator},
+        {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"next", TokenType::Next}, {"operator", TokenType::Operator},
         {"private", TokenType::Private}, {"public", TokenType::Public}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
         {"requires", TokenType::Requires}, {"struct", TokenType::Struct}, {"super", TokenType::Super}, {"switch", TokenType::Switch},
         {"this", TokenType::This}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},

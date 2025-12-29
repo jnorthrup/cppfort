@@ -879,11 +879,41 @@ std::unique_ptr<Statement> Parser::if_statement() {
 }
 
 std::unique_ptr<Statement> Parser::while_statement() {
-    consume(TokenType::LeftParen, "Expected '(' after 'while'");
-    auto condition = expression();
-    consume(TokenType::RightParen, "Expected ')' after while condition");
+    // Cpp2 syntax: while <cond> next <increment> { <body> }
+    // Traditional C syntax: while (<cond>) { <body> }
+
+    std::unique_ptr<Expression> condition = nullptr;
+    std::unique_ptr<Expression> increment = nullptr;
+
+    // Check if condition is in parentheses (traditional syntax)
+    if (match(TokenType::LeftParen)) {
+        condition = expression();
+        consume(TokenType::RightParen, "Expected ')' after while condition");
+
+        // Check for Cpp2 'next' clause after closing paren
+        if (match(TokenType::Next)) {
+            increment = expression();
+        }
+    } else {
+        // Cpp2 syntax without parentheses: while cond next increment { body }
+        condition = expression();
+
+        // Check for Cpp2 'next' clause
+        if (match(TokenType::Next)) {
+            increment = expression();
+        }
+    }
 
     auto body = statement();
+
+    if (increment) {
+        return std::make_unique<WhileStatement>(
+            std::move(condition),
+            std::move(increment),
+            std::move(body),
+            peek().line
+        );
+    }
 
     return std::make_unique<WhileStatement>(
         std::move(condition),

@@ -30,6 +30,7 @@ enum class TokenType : uint8_t {
     Const,
     Let,
     Mut,
+    Next,
     Return,
     If,
     Else,

@@ -463,12 +463,21 @@ struct IfStatement : Statement {
 
 struct WhileStatement : Statement {
     std::unique_ptr<Expression> condition;
+    std::unique_ptr<Expression> increment; // Cpp2 'next' clause
     std::unique_ptr<Statement> body;
 
     WhileStatement(std::unique_ptr<Expression> cond,
                   std::unique_ptr<Statement> b, std::size_t l)
         : Statement(Kind::While, l),
           condition(std::move(cond)),
+          body(std::move(b)) {}
+
+    WhileStatement(std::unique_ptr<Expression> cond,
+                  std::unique_ptr<Expression> inc,
+                  std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::While, l),
+          condition(std::move(cond)),
+          increment(std::move(inc)),
           body(std::move(b)) {}
 };
 

@@ -716,7 +716,24 @@ void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
     if (!stmt) return;
 
     write("while (" + generate_expression_to_string(stmt->condition.get()) + ") ");
-    generate_statement(stmt->body.get());
+
+    // Check if there's an increment clause (Cpp2 'next' syntax)
+    bool has_increment = stmt->increment != nullptr;
+
+    if (!has_increment) {
+        // Simple case: no increment clause
+        generate_statement(stmt->body.get());
+    } else {
+        // Has increment clause: while(cond) next inc { body }
+        // Generate as: while(cond) { body; inc; }
+        write_line("{");
+        indent();
+        generate_statement(stmt->body.get());
+        write_line("");
+        write(generate_expression_to_string(stmt->increment.get()) + ";");
+        dedent();
+        write_line("}");
+    }
 }
 
 void CodeGenerator::generate_for_statement(ForStatement* stmt) {
