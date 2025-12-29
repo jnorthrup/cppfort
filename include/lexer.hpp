@@ -92,6 +92,7 @@ enum class TokenType : uint8_t {
     DoubleArrow,     // =>
     Equal,           // =
     ColonEqual,      // := (type-deduced declaration)
+    EqualColon,      // =: (function named return type)
     DoubleEqual,     // ==
     NotEqual,        // !=
     LessThan,        // <

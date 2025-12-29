@@ -491,9 +491,12 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
 
     consume(TokenType::RightParen, "Expected ')' after parameters");
 
-    // Return type
+    // Return type - Cpp2 supports both -> and =: syntax
     std::unique_ptr<Type> return_type = nullptr;
     if (match(TokenType::Arrow)) {
+        return_type = type();
+    } else if (match(TokenType::EqualColon)) {
+        // Cpp2 named return type: (params) =: return_type
         return_type = type();
     }
 
@@ -679,9 +682,18 @@ std::unique_ptr<Declaration> Parser::namespace_declaration() {
 
 std::unique_ptr<Declaration> Parser::operator_declaration() {
     // Handle operator overloading
+    // Cpp2 syntax: operator=: (...) or operator: (...) (traditional)
     Token op = advance(); // This should be the operator token
-    consume(TokenType::Colon, "Expected ':' after operator");
-    consume(TokenType::LeftParen, "Expected '(' after operator ':'");
+
+    // In Cpp2, operator=: is a special case where =: is the operator name
+    // and there's no colon before the parameters
+    bool is_cpp2_assign_op = (op.type == TokenType::EqualColon);
+
+    if (!is_cpp2_assign_op) {
+        consume(TokenType::Colon, "Expected ':' after operator");
+    }
+
+    consume(TokenType::LeftParen, "Expected '(' after operator");
 
     auto op_decl = std::make_unique<OperatorDeclaration>(std::string(op.lexeme), op.line);
 
@@ -690,9 +702,23 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
             // Parse qualifiers before parameter name
             std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
 
-            Token param_name = consume(TokenType::Identifier, "Expected parameter name");
-            consume(TokenType::Colon, "Expected ':' after parameter name");
-            auto param_type = type();
+            // Parameter name can be identifier or 'this' keyword (for constructors/assignment)
+            Token param_name = [this]() -> Token {
+                if (check(TokenType::Identifier)) {
+                    return advance();
+                } else if (check(TokenType::This) || check(TokenType::Underscore) || check(TokenType::Implicit)) {
+                    return advance();
+                } else {
+                    return consume(TokenType::Identifier, "Expected parameter name");
+                }
+            }();
+
+            // Type annotation is optional for operator parameters
+            // (e.g., operator=: (out this) - type is implied from context)
+            std::unique_ptr<Type> param_type = nullptr;
+            if (match(TokenType::Colon)) {
+                param_type = type();
+            }
 
             auto param = std::make_unique<FunctionDeclaration::Parameter>();
             param->name = std::string(param_name.lexeme);
@@ -705,12 +731,40 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
 
     consume(TokenType::RightParen, "Expected ')' after parameters");
 
+    // Return type - Cpp2 supports both -> and =: syntax
     if (match(TokenType::Arrow)) {
+        op_decl->return_type = type();
+    } else if (match(TokenType::EqualColon)) {
+        // Cpp2 named return type: (params) =: return_type
         op_decl->return_type = type();
     }
 
-    consume(TokenType::LeftBrace, "Expected '{' for operator body");
-    op_decl->body = block_statement();
+    // Cpp2 supports both block bodies and expression bodies
+    // - operator=: (params) -> type = { body }
+    // - operator=: (params) -> type = expr;
+    std::unique_ptr<Statement> body = nullptr;
+    bool has_equals = match(TokenType::Equal); // '=' is optional for historical compatibility
+    if (match(TokenType::LeftBrace)) {
+        body = block_statement();
+    } else if (has_equals) {
+        // Expression-bodied operator
+        auto expr = expression();
+        if (expr) {
+            if (op_decl->return_type && op_decl->return_type->name != "void") {
+                body = std::make_unique<ReturnStatement>(std::move(expr), previous().line);
+            } else {
+                body = std::make_unique<ExpressionStatement>(std::move(expr), previous().line);
+            }
+        } else {
+            error_at_current("Expected expression");
+        }
+        consume(TokenType::Semicolon, "Expected ';' after operator body expression");
+    } else {
+        consume(TokenType::LeftBrace, "Expected '{' for operator body");
+        body = block_statement();
+    }
+
+    op_decl->body = std::move(body);
 
     return op_decl;
 }
@@ -1947,7 +2001,7 @@ std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
 }
 
 // Parameter qualifier parsing (Cpp2-specific)
-// Parses: inout, out, move, forward, virtual, override
+// Parses: inout, out, move, forward, virtual, override, implicit
 std::vector<ParameterQualifier> Parser::parse_parameter_qualifiers() {
     std::vector<ParameterQualifier> qualifiers;
 
@@ -1964,6 +2018,8 @@ std::vector<ParameterQualifier> Parser::parse_parameter_qualifiers() {
             qualifiers.push_back(ParameterQualifier::Virtual);
         } else if (match(TokenType::Override)) {
             qualifiers.push_back(ParameterQualifier::Override);
+        } else if (match(TokenType::Implicit)) {
+            qualifiers.push_back(ParameterQualifier::Implicit);
         } else {
             break;
         }

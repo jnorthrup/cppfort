@@ -112,6 +112,9 @@ void CodeGenerator::generate_declaration(Declaration* decl) {
         case Declaration::Kind::Namespace:
             generate_namespace_declaration(static_cast<NamespaceDeclaration*>(decl));
             break;
+        case Declaration::Kind::Operator:
+            generate_operator_declaration(static_cast<OperatorDeclaration*>(decl));
+            break;
         case Declaration::Kind::Using:
             generate_using_declaration(static_cast<UsingDeclaration*>(decl));
             break;
@@ -211,6 +214,88 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     }
 }
 
+void CodeGenerator::generate_operator_declaration(OperatorDeclaration* decl) {
+    if (!decl) return;
+
+    // Cpp2 operator=: is the assignment operator
+    // operator=: (out this, that) = { body }
+    // Transpiles to: ClassName& operator=(ClassName that) { body }
+
+    std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
+
+    // Get the class name from the context (outer type)
+    std::string class_name = current_class_name.empty() ? "ClassName" : current_class_name;
+
+    // operator=: becomes operator=
+    std::string op_name = decl->name;
+    if (op_name == "operator=:") {
+        op_name = "operator=";
+    }
+
+    // Return type: usually ClassName& for assignment operators
+    write(class_name + "& " + op_name + "(");
+
+    // Parameters
+    for (size_t i = 0; i < decl->parameters.size(); ++i) {
+        if (i > 0) write(", ");
+        const auto& param = decl->parameters[i];
+
+        // Skip 'this' parameter - it's implicit in C++
+        if (param->name == "this") {
+            continue;
+        }
+
+        std::string param_type = param->type ? generate_type(param->type.get()) : "auto";
+
+        // Handle qualifiers
+        bool is_move = false;
+        bool is_const = false;
+        for (const auto& qual : param->qualifiers) {
+            if (qual == ParameterQualifier::Move) {
+                is_move = true;
+            } else if (qual == ParameterQualifier::Out) {
+                // out parameter is passed by non-const reference
+            }
+        }
+
+        if (is_move) {
+            write(param_type + "&&");
+        } else {
+            write("const " + param_type + "&");
+        }
+
+        write(" " + param->name);
+    }
+
+    write(")");
+
+    // Function body
+    if (decl->body) {
+        if (auto* block = dynamic_cast<BlockStatement*>(decl->body.get())) {
+            write_line(" {");
+            indent();
+            generate_statement(block);
+            write_line("return *this;");
+            dedent();
+            write_line("}");
+        } else {
+            // Expression body
+            write_line(" {");
+            indent();
+            generate_statement(decl->body.get());
+            write_line("return *this;");
+            dedent();
+            write_line("}");
+        }
+    } else {
+        write_line(" {");
+        indent();
+        write_line("return *this;");
+        dedent();
+        write_line("}");
+    }
+}
+
 void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     if (!decl) return;
 
@@ -229,7 +314,7 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     current_type_metafunctions = decl->metafunctions;
 
     switch (decl->type_kind) {
-        case TypeDeclaration::TypeKind::Struct:
+        case TypeDeclaration::TypeKind::Struct: {
             // Use union if @union metafunction is present
             if (is_union) {
                 write_line("union " + decl->name + " {");
@@ -251,9 +336,15 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                 write_line("");
             }
 
+            // Track class name for operator declarations
+            std::string prev_class_name = current_class_name;
+            current_class_name = decl->name;
+
             for (auto& member : decl->members) {
                 generate_declaration(member.get());
             }
+
+            current_class_name = prev_class_name;
 
             // Generate metafunction code for @value, @ordered, etc.
             for (const auto& metafunc : decl->metafunctions) {
@@ -439,6 +530,7 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
                     write_line("}");
                 }
             }
+        }
 
             break;
 

@@ -39,7 +39,8 @@ enum class ParameterQualifier {
     Move,       // move - ownership transfer (T&&)
     Forward,    // forward - perfect forwarding (T&&)
     Virtual,    // virtual - for polymorphic types
-    Override    // override - for overriding base functions
+    Override,   // override - for overriding base functions
+    Implicit    // implicit - for implicit conversion operators
 };
 
 // Type system

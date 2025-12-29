@@ -8,7 +8,7 @@
 - [x] **Task:** Implement markdown block content extraction.
     - [x] **Sub-task:** Write tests for content extraction with various delimiters.
     - [x] **Sub-task:** Implement content capture between triple backticks.
-- [ ] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
+- [~] **Task:** Conductor - User Manual Verification 'Lexer Support for Markdown Blocks' (Protocol in workflow.md)
 
 ## Phase 2: SHA256 Computation
 

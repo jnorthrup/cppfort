@@ -21,9 +21,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Markdown comments with CAS-linked module stubs
+## [~] Track: Markdown comments with CAS-linked module stubs
 *Link: [./conductor/tracks/markdown_cas_20251227/](./conductor/tracks/markdown_cas_20251227/)*
-*Status: PENDING*
+*Status: IN PROGRESS*
 
 ---
 

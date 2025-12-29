@@ -24,6 +24,7 @@ private:
     std::unordered_set<std::string> generated_types;
     std::vector<std::string> includes;
     std::vector<std::string> current_type_metafunctions; // Track metafunctions of current type being generated
+    std::string current_class_name;  // Track class name for operator generation
 
     // Helper methods
     void write_line(const std::string& line);

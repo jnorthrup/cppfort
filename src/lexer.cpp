@@ -105,6 +105,8 @@ void Lexer::scan_token() {
                 add_token(TokenType::DoubleEqual);
             } else if (match('>')) {
                 add_token(TokenType::FatArrow);
+            } else if (match(':')) {
+                add_token(TokenType::EqualColon);
             } else {
                 add_token(TokenType::Equal);
             }

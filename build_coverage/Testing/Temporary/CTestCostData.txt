@@ -1,0 +1,42 @@
+cpp2_unit_tests 0 0
+cppfront_regression_tests 0 0
+ast_to_fir_tests 1 0.274164
+binary_expression_fir_tests 1 0.343994
+call_expression_fir_tests 0 0
+control_flow_fir_tests 0 0
+semantic_extraction_tests 0 0
+fir_to_son_pass_test 0 0
+fir_sccp_pass_test 1 0.230654
+crdt_core_tests 1 0.292093
+son_serialization_tests 1 0.413662
+son_deserialization_tests 1 0.324151
+collect_regression_tests 0 0
+generate_test_hashes_test 0 0
+all_cpp2_tests 0 0
+parameter_qualifier_lexing_tests 1 0.286394
+parameter_qualifier_parsing_tests 1 0.215306
+fir_qualifier_attributes_tests 1 0.248691
+ufcs_fir_tests 0 0
+advanced_types_fir_tests 0 0
+error_handling_fir_tests 1 0.214642
+son_verification_tests 0 0
+sccp_arithmetic_operations_tests 1 0.203738
+sccp_logical_operations_tests 1 0.196827
+sccp_lattice_tests 1 0.199911
+sccp_comparison_folding_tests 1 0.239542
+sccp_float_special_tests 1 0.254293
+sccp_range_analysis_tests 1 0.240641
+sccp_debug_logging_tests 1 0.290808
+---
+cpp2_unit_tests
+cppfront_regression_tests
+call_expression_fir_tests
+control_flow_fir_tests
+semantic_extraction_tests
+fir_to_son_pass_test
+collect_regression_tests
+generate_test_hashes_test
+all_cpp2_tests
+ufcs_fir_tests
+advanced_types_fir_tests
+son_verification_tests
