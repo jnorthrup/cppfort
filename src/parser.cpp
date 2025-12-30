@@ -244,6 +244,9 @@ std::unique_ptr<Statement> Parser::statement() {
         if (match(TokenType::While)) {
             return while_statement();
         }
+        if (match(TokenType::Do)) {
+            return do_while_statement();
+        }
         if (match(TokenType::For)) {
             return for_statement();
         }
@@ -286,17 +289,23 @@ std::unique_ptr<Statement> Parser::statement() {
             return parallel_for_statement();
         }
 
-        // Variable declaration with unified syntax: name: type = value;
-        // Variable declaration with type-deduced syntax: name := value;
-        // Check for identifier followed by colon or colon-equal
+        // Check for labeled loops: label: while/for/do ...
+        // AND variable declarations: name: type = value or name := value
+        // Both start with identifier:, so we need to disambiguate
         if (check(TokenType::Identifier)) {
             std::size_t saved = current;
             advance(); // consume identifier
             if (check(TokenType::Colon)) {
-                // Found unified syntax variable declaration
-                Token name = previous(); // the identifier we just consumed
-                advance(); // consume the colon
-
+                // Peek ahead to see if this is followed by a loop keyword
+                advance(); // consume colon
+                if (check(TokenType::While) || check(TokenType::For) || check(TokenType::Do)) {
+                    // This is a labeled loop
+                    std::string label = std::string(tokens[saved].lexeme);
+                    return labeled_loop_statement(std::move(label));
+                }
+                // Not a labeled loop, so it's a variable declaration - continue parsing
+                // Don't backtrack, continue with variable declaration parsing
+                Token name = tokens[saved]; // the identifier
                 // Parse type and initializer
                 std::unique_ptr<Type> var_type = nullptr;
                 if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
@@ -838,8 +847,21 @@ std::unique_ptr<Type> Parser::qualified_type() {
     auto t = basic_type();
 
     while (match(TokenType::DoubleColon)) {
+        // For each :: component, we need to parse the next name and its template args
         Token name = consume(TokenType::Identifier, "Expected identifier after '::'");
         t->name += "::" + std::string(name.lexeme);
+
+        // Check for template arguments on this component
+        if (match(TokenType::LessThan)) {
+            do {
+                auto arg = type();
+                if (arg) {
+                    t->template_args.push_back(std::move(arg));
+                }
+            } while (match(TokenType::Comma));
+            consume(TokenType::GreaterThan, "Expected '>' after template arguments");
+            t->kind = Type::Kind::Template;
+        }
     }
 
     return t;
@@ -924,9 +946,19 @@ std::unique_ptr<Statement> Parser::block_statement() {
 }
 
 std::unique_ptr<Statement> Parser::if_statement() {
-    consume(TokenType::LeftParen, "Expected '(' after 'if'");
-    auto condition = expression();
-    consume(TokenType::RightParen, "Expected ')' after if condition");
+    // Cpp2 syntax: if <condition> { <then_body> } else { <else_body> }
+    // C syntax: if (<condition>) { <then_body> } else { <else_body> }
+
+    std::unique_ptr<Expression> condition = nullptr;
+
+    // Check if condition is in parentheses (traditional syntax)
+    if (match(TokenType::LeftParen)) {
+        condition = expression();
+        consume(TokenType::RightParen, "Expected ')' after if condition");
+    } else {
+        // Cpp2 syntax without parentheses
+        condition = expression();
+    }
 
     auto then_stmt = statement();
 
@@ -984,6 +1016,39 @@ std::unique_ptr<Statement> Parser::while_statement() {
         std::move(condition),
         std::move(body),
         peek().line
+    );
+}
+
+std::unique_ptr<Statement> Parser::do_while_statement() {
+    // Cpp2 do-while syntax: do { body } next increment while condition
+    // Or: label: do { ... } next inc while cond
+
+    consume(TokenType::LeftBrace, "Expected '{' after 'do'");
+    auto body = block_statement();
+
+    std::unique_ptr<Expression> increment = nullptr;
+    if (match(TokenType::Next)) {
+        increment = expression();
+    }
+
+    consume(TokenType::While, "Expected 'while' after do-while body (or next clause)");
+    auto condition = expression();
+
+    consume(TokenType::Semicolon, "Expected ';' after do-while statement");
+
+    if (increment) {
+        return std::make_unique<DoWhileStatement>(
+            std::move(body),
+            std::move(increment),
+            std::move(condition),
+            previous().line
+        );
+    }
+
+    return std::make_unique<DoWhileStatement>(
+        std::move(body),
+        std::move(condition),
+        previous().line
     );
 }
 
@@ -1070,6 +1135,91 @@ std::unique_ptr<Statement> Parser::for_range_statement() {
         std::move(body),
         var.line
     );
+}
+
+std::unique_ptr<Statement> Parser::labeled_loop_statement(std::string label) {
+    // Called when we've already seen 'label:' and confirmed it's followed by while/for/do
+    // The next token should be the loop keyword
+    if (match(TokenType::While)) {
+        auto stmt = while_statement();
+        // Add label to the statement
+        if (auto* while_stmt = dynamic_cast<WhileStatement*>(stmt.get())) {
+            while_stmt->label = std::move(label);
+        }
+        return stmt;
+    }
+    if (match(TokenType::For)) {
+        // Need to check if this is for-range (for collection do(var)) or traditional for
+        if (!check(TokenType::LeftParen)) {
+            // for collection do(var) - for-each loop
+            auto collection = expression();
+            consume(TokenType::Do, "Expected 'do' in for-do loop");
+            consume(TokenType::LeftParen, "Expected '(' after 'do'");
+            Token var = consume(TokenType::Identifier, "Expected variable name in do clause");
+            consume(TokenType::RightParen, "Expected ')' after variable in do clause");
+            auto body = statement();
+
+            auto for_range = std::make_unique<ForRangeStatement>(
+                std::string(var.lexeme),
+                nullptr,
+                std::move(collection),
+                std::move(body),
+                var.line
+            );
+            for_range->label = std::move(label);
+            return for_range;
+        } else {
+            // Traditional for loop - need to implement since for_statement() assumes no label
+            consume(TokenType::LeftParen, "Expected '(' after 'for'");
+
+            std::unique_ptr<Statement> init = nullptr;
+            if (!check(TokenType::Semicolon)) {
+                init = statement();
+                if (!init && !check(TokenType::Semicolon)) {
+                    init = std::make_unique<ExpressionStatement>(expression(), peek().line);
+                    consume(TokenType::Semicolon, "Expected ';' after for initializer");
+                }
+            } else {
+                advance(); // Consume semicolon
+            }
+
+            std::unique_ptr<Expression> condition = nullptr;
+            if (!check(TokenType::Semicolon)) {
+                condition = expression();
+            }
+            consume(TokenType::Semicolon, "Expected ';' after for condition");
+
+            std::unique_ptr<Expression> increment = nullptr;
+            if (!check(TokenType::RightParen)) {
+                increment = expression();
+            }
+            consume(TokenType::RightParen, "Expected ')' after for increment");
+
+            auto body = statement();
+
+            auto for_stmt = std::make_unique<ForStatement>(
+                std::move(init),
+                std::move(condition),
+                std::move(increment),
+                std::move(body),
+                peek().line
+            );
+            for_stmt->label = std::move(label);
+            return for_stmt;
+        }
+    }
+    if (match(TokenType::Do)) {
+        // do-while with next clause: do { body } next increment while condition
+        // Or: label: do { ... } next inc while cond
+        auto stmt = do_while_statement();
+        if (auto* do_stmt = dynamic_cast<DoWhileStatement*>(stmt.get())) {
+            do_stmt->label = std::move(label);
+        }
+        return stmt;
+    }
+
+    error_at_current("Expected loop statement after label");
+    return nullptr;
 }
 
 std::unique_ptr<Statement> Parser::switch_statement() {
@@ -1175,13 +1325,29 @@ std::unique_ptr<Statement> Parser::return_statement() {
 }
 
 std::unique_ptr<Statement> Parser::break_statement() {
+    // Cpp2 supports: break; or break label;
+    std::string label;
+    if (check(TokenType::Identifier)) {
+        label = std::string(advance().lexeme);
+    }
     consume(TokenType::Semicolon, "Expected ';' after break");
-    return std::make_unique<BreakStatement>(previous().line);
+    if (label.empty()) {
+        return std::make_unique<BreakStatement>(previous().line);
+    }
+    return std::make_unique<BreakStatement>(std::move(label), previous().line);
 }
 
 std::unique_ptr<Statement> Parser::continue_statement() {
+    // Cpp2 supports: continue; or continue label;
+    std::string label;
+    if (check(TokenType::Identifier)) {
+        label = std::string(advance().lexeme);
+    }
     consume(TokenType::Semicolon, "Expected ';' after continue");
-    return std::make_unique<ContinueStatement>(previous().line);
+    if (label.empty()) {
+        return std::make_unique<ContinueStatement>(previous().line);
+    }
+    return std::make_unique<ContinueStatement>(std::move(label), previous().line);
 }
 
 std::unique_ptr<Statement> Parser::try_statement() {
@@ -1668,9 +1834,33 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         );
     }
     if (match(TokenType::LeftParen)) {
-        auto expr = expression();
-        consume(TokenType::RightParen, "Expected ')' after expression");
-        return expr;
+        // Check if this is a tuple expression: (expr, expr, ...)
+        // A tuple has at least one comma separating expressions
+        std::size_t saved = current;
+        auto first_expr = expression();
+
+        if (match(TokenType::Comma)) {
+            // This is a tuple expression: (expr, expr, ...)
+            auto tuple = std::make_unique<ListExpression>(previous().line);
+            tuple->elements.push_back(std::move(first_expr));
+
+            // Parse remaining elements
+            do {
+                auto elem = expression();
+                if (elem) {
+                    tuple->elements.push_back(std::move(elem));
+                } else {
+                    error_at_current("Expected expression in tuple");
+                }
+            } while (match(TokenType::Comma));
+
+            consume(TokenType::RightParen, "Expected ')' after tuple");
+            return tuple;
+        } else {
+            // Single parenthesized expression
+            consume(TokenType::RightParen, "Expected ')' after expression");
+            return first_expr;
+        }
     }
     if (match(TokenType::LeftBracket)) {
         return list_literal();

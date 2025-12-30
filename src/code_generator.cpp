@@ -764,6 +764,9 @@ void CodeGenerator::generate_statement(Statement* stmt) {
         case Statement::Kind::While:
             generate_while_statement(static_cast<WhileStatement*>(stmt));
             break;
+        case Statement::Kind::DoWhile:
+            generate_do_while_statement(static_cast<DoWhileStatement*>(stmt));
+            break;
         case Statement::Kind::For:
             generate_for_statement(static_cast<ForStatement*>(stmt));
             break;
@@ -772,6 +775,12 @@ void CodeGenerator::generate_statement(Statement* stmt) {
             break;
         case Statement::Kind::Return:
             generate_return_statement(static_cast<ReturnStatement*>(stmt));
+            break;
+        case Statement::Kind::Break:
+            generate_break_statement(static_cast<BreakStatement*>(stmt));
+            break;
+        case Statement::Kind::Continue:
+            generate_continue_statement(static_cast<ContinueStatement*>(stmt));
             break;
         case Statement::Kind::Contract: {
             auto contract_stmt = static_cast<ContractStatement*>(stmt);
@@ -816,60 +825,247 @@ void CodeGenerator::generate_if_statement(IfStatement* stmt) {
 void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
     if (!stmt) return;
 
-    write("while (" + generate_expression_to_string(stmt->condition.get()) + ") ");
-
-    // Check if there's an increment clause (Cpp2 'next' syntax)
+    bool is_labeled = !stmt->label.empty();
     bool has_increment = stmt->increment != nullptr;
+    std::string cond_str = generate_expression_to_string(stmt->condition.get());
 
-    if (!has_increment) {
-        // Simple case: no increment clause
+    if (is_labeled) {
+        // Labeled while loop - need to use goto pattern for continue to work
+        // Cpp2: label: while (cond) next inc { body }
+        // Generate as:
+        // label: while (true) {
+        //     if (!(cond)) goto label_end;
+        //     body;
+        //     label_continue:;  // for continue statements
+        //     inc;  // if has_increment
+        // }
+        // label_end:;
+
+        write_line(stmt->label + ":;");
+        write("while (true) ");
+        write_line("{");
+        indent();
+
+        // Condition check with goto to end if false
+        write("if (!(" + cond_str + ")) goto " + stmt->label + "_end;");
+        write_line("");
+
+        write_line("");
+
+        // Body
         generate_statement(stmt->body.get());
+
+        // Continue label (after body, before increment)
+        write_line(stmt->label + "_continue:;");
+
+        // Increment if present
+        if (has_increment) {
+            write_line(generate_expression_to_string(stmt->increment.get()) + ";");
+        }
+
+        dedent();
+        write_line("}");
+        write_line(stmt->label + "_end:;");
     } else {
-        // Has increment clause: while(cond) next inc { body }
-        // Generate as: while(cond) { body; inc; }
+        // Non-labeled while - generate normally
+        write("while (" + cond_str + ") ");
+
+        if (!has_increment) {
+            generate_statement(stmt->body.get());
+        } else {
+            write_line("{");
+            indent();
+            generate_statement(stmt->body.get());
+            write_line("");
+            write(generate_expression_to_string(stmt->increment.get()) + ";");
+            dedent();
+            write_line("}");
+        }
+    }
+}
+
+void CodeGenerator::generate_do_while_statement(DoWhileStatement* stmt) {
+    if (!stmt) return;
+
+    // Cpp2 do-while: do { body } next increment while condition
+    // Generate as: do { body; increment; } while (condition);
+
+    // Handle labeled do-while - emit continue label before loop when no increment
+    if (!stmt->label.empty() && !stmt->increment) {
+        write_line(stmt->label + "_continue:;");
+    }
+
+    write("do ");
+
+    if (stmt->increment) {
         write_line("{");
         indent();
         generate_statement(stmt->body.get());
-        write_line("");
+
+        // Continue label - for continue to jump to (before increment)
+        if (!stmt->label.empty()) {
+            write_line(stmt->label + "_continue:;");
+        }
+
         write(generate_expression_to_string(stmt->increment.get()) + ";");
         dedent();
-        write_line("}");
+        write("} ");
+    } else {
+        generate_statement(stmt->body.get());
+    }
+
+    write_line("while (" + generate_expression_to_string(stmt->condition.get()) + ");");
+
+    if (!stmt->label.empty()) {
+        write_line(stmt->label + "_end:;");
     }
 }
 
 void CodeGenerator::generate_for_statement(ForStatement* stmt) {
     if (!stmt) return;
 
-    write("for (");
+    bool is_labeled = !stmt->label.empty();
+    std::string init_str, cond_str, inc_str;
+
+    // Generate init
     if (stmt->init) {
-        // Generate init without semicolon
         if (auto var_decl = dynamic_cast<VariableDeclaration*>(stmt->init.get())) {
             auto type_str = var_decl->type ? generate_type(var_decl->type.get()) : "auto";
-            write(type_str + " " + var_decl->name);
+            init_str = type_str + " " + var_decl->name;
             if (var_decl->initializer) {
-                write(" = " + generate_expression_to_string(var_decl->initializer.get()));
+                init_str += " = " + generate_expression_to_string(var_decl->initializer.get());
             }
         }
     }
-    write("; ");
+
+    // Generate condition
     if (stmt->condition) {
-        write(generate_expression_to_string(stmt->condition.get()));
+        cond_str = generate_expression_to_string(stmt->condition.get());
     }
-    write("; ");
+
+    // Generate increment
     if (stmt->increment) {
-        write(generate_expression_to_string(stmt->increment.get()));
+        inc_str = generate_expression_to_string(stmt->increment.get());
     }
-    write(") ");
-    generate_statement(stmt->body.get());
+
+    if (is_labeled) {
+        // Labeled for loop - convert to while(true) pattern for continue to work
+        // label: for (init; cond; inc) { body; }
+        // Generates:
+        // label:;
+        // init;
+        // while (true) {
+        //     if (!(cond)) goto label_end;
+        //     body;
+        //     label_continue:;
+        //     inc;
+        // }
+        // label_end:;
+
+        write_line(stmt->label + ":;");
+
+        if (!init_str.empty()) {
+            write_line(init_str + ";");
+        }
+
+        write_line("while (true) {");
+        indent();
+
+        if (!cond_str.empty()) {
+            write("if (!(" + cond_str + ")) goto " + stmt->label + "_end;");
+            write_line("");
+            write_line("");
+        }
+
+        generate_statement(stmt->body.get());
+
+        write_line(stmt->label + "_continue:;");
+
+        if (!inc_str.empty()) {
+            write_line(inc_str + ";");
+        }
+
+        dedent();
+        write_line("}");
+        write_line(stmt->label + "_end:;");
+    } else {
+        // Non-labeled for - generate normally
+        write("for (");
+        if (!init_str.empty()) {
+            write(init_str);
+        }
+        write("; ");
+        if (!cond_str.empty()) {
+            write(cond_str);
+        }
+        write("; ");
+        if (!inc_str.empty()) {
+            write(inc_str);
+        }
+        write(") ");
+        generate_statement(stmt->body.get());
+    }
 }
 
 void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     if (!stmt) return;
 
+    bool is_labeled = !stmt->label.empty();
     std::string var_type = stmt->var_type ? generate_type(stmt->var_type.get()) : "auto";
-    write("for (" + var_type + " " + stmt->variable + " : " +
-          generate_expression_to_string(stmt->range.get()) + ") ");
-    generate_statement(stmt->body.get());
+    std::string range_str = generate_expression_to_string(stmt->range.get());
+
+    if (is_labeled) {
+        // Labeled for-range loop - convert to while(true) with explicit iterators
+        // label: for (auto x : range) { body; }
+        // Generates:
+        // label:;
+        // {
+        //     auto&& __range = range;
+        //     auto __begin = __range.begin();
+        //     auto __end = __range.end();
+        //     while (true) {
+        //         if (!(__begin != __end)) goto label_end;
+        //         auto x = *__begin;
+        //         body;
+        //         label_continue:;
+        //         ++__begin;
+        //     }
+        //     label_end:;
+        // }
+
+        write_line(stmt->label + ":;");
+        write_line("{");
+        indent();
+
+        write_line("auto&& __range = " + range_str + ";");
+        write_line("auto __begin = __range.begin();");
+        write_line("auto __end = __range.end();");
+
+        write_line("while (true) {");
+        indent();
+
+        write("if (!(__begin != __end)) goto " + stmt->label + "_end;");
+        write_line("");
+        write_line("");
+
+        write_line(var_type + " " + stmt->variable + " = *__begin;");
+        write_line("++__begin;");
+
+        generate_statement(stmt->body.get());
+
+        write_line(stmt->label + "_continue:;");
+
+        dedent();
+        write_line("}");
+        write_line(stmt->label + "_end:;");
+
+        dedent();
+        write_line("}");
+    } else {
+        // Non-labeled for-range - generate normally
+        write("for (" + var_type + " " + stmt->variable + " : " + range_str + ") ");
+        generate_statement(stmt->body.get());
+    }
 }
 
 void CodeGenerator::generate_return_statement(ReturnStatement* stmt) {
@@ -879,6 +1075,31 @@ void CodeGenerator::generate_return_statement(ReturnStatement* stmt) {
         write_line("return " + generate_expression_to_string(stmt->value.get()) + ";");
     } else {
         write_line("return;");
+    }
+}
+
+void CodeGenerator::generate_break_statement(BreakStatement* stmt) {
+    if (!stmt) return;
+
+    if (stmt->label.empty()) {
+        write_line("break;");
+    } else {
+        // C++ doesn't have labeled break - use goto
+        // The label should have been emitted at the loop start
+        // We need to jump past the loop
+        write_line("goto " + stmt->label + "_end;");
+    }
+}
+
+void CodeGenerator::generate_continue_statement(ContinueStatement* stmt) {
+    if (!stmt) return;
+
+    if (stmt->label.empty()) {
+        write_line("continue;");
+    } else {
+        // C++ doesn't have labeled continue - use goto
+        // The label should have been emitted at the loop start
+        write_line("goto " + stmt->label + "_continue;");
     }
 }
 
@@ -1009,6 +1230,17 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
 
             expr_output << "    else { throw std::logic_error(\"Non-exhaustive inspect\"); }\n";
             expr_output << "})()";
+            break;
+        }
+        case Expression::Kind::List: {
+            auto list = static_cast<ListExpression*>(expr);
+            // Generate tuple/initializer list as { elem1, elem2, ... }
+            expr_output << "{";
+            for (size_t i = 0; i < list->elements.size(); ++i) {
+                if (i > 0) expr_output << ", ";
+                expr_output << generate_expression_to_string(list->elements[i].get());
+            }
+            expr_output << "}";
             break;
         }
         default:

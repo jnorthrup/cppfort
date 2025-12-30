@@ -1,0 +1,11 @@
+{
+  "track_id": "semantic_ast_20251230",
+  "title": "Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)",
+  "created_date": "2025-12-30",
+  "status": "planned",
+  "priority": "high",
+  "estimated_days": "15-18",
+  "phases": 6,
+  "dependencies": [],
+  "tags": ["semantic-analysis", "escape-analysis", "borrowing", "ownership", "safety"]
+}

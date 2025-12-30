@@ -1,4 +1,4 @@
-# Cppfort Regression Test Status
+# Regression Test Corpus Semantic Preservation
 
 **Date**: 2025-12-28
 **Test Framework**: cppfront_full_regression
@@ -140,7 +140,7 @@ auto main() -> int {        // ← C++1 syntax (line 15)
 
 ## Corpus Infrastructure Status
 
-### Completed (from CORPUS_INFRASTRUCTURE_STATUS.md)
+### Completed
 - ✅ 158 reference C++1 outputs from cppfront
 - ✅ 158 Clang AST dumps (~10GB)
 - ✅ 1.4M AST isomorphs extracted
@@ -195,47 +195,6 @@ auto main() -> int {        // ← C++1 syntax (line 15)
 - Re-run scoring with corrected inputs
 
 **Priority**: P2 - Metrics blocked but tests run
-
-## Action Items
-
-### Immediate (Phase 1: Core Fixes)
-1. **Fix parameter semantics** (2-3 days)
-   - [ ] Implement parameter qualifier→C++ type mapping
-   - [ ] Add tests for all qualifiers (in/out/inout/move/forward)
-   - [ ] Re-test pure2-hello.cpp2
-   - [ ] Verify semantic loss reduction
-
-2. **Add mixed-mode support** (3-4 days)
-   - [ ] Update parser to handle C++1 syntax
-   - [ ] Implement passthrough for C++1 code
-   - [ ] Test on mixed-hello.cpp2
-   - [ ] Run full mixed category (50 tests)
-
-### Short-term (Phase 2: Enhancement)
-3. **Implement escape analysis** (per SEMANTIC_AST_ENHANCEMENTS.md)
-   - [ ] Core escape analysis framework
-   - [ ] Borrowing and ownership tracking
-   - [ ] External memory integration
-   - [ ] Channelized concurrency
-
-4. **Run full corpus regression**
-   - [ ] Transpile all 189 files
-   - [ ] Generate AST dumps
-   - [ ] Compute semantic loss scores
-   - [ ] Target: <0.15 average loss
-
-### Long-term (Phase 3: Optimization)
-5. **Reduce code noise**
-   - [ ] Eliminate extra nested blocks
-   - [ ] Remove unnecessary parentheses
-   - [ ] Add #line directives for source mapping
-   - [ ] Improve output readability
-
-6. **Add runtime library support**
-   - [ ] Implement cpp2util.h equivalent
-   - [ ] Contract checking infrastructure
-   - [ ] Safety bounds checking
-   - [ ] Integration with cppfort output
 
 ## Test Execution Commands
 
@@ -294,17 +253,3 @@ python3 tools/score_semantic_loss.py \
 | pure2-hello.cpp2 loss | 1.0 | <0.05 | P0 |
 | Zero-loss files | 0 | >55 (40%) | P2 |
 | High-loss files (>0.5) | 1 (100%) | <9 (5%) | P2 |
-
-## Related Documentation
-
-- `docs/CORPUS_INFRASTRUCTURE_STATUS.md` - Corpus processing status
-- `docs/AST_MAPPING_STATUS.md` - AST mapping methodology
-- `docs/SEMANTIC_AST_ENHANCEMENTS.md` - Semantic analysis enhancements
-- `docs/AST_ISOMORPH_MAPPING_SPEC.md` - Complete specification
-- `corpus/ast_mappings/README.md` - Mapping methodology
-
----
-
-**Status Summary**: Infrastructure complete. Cppfort transpiler operational for pure2 files but loses parameter semantics and fails on mixed-mode files. Semantic enhancements required before full corpus regression testing.
-
-**Next Steps**: Fix parameter semantics (P0), add mixed-mode support (P1), implement semantic analysis (per SEMANTIC_AST_ENHANCEMENTS.md).

@@ -490,8 +490,8 @@ TokenType Lexer::check_keyword(std::size_t start, std::size_t length,
 TokenType Lexer::identifier_type() {
     std::string_view text = source.substr(start, current - start);
     static const std::unordered_map<std::string, TokenType, cpp2_transpiler::SimpleStringHash> keywords = {
-        {"as", TokenType::As}, {"base", TokenType::Base}, {"case", TokenType::Case}, {"class", TokenType::Class},
-        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"do", TokenType::Do}, {"else", TokenType::Else},
+        {"as", TokenType::As}, {"base", TokenType::Base}, {"break", TokenType::Break}, {"case", TokenType::Case}, {"class", TokenType::Class},
+        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"do", TokenType::Do}, {"else", TokenType::Else},
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
         {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},
         {"inspect", TokenType::Inspect}, {"interface", TokenType::Interface}, {"is", TokenType::Is}, {"implicit", TokenType::Implicit}, {"let", TokenType::Let},

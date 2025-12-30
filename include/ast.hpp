@@ -407,6 +407,7 @@ struct Statement {
         Block,
         If,
         While,
+        DoWhile,
         For,
         ForRange,
         Switch,
@@ -499,6 +500,45 @@ struct WhileStatement : Statement {
           condition(std::move(cond)),
           increment(std::move(inc)),
           body(std::move(b)) {}
+};
+
+struct DoWhileStatement : Statement {
+    std::string label;  // Optional label for labeled break/continue
+    std::unique_ptr<Statement> body;
+    std::unique_ptr<Expression> increment; // Cpp2 'next' clause (between body and while)
+    std::unique_ptr<Expression> condition;
+
+    DoWhileStatement(std::unique_ptr<Statement> b,
+                    std::unique_ptr<Expression> cond, std::size_t l)
+        : Statement(Kind::DoWhile, l),
+          body(std::move(b)),
+          condition(std::move(cond)) {}
+
+    DoWhileStatement(std::string label,
+                    std::unique_ptr<Statement> b,
+                    std::unique_ptr<Expression> cond, std::size_t l)
+        : Statement(Kind::DoWhile, l),
+          label(std::move(label)),
+          body(std::move(b)),
+          condition(std::move(cond)) {}
+
+    DoWhileStatement(std::unique_ptr<Statement> b,
+                    std::unique_ptr<Expression> inc,
+                    std::unique_ptr<Expression> cond, std::size_t l)
+        : Statement(Kind::DoWhile, l),
+          body(std::move(b)),
+          increment(std::move(inc)),
+          condition(std::move(cond)) {}
+
+    DoWhileStatement(std::string label,
+                    std::unique_ptr<Statement> b,
+                    std::unique_ptr<Expression> inc,
+                    std::unique_ptr<Expression> cond, std::size_t l)
+        : Statement(Kind::DoWhile, l),
+          label(std::move(label)),
+          body(std::move(b)),
+          increment(std::move(inc)),
+          condition(std::move(cond)) {}
 };
 
 struct ForStatement : Statement {

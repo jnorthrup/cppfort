@@ -67,8 +67,10 @@ private:
     std::unique_ptr<Statement> block_statement();
     std::unique_ptr<Statement> if_statement();
     std::unique_ptr<Statement> while_statement();
+    std::unique_ptr<Statement> do_while_statement();
     std::unique_ptr<Statement> for_statement();
     std::unique_ptr<Statement> for_range_statement();
+    std::unique_ptr<Statement> labeled_loop_statement(std::string label);
     std::unique_ptr<Statement> switch_statement();
     std::unique_ptr<Statement> inspect_statement();
     std::unique_ptr<Expression> inspect_expression();

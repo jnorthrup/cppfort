@@ -273,51 +273,6 @@ class ASTNode {
 };
 ```
 
-## Implementation Roadmap
-
-### Phase 1: Core Escape Analysis (2-3 days)
-- [ ] Implement `EscapeInfo` and `EscapeKind` enums
-- [ ] Add escape analysis pass after type checking
-- [ ] Attach `EscapeInfo` to all `VarDecl` nodes
-- [ ] Write tests for basic escape scenarios
-- [ ] Validate against pure2 corpus files
-
-### Phase 2: Borrowing and Ownership (3-4 days)
-- [ ] Implement `BorrowInfo` and `OwnershipKind`
-- [ ] Add `LifetimeRegion` tracking
-- [ ] Implement `BorrowChecker` validation
-- [ ] Map parameter qualifiers to ownership kinds
-- [ ] Enforce aliasing rules
-- [ ] Fix `decorate` parameter passing bug (inout → std::string&)
-
-### Phase 3: External Memory Integration (2-3 days)
-- [ ] Implement `MemoryTransfer` tracking
-- [ ] Connect escape analysis to GPU/DMA transfers
-- [ ] Add lifecycle-based optimization pass
-- [ ] Validate DMA safety rules
-- [ ] Test with `mem_region` and `kernel` ops
-
-### Phase 4: Channelized Concurrency (2-3 days)
-- [ ] Implement `ChannelTransfer` tracking
-- [ ] Connect channel ops to escape analysis
-- [ ] Enforce ownership transfer rules for send/recv
-- [ ] Add data race detection
-- [ ] Test with `channel`, `send`, `recv` ops
-
-### Phase 5: Unified Semantic Info (2 days)
-- [ ] Implement `SemanticInfo` struct
-- [ ] Attach to all AST nodes
-- [ ] Add query methods (`is_safe()`, `can_optimize_away()`)
-- [ ] Generate semantic dump for debugging
-- [ ] Update AST→MLIR lowering to preserve semantics
-
-### Phase 6: Regression Testing and Validation (3 days)
-- [ ] Run full pure2 corpus (139 files) through enhanced analysis
-- [ ] Measure semantic loss scores
-- [ ] Compare against cppfront reference
-- [ ] Target: <0.15 average corpus loss
-- [ ] Document semantic preservation improvements
-
 ## Expected Outcomes
 
 ### Semantic Preservation
@@ -352,11 +307,6 @@ class ASTNode {
 - Add lifetime annotations to MLIR operations
 - Enable MLIR-level optimization based on semantics
 
-### Documentation
-- Update `docs/AST_MAPPING_STATUS.md` with semantic enhancements
-- Create `docs/SEMANTIC_ANALYSIS.md` explaining analysis passes
-- Document parameter qualifier semantics in `docs/PARAMETER_QUALIFIERS.md`
-
 ## References
 
 - **Rust ownership**: https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html
@@ -376,7 +326,3 @@ class ASTNode {
 | Channel safety validation | 0% | 100% | ⏳ Pending |
 | Average corpus semantic loss | 1.0 (max) | <0.15 | ⏳ Pending |
 | pure2-hello.cpp2 loss | 1.0 | <0.05 | ⏳ Pending |
-
----
-
-**Next Steps**: Begin Phase 1 (Core Escape Analysis) implementation after SCCP track closure.

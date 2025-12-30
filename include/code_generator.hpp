@@ -50,6 +50,7 @@ private:
     void generate_expression_statement(ExpressionStatement* stmt);
     void generate_if_statement(IfStatement* stmt);
     void generate_while_statement(WhileStatement* stmt);
+    void generate_do_while_statement(DoWhileStatement* stmt);
     void generate_for_statement(ForStatement* stmt);
     void generate_for_range_statement(ForRangeStatement* stmt);
     void generate_switch_statement(SwitchStatement* stmt);

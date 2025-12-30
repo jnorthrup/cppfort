@@ -37,7 +37,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 ## [ ] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
-*Spec: [../docs/SEMANTIC_AST_ENHANCEMENTS.md](../docs/SEMANTIC_AST_ENHANCEMENTS.md)*
+*Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
 *Status: PLANNED* - 6-phase roadmap (15-18 days)
 
 **Objectives**:
@@ -55,7 +55,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 ## [ ] Track: Regression Test Corpus Semantic Preservation
-*Status: [../docs/REGRESSION_TEST_STATUS.md](../docs/REGRESSION_TEST_STATUS.md)*
+*Link: [./conductor/tracks/regression_corpus_20251230/](./conductor/tracks/regression_corpus_20251230/)*
 *Status: BLOCKED* - Infrastructure complete, transpiler fixes required
 
 **Blockers**:
