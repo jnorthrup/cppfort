@@ -48,9 +48,11 @@ private:
     std::vector<TestFile> test_files_;
     std::map<std::string, std::function<TestResult(const TestFile&)>> category_handlers_;
     std::vector<TestResult> results_;
+    std::string transpiler_path_;
 
 public:
     TestRunner(const std::vector<TestFile>& test_files);
+    TestRunner(const std::vector<TestFile>& test_files, const std::string& transpiler_path);
 
     void register_category_handler(const std::string& category,
                                  std::function<TestResult(const TestFile&)> handler);
@@ -73,6 +75,9 @@ private:
     int execute_command(const std::string& command, std::string& output, int timeout_ms);
 
     void register_default_handlers();
+
+    // Find and validate transpiler binary
+    static std::string find_transpiler(const std::string& hint = "");
 };
 
 class SHA256Verifier {

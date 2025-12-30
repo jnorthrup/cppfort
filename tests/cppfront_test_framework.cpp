@@ -82,7 +82,12 @@ bool TestCollector::should_pass_by_name(const std::string& name) {
 }
 
 TestRunner::TestRunner(const std::vector<TestFile>& test_files)
-    : test_files_(test_files) {
+    : test_files_(test_files), transpiler_path_(find_transpiler()) {
+    register_default_handlers();
+}
+
+TestRunner::TestRunner(const std::vector<TestFile>& test_files, const std::string& transpiler_path)
+    : test_files_(test_files), transpiler_path_(find_transpiler(transpiler_path)) {
     register_default_handlers();
 }
 
@@ -160,7 +165,7 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
                             ("test_" + test_file.name + ".cpp");
 
     // Run transpiler with timeout using fork/exec with pipe for output capture
-    std::string command = "cppfort \"" + temp_input + "\" \"" + temp_output + "\" 2>&1";
+    std::string command = "\"" + transpiler_path_ + "\" \"" + temp_input + "\" \"" + temp_output + "\" 2>&1";
     std::string output;
     int exit_code = -1;
     bool timed_out = false;
@@ -524,6 +529,65 @@ void SHA256Verifier::save_hash_database(const std::string& db_path,
         }
         file.close();
     }
+}
+
+std::string TestRunner::find_transpiler(const std::string& hint) {
+    auto check_path = [](const std::filesystem::path& p) -> bool {
+        return std::filesystem::exists(p) &&
+               std::filesystem::is_regular_file(p) &&
+               (p.filename() == "cppfort" || p.filename() == "cppfort.exe");
+    };
+
+    // 1. Check hint if provided
+    if (!hint.empty()) {
+        std::filesystem::path hint_path(hint);
+        if (check_path(hint_path)) {
+            return std::filesystem::canonical(hint_path).string();
+        }
+    }
+
+    // 2. Check common locations relative to current working directory
+    std::vector<std::string> search_paths = {
+        "build/src/cppfort",
+        "../build/src/cppfort",
+        "../../build/src/cppfort",
+        "./cppfort",
+        "../src/cppfort"
+    };
+
+    for (const auto& path : search_paths) {
+        if (check_path(path)) {
+            return std::filesystem::canonical(path).string();
+        }
+    }
+
+    // 3. Check if cppfort is in PATH
+    char* path_env = std::getenv("PATH");
+    if (path_env) {
+        std::string path_str(path_env);
+        std::stringstream ss(path_str);
+        std::string dir;
+
+        while (std::getline(ss, dir, ':')) {
+            std::filesystem::path candidate = std::filesystem::path(dir) / "cppfort";
+            if (check_path(candidate)) {
+                return std::filesystem::canonical(candidate).string();
+            }
+        }
+    }
+
+    // 4. Not found - throw error with helpful message
+    throw std::runtime_error(
+        "cppfort transpiler not found. Tried:\n"
+        "  1. Hint path: " + (hint.empty() ? "(not provided)" : hint) + "\n"
+        "  2. Relative paths: build/src/cppfort, ../build/src/cppfort, etc.\n"
+        "  3. PATH environment variable\n"
+        "\n"
+        "Please either:\n"
+        "  - Build the project: cmake --build build\n"
+        "  - Add to PATH: export PATH=\"$PWD/build/src:$PATH\"\n"
+        "  - Provide explicit path to TestRunner constructor"
+    );
 }
 
 } // namespace cppfort::tests
