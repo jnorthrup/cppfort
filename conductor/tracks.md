@@ -70,8 +70,30 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 5*
-*Completed: 2*
+## [ ] Track: Regression Tests Validation Framework
+*Link: [./conductor/tracks/regression_tests_validation_20251230/](./conductor/tracks/regression_tests_validation_20251230/)*
+*Status: ACTIVE* - Systematic validation of 16 regression test functions
+
+**Objectives**:
+- Validate each of 16 test functions in cppfront_regression_tests.cpp
+- Use git worktrees for test isolation
+- Record results (stdout, stderr, exit code, timing)
+- Fix errors without modifying corpus files
+- Map test coverage to 189 corpus files
+
+**Current Status**:
+- Initial baseline: All 16 tests passing ✓
+- Binary: build/tests/cppfront_regression_tests
+- Execution time: <1s total
+- No errors detected
+
+**Phases**: 17 (16 test validations + final report)
+
+---
+
+*Total Tracks: 6*
+*Completed: 3*
 *In Progress: 0*
-*Planned: 2*
+*Active: 1*
+*Planned: 1*
 *Blocked: 1*
