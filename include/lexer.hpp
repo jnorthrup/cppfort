@@ -198,6 +198,10 @@ public:
 
     std::vector<Token> tokenize();
 
+    // Check if any Cpp2-specific syntax was found during tokenization
+    // Used for mixed-mode passthrough (pure C++ files skip transpilation)
+    bool has_cpp2_syntax() const { return m_has_cpp2_syntax; }
+
 private:
     std::string_view source;
     std::size_t current;
@@ -206,6 +210,9 @@ private:
     std::size_t start;
 
     std::vector<Token> tokens;
+
+    // Flag to track if any Cpp2-specific syntax was found
+    bool m_has_cpp2_syntax = false;
 
     void scan_token();
 

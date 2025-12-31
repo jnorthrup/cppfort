@@ -39,6 +39,21 @@ int main(int argc, char* argv[]) {
         cpp2_transpiler::Lexer lexer{std::string_view(source_code)};
         auto tokens = lexer.tokenize();
 
+        // Mixed-mode C++1 passthrough: If no Cpp2-specific syntax is found,
+        // emit the original source with minimal changes
+        if (!lexer.has_cpp2_syntax()) {
+            std::ofstream output_file(output_filename);
+            if (!output_file) {
+                throw std::runtime_error("Cannot open output file: " + output_filename);
+            }
+
+            // For pure C++ files, emit as-is (source already has cppfront-style comments)
+            output_file << source_code;
+
+            std::cout << "Successfully transpiled " << input_filename << " to " << output_filename << " (C++1 passthrough mode)\n";
+            return 0;
+        }
+
         cpp2_transpiler::Parser parser(tokens);
         auto ast = parser.parse();
 

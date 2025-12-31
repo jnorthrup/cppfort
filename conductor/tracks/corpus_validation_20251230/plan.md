@@ -12,9 +12,9 @@
 
 ### Tasks
 
-- [ ] Create git worktree `corpus-validation` from master branch
-- [ ] Set up validation environment and paths
-- [ ] Initialize results tracking (CSV: file, status, loss_score, errors, time)
+- [x] Create git worktree `corpus-validation` from master branch
+- [x] Set up validation environment and paths
+- [x] Initialize results tracking (CSV: file, status, loss_score, errors, time)
 - [ ] Process all 189 files sequentially (sorted alphabetical order)
   - [ ] mixed-allcpp1-hello.cpp2
   - [ ] mixed-as-for-variant-20-types.cpp2

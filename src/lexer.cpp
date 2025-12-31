@@ -270,6 +270,22 @@ void Lexer::add_token(TokenType type) {
 }
 
 void Lexer::add_token(TokenType type, std::string_view lexeme) {
+    // Track if any Cpp2-specific syntax is found
+    // These tokens don't appear in standard C++ code
+    switch (type) {
+        case TokenType::ColonEqual:   // := type inference
+        case TokenType::At:           // @ metafunctions
+        case TokenType::Inout:        // inout parameter
+        case TokenType::Out:          // out parameter
+        case TokenType::Move:         // move parameter
+        case TokenType::Forward:      // forward parameter
+        case TokenType::Inspect:      // inspect expression
+        case TokenType::Underscore:   // _ wildcard/discard (when used as identifier)
+            m_has_cpp2_syntax = true;
+            break;
+        default:
+            break;
+    }
     tokens.emplace_back(type, lexeme, line, column - lexeme.length(), start);
 }
 
