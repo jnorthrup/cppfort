@@ -16,7 +16,7 @@
 - [x] Set up validation environment and paths
 - [x] Initialize results tracking (CSV: file, status, loss_score, errors, time)
 - [ ] Process all 189 files sequentially (sorted alphabetical order)
-  - [ ] mixed-allcpp1-hello.cpp2
+  - [x] mixed-allcpp1-hello.cpp2 (C++1 passthrough mode)
   - [ ] mixed-as-for-variant-20-types.cpp2
   - [ ] mixed-autodiff-taylor.cpp2
   - [ ] mixed-bounds-check.cpp2
