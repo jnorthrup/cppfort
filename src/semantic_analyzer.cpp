@@ -11,11 +11,16 @@ SemanticAnalyzer::SemanticAnalyzer() {
 
 void SemanticAnalyzer::analyze(AST& ast) {
     current_ast = &ast;
+    has_cpp1_passthrough = false;
     push_scope(); // Global scope
 
     // First pass: register all declarations
     for (auto& decl : ast.declarations) {
         if (decl) {
+            // Check if this is a C++1 passthrough declaration
+            if (decl->kind == Declaration::Kind::Cpp1Passthrough) {
+                has_cpp1_passthrough = true;
+            }
             if (auto ns = dynamic_cast<NamespaceDeclaration*>(decl.get())) {
                 add_symbol(ns->name, std::make_unique<Symbol>(
                     Symbol::Kind::Namespace, ns->name, nullptr, ns));
@@ -88,6 +93,10 @@ void SemanticAnalyzer::check_declaration(Declaration* decl) {
             pop_scope();
             break;
         }
+        case Declaration::Kind::Cpp1Passthrough:
+            // Skip C++1 passthrough declarations - they're emitted as-is
+            // and their types/symbols are not visible to Cpp2 code
+            break;
         default:
             // Handle other declaration types
             break;
@@ -327,8 +336,12 @@ void SemanticAnalyzer::check_literal_expression(LiteralExpression* expr) {
 void SemanticAnalyzer::check_identifier_expression(IdentifierExpression* expr) {
     auto symbol = lookup_symbol(expr->name);
     if (!symbol) {
-        report_error(expr->line, "Undefined identifier: " + expr->name);
-        undeclared_variables.insert(expr->name);
+        // Suppress "Undefined identifier" errors when we have C++1 passthrough
+        // since the identifier might be a type or variable defined in C++1 code
+        if (!has_cpp1_passthrough) {
+            report_error(expr->line, "Undefined identifier: " + expr->name);
+            undeclared_variables.insert(expr->name);
+        }
     } else {
         track_variable_usage(expr->name, expr->line);
     }
@@ -434,7 +447,11 @@ std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
         if (!is_builtin_type(type->name)) {
             auto symbol = lookup_symbol(type->name);
             if (!symbol || symbol->kind != Symbol::Kind::Type) {
-                report_error(0, "Undefined type: " + type->name);
+                // Suppress "Undefined type" errors when we have C++1 passthrough
+                // since the type might be defined in C++1 code
+                if (!has_cpp1_passthrough) {
+                    report_error(0, "Undefined type: " + type->name);
+                }
             }
         }
     }
@@ -455,7 +472,11 @@ void SemanticAnalyzer::check_type_ptr(const Type* type) {
         if (!is_builtin_type(type->name)) {
             auto symbol = lookup_symbol(type->name);
             if (!symbol || symbol->kind != Symbol::Kind::Type) {
-                report_error(0, "Undefined type: " + type->name);
+                // Suppress "Undefined type" errors when we have C++1 passthrough
+                // since the type might be defined in C++1 code
+                if (!has_cpp1_passthrough) {
+                    report_error(0, "Undefined type: " + type->name);
+                }
             }
         }
     }

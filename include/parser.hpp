@@ -141,6 +141,7 @@ private:
     // Template handling
     std::vector<std::string> template_parameters();
     bool is_template_start();
+    bool is_cpp1_template_start();  // Detect C++1 template syntax for passthrough
 
     // Error handling
     void error(const Token& token, const char* message);

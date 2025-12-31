@@ -197,6 +197,15 @@ std::unique_ptr<Declaration> Parser::declaration() {
             attach_markdown_blocks(decl.get());
             return decl;
         }
+
+        // C++1 template passthrough: template<...> struct/class/union/namespace
+        // Must check BEFORE Cpp2 template handling
+        if (is_cpp1_template_start()) {
+            auto decl = cpp1_passthrough_declaration();
+            attach_markdown_blocks(decl.get());
+            return decl;
+        }
+
         if (is_template_start()) {
             auto decl = template_declaration();
             attach_markdown_blocks(decl.get());
@@ -2244,6 +2253,58 @@ std::vector<std::string> Parser::template_parameters() {
 bool Parser::is_template_start() {
     return check(TokenType::Template) ||
            (check(TokenType::Identifier) && peek().lexeme == "template");
+}
+
+bool Parser::is_cpp1_template_start() {
+    // Check for C++1 template patterns:
+    // template<...> struct/class/union/namespace name {...}
+    //
+    // Key: After template<...>, we expect C++1 keywords, not Cpp2 syntax
+
+    std::size_t saved = current;
+
+    // Check for 'template' keyword (TokenType::Template)
+    if (!check(TokenType::Template)) {
+        return false;
+    }
+
+    advance(); // consume 'template'
+
+    // Check for '<' after template
+    if (!check(TokenType::LessThan)) {
+        current = saved;
+        return false;
+    }
+
+    advance(); // consume '<', now current points to first template param
+
+    // Skip template parameters: template<...>
+    // Start at depth=1 for the '<' we already consumed
+    int depth = 1;
+    while (depth > 0 && !is_at_end()) {
+        if (peek().type == TokenType::LessThan) {
+            depth++;
+        } else if (peek().type == TokenType::GreaterThan) {
+            depth--;
+        }
+        advance(); // move to next token (or past '>')
+    }
+
+    // After loop, current is past the final '>'
+    // Now check what follows - C++1 keywords (struct/class/union/namespace/enum/using)
+    // These keywords have their own token types, not Identifier
+    bool is_cpp1 = false;
+    if (!is_at_end()) {
+        TokenType next_type = peek().type;
+        if (next_type == TokenType::Struct || next_type == TokenType::Class ||
+            next_type == TokenType::Union || next_type == TokenType::Namespace ||
+            next_type == TokenType::Enum || next_type == TokenType::Using) {
+            is_cpp1 = true;
+        }
+    }
+
+    current = saved;
+    return is_cpp1;
 }
 
 bool Parser::check_cpp1_function_syntax() {
