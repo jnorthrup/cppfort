@@ -85,7 +85,12 @@ template<typename F>
 auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
     if (panic_mode) {
         // Skip tokens until we can recover
-        while (!is_at_end()) {
+        std::size_t iterations = 0;
+        constexpr std::size_t MAX_ITERATIONS = 1000; // Lower limit for faster debugging
+        std::size_t stall_count = 0;
+        std::size_t last_current = current;
+        while (!is_at_end() && iterations < MAX_ITERATIONS) {
+            iterations++;
             if (previous().type == TokenType::Semicolon) {
                 panic_mode = false;
                 break;
@@ -93,10 +98,27 @@ auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
             if (peek().type == TokenType::Func || peek().type == TokenType::Type ||
                 peek().type == TokenType::Namespace || peek().type == TokenType::Let ||
                 peek().type == TokenType::Const) {
+                // Advance past the recovery keyword to avoid re-parsing the same error
+                advance();
                 panic_mode = false;
                 break;
             }
             advance();
+            // Check if we're stuck (not advancing)
+            if (current == last_current) {
+                stall_count++;
+                if (stall_count > 10) {
+                    std::cerr << "Error: Parser stuck at token " << current << " of " << tokens.size() << ", breaking out\n";
+                    break;
+                }
+            } else {
+                stall_count = 0;
+                last_current = current;
+            }
+        }
+        // If we hit the iteration limit, we're likely stuck - force exit
+        if (iterations >= MAX_ITERATIONS) {
+            std::cerr << "Error recovery exceeded iteration limit (" << iterations << ") - forcing exit\n";
         }
         return nullptr;
     }
@@ -112,6 +134,17 @@ auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
 // Entry point
 std::unique_ptr<Declaration> Parser::declaration() {
     return synchronize_on_error([this]() -> std::unique_ptr<Declaration> {
+        static int decl_count = 0;
+        decl_count++;
+        if (decl_count > 1000) {
+            std::cerr << "Error: declaration() called " << decl_count << " times - forcing advance to break loop\n";
+            // Force advance to break the infinite loop
+            if (!is_at_end()) {
+                advance();
+                decl_count = 0; // Reset counter after recovery
+            }
+            return nullptr;
+        }
         // Collect any markdown blocks before this declaration
         collect_markdown_blocks();
 
@@ -670,9 +703,14 @@ std::unique_ptr<Declaration> Parser::type_declaration() {
     type_decl->metafunctions = std::move(decorators);
 
     while (!check(TokenType::RightBrace) && !is_at_end()) {
+        std::size_t before = current;
         auto member = declaration();
         if (member) {
             type_decl->members.push_back(std::move(member));
+        } else if (current == before) {
+            // Avoid infinite loop when a declaration cannot be parsed and no tokens
+            // are consumed; advance to allow error recovery to proceed.
+            advance();
         }
     }
 
@@ -691,9 +729,14 @@ std::unique_ptr<Declaration> Parser::namespace_declaration() {
 
     if (match(TokenType::LeftBrace)) {
         while (!check(TokenType::RightBrace) && !is_at_end()) {
+            std::size_t before = current;
             auto member = declaration();
             if (member) {
                 ns->members.push_back(std::move(member));
+            } else if (current == before) {
+                // Avoid infinite loop when a declaration cannot be parsed and no tokens
+                // are consumed; advance to allow error recovery to proceed.
+                advance();
             }
         }
         consume(TokenType::RightBrace, "Expected '}' after namespace");
@@ -1241,6 +1284,7 @@ std::unique_ptr<Statement> Parser::switch_statement() {
     auto switch_stmt = std::make_unique<SwitchStatement>(std::move(value), value->line);
 
     while (!check(TokenType::RightBrace) && !is_at_end()) {
+        std::size_t before = current;
         if (match(TokenType::Case)) {
             auto case_expr = expression();
             consume(TokenType::Colon, "Expected ':' after case");
@@ -1251,6 +1295,10 @@ std::unique_ptr<Statement> Parser::switch_statement() {
             switch_stmt->default_case = statement();
         } else {
             error_at_current("Expected 'case' or 'default' in switch");
+            // If we haven't advanced after the error, break to avoid infinite loop
+            if (current == before) {
+                break;
+            }
         }
     }
 
@@ -1295,7 +1343,16 @@ std::unique_ptr<Expression> Parser::inspect_expression() {
 
     // Parse arms: is <pattern> = <result>;
     while (!check(TokenType::RightBrace) && !is_at_end()) {
-        consume(TokenType::Is, "Expected 'is' in inspect arm");
+        std::size_t before = current;
+        if (!consume_if(TokenType::Is)) {
+            // Not an 'is' keyword - check for other constructs or break
+            error_at_current("Expected 'is' in inspect arm");
+            // If we haven't advanced after the error, break to avoid infinite loop
+            if (current == before) {
+                break;
+            }
+            continue;
+        }
 
         InspectExpression::Arm arm;
 
@@ -1317,6 +1374,11 @@ std::unique_ptr<Expression> Parser::inspect_expression() {
         consume(TokenType::Semicolon, "Expected ';' after inspect arm");
 
         inspect->arms.push_back(std::move(arm));
+
+        // If we haven't advanced at all after parsing an arm, break to avoid infinite loop
+        if (current == before) {
+            break;
+        }
     }
 
     consume(TokenType::RightBrace, "Expected '}' after inspect arms");
@@ -2005,9 +2067,14 @@ std::unique_ptr<Expression> Parser::lambda_expression() {
     consume(TokenType::LeftBrace, "Expected '{' for lambda body");
 
     while (!check(TokenType::RightBrace) && !is_at_end()) {
+        std::size_t before = current;
         auto stmt = statement();
         if (stmt) {
             lambda->body.push_back(std::move(stmt));
+        } else if (current == before) {
+            // Avoid infinite loop when a statement cannot be parsed and no tokens
+            // are consumed; advance to allow error recovery to proceed.
+            advance();
         }
     }
 
