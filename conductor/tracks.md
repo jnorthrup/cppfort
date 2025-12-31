@@ -70,24 +70,31 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Regression Tests Validation Framework
-*Link: [./conductor/tracks/regression_tests_validation_20251230/](./conductor/tracks/regression_tests_validation_20251230/)*
-*Status: ACTIVE* - Systematic validation of 16 regression test functions
+## [ ] Track: Full Corpus Transpile Validation - Match Cppfront Output
+*Link: [./conductor/tracks/corpus_validation_20251230/](./conductor/tracks/corpus_validation_20251230/)*
+*Status: ACTIVE* - Single-phase validation of all 189 corpus files
 
-**Objectives**:
-- Validate each of 16 test functions in cppfront_regression_tests.cpp
-- Use git worktrees for test isolation
-- Record results (stdout, stderr, exit code, timing)
-- Fix errors without modifying corpus files
-- Map test coverage to 189 corpus files
+**Objective**: Achieve 100% transpile accuracy matching cppfront reference output
+
+**Scope**:
+- 189 corpus files (139 pure2, 50 mixed)
+- Sequential processing in sorted order
+- Git worktree isolation for all fixes
+- Semantic loss target: <0.05 average
+- Full completion: 189/189 files transpiling successfully
+
+**Blockers to Fix**:
+1. P0: Parameter semantics (inout → T&, out → T&, in → const T&)
+2. P1: Mixed-mode C++1 passthrough (50 files blocked)
+3. P2: Minor semantic differences (nested blocks, extra parens)
 
 **Current Status**:
-- Initial baseline: All 16 tests passing ✓
-- Binary: build/tests/cppfront_regression_tests
-- Execution time: <1s total
-- No errors detected
+- Files transpiled: ~1/189
+- Average semantic loss: 1.0 (HIGH)
+- pure2 files: ~1/139 passing
+- mixed files: 0/50 passing (parser blocked)
 
-**Phases**: 17 (16 test validations + final report)
+**Phase**: 1 (Full Corpus Validation and Repair)
 
 ---
 
