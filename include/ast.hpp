@@ -313,6 +313,7 @@ struct ContractExpression : Expression {
     ContractKind kind;
     std::unique_ptr<Expression> condition;
     std::optional<std::string> message;
+    std::optional<std::string> annotation;  // Contract annotation level (e.g., "bounds_safety")
     std::vector<std::string> captures;
 
     // Semantic attributes from Clang analysis
