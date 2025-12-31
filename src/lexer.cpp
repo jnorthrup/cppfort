@@ -318,6 +318,7 @@ void Lexer::add_token(TokenType type, std::string_view lexeme) {
         case TokenType::Out:          // out parameter
         case TokenType::Move:         // move parameter
         case TokenType::Forward:      // forward parameter
+        case TokenType::Copy:         // copy parameter
         case TokenType::Inspect:      // inspect expression
         case TokenType::Underscore:   // _ wildcard/discard (when used as identifier)
             m_has_cpp2_syntax = true;
@@ -354,6 +355,7 @@ void Lexer::scan_identifier() {
         case TokenType::Out:
         case TokenType::Move:
         case TokenType::Forward:
+        case TokenType::Copy:
         case TokenType::Suspend:
         case TokenType::Async:
         case TokenType::Await:
@@ -591,7 +593,7 @@ TokenType Lexer::identifier_type() {
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
         {"using", TokenType::Using}, {"template", TokenType::Template},
         {"virtual", TokenType::Virtual}, {"override", TokenType::Override},
-        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward},
+        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward}, {"copy", TokenType::Copy},
         // Concurrency keywords (Kotlin-style)
         {"suspend", TokenType::Suspend}, {"async", TokenType::Async}, {"await", TokenType::Await},
         {"launch", TokenType::Launch}, {"coroutineScope", TokenType::CoroutineScope},

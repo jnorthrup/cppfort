@@ -250,7 +250,7 @@ add_test(NAME generate_test_hashes_test
 )
 
 # Combined test runner
-add_test(NAME all_cpp2_tests COMMAND run_all_tests)
+add_test(NAME all_cpp2_tests COMMAND run_all_tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Parameter qualifier lexing test
 add_executable(test_parameter_qualifier_lexing test_parameter_qualifier_lexing.cpp)

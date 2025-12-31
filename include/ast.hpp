@@ -110,6 +110,7 @@ struct Expression {
         MetafunctionCall,
         ContractExpression,
         InspectExpr,  // Cpp2 inspect expression
+        Move,         // Cpp2 move/forward/copy expression
         // Concurrency expressions
         Await,
         Spawn,
@@ -177,9 +178,19 @@ struct UnaryExpression : Expression {
           operand(std::move(expr)), is_postfix(postfix) {}
 };
 
+// Cpp2 move/forward/copy expressions
+struct MoveExpression : Expression {
+    TokenType op;  // Move, Forward, or Copy
+    std::unique_ptr<Expression> operand;
+
+    MoveExpression(TokenType o, std::unique_ptr<Expression> expr, std::size_t l)
+        : Expression(Kind::Move, l), op(o), operand(std::move(expr)) {}
+};
+
 struct CallExpression : Expression {
     std::unique_ptr<Expression> callee;
     std::vector<std::unique_ptr<Expression>> args;
+    std::vector<std::unique_ptr<Type>> template_args;  // Template arguments for template function calls
     bool is_ufcs = false;  // Cpp2 UFCS (Unified Function Call Syntax)
 
     CallExpression(std::unique_ptr<Expression> c, std::size_t l)
@@ -575,25 +586,30 @@ struct ForStatement : Statement {
 struct ForRangeStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
     std::string variable;
+    std::string var_qualifier;  // Parameter kind: in, inout, out, copy, move, forward
     std::unique_ptr<Type> var_type;
     std::unique_ptr<Expression> range;
     std::unique_ptr<Statement> body;
 
     ForRangeStatement(std::string var, std::unique_ptr<Type> t,
                      std::unique_ptr<Expression> r,
-                     std::unique_ptr<Statement> b, std::size_t l)
+                     std::unique_ptr<Statement> b, std::size_t l,
+                     std::string qualifier = "")
         : Statement(Kind::ForRange, l),
           variable(std::move(var)),
+          var_qualifier(std::move(qualifier)),
           var_type(std::move(t)),
           range(std::move(r)),
           body(std::move(b)) {}
 
     ForRangeStatement(std::string label, std::string var, std::unique_ptr<Type> t,
                      std::unique_ptr<Expression> r,
-                     std::unique_ptr<Statement> b, std::size_t l)
+                     std::unique_ptr<Statement> b, std::size_t l,
+                     std::string qualifier = "")
         : Statement(Kind::ForRange, l),
           label(std::move(label)),
           variable(std::move(var)),
+          var_qualifier(std::move(qualifier)),
           var_type(std::move(t)),
           range(std::move(r)),
           body(std::move(b)) {}

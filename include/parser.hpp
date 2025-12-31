@@ -113,6 +113,7 @@ private:
     std::unique_ptr<Expression> list_literal();
     std::unique_ptr<Expression> struct_initializer();
     std::unique_ptr<Expression> lambda_expression();
+    std::unique_ptr<Expression> function_expression();  // Cpp2 :(params) -> type = { body }
     std::unique_ptr<Expression> metafunction_call();
     std::unique_ptr<Expression> is_expression();
     std::unique_ptr<Expression> as_expression();

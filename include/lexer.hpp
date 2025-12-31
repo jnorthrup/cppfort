@@ -165,6 +165,7 @@ enum class TokenType : uint8_t {
     Out,             // out
     Move,            // move
     Forward,         // forward
+    Copy,            // copy
 
     // Concurrency keywords (Kotlin-style)
     Suspend,         // suspend - marks function as suspendable

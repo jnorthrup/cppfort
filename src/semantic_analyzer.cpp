@@ -292,11 +292,13 @@ void SemanticAnalyzer::check_function_body(FunctionDeclaration* func) {
 }
 
 void SemanticAnalyzer::check_parameter_types(FunctionDeclaration* func) {
-    for (const auto& param : func->parameters) {
-        if (!param.type) {
-            report_error(func->line, "Parameter '" + param.name + "' missing type annotation");
-        }
-    }
+    // Cpp2 allows parameters without explicit types - they become deduced/template parameters
+    // So we don't require type annotations for parameters
+    // for (const auto& param : func->parameters) {
+    //     if (!param.type) {
+    //         report_error(func->line, "Parameter '" + param.name + "' missing type annotation");
+    //     }
+    // }
 }
 
 void SemanticAnalyzer::check_function_contracts(FunctionDeclaration* func) {
@@ -401,9 +403,8 @@ void SemanticAnalyzer::check_lambda_expression(LambdaExpression* expr) {
 
     // Add parameters
     for (const auto& param : expr->parameters) {
-        if (!param.type) {
-            report_error(expr->line, "Parameter '" + param.name + "' missing type annotation");
-        } else {
+        // Cpp2 allows parameters without explicit types - they become deduced/template parameters
+        if (param.type) {
             check_type_ptr(param.type.get());
         }
         auto symbol = std::make_unique<Symbol>(
