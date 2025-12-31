@@ -1761,7 +1761,14 @@ std::unique_ptr<Expression> Parser::postfix_expression() {
                 next == TokenType::Semicolon || next == TokenType::Comma ||
                 next == TokenType::RightParen || next == TokenType::RightBracket ||
                 next == TokenType::RightBrace || next == TokenType::Dot ||
-                next == TokenType::PlusPlus || next == TokenType::MinusMinus;
+                next == TokenType::PlusPlus || next == TokenType::MinusMinus ||
+                // Also treat as postfix when followed by binary operators
+                // (e.g., p* + q* means (*p) + (*q))
+                next == TokenType::Plus || next == TokenType::Minus ||
+                next == TokenType::Asterisk || next == TokenType::Slash ||
+                next == TokenType::Equal || next == TokenType::DoubleEqual ||
+                next == TokenType::LessThan || next == TokenType::GreaterThan ||
+                next == TokenType::LeftShift || next == TokenType::RightShift;
 
             if (!looks_like_postfix) {
                 break;
