@@ -62,16 +62,7 @@ std::string CodeGenerator::get_indent() const {
 }
 
 void CodeGenerator::write_includes() {
-    write_line("#include <cassert>");
-    write_line("#include <iostream>");
-    write_line("#include <string>");
-    write_line("#include <string_view>");
-    write_line("#include <vector>");
-    write_line("#include <span>");
-    write_line("#include <format>");
-    write_line("#include <ranges>");
-    write_line("#include <memory>");
-    write_line("#include <optional>");
+    write_line("#include \"cpp2util.h\"");
     write_line("");
 }
 
@@ -163,7 +154,8 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
         write("[[nodiscard]] ");
     }
 
-    write(return_type + " " + decl->name + "(");
+    // Use auto return_type syntax for cppfront compatibility
+    write("auto " + decl->name + "(");
 
     // Parameters
     for (size_t i = 0; i < decl->parameters.size(); ++i) {
@@ -172,7 +164,9 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
         write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
     }
 
-    write_line(");");
+    write(") -> " + return_type);
+
+    write_line(";");
 }
 
 void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
@@ -195,7 +189,8 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
         write("[[nodiscard]] ");
     }
 
-    write(return_type + " " + decl->name + "(");
+    // Use auto return_type syntax for cppfront compatibility
+    write("auto " + decl->name + "(");
 
     // Parameters
     for (size_t i = 0; i < decl->parameters.size(); ++i) {
@@ -204,14 +199,21 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
         write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
     }
 
-    write(")");
+    write(") -> " + return_type);
 
     if (decl->body) {
-        write(" {\n");
-        indent();
-        generate_statement(decl->body.get());
-        dedent();
-        write_line("}");
+        // Check if body is already a BlockStatement - if so, generate it directly
+        // to avoid adding extra nested braces
+        if (decl->body->kind == Statement::Kind::Block) {
+            write(" ");
+            generate_statement(decl->body.get());
+        } else {
+            write(" {\n");
+            indent();
+            generate_statement(decl->body.get());
+            dedent();
+            write_line("}");
+        }
     } else {
         write_line(";");
     }
@@ -1131,7 +1133,7 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Binary: {
             auto binary = static_cast<BinaryExpression*>(expr);
-            expr_output << "(" << generate_expression_to_string(binary->left.get());
+            expr_output << generate_expression_to_string(binary->left.get());
 
             switch (binary->op) {
                 case TokenType::Plus: expr_output << " + "; break;
@@ -1150,7 +1152,7 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 default: expr_output << " ?op? "; break;
             }
 
-            expr_output << generate_expression_to_string(binary->right.get()) << ")";
+            expr_output << generate_expression_to_string(binary->right.get());
             break;
         }
         case Expression::Kind::Call: {
