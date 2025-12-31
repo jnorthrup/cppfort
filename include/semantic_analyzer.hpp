@@ -138,6 +138,7 @@ private:
     std::vector<std::string> warnings;
     std::unordered_set<std::string, SimpleStringHash> undeclared_variables;
     std::unordered_map<Declaration*, bool> checked_declarations;
+    bool has_cpp1_passthrough = false;  // Track if AST contains C++1 passthrough declarations
 
     // Built-in types
     void register_builtin_types();
