@@ -140,7 +140,7 @@ target_link_libraries(test_fir_to_son_pass PRIVATE
     Cpp2FIRDialect
     Cpp2SONDialect
     MLIR
-    MLIRFuncDialect
+    LLVM
 )
 
 # FIR SCCP pass test
@@ -151,7 +151,6 @@ target_link_libraries(test_fir_sccp_pass PRIVATE
     Cpp2SCCP
     Cpp2FIRDialect
     MLIR
-    MLIRFuncDialect
 )
 
 # Binary expression FIR tests
@@ -161,7 +160,6 @@ target_link_libraries(test_binary_expression_fir PRIVATE
     Cpp2FIRDialect
     Cpp2Transpiler
     MLIR
-    MLIRFuncDialect
 )
 
 # Call expression FIR tests
@@ -171,7 +169,6 @@ target_link_libraries(test_call_expression_fir PRIVATE
     Cpp2FIRDialect
     Cpp2Transpiler
     MLIR
-    MLIRFuncDialect
 )
 
 # Control flow FIR tests
@@ -181,7 +178,6 @@ target_link_libraries(test_control_flow_fir PRIVATE
     Cpp2FIRDialect
     Cpp2Transpiler
     MLIR
-    MLIRFuncDialect
 )
 
 # Semantic extraction test
@@ -214,7 +210,6 @@ target_link_libraries(test_son_serialization PRIVATE
     SeaOfNodesCore
     Cpp2SONDialect
     MLIR
-    MLIRFuncDialect
     LLVM
 )
 
@@ -225,7 +220,6 @@ target_link_libraries(test_son_deserialization PRIVATE
     SeaOfNodesCore
     Cpp2SONDialect
     MLIR
-    MLIRFuncDialect
     LLVM
 )
 
@@ -297,7 +291,7 @@ add_test(NAME error_handling_fir_tests COMMAND test_error_handling_fir)
 # SON verification test
 add_executable(test_son_verification test_son_verification.cpp)
 target_include_directories(test_son_verification PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_son_verification PRIVATE Cpp2SONDialect MLIR MLIRFuncDialect)
+target_link_libraries(test_son_verification PRIVATE Cpp2SONDialect MLIR LLVM)
 add_test(NAME son_verification_tests COMMAND test_son_verification)
 
 # SCCP arithmetic operations test

@@ -6,8 +6,7 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "Cpp2SONDialect.h"
-#include "Cpp2SONOps.h.inc"
+#include "../include/Cpp2SONDialect.h"
 
 using namespace mlir;
 using namespace mlir::sond;

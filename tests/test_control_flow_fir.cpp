@@ -10,6 +10,7 @@
 #include "mlir/IR/Verifier.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 
 using namespace cpp2_transpiler;
 using mlir::MLIRContext;
@@ -34,6 +35,7 @@ void test_if_without_else() {
     MLIRContext context;
     context.loadDialect<mlir::cpp2fir::Cpp2FIRDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
+    context.loadDialect<mlir::arith::ArithDialect>();
     context.loadDialect<mlir::scf::SCFDialect>();
 
     auto func = std::make_unique<FunctionDeclaration>("test_if", 1);
@@ -88,6 +90,7 @@ void test_if_with_else() {
     MLIRContext context;
     context.loadDialect<mlir::cpp2fir::Cpp2FIRDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
+    context.loadDialect<mlir::arith::ArithDialect>();
     context.loadDialect<mlir::scf::SCFDialect>();
 
     auto func = std::make_unique<FunctionDeclaration>("test_if_else", 1);
@@ -131,6 +134,7 @@ void test_while_loop() {
     MLIRContext context;
     context.loadDialect<mlir::cpp2fir::Cpp2FIRDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
+    context.loadDialect<mlir::arith::ArithDialect>();
     context.loadDialect<mlir::scf::SCFDialect>();
 
     auto func = std::make_unique<FunctionDeclaration>("test_while", 1);
@@ -181,6 +185,7 @@ void test_nested_if() {
     MLIRContext context;
     context.loadDialect<mlir::cpp2fir::Cpp2FIRDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
+    context.loadDialect<mlir::arith::ArithDialect>();
     context.loadDialect<mlir::scf::SCFDialect>();
 
     auto func = std::make_unique<FunctionDeclaration>("test_nested_if", 1);

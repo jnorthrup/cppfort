@@ -28,6 +28,7 @@ target_include_directories(Cpp2FIRDialect PUBLIC
 
 target_link_libraries(Cpp2FIRDialect PUBLIC
   MLIR
+  LLVM
 )
 
 add_dependencies(Cpp2FIRDialect Cpp2FIROpsIncGen)
@@ -86,7 +87,6 @@ target_link_libraries(SeaOfNodesCore PUBLIC
   Cpp2Dialect
   # Cpp2SONDialect  # Disabled: MLIR tablegen issues need investigation
   MLIR
-  MLIRFuncDialect
   clangAST
   clangBasic
   clangLex
@@ -129,6 +129,7 @@ add_executable(cppfort main.cpp)
 target_link_libraries(cppfort PRIVATE
   Cpp2Transpiler
   SeaOfNodesCore
+  LLVM
 )
 
 # Sea of Nodes transpiler executable
@@ -136,6 +137,7 @@ add_executable(cppfort-son sea_of_nodes_main.cpp)
 target_link_libraries(cppfort-son PRIVATE
   Cpp2Transpiler
   SeaOfNodesCore
+  LLVM
 )
 
 # Cpp2 Conversion Passes library
@@ -156,8 +158,6 @@ target_link_libraries(Cpp2Passes PUBLIC
   Cpp2SONDialect
   Cpp2SCCP  # Link standalone SCCP library
   MLIR
-  MLIRFuncDialect
-  MLIRTransforms
 )
 
 # Cppfort Optimizer Tool
