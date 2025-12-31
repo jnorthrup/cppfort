@@ -19,6 +19,44 @@ std::vector<Token> Lexer::tokenize() {
     }
 
     tokens.emplace_back(TokenType::EndOfFile, "", line, column, current);
+
+    // Scan for Cpp2-specific patterns that span multiple tokens
+    // This handles patterns like:
+    // - identifier: ( ... )  -> Cpp2 function declaration
+    // - identifier: type     -> Cpp2 variable declaration with type annotation
+    for (size_t i = 0; i < tokens.size() - 2; ++i) {
+        // Pattern: identifier : ( -> Cpp2 function declaration
+        if (tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            tokens[i + 2].type == TokenType::LeftParen) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+        // Pattern: identifier : identifier/type -> Cpp2 variable declaration
+        // Skip if followed by : (which would be :: namespace access)
+        if (i < tokens.size() - 3 &&
+            tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            (tokens[i + 2].type == TokenType::Identifier ||
+             tokens[i + 2].type == TokenType::Struct ||
+             tokens[i + 2].type == TokenType::Class ||
+             tokens[i + 2].type == TokenType::Union ||
+             tokens[i + 2].type == TokenType::Enum) &&
+            tokens[i + 2].type != TokenType::Colon) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+        // Pattern: identifier : std:: -> Cpp2 variable with qualified type
+        if (i < tokens.size() - 4 &&
+            tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            tokens[i + 2].type == TokenType::Identifier &&
+            tokens[i + 3].type == TokenType::DoubleColon) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+    }
+
     return tokens;
 }
 
@@ -182,6 +220,7 @@ void Lexer::scan_token() {
                 add_token(TokenType::DoubleColon);
             } else if (match('=')) {
                 add_token(TokenType::ColonEqual);
+                m_has_cpp2_syntax = true;  // := is Cpp2-specific
             } else {
                 add_token(TokenType::Colon);
             }
@@ -296,6 +335,39 @@ void Lexer::scan_identifier() {
 
     std::string_view text = source.substr(start, current - start);
     TokenType type = identifier_type();
+
+    // Mark Cpp2-specific keywords
+    switch (type) {
+        case TokenType::As:
+        case TokenType::Is:
+        case TokenType::In:
+        case TokenType::Inspect:
+        case TokenType::When:
+        case TokenType::Let:
+        case TokenType::Mut:
+        case TokenType::Func:
+        case TokenType::Type:
+        case TokenType::Next:
+        case TokenType::ContractPre:
+        case TokenType::ContractPost:
+        case TokenType::Inout:
+        case TokenType::Out:
+        case TokenType::Move:
+        case TokenType::Forward:
+        case TokenType::Suspend:
+        case TokenType::Async:
+        case TokenType::Await:
+        case TokenType::Launch:
+        case TokenType::CoroutineScope:
+        case TokenType::Channel:
+        case TokenType::Select:
+        case TokenType::ParallelFor:
+            m_has_cpp2_syntax = true;
+            break;
+        default:
+            break;
+    }
+
     add_token(type, text);
 }
 
