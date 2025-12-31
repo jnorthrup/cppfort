@@ -589,6 +589,7 @@ struct ForRangeStatement : Statement {
     std::string var_qualifier;  // Parameter kind: in, inout, out, copy, move, forward
     std::unique_ptr<Type> var_type;
     std::unique_ptr<Expression> range;
+    std::unique_ptr<Expression> next_clause;  // Optional: for range next expr do (var)
     std::unique_ptr<Statement> body;
 
     ForRangeStatement(std::string var, std::unique_ptr<Type> t,

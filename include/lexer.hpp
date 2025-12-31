@@ -229,6 +229,7 @@ private:
     void scan_identifier();
     void scan_number();
     void scan_string();
+    void scan_raw_string();  // C++11 R"..." raw string literals
     void scan_character();
     void scan_line_comment();
     void scan_block_comment();

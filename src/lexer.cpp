@@ -335,6 +335,13 @@ void Lexer::scan_identifier() {
     }
 
     std::string_view text = source.substr(start, current - start);
+    
+    // Check for raw string literals: R"...", LR"...", uR"...", UR"...", u8R"..."
+    if (peek() == '"' && (text == "R" || text == "LR" || text == "uR" || text == "UR" || text == "u8R")) {
+        scan_raw_string();
+        return;
+    }
+    
     TokenType type = identifier_type();
 
     // Mark Cpp2-specific keywords
@@ -371,6 +378,55 @@ void Lexer::scan_identifier() {
     }
 
     add_token(type, text);
+}
+
+void Lexer::scan_raw_string() {
+    // Called after we've seen R", LR", uR", UR", or u8R"
+    // Current position is at the opening quote
+    advance(); // consume opening quote
+    
+    // Read delimiter (if any) until we hit '('
+    std::string delimiter;
+    while (peek() != '(' && !is_at_end()) {
+        delimiter += advance();
+    }
+    
+    if (is_at_end()) {
+        add_token(TokenType::Unknown);
+        return;
+    }
+    
+    advance(); // consume opening paren
+    
+    // Now read until we find ')delimiter"'
+    std::string closing = ")" + delimiter + "\"";
+    
+    while (!is_at_end()) {
+        // Check if we've found the closing sequence
+        bool found_closing = true;
+        for (size_t i = 0; i < closing.length() && !is_at_end(); ++i) {
+            if (current + i >= source.length() || source[current + i] != closing[i]) {
+                found_closing = false;
+                break;
+            }
+        }
+        
+        if (found_closing) {
+            // Consume the closing sequence
+            for (size_t i = 0; i < closing.length(); ++i) {
+                advance();
+            }
+            break;
+        }
+        
+        if (peek() == '\n') {
+            line++;
+            column = 1;
+        }
+        advance();
+    }
+    
+    add_token(TokenType::StringLiteral);
 }
 
 void Lexer::scan_number() {

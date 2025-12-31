@@ -23,16 +23,22 @@ private:
     // Pending markdown blocks to attach to next declaration
     std::vector<MarkdownBlockAttr> pending_markdown_blocks;
 
+    // Track pending '>' from '>>' split for nested templates
+    bool pending_gt = false;
+
     // Parsing utilities
     const Token& peek() const;
     const Token& advance();
     const Token& previous() const;
     bool is_at_end() const;
     bool check(TokenType type) const;
+    bool is_identifier_like() const;  // Check if current token can be used as identifier
+    std::string_view get_identifier_lexeme() const;  // Get lexeme for identifier-like tokens
     bool match(TokenType type);
     bool match(std::initializer_list<TokenType> types);
     const Token& consume(TokenType type, const char* message);
     bool consume_if(TokenType type);
+    bool consume_template_close();  // Consume '>' or first half of '>>' for nested templates
 
     template<typename F>
     auto synchronize_on_error(F&& func) -> decltype(func());

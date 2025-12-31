@@ -340,7 +340,24 @@ void SemanticAnalyzer::check_identifier_expression(IdentifierExpression* expr) {
     if (!symbol) {
         // Suppress "Undefined identifier" errors when we have C++1 passthrough
         // since the identifier might be a type or variable defined in C++1 code
-        if (!has_cpp1_passthrough) {
+        // Also suppress for std:: qualified names since they come from the standard library
+        // Also suppress for _ which is the discard/placeholder identifier
+        // Also suppress for common C/C++ keywords/identifiers
+        if (!has_cpp1_passthrough && 
+            expr->name != "_" &&
+            expr->name != "nullptr" &&
+            expr->name != "fopen" &&
+            expr->name != "unique" &&   // unique_ptr etc
+            expr->name != "unchecked_narrow" &&
+            expr->name != "srand" &&
+            expr->name != "time" &&
+            expr->name != "printf" &&
+            expr->name != "fprintf" &&
+            expr->name != "stdin" &&
+            expr->name != "stdout" &&
+            expr->name != "stderr" &&
+            expr->name.substr(0, 5) != "std::" &&
+            expr->name.substr(0, 4) != "cpp2") {
             report_error(expr->line, "Undefined identifier: " + expr->name);
             undeclared_variables.insert(expr->name);
         }
@@ -446,11 +463,13 @@ std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
     // Resolve type names and validate type structure
     if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
         if (!is_builtin_type(type->name)) {
+            // Allow pointer types like *int, *T, etc.
+            bool is_pointer_type = !type->name.empty() && type->name[0] == '*';
             auto symbol = lookup_symbol(type->name);
             if (!symbol || symbol->kind != Symbol::Kind::Type) {
                 // Suppress "Undefined type" errors when we have C++1 passthrough
                 // since the type might be defined in C++1 code
-                if (!has_cpp1_passthrough) {
+                if (!has_cpp1_passthrough && !is_pointer_type) {
                     report_error(0, "Undefined type: " + type->name);
                 }
             }
@@ -471,11 +490,13 @@ void SemanticAnalyzer::check_type_ptr(const Type* type) {
     // Resolve type names and validate type structure
     if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
         if (!is_builtin_type(type->name)) {
+            // Allow pointer types like *int, *T, etc.
+            bool is_pointer_type = !type->name.empty() && type->name[0] == '*';
             auto symbol = lookup_symbol(type->name);
             if (!symbol || symbol->kind != Symbol::Kind::Type) {
                 // Suppress "Undefined type" errors when we have C++1 passthrough
                 // since the type might be defined in C++1 code
-                if (!has_cpp1_passthrough) {
+                if (!has_cpp1_passthrough && !is_pointer_type) {
                     report_error(0, "Undefined type: " + type->name);
                 }
             }
@@ -564,11 +585,20 @@ bool SemanticAnalyzer::is_builtin_type(const std::string& name) const {
         "i8", "i16", "i32", "i64",
         "u8", "u16", "u32", "u64",
         "float", "double", "void", "auto", "string", "string_view",
+        // C/C++ primitive types
+        "unsigned", "signed", "long", "short", "size_t", "ssize_t",
         // Standard library types
         "std::string", "std::string_view", "std::ostream", "std::istream",
         "std::vector", "std::array", "std::span", "std::unique_ptr", "std::shared_ptr",
-        "std::optional", "std::variant", "std::any", "std::tuple"
+        "std::optional", "std::variant", "std::any", "std::tuple",
+        "std::once_flag", "std::mutex", "std::thread", "std::atomic",
+        "std::function", "std::pair", "std::map", "std::set", "std::unordered_map",
+        "std::unordered_set", "std::list", "std::deque", "std::queue", "std::stack"
     };
+    // Also accept std:: qualified names
+    if (name.substr(0, 5) == "std::") {
+        return true;
+    }
     return builtins.contains(name);
 }
 
