@@ -1,0 +1,11 @@
+// Test 'this' as parameter name
+
+my_type: type = {
+    method: (this) = {
+        // non-mutating method
+    }
+
+    mut_method: (inout this) = {
+        // mutating method
+    }
+}

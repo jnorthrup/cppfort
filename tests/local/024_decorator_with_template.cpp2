@@ -1,0 +1,5 @@
+// Test decorator with template arguments
+
+my_struct: @struct <T:type> type = {
+    value: T;
+}

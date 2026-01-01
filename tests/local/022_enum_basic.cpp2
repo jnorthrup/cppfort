@@ -1,0 +1,7 @@
+// Test enum declaration with @enum decorator
+
+my_enum: @enum type = {
+    member_a := 1;
+    member_b;  // 2
+    member_c;  // 3
+}

@@ -1,0 +1,7 @@
+// Test forward parameter semantics (template forwarding)
+// Should transpile with forwarding reference
+
+template <T>
+process: (forward x: T) = {
+    consume(std::forward<T>(x));
+}

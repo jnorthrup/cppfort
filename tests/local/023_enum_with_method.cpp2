@@ -1,0 +1,11 @@
+// Test enum with methods
+
+status: @enum type = {
+    off;
+    on;
+
+    toggle: (inout this) = {
+        if this == off { this = on; }
+        else { this = off; }
+    }
+}

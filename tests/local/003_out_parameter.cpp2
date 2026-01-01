@@ -1,0 +1,7 @@
+// Test out parameter semantics
+// Should transpile to: void get_value(int& out)
+// NOT: void get_value(int out)
+
+get_value: (out v: int) = {
+    v = 42;
+}

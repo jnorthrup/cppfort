@@ -1,0 +1,7 @@
+// Test type alias with ==
+
+my_int: type == int;
+
+use_it: () = {
+    x: my_int = 42;
+}

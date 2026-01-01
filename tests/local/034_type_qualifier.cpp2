@@ -1,0 +1,5 @@
+// Test type qualifiers (final, virtual) before type keyword
+
+my_class: @final type = {
+    value: int = 0;
+}

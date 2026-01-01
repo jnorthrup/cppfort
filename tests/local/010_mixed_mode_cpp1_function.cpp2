@@ -1,0 +1,6 @@
+// Test mixed-mode C++1 function passthrough
+// auto name() -> type should be passed through unchanged to C++1
+
+auto main() -> int {
+    return 0;
+}
