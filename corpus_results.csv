@@ -1,1 +1,9 @@
 file,status,loss_score,errors,time_ms
+pure2-deducing-pointers-error,FAIL,1.0,"exit 1",165
+pure2-deduction-1-error,FAIL,1.0,"exit 1",40
+pure2-deduction-2-error,FAIL,1.0,"exit 1",37
+pure2-bounds-safety-pointer-arithmetic-error,FAIL,1.0,"exit 1",38
+pure2-bugfix-for-bad-decltype-error,FAIL,1.0,"exit 1",38
+pure2-bugfix-for-invalid-alias-error,FAIL,1.0,"exit 1",37
+pure2-bugfix-for-namespace-error,FAIL,1.0,"exit 139",101
+mixed-allcpp1-hello,PASS,0.0,,37

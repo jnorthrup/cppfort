@@ -342,12 +342,13 @@ void SemanticAnalyzer::check_identifier_expression(IdentifierExpression* expr) {
         // since the identifier might be a type or variable defined in C++1 code
         // Also suppress for std:: qualified names since they come from the standard library
         // Also suppress for _ which is the discard/placeholder identifier
-        // Also suppress for common C/C++ keywords/identifiers
+        // Also suppress for common C/C++ keywords/identifiers and Cpp2 builtins
         if (!has_cpp1_passthrough && 
             expr->name != "_" &&
             expr->name != "nullptr" &&
             expr->name != "fopen" &&
-            expr->name != "unique" &&   // unique_ptr etc
+            expr->name != "unique" &&   // Cpp2: unique.new<T> for unique_ptr
+            expr->name != "shared" &&   // Cpp2: shared.new<T> for shared_ptr
             expr->name != "unchecked_narrow" &&
             expr->name != "srand" &&
             expr->name != "time" &&
@@ -455,8 +456,10 @@ void SemanticAnalyzer::check_range_expression(RangeExpression* expr) {
 std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
     if (!type) return nullptr;
 
-    if ((type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) &&
-        is_builtin_type(type->name)) {
+    // Only change to Builtin if it's NOT a template type with arguments
+    // Template types need to keep their kind to emit template arguments
+    if ((type->kind == Type::Kind::UserDefined) &&
+        is_builtin_type(type->name) && type->template_args.empty()) {
         type->kind = Type::Kind::Builtin;
     }
 
@@ -542,11 +545,125 @@ void SemanticAnalyzer::resolve_type_declaration(TypeDeclaration* type_decl) {
 
     push_scope();
 
+    // Add template parameters as types in this scope
+    for (const std::string& tparam : type_decl->template_parameters) {
+        // Strip trailing ... for variadic parameters when creating symbol
+        std::string param_name = tparam;
+        if (param_name.size() >= 3 && param_name.substr(param_name.size() - 3) == "...") {
+            param_name = param_name.substr(0, param_name.size() - 3);
+        }
+        auto template_type = std::make_unique<Type>(Type::Kind::UserDefined);
+        template_type->name = param_name;
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Type, param_name, template_type.get(), nullptr);
+        add_symbol(param_name, std::move(symbol));
+        // Also add the pack expansion version (Ts...)
+        if (tparam != param_name) {
+            auto pack_type = std::make_unique<Type>(Type::Kind::UserDefined);
+            pack_type->name = tparam;
+            auto pack_symbol = std::make_unique<Symbol>(
+                Symbol::Kind::Type, tparam, pack_type.get(), nullptr);
+            add_symbol(tparam, std::move(pack_symbol));
+        }
+    }
+
+    // Special handling for enum types: register enum members as qualified symbols
+    if (type_decl->type_kind == TypeDeclaration::TypeKind::Enum) {
+        resolve_enum_declaration(type_decl);
+        pop_scope();
+        return;
+    }
+
     for (auto& member : type_decl->members) {
         check_declaration(member.get());
     }
 
     pop_scope();
+}
+
+void SemanticAnalyzer::resolve_enum_declaration(TypeDeclaration* enum_decl) {
+    // Enum members don't need explicit types - they get the enum type
+    // Register each member as a qualified symbol (EnumName::member) in the PARENT scope
+    // so they're visible outside the enum definition
+    auto parent_scope = current_scope->parent();
+    if (!parent_scope) parent_scope = current_scope;  // fallback to current
+
+    // First pass: collect all enum member names and register them
+    // This allows initializers and member functions to reference other members
+    std::vector<std::string> member_names;
+    for (auto& member : enum_decl->members) {
+        if (auto* var_member = dynamic_cast<VariableDeclaration*>(member.get())) {
+            member_names.push_back(var_member->name);
+            
+            // Register qualified name (e.g., skat_game::clubs) in parent scope
+            std::string qualified_name = enum_decl->name + "::" + var_member->name;
+            auto enum_type = std::make_unique<Type>(Type::Kind::UserDefined);
+            enum_type->name = enum_decl->name;
+            auto symbol = std::make_unique<Symbol>(
+                Symbol::Kind::EnumMember, qualified_name, enum_type.get(), var_member);
+            parent_scope->add_symbol(qualified_name, std::move(symbol));
+            
+            // Also register unqualified name in current (enum) scope for internal use
+            auto unqual_type = std::make_unique<Type>(Type::Kind::UserDefined);
+            unqual_type->name = enum_decl->name;
+            auto unqual_symbol = std::make_unique<Symbol>(
+                Symbol::Kind::EnumMember, var_member->name, unqual_type.get(), var_member);
+            add_symbol(var_member->name, std::move(unqual_symbol));
+        }
+    }
+
+    // Second pass: check initializers and member functions
+    // Now all enum members are in scope
+    for (auto& member : enum_decl->members) {
+        if (auto* var_member = dynamic_cast<VariableDeclaration*>(member.get())) {
+            // Check initializer expression if present (can reference other members)
+            if (var_member->initializer) {
+                check_expression(var_member->initializer.get());
+            }
+        } else if (auto* func_member = dynamic_cast<FunctionDeclaration*>(member.get())) {
+            // Enum member functions (like flip() in janus enum)
+            // Register qualified name (e.g., janus::flip) in parent scope
+            std::string qualified_name = enum_decl->name + "::" + func_member->name;
+            auto func_type = std::make_unique<Type>(Type::Kind::Function);
+            auto symbol = std::make_unique<Symbol>(
+                Symbol::Kind::Function, qualified_name, func_type.get(), func_member);
+            parent_scope->add_symbol(qualified_name, std::move(symbol));
+
+            // Check function body - enum members are already in scope
+            check_function(func_member);
+        }
+    }
+
+    // Also register synthesized members for @enum (from_string, from_code, etc.) in parent scope
+    const std::vector<std::string> synthesized_members = {
+        "from_string", "from_code", "to_string", "to_code", "get_raw_value"
+    };
+    for (const auto& syn_member : synthesized_members) {
+        std::string qualified_name = enum_decl->name + "::" + syn_member;
+        auto func_type = std::make_unique<Type>(Type::Kind::Function);
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Function, qualified_name, func_type.get(), nullptr);
+        parent_scope->add_symbol(qualified_name, std::move(symbol));
+    }
+
+    // For flag_enum, also register bitwise operation support  
+    bool is_flag_enum = false;
+    for (const auto& mf : enum_decl->metafunctions) {
+        if (mf.find("flag_enum") != std::string::npos) {
+            is_flag_enum = true;
+            break;
+        }
+    }
+    if (is_flag_enum) {
+        const std::vector<std::string> flag_members = {"clear", "set"};
+        for (const auto& flag_member : flag_members) {
+            std::string qualified_name = enum_decl->name + "::" + flag_member;
+            auto func_type = std::make_unique<Type>(Type::Kind::Function);
+            auto symbol = std::make_unique<Symbol>(
+                Symbol::Kind::Function, qualified_name, func_type.get(), nullptr);
+            parent_scope->add_symbol(qualified_name, std::move(symbol));
+        }
+    }
 }
 
 void SemanticAnalyzer::resolve_ufcs(CallExpression* call) {

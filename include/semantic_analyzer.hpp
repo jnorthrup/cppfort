@@ -18,7 +18,8 @@ struct Symbol {
         Type,
         Namespace,
         Parameter,
-        Member
+        Member,
+        EnumMember
     };
 
     Kind kind;
@@ -87,6 +88,7 @@ private:
     // Type resolution
     Type* resolve_type(const Type* type);
     void resolve_type_declaration(TypeDeclaration* type_decl);
+    void resolve_enum_declaration(TypeDeclaration* enum_decl);
 
     // Function checking
     void check_function(FunctionDeclaration* func);

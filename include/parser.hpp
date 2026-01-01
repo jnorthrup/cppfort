@@ -61,6 +61,7 @@ private:
 
     // C++1 detection
     bool check_cpp1_function_syntax();
+    bool check_cpp1_struct_syntax();
 
     // Types
     std::unique_ptr<Type> type();
@@ -157,6 +158,7 @@ private:
     void error_at_current(const char* message);
 
     bool panic_mode = false;
+    bool suppress_errors = false;  // For speculative parsing
     std::size_t last_error_position = std::numeric_limits<std::size_t>::max();
     std::string last_error_text;
 };

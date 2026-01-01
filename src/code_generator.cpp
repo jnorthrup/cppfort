@@ -4,6 +4,19 @@
 
 namespace cpp2_transpiler {
 
+// Helper to generate a template parameter declaration
+// Handles variadic packs: "Ts..." becomes "typename... Ts"
+// Handles non-type packs: "Ts...: int" becomes "int... Ts" (conceptually)
+// Regular type params: "T" becomes "typename T"
+static std::string generate_template_param(const std::string& param) {
+    // Check if this is a variadic parameter (ends with ...)
+    if (param.size() >= 3 && param.substr(param.size() - 3) == "...") {
+        std::string name = param.substr(0, param.size() - 3);
+        return "typename... " + name;
+    }
+    return "typename " + param;
+}
+
 CodeGenerator::CodeGenerator() : indent_level(0), needs_semicolon(true) {}
 
 std::string CodeGenerator::generate(AST& ast) {
@@ -11,6 +24,27 @@ std::string CodeGenerator::generate(AST& ast) {
     output.clear();
 
     write_includes();
+
+    // Pass 0: Generate C++1 passthrough declarations that should come first
+    // (includes, struct definitions, etc.) - these need to appear before forward declarations
+    for (auto& decl : ast.declarations) {
+        if (decl->kind == Declaration::Kind::Cpp1Passthrough) {
+            auto* cpp1 = static_cast<Cpp1PassthroughDeclaration*>(decl.get());
+            // Check if this is an include directive or struct/class definition
+            bool is_early = (cpp1->raw_code.find("#include") == 0 ||
+                             cpp1->raw_code.find("#define") == 0 ||
+                             cpp1->raw_code.find("#pragma") == 0 ||
+                             cpp1->raw_code.find("struct ") == 0 ||
+                             cpp1->raw_code.find("class ") == 0 ||
+                             cpp1->raw_code.find("union ") == 0 ||
+                             cpp1->raw_code.find("enum ") == 0 ||
+                             cpp1->raw_code.find("template") == 0);
+            if (is_early) {
+                generate_cpp1_passthrough_declaration(cpp1);
+                write_line("");
+            }
+        }
+    }
 
     // First pass: Generate forward declarations for all functions (except main)
     for (auto& decl : ast.declarations) {
@@ -26,7 +60,22 @@ std::string CodeGenerator::generate(AST& ast) {
     write_line("");
 
     // Second pass: Generate full definitions for all declarations
+    // Skip C++1 passthrough that was already emitted in pass 0
     for (auto& decl : ast.declarations) {
+        if (decl->kind == Declaration::Kind::Cpp1Passthrough) {
+            auto* cpp1 = static_cast<Cpp1PassthroughDeclaration*>(decl.get());
+            bool is_early = (cpp1->raw_code.find("#include") == 0 ||
+                             cpp1->raw_code.find("#define") == 0 ||
+                             cpp1->raw_code.find("#pragma") == 0 ||
+                             cpp1->raw_code.find("struct ") == 0 ||
+                             cpp1->raw_code.find("class ") == 0 ||
+                             cpp1->raw_code.find("union ") == 0 ||
+                             cpp1->raw_code.find("enum ") == 0 ||
+                             cpp1->raw_code.find("template") == 0);
+            if (is_early) {
+                continue;  // Already emitted
+            }
+        }
         generate_declaration(decl.get());
         write_line("");
     }
@@ -177,7 +226,7 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
         write("template<");
         for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
             if (i > 0) write(", ");
-            write("typename " + decl->template_parameters[i]);
+            write(generate_template_param(decl->template_parameters[i]));
         }
         write_line(">");
     }
@@ -303,6 +352,16 @@ void CodeGenerator::generate_operator_declaration(OperatorDeclaration* decl) {
 
 void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     if (!decl) return;
+
+    // Generate template header if this is a template type
+    if (!decl->template_parameters.empty()) {
+        write("template<");
+        for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
+            if (i > 0) write(", ");
+            write(generate_template_param(decl->template_parameters[i]));
+        }
+        write_line(">");
+    }
 
     // Check for @interface and @union metafunctions which need special handling
     bool is_interface = false;
@@ -1269,6 +1328,19 @@ std::string CodeGenerator::generate_type(Type* type) {
         case Type::Kind::Builtin:
         case Type::Kind::UserDefined:
             return type->name;
+        case Type::Kind::Template: {
+            // Generate template type with arguments: name<arg1, arg2, ...>
+            std::string result = type->name;
+            if (!type->template_args.empty()) {
+                result += "<";
+                for (size_t i = 0; i < type->template_args.size(); ++i) {
+                    if (i > 0) result += ", ";
+                    result += generate_type(type->template_args[i].get());
+                }
+                result += ">";
+            }
+            return result;
+        }
         case Type::Kind::Pointer:
             return generate_type(type->pointee.get()) + "*";
         case Type::Kind::Reference:

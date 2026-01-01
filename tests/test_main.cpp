@@ -144,8 +144,8 @@ void test_simple_transpilation() {
     CodeGenerator code_generator;
     auto result = code_generator.generate(*ast);
 
-    // Basic checks
-    assert(result.find("int main()") != std::string::npos);
+    // Basic checks - using cppfront-style auto return type syntax
+    assert(result.find("auto main()") != std::string::npos);
     assert(result.find("int x = 42") != std::string::npos);
     assert(result.find("return x") != std::string::npos);
 

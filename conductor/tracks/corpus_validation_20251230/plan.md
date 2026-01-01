@@ -10,12 +10,15 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
+**Current Status**: 120/189 passing (63.5%) - corpus scan complete 2025-12-31
+
 ### Tasks
 
 - [x] Create git worktree `corpus-validation` from master branch
 - [x] Set up validation environment and paths
 - [x] Initialize results tracking (CSV: file, status, loss_score, errors, time)
-- [ ] Process all 189 files sequentially (sorted alphabetical order)
+- [x] Corpus scan completed: 120 PASS, 69 FAIL (see corpus_scan_results.txt)
+- [ ] Fix remaining 69 failing files (grouped by blocker type)
   - [x] mixed-allcpp1-hello.cpp2 (C++1 passthrough mode)
   - [ ] mixed-as-for-variant-20-types.cpp2
   - [ ] mixed-autodiff-taylor.cpp2

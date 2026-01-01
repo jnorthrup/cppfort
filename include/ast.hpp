@@ -188,8 +188,14 @@ struct MoveExpression : Expression {
 };
 
 struct CallExpression : Expression {
+    struct Argument {
+        std::unique_ptr<Expression> expr;
+        ParameterQualifier qualifier = ParameterQualifier::None;  // out, inout, move, forward
+    };
+    
     std::unique_ptr<Expression> callee;
-    std::vector<std::unique_ptr<Expression>> args;
+    std::vector<Argument> arguments;  // Arguments with qualifiers
+    std::vector<std::unique_ptr<Expression>> args;  // DEPRECATED: plain args for backward compat
     std::vector<std::unique_ptr<Type>> template_args;  // Template arguments for template function calls
     bool is_ufcs = false;  // Cpp2 UFCS (Unified Function Call Syntax)
 
@@ -853,6 +859,7 @@ struct TypeDeclaration : Declaration {
     std::vector<std::unique_ptr<Declaration>> members;
     std::unique_ptr<Type> underlying_type;
     std::vector<std::string> metafunctions;
+    std::vector<std::string> template_parameters;  // Template parameters for generic types
 
     TypeDeclaration(std::string n, TypeKind tk, std::size_t l)
         : Declaration(Kind::Type, std::move(n), l), type_kind(tk) {}
