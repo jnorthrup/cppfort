@@ -51,17 +51,18 @@ private:
     // Declarations
     std::unique_ptr<Declaration> variable_declaration();
     std::unique_ptr<Declaration> function_declaration();
-    std::unique_ptr<Declaration> type_declaration();
+    std::unique_ptr<Declaration> type_declaration(std::vector<std::string> decorators = {});
     std::unique_ptr<Declaration> namespace_declaration();
     std::unique_ptr<Declaration> operator_declaration();
     std::unique_ptr<Declaration> using_declaration();
     std::unique_ptr<Declaration> import_declaration();
     std::unique_ptr<Declaration> template_declaration();
-    std::unique_ptr<Declaration> cpp1_passthrough_declaration();  // C++1 passthrough
+    std::unique_ptr<Declaration> cpp1_passthrough_declaration(bool is_struct_type = false);  // C++1 passthrough
 
     // C++1 detection
     bool check_cpp1_function_syntax();
     bool check_cpp1_struct_syntax();
+    bool check_cpp1_constexpr_syntax();
 
     // Types
     std::unique_ptr<Type> type();
@@ -120,6 +121,7 @@ private:
     std::unique_ptr<Expression> list_literal();
     std::unique_ptr<Expression> struct_initializer();
     std::unique_ptr<Expression> lambda_expression();
+    std::unique_ptr<Expression> cpp1_lambda_expression();  // C++1 [capture](params) { body }
     std::unique_ptr<Expression> function_expression();  // Cpp2 :(params) -> type = { body }
     std::unique_ptr<Expression> metafunction_call();
     std::unique_ptr<Expression> is_expression();
@@ -161,6 +163,11 @@ private:
     bool suppress_errors = false;  // For speculative parsing
     std::size_t last_error_position = std::numeric_limits<std::size_t>::max();
     std::string last_error_text;
+    
+public:
+    // Error count for checking if parsing succeeded
+    std::size_t error_count = 0;
+    bool had_errors() const { return error_count > 0; }
 };
 
 } // namespace cpp2_transpiler

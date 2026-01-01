@@ -70,6 +70,7 @@ enum class TokenType : uint8_t {
     Try,
     Catch,
     Throw,
+    Throws,   // Cpp2 function exception specifier
     Noexcept,
     Decltype,
     Sizeof,
@@ -99,6 +100,7 @@ enum class TokenType : uint8_t {
     GreaterThan,     // >
     LessThanOrEqual, // <=
     GreaterThanOrEqual, // >=
+    Spaceship,       // <=>
     Plus,            // +
     Minus,           // -
     Asterisk,        // *
@@ -166,6 +168,8 @@ enum class TokenType : uint8_t {
     Move,            // move
     Forward,         // forward
     Copy,            // copy
+    InRef,           // in_ref (reference parameter)
+    ForwardRef,      // forward_ref (forwarding reference)
 
     // Concurrency keywords (Kotlin-style)
     Suspend,         // suspend - marks function as suspendable
@@ -229,6 +233,7 @@ private:
     void scan_identifier();
     void scan_number();
     void scan_string();
+    void scan_string_with_prefix();  // u", U", u8", L" string prefixes
     void scan_raw_string();  // C++11 R"..." raw string literals
     void scan_character();
     void scan_line_comment();
@@ -237,6 +242,7 @@ private:
     void scan_preprocessor();
 
     bool is_digit(char c) const;
+    bool is_hex_digit(char c) const;
     bool is_identifier_start(char c) const;
     bool is_identifier_char(char c) const;
 

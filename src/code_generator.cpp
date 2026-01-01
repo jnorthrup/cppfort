@@ -1,6 +1,7 @@
 #include "code_generator.hpp"
 #include <iostream>
 #include <format>
+#include <algorithm>
 
 namespace cpp2_transpiler {
 
@@ -354,7 +355,8 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
     if (!decl) return;
 
     // Generate template header if this is a template type
-    if (!decl->template_parameters.empty()) {
+    // Skip for Alias types as they handle their own template header
+    if (!decl->template_parameters.empty() && decl->type_kind != TypeDeclaration::TypeKind::Alias) {
         write("template<");
         for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
             if (i > 0) write(", ");
@@ -760,11 +762,49 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
             write_line("};");
             break;
 
-        case TypeDeclaration::TypeKind::Alias:
-            if (decl->underlying_type) {
+        case TypeDeclaration::TypeKind::Alias: {
+            // Check if this is a concept definition
+            bool is_concept = std::find(decl->metafunctions.begin(), decl->metafunctions.end(), "concept") != decl->metafunctions.end();
+            
+            if (is_concept && decl->underlying_type) {
+                // Generate concept definition: template<typename T> concept name = constraint;
+                std::string template_str = "template<";
+                for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
+                    if (i > 0) template_str += ", ";
+                    std::string param = decl->template_parameters[i];
+                    // Remove trailing ... for variadic (handle separately)
+                    if (param.size() > 3 && param.substr(param.size() - 3) == "...") {
+                        param = param.substr(0, param.size() - 3);
+                        template_str += "typename... " + param;
+                    } else {
+                        template_str += "typename " + param;
+                    }
+                }
+                template_str += ">";
+                write_line(template_str);
+                write_line("concept " + decl->name + " = " + generate_type(decl->underlying_type.get()) + ";");
+            } else if (decl->underlying_type) {
+                // Regular type alias
+                // Add template parameters if present
+                if (!decl->template_parameters.empty()) {
+                    std::string template_str = "template<";
+                    for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
+                        if (i > 0) template_str += ", ";
+                        std::string param = decl->template_parameters[i];
+                        if (param.size() > 3 && param.substr(param.size() - 3) == "...") {
+                            param = param.substr(0, param.size() - 3);
+                            template_str += "typename... " + param;
+                        } else {
+                            template_str += "typename " + param;
+                        }
+                    }
+                    template_str += ">";
+                    write_line(template_str);
+                }
                 write_line("using " + decl->name + " = " + generate_type(decl->underlying_type.get()) + ";");
             }
             break;
+        }
 
         default:
             break;
@@ -776,6 +816,12 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
 
 void CodeGenerator::generate_namespace_declaration(NamespaceDeclaration* decl) {
     if (!decl) return;
+
+    // Check if this is a namespace alias
+    if (!decl->alias_target.empty()) {
+        write_line("namespace " + decl->name + " = " + decl->alias_target + ";");
+        return;
+    }
 
     write_line("namespace " + decl->name + " {");
     indent();
@@ -854,6 +900,18 @@ void CodeGenerator::generate_statement(Statement* stmt) {
             }
             break;
         }
+        // ============================================================================
+        // Concurrency Statements (Kotlin-style structured concurrency)
+        // ============================================================================
+        case Statement::Kind::CoroutineScope:
+            generate_coroutine_scope_statement(static_cast<CoroutineScopeStatement*>(stmt));
+            break;
+        case Statement::Kind::ParallelFor:
+            generate_parallel_for_statement(static_cast<ParallelForStatement*>(stmt));
+            break;
+        case Statement::Kind::ChannelDecl:
+            generate_channel_declaration(static_cast<ChannelDeclarationStatement*>(stmt));
+            break;
         default:
             break;
     }
@@ -1164,6 +1222,78 @@ void CodeGenerator::generate_continue_statement(ContinueStatement* stmt) {
     }
 }
 
+// ============================================================================
+// Concurrency Statement Generators (Kotlin-style structured concurrency)
+// ============================================================================
+
+void CodeGenerator::generate_coroutine_scope_statement(CoroutineScopeStatement* stmt) {
+    if (!stmt) return;
+
+    // Generate: cpp2::coroutineScope([&](cpp2::CoroutineScope& scope) { ... })
+    // This ensures all launched tasks complete before the scope exits
+    write_line("{");
+    indent();
+    write_line("cpp2::CoroutineScope __scope;");
+    
+    // Generate the body - handle both Block and single statement
+    if (auto block = dynamic_cast<BlockStatement*>(stmt->body.get())) {
+        for (auto& s : block->statements) {
+            generate_statement(s.get());
+        }
+    } else {
+        generate_statement(stmt->body.get());
+    }
+    
+    // CoroutineScope destructor will joinAll() automatically
+    dedent();
+    write_line("}");
+}
+
+void CodeGenerator::generate_parallel_for_statement(ParallelForStatement* stmt) {
+    if (!stmt) return;
+
+    // Generate parallel for using std::async or thread pool
+    // For simplicity, use std::async with a vector of futures
+    write_line("{");
+    indent();
+    
+    std::string lower = generate_expression_to_string(stmt->lower_bound.get());
+    std::string upper = generate_expression_to_string(stmt->upper_bound.get());
+    std::string step = stmt->step ? generate_expression_to_string(stmt->step.get()) : "1";
+    
+    write_line("std::vector<std::future<void>> __parallel_tasks;");
+    write_line("for (auto " + stmt->loop_variable + " = " + lower + "; " + 
+               stmt->loop_variable + " < " + upper + "; " + 
+               stmt->loop_variable + " += " + step + ") {");
+    indent();
+    write_line("__parallel_tasks.push_back(std::async(std::launch::async, [=]() {");
+    indent();
+    
+    // Generate the loop body
+    generate_statement(stmt->body.get());
+    
+    dedent();
+    write_line("}));");
+    dedent();
+    write_line("}");
+    
+    // Wait for all tasks to complete
+    write_line("for (auto& __task : __parallel_tasks) { __task.wait(); }");
+    
+    dedent();
+    write_line("}");
+}
+
+void CodeGenerator::generate_channel_declaration(ChannelDeclarationStatement* stmt) {
+    if (!stmt) return;
+
+    // Generate: cpp2::Channel<T> name(capacity);
+    std::string type_str = stmt->element_type ? generate_type(stmt->element_type.get()) : "void";
+    std::string capacity_str = std::to_string(stmt->buffer_size);
+    
+    write_line("cpp2::Channel<" + type_str + "> " + stmt->name + "(" + capacity_str + ");");
+}
+
 std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
     if (!expr) return "/* null expression */";
 
@@ -1179,7 +1309,25 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
             } else if (std::holds_alternative<bool>(lit->value)) {
                 expr_output << (std::get<bool>(lit->value) ? "true" : "false");
             } else if (std::holds_alternative<std::string>(lit->value)) {
-                expr_output << "\"" << std::get<std::string>(lit->value) << "\"";
+                const std::string& str_val = std::get<std::string>(lit->value);
+                // Check if this is a string with prefix (u", U", u8", L", R", LR", uR", UR", u8R")
+                // These already include their prefix and quotes in the lexeme
+                bool has_prefix = (str_val.size() >= 2) && (
+                    (str_val[0] == 'u' && str_val[1] == '"') ||
+                    (str_val[0] == 'U' && str_val[1] == '"') ||
+                    (str_val.size() >= 3 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == '"') ||
+                    (str_val[0] == 'L' && str_val[1] == '"') ||
+                    (str_val[0] == 'R' && str_val[1] == '"') ||
+                    (str_val.size() >= 3 && str_val[0] == 'L' && str_val[1] == 'R' && str_val[2] == '"') ||
+                    (str_val.size() >= 3 && str_val[0] == 'u' && str_val[1] == 'R' && str_val[2] == '"') ||
+                    (str_val.size() >= 3 && str_val[0] == 'U' && str_val[1] == 'R' && str_val[2] == '"') ||
+                    (str_val.size() >= 4 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == 'R' && str_val[3] == '"')
+                );
+                if (has_prefix) {
+                    expr_output << str_val;  // Already has prefix and quotes
+                } else {
+                    expr_output << "\"" << str_val << "\"";  // Regular string, add quotes
+                }
             } else if (std::holds_alternative<char>(lit->value)) {
                 expr_output << "'" << std::get<char>(lit->value) << "'";
             }
@@ -1216,11 +1364,42 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Call: {
             auto call = static_cast<CallExpression*>(expr);
+
+            // Check for Cpp2 library functions that need cpp2:: prefix
+            bool needs_cpp2_prefix = false;
+            if (call->callee->kind == Expression::Kind::Identifier) {
+                auto id = static_cast<IdentifierExpression*>(call->callee.get());
+                if (id->name == "unchecked_cast" || id->name == "unchecked_narrow" ||
+                    id->name == "unsafe_cast" || id->name == "unsafe_narrow" ||
+                    id->name == "assert" || id->name == "assume") {
+                    needs_cpp2_prefix = true;
+                }
+            }
+
+            if (needs_cpp2_prefix) {
+                expr_output << "cpp2::";
+            }
             expr_output << generate_expression_to_string(call->callee.get()) << "(";
 
-            for (size_t i = 0; i < call->args.size(); ++i) {
-                if (i > 0) expr_output << ", ";
-                expr_output << generate_expression_to_string(call->args[i].get());
+            // Use new arguments structure if populated, otherwise fall back to legacy args
+            if (!call->arguments.empty()) {
+                for (size_t i = 0; i < call->arguments.size(); ++i) {
+                    if (i > 0) expr_output << ", ";
+                    // For out/inout params, just pass the expression (C++ uses reference)
+                    // No special prefix needed - the parameter declaration handles it
+                    if (call->arguments[i].qualifier == ParameterQualifier::Move) {
+                        expr_output << "std::move(";
+                        expr_output << generate_expression_to_string(call->arguments[i].expr.get());
+                        expr_output << ")";
+                    } else {
+                        expr_output << generate_expression_to_string(call->arguments[i].expr.get());
+                    }
+                }
+            } else {
+                for (size_t i = 0; i < call->args.size(); ++i) {
+                    if (i > 0) expr_output << ", ";
+                    expr_output << generate_expression_to_string(call->args[i].get());
+                }
             }
 
             expr_output << ")";
@@ -1282,6 +1461,10 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 if (arm.pattern_kind == InspectExpression::Arm::PatternKind::Wildcard) {
                     // Wildcard always matches - make it the final else
                     expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
+                } else if (arm.pattern_kind == InspectExpression::Arm::PatternKind::Type) {
+                    // Type pattern: check if value is of the given type
+                    expr_output << "if (cpp2::impl::is_<" << generate_type(arm.pattern_type.get()) << ">(__value)) ";
+                    expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
                 } else {
                     // Value pattern
                     expr_output << "if (__value == " << generate_expression_to_string(arm.pattern_value.get()) << ") ";
@@ -1300,6 +1483,193 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
             for (size_t i = 0; i < list->elements.size(); ++i) {
                 if (i > 0) expr_output << ", ";
                 expr_output << generate_expression_to_string(list->elements[i].get());
+            }
+            expr_output << "}";
+            break;
+        }
+        case Expression::Kind::As: {
+            auto as_expr = static_cast<AsExpression*>(expr);
+            // Generate: cpp2::impl::as_<Type>(value)
+            expr_output << "cpp2::impl::as_<" << generate_type(as_expr->type.get()) << ">(";
+            expr_output << generate_expression_to_string(as_expr->expr.get()) << ")";
+            break;
+        }
+        case Expression::Kind::Is: {
+            auto is_expr = static_cast<IsExpression*>(expr);
+            // Generate: cpp2::impl::is_<Type>(value)
+            expr_output << "cpp2::impl::is_<" << generate_type(is_expr->type.get()) << ">(";
+            expr_output << generate_expression_to_string(is_expr->expr.get()) << ")";
+            break;
+        }
+        case Expression::Kind::Move: {
+            auto move_expr = static_cast<MoveExpression*>(expr);
+            // Generate: std::move(value) or std::forward<T>(value)
+            if (move_expr->op == TokenType::Move) {
+                expr_output << "std::move(" << generate_expression_to_string(move_expr->operand.get()) << ")";
+            } else if (move_expr->op == TokenType::Forward) {
+                expr_output << "std::forward(" << generate_expression_to_string(move_expr->operand.get()) << ")";
+            } else {
+                // Copy - just generate the operand
+                expr_output << generate_expression_to_string(move_expr->operand.get());
+            }
+            break;
+        }
+        case Expression::Kind::StringInterpolation: {
+            auto interp = static_cast<StringInterpolationExpression*>(expr);
+            // Generate string concatenation using cpp2::to_string()
+            // For "hello $world" generate: "hello " + cpp2::to_string(world)
+            for (size_t i = 0; i < interp->parts.size(); ++i) {
+                if (i > 0) expr_output << " + ";
+                if (std::holds_alternative<std::string>(interp->parts[i])) {
+                    // String literal part
+                    expr_output << "\"" << std::get<std::string>(interp->parts[i]) << "\"";
+                } else {
+                    // Expression part - wrap with cpp2::to_string
+                    expr_output << "cpp2::to_string(";
+                    expr_output << generate_expression_to_string(std::get<std::unique_ptr<Expression>>(interp->parts[i]).get());
+                    expr_output << ")";
+                }
+            }
+            break;
+        }
+        case Expression::Kind::Lambda: {
+            auto lambda = static_cast<LambdaExpression*>(expr);
+            // Cpp2 lambda: generate [&](params) -> type { body }
+            expr_output << "[&](";
+            for (size_t i = 0; i < lambda->parameters.size(); ++i) {
+                if (i > 0) expr_output << ", ";
+                const auto& param = lambda->parameters[i];
+                if (param.type) {
+                    expr_output << generate_type(param.type.get()) << " ";
+                } else {
+                    expr_output << "auto ";
+                }
+                expr_output << param.name;
+            }
+            expr_output << ")";
+            if (lambda->return_type) {
+                expr_output << " -> " << generate_type(lambda->return_type.get());
+            }
+            expr_output << " { ";
+            // Generate body - for simple lambdas, assume single expression return
+            for (const auto& stmt : lambda->body) {
+                // Simplified - full implementation would call generate_statement
+                if (auto ret_stmt = dynamic_cast<ReturnStatement*>(stmt.get())) {
+                    expr_output << "return " << generate_expression_to_string(ret_stmt->value.get()) << "; ";
+                }
+            }
+            expr_output << "}";
+            break;
+        }
+        // ============================================================================
+        // Concurrency Expressions (Kotlin-style)
+        // ============================================================================
+        case Expression::Kind::Await: {
+            auto await_expr = static_cast<AwaitExpression*>(expr);
+            // Generate: co_await <value>
+            expr_output << "co_await " << generate_expression_to_string(await_expr->value.get());
+            break;
+        }
+        case Expression::Kind::Spawn: {
+            auto spawn_expr = static_cast<SpawnExpression*>(expr);
+            // Generate: cpp2::spawn([&]() -> cpp2::Task<void> { <task>; co_return; })
+            // For fire-and-forget coroutine launch
+            expr_output << "std::async(std::launch::async, [&]() { ";
+            expr_output << generate_expression_to_string(spawn_expr->task.get());
+            expr_output << "; })";
+            break;
+        }
+        case Expression::Kind::ChannelSend: {
+            auto send_expr = static_cast<ChannelSendExpression*>(expr);
+            // Generate: <channel>.send(<value>)
+            expr_output << send_expr->channel << ".send(";
+            expr_output << generate_expression_to_string(send_expr->value.get()) << ")";
+            break;
+        }
+        case Expression::Kind::ChannelRecv: {
+            auto recv_expr = static_cast<ChannelRecvExpression*>(expr);
+            // Generate: <channel>.receive() or <channel>.tryReceive()
+            expr_output << recv_expr->channel;
+            if (recv_expr->non_blocking) {
+                expr_output << ".tryReceive()";
+            } else {
+                expr_output << ".receive()";
+            }
+            break;
+        }
+        case Expression::Kind::ChannelSelect: {
+            auto select_expr = static_cast<ChannelSelectExpression*>(expr);
+            // Generate select as a lambda that polls channels
+            // This is a simplified implementation - full version would use condition_variable
+            expr_output << "[&]() {\n";
+            for (size_t i = 0; i < select_expr->cases.size(); ++i) {
+                const auto& case_ = select_expr->cases[i];
+                expr_output << "    if (auto __val = " << case_.channel;
+                if (case_.kind == ChannelSelectExpression::SelectCase::Kind::Recv) {
+                    expr_output << ".tryReceive(); __val) {\n";
+                    expr_output << "        return ";
+                    expr_output << generate_expression_to_string(case_.action.get());
+                    expr_output << ";\n    }\n";
+                } else {
+                    expr_output << ".trySend(";
+                    expr_output << generate_expression_to_string(case_.value.get());
+                    expr_output << ")) {\n";
+                    expr_output << "        return ";
+                    expr_output << generate_expression_to_string(case_.action.get());
+                    expr_output << ";\n    }\n";
+                }
+            }
+            if (select_expr->default_case) {
+                expr_output << "    return ";
+                expr_output << generate_expression_to_string(select_expr->default_case.get());
+                expr_output << ";\n";
+            }
+            expr_output << "}()";
+            break;
+        }
+        case Expression::Kind::Cpp1Lambda: {
+            auto lambda = static_cast<Cpp1LambdaExpression*>(expr);
+            // C++1 lambda: pass through directly
+            expr_output << "[";
+            for (size_t i = 0; i < lambda->captures.size(); ++i) {
+                if (i > 0) expr_output << ", ";
+                const auto& cap = lambda->captures[i];
+                switch (cap.mode) {
+                    case Cpp1LambdaExpression::Capture::Mode::DefaultCopy:
+                        expr_output << "=";
+                        break;
+                    case Cpp1LambdaExpression::Capture::Mode::DefaultRef:
+                        expr_output << "&";
+                        break;
+                    case Cpp1LambdaExpression::Capture::Mode::ByCopy:
+                        expr_output << cap.name;
+                        break;
+                    case Cpp1LambdaExpression::Capture::Mode::ByRef:
+                        expr_output << "&" << cap.name;
+                        break;
+                    case Cpp1LambdaExpression::Capture::Mode::This:
+                        expr_output << "this";
+                        break;
+                }
+            }
+            expr_output << "](";
+            for (size_t i = 0; i < lambda->parameters.size(); ++i) {
+                if (i > 0) expr_output << ", ";
+                const auto& param = lambda->parameters[i];
+                expr_output << param.type_str << " " << param.name;
+            }
+            expr_output << ")";
+            if (lambda->return_type) {
+                expr_output << " -> " << generate_type(lambda->return_type.get());
+            }
+            expr_output << " { ";
+            // Generate body - simplified
+            for (const auto& stmt : lambda->body) {
+                if (auto ret_stmt = dynamic_cast<ReturnStatement*>(stmt.get())) {
+                    expr_output << "return " << generate_expression_to_string(ret_stmt->value.get()) << "; ";
+                } else if (auto expr_stmt = dynamic_cast<ExpressionStatement*>(stmt.get())) {
+                    expr_output << generate_expression_to_string(expr_stmt->expr.get()) << "; ";
+                }
             }
             expr_output << "}";
             break;
@@ -1347,6 +1717,9 @@ std::string CodeGenerator::generate_type(Type* type) {
             return generate_type(type->pointee.get()) + "&";
         case Type::Kind::Auto:
             return "auto";
+        case Type::Kind::Deduced:
+            // _ as type means decltype(auto) or auto in return position
+            return "decltype(auto)";
         default:
             return type->name;
     }

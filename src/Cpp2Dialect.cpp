@@ -112,3 +112,49 @@ void PhiOp::getCanonicalizationPatterns(RewritePatternSet &results, MLIRContext 
   // Phi(x, x, ..., x) -> x (all same value)
   // Phi with single input -> value
 }
+
+// Implementations for RegionBranchOpInterface
+
+void IfOp::getSuccessorRegions(RegionBranchPoint point,
+                               SmallVectorImpl<RegionSuccessor> &regions) {
+  // If the predecessor is the IfOp itself, then we can branch into the then
+  // or else region.
+  if (point.isParent()) {
+    regions.push_back(RegionSuccessor(&getThenRegion()));
+    if (!getElseRegion().empty())
+      regions.push_back(RegionSuccessor(&getElseRegion()));
+    return;
+  }
+
+  // Otherwise, the predecessor is the then or else region, which branches
+  // back to the parent op.
+  regions.push_back(RegionSuccessor(getResults()));
+}
+
+void LoopOp::getSuccessorRegions(RegionBranchPoint point,
+                                 SmallVectorImpl<RegionSuccessor> &regions) {
+  // If the predecessor is the LoopOp itself, then we can branch into the body.
+  if (point.isParent()) {
+    regions.push_back(RegionSuccessor(&getBody(), getBody().getArguments()));
+    return;
+  }
+
+  // If the predecessor is the body, we can branch back to the body or to the
+  // parent op.
+  regions.push_back(RegionSuccessor(&getBody(), getBody().getArguments()));
+  regions.push_back(RegionSuccessor(getResults()));
+}
+
+// Implementations for Cpp2Dialect attribute parsing/printing
+Attribute Cpp2Dialect::parseAttribute(DialectAsmParser &parser, Type type) const {
+  StringRef attrTag;
+  if (failed(parser.parseKeyword(&attrTag)))
+    return Attribute();
+  // We don't have any custom attributes yet.
+  parser.emitError(parser.getNameLoc(), "unknown attribute");
+  return Attribute();
+}
+
+void Cpp2Dialect::printAttribute(Attribute attr, DialectAsmPrinter &printer) const {
+  printer << "unknown_attribute";
+}

@@ -1,0 +1,3 @@
+main: () = {
+    ns: namespace = t: type == array<int, 10>;
+}

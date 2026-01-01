@@ -101,6 +101,7 @@ struct Expression {
         Subscript,
         Ternary,
         Lambda,
+        Cpp1Lambda,   // C++1 style lambda: [capture](params) { body }
         Is,
         As,
         StringInterpolation,
@@ -198,6 +199,7 @@ struct CallExpression : Expression {
     std::vector<std::unique_ptr<Expression>> args;  // DEPRECATED: plain args for backward compat
     std::vector<std::unique_ptr<Type>> template_args;  // Template arguments for template function calls
     bool is_ufcs = false;  // Cpp2 UFCS (Unified Function Call Syntax)
+    bool is_template_instantiation = false;  // True for template instantiation without call (e.g., std::integral<T>)
 
     CallExpression(std::unique_ptr<Expression> c, std::size_t l)
         : Expression(Kind::Call, l), callee(std::move(c)) {}
@@ -206,9 +208,10 @@ struct CallExpression : Expression {
 struct MemberAccessExpression : Expression {
     std::unique_ptr<Expression> object;
     std::string member;
+    bool explicit_non_ufcs = false;  // true for obj..member (explicit non-UFCS syntax)
 
-    MemberAccessExpression(std::unique_ptr<Expression> obj, std::string m, std::size_t l)
-        : Expression(Kind::MemberAccess, l), object(std::move(obj)), member(std::move(m)) {}
+    MemberAccessExpression(std::unique_ptr<Expression> obj, std::string m, std::size_t l, bool non_ufcs = false)
+        : Expression(Kind::MemberAccess, l), object(std::move(obj)), member(std::move(m)), explicit_non_ufcs(non_ufcs) {}
 };
 
 struct SubscriptExpression : Expression {
@@ -254,10 +257,38 @@ struct LambdaExpression : Expression {
     std::vector<Parameter> parameters;
     std::unique_ptr<Type> return_type;
     std::vector<std::shared_ptr<Statement>> body;
-    std::vector<std::unique_ptr<Type>> template_params;
+    std::vector<std::string> template_params;
 
     LambdaExpression(std::size_t l) : Expression(Kind::Lambda, l) {}
     ~LambdaExpression();
+};
+
+// C++1 style lambda: [capture](params) -> return_type { body }
+struct Cpp1LambdaExpression : Expression {
+    struct Capture {
+        enum class Mode {
+            ByCopy,       // x
+            ByRef,        // &x
+            DefaultCopy,  // =
+            DefaultRef,   // &
+            This          // this
+        };
+        Mode mode = Mode::ByCopy;
+        std::string name;  // Empty for default captures
+    };
+    
+    struct Parameter {
+        std::string name;
+        std::string type_str;  // C++1 type as string
+    };
+    
+    std::vector<Capture> captures;
+    std::vector<Parameter> parameters;
+    std::unique_ptr<Type> return_type;
+    std::vector<std::shared_ptr<Statement>> body;
+    
+    Cpp1LambdaExpression(std::size_t l) : Expression(Kind::Cpp1Lambda, l) {}
+    ~Cpp1LambdaExpression();
 };
 
 struct IsExpression : Expression {
@@ -819,8 +850,15 @@ struct FunctionDeclaration : Declaration {
         std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, move, forward
     };
 
+    // Named return parameter (e.g., "-> (result: int)")
+    struct NamedReturn {
+        std::string name;
+        std::unique_ptr<Type> type;
+    };
+
     std::vector<Parameter> parameters;
     std::unique_ptr<Type> return_type;
+    std::vector<NamedReturn> named_returns;  // Cpp2 named return parameters
     std::unique_ptr<Statement> body;
     std::vector<std::string> contract_groups;
     std::vector<std::string> template_parameters;  // Template parameters for generic functions
@@ -828,6 +866,7 @@ struct FunctionDeclaration : Declaration {
     bool is_override = false;
     bool is_final = false;
     bool is_explicit = false;
+    bool is_forward_return = false;  // forward return type (pass-through semantics)
 
     // Semantic attributes from Clang analysis
     ThisQualifier this_qualifier = ThisQualifier::None;  // this-qualifier
@@ -855,8 +894,14 @@ struct TypeDeclaration : Declaration {
         Alias
     };
 
+    struct BaseClass {
+        std::unique_ptr<Type> type;
+        std::unique_ptr<Expression> initializer;  // Optional: = ()
+    };
+
     TypeKind type_kind;
     std::vector<std::unique_ptr<Declaration>> members;
+    std::vector<BaseClass> base_classes;  // For "this: BaseType = ();" syntax
     std::unique_ptr<Type> underlying_type;
     std::vector<std::string> metafunctions;
     std::vector<std::string> template_parameters;  // Template parameters for generic types
@@ -867,6 +912,7 @@ struct TypeDeclaration : Declaration {
 
 struct NamespaceDeclaration : Declaration {
     std::vector<std::unique_ptr<Declaration>> members;
+    std::string alias_target;  // For namespace aliases: "N1: namespace == N;"
 
     NamespaceDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Namespace, std::move(n), l) {}
@@ -876,6 +922,8 @@ struct OperatorDeclaration : Declaration {
     std::unique_ptr<Type> return_type;
     std::vector<std::unique_ptr<FunctionDeclaration::Parameter>> parameters;
     std::unique_ptr<Statement> body;
+    bool is_forward_return = false;  // For -> forward T syntax
+    std::vector<std::string> template_parameters;  // Template parameters for generic operators
 
     OperatorDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Operator, std::move(n), l) {}
@@ -932,4 +980,5 @@ struct AST {
     // type" errors.
     inline Type::~Type() = default;
     inline LambdaExpression::~LambdaExpression() = default;
+    inline Cpp1LambdaExpression::~Cpp1LambdaExpression() = default;
 } // namespace cpp2_transpiler

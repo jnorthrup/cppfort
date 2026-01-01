@@ -1,0 +1,69 @@
+// Cpp2 Kotlin-style Structured Concurrency Demo
+// Demonstrates: coroutineScope, launch, await, channels
+
+// Suspending function that fetches data
+suspend fetch_data: (url: std::string) -> std::string = {
+    // Simulate async network fetch
+    await delay(100ms);
+    return "data from " + url;
+}
+
+// Process data asynchronously
+process: () -> void = {
+    // All launched tasks must complete before scope exits (structured concurrency)
+    coroutineScope {
+        // Launch parallel fetches
+        launch {
+            result1 := await fetch_data("http://api.example.com/1");
+            std::cout << "Got: " << result1 << "\n";
+        }
+        
+        launch {
+            result2 := await fetch_data("http://api.example.com/2");
+            std::cout << "Got: " << result2 << "\n";
+        }
+    }
+    // Both fetches are complete here
+}
+
+// Channel-based producer-consumer pattern
+channel_demo: () -> void = {
+    // Create a buffered channel
+    channel<int> numbers(10);
+    
+    coroutineScope {
+        // Producer
+        launch {
+            for i := 0; i < 10; i++ {
+                numbers.send(i);
+            }
+            numbers.close();
+        }
+        
+        // Consumer
+        launch {
+            while val := numbers.receive() {
+                std::cout << "Received: " << val << "\n";
+            }
+        }
+    }
+}
+
+// Parallel for loop (GPU/CPU kernel candidate)
+parallel_demo: () -> void = {
+    data: std::vector<int> = (0..1000000);
+    
+    parallel_for i := 0; i < data.size(); i++ mapping "global_x" {
+        data[i] *= 2;
+    }
+}
+
+main: () -> int = {
+    std::cout << "=== Kotlin-style Concurrency in Cpp2 ===\n";
+    
+    process();
+    channel_demo();
+    parallel_demo();
+    
+    return 0;
+}

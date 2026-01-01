@@ -809,8 +809,8 @@ void test_integration() {
         @value
         @ordered
         type Vec2 = {
-            x: f32,
-            y: f32,
+            x: f32;
+            y: f32;
         };
 
         func dot(v1: Vec2, v2: Vec2) -> f32
@@ -833,7 +833,8 @@ void test_integration() {
     input_file.close();
 
     // Test transpilation
-    Lexer lexer(read_file("test_input.cpp2"));
+    std::string source = read_file("test_input.cpp2");
+    Lexer lexer(source);
     auto tokens = lexer.tokenize();
 
     Parser parser(tokens);

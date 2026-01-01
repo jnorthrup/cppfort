@@ -62,6 +62,11 @@ private:
     void generate_throw_statement(ThrowStatement* stmt);
     void generate_contract_statement(ContractStatement* stmt);
 
+    // Concurrency statement generation (Kotlin-style structured concurrency)
+    void generate_coroutine_scope_statement(CoroutineScopeStatement* stmt);
+    void generate_parallel_for_statement(ParallelForStatement* stmt);
+    void generate_channel_declaration(ChannelDeclarationStatement* stmt);
+
     void generate_expression(Expression* expr);
     std::string generate_expression_to_string(Expression* expr);
     void generate_literal_expression(LiteralExpression* expr);

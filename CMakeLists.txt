@@ -1,54 +1,120 @@
+# CMakeLists.txt
 cmake_minimum_required(VERSION 3.28)
 
-# macOS: Use Homebrew LLVM exclusively (must be before project())
-if(APPLE)
-  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
-  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang")
-  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++")
+# --- Compiler Configuration (Must be BEFORE project()) ---
+# We want to use the Clang from the llvm-config we find, to ensure consistency.
+
+# 1. Try to find llvm-config to locate the installation prefix
+if(NOT LLVM_CONFIG_PATH)
+  find_program(LLVM_CONFIG_PATH names llvm-config llvm-config-18 llvm-config-19 llvm-config-20 llvm-config-21 HINTS "/opt/homebrew/opt/llvm/bin" "/usr/local/opt/llvm/bin")
+endif()
+
+if(LLVM_CONFIG_PATH)
+  message(STATUS "Found llvm-config: ${LLVM_CONFIG_PATH}")
+  # Get the binary directory
+  execute_process(COMMAND ${LLVM_CONFIG_PATH} --bindir OUTPUT_VARIABLE LLVM_BIN_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+  
+  # Set compilers if not already set
+  if(NOT CMAKE_C_COMPILER)
+    find_program(LLVM_CLANG_EXE names clang HINTS ${LLVM_BIN_DIR} NO_DEFAULT_PATH)
+    if(LLVM_CLANG_EXE)
+      set(CMAKE_C_COMPILER ${LLVM_CLANG_EXE})
+      message(STATUS "Setting C compiler to: ${CMAKE_C_COMPILER}")
+    endif()
+  endif()
+
+  if(NOT CMAKE_CXX_COMPILER)
+    find_program(LLVM_CLANGXX_EXE names clang++ HINTS ${LLVM_BIN_DIR} NO_DEFAULT_PATH)
+    if(LLVM_CLANGXX_EXE)
+      set(CMAKE_CXX_COMPILER ${LLVM_CLANGXX_EXE})
+      message(STATUS "Setting CXX compiler to: ${CMAKE_CXX_COMPILER}")
+    endif()
+  endif()
+else()
+  message(WARNING "llvm-config not found. The build might use the system compiler which may be incompatible with the LLVM libraries found later.")
 endif()
 
 project(cppfort LANGUAGES C CXX VERSION 1.0.0)
+
+# --- LLVM/MLIR Configuration ---
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# Setup CMake modules from LLVM
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(AddLLVM)
+include(HandleLLVMOptions)
+
+# Clang integration (Required for linking against clangAST etc.)
+find_package(Clang REQUIRED CONFIG)
+message(STATUS "Using ClangConfig.cmake in: ${Clang_DIR}")
+if(CLANG_CMAKE_DIR)
+  list(APPEND CMAKE_MODULE_PATH "${CLANG_CMAKE_DIR}")
+endif()
+
+# MLIR integration
+find_package(MLIR REQUIRED CONFIG)
+message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+include(AddMLIR)
+include(TableGen)
+
+# --- Project Configuration ---
 
 # C++23 standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Build type
+# Build type default
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Code coverage support
-option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+# Developer options
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(ENABLE_CCACHE "Enable ccache" ON)
+option(ENABLE_LLD "Enable LLD linker" OFF)
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
-if(ENABLE_COVERAGE)
-  # Coverage requires Debug build
-  set(CMAKE_BUILD_TYPE Debug)
-  # Add coverage flags for clang/gcc
-  add_compile_options(--coverage)
-  add_link_options(--coverage)
-  message(STATUS "Code coverage enabled: ${ENABLE_COVERAGE}")
+# ccache support
+if(ENABLE_CCACHE)
+  find_program(CCACHE_PROGRAM ccache)
+  if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+  endif()
 endif()
 
-# macOS: Homebrew LLVM libc++ configuration
-if(APPLE)
-  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
+# Sanitizers
+if(ENABLE_ASAN)
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
+  message(STATUS "AddressSanitizer enabled")
+endif()
 
-  # Use Homebrew's libc++ (before SDK paths)
-  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
-  add_compile_options(-stdlib=libc++)
+if(ENABLE_UBSAN)
+  add_compile_options(-fsanitize=undefined)
+  add_link_options(-fsanitize=undefined)
+  message(STATUS "UndefinedBehaviorSanitizer enabled")
+endif()
 
-  # Link Homebrew's libc++ and libunwind
-  add_link_options(-stdlib=libc++)
-  add_link_options(-L${HOMEBREW_LLVM_LIB}/c++)
-  add_link_options(-L${HOMEBREW_LLVM_LIB}/unwind)
-  add_link_options(-lunwind)
-  # Also add LLVM library path for Clang static libraries
-  link_directories("${HOMEBREW_LLVM_LIB}")
+# LLD linker
+if(ENABLE_LLD)
+  add_link_options(-fuse-ld=lld)
+  message(STATUS "Using LLD linker")
+endif()
 
-  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind" "${HOMEBREW_LLVM_LIB}")
-  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
+# Code coverage
+option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+if(ENABLE_COVERAGE)
+  set(CMAKE_BUILD_TYPE Debug)
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+  message(STATUS "Code coverage enabled")
 endif()
 
 # Compiler options
@@ -63,37 +129,17 @@ else()
   endif()
 endif()
 
-# Ninja generator support
-if(CMAKE_GENERATOR STREQUAL "Ninja")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
-endif()
-
-# Find required packages
-find_package(PkgConfig REQUIRED)
-
-# MLIR integration
-find_package(MLIR REQUIRED CONFIG)
-message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-set(CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
-# Make sure MLIR's CMake modules are available when including AddMLIR/TableGen
-list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
-include(TableGen)
-include(AddLLVM)
-include(AddMLIR)
-
-# Check for required MLIR components
-include(HandleLLVMOptions)
-
 # Include directories
 include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(${CLANG_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
-# Also add project source dir so tablegen-generated .inc files in the source
-# tree (e.g., Cpp2Ops*.inc) are found by includes like "Cpp2Ops.h.inc".
+# Also add project source dir for tablegen-generated contents
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
+
+# macOS RPATH and libc++ handling for LLVM
+include(cmake/MacOSLLVMFix.cmake)
 
 # TableGen for Cpp2 dialect
 set(LLVM_TARGET_DEFINITIONS include/Cpp2Dialect.td)

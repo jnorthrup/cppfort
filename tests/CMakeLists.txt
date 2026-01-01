@@ -267,7 +267,7 @@ add_test(NAME parameter_qualifier_parsing_tests COMMAND test_parameter_qualifier
 # FIR qualifier attribute encoding test
 add_executable(test_fir_qualifier_attributes test_fir_qualifier_attributes.cpp)
 target_include_directories(test_fir_qualifier_attributes PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_fir_qualifier_attributes PRIVATE Cpp2Transpiler Cpp2FIRDialect MLIRIR MLIRSupport)
+target_link_libraries(test_fir_qualifier_attributes PRIVATE Cpp2Transpiler Cpp2FIRDialect)
 add_test(NAME fir_qualifier_attributes_tests COMMAND test_fir_qualifier_attributes)
 
 # UFCS (Unified Function Call Syntax) FIR test

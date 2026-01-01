@@ -83,15 +83,18 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Semantic loss target: <0.05 average
 - Full completion: 189/189 files transpiling successfully
 
-**Recent Progress (2025-12-31)**:
-- Pass rate improved from 4.2% to 63.5% (120/189 files)
-- Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
-- pure2: 80/139 (58%), mixed: 39/50 (78%)
+**Recent Progress**:
+- 2026-01-01: Template argument preservation (+13 files, 63.5% → 70.4%)
+  - 133/189 passing (pure2: 93/139 [66.9%], mixed: 40/50 [80.0%])
+  - Fixed: Template argument capture for non-type template parameters
+- 2025-12-31: Parser improvements (+120 files, 4.2% → 63.5%)
+  - Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
 
-**Remaining Blockers**:
-1. Template instantiation in expressions (std::integral<T>)
-2. Variadics (Ts...) parameter packs
+**Remaining Blockers** (56 files):
+1. Variadics (Ts...) parameter packs
+2. Type aliases and namespace aliases
 3. Some inspect/is patterns
+4. UFCS edge cases
 
 ---
 

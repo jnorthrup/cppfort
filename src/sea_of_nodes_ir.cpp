@@ -150,6 +150,116 @@ public:
         return value;
     }
 
+    // ========================================================================
+    // Concurrency Nodes (Kotlin-style structured concurrency)
+    // ========================================================================
+
+    // Create a coroutine scope node - all spawned tasks within must complete before exit
+    NodeID create_coroutine_scope(NodeID body_entry) {
+        NodeID scope_node = create_node(Node::Kind::CoroutineScope);
+        const_cast<Node*>(graph.get_node(scope_node))->inputs = {control, body_entry};
+        
+        // Control flows through the scope
+        control = scope_node;
+        
+        return scope_node;
+    }
+
+    // Create a spawn node - launch an async task
+    NodeID create_spawn(NodeID task_node) {
+        NodeID spawn_node = create_node(Node::Kind::Spawn);
+        const_cast<Node*>(graph.get_node(spawn_node))->inputs = {control, task_node};
+        
+        // Spawn produces a task handle
+        node_types[spawn_node] = Type::make_ptr("Task");
+        
+        return spawn_node;
+    }
+
+    // Create an await node - suspend until value is ready
+    NodeID create_await(NodeID task_handle) {
+        NodeID await_node = create_node(Node::Kind::Await);
+        const_cast<Node*>(graph.get_node(await_node))->inputs = {control, task_handle};
+        
+        // Await is a suspend point - creates control dependency
+        NodeID suspend = create_node(Node::Kind::SuspendPoint);
+        const_cast<Node*>(graph.get_node(suspend))->inputs = {await_node};
+        
+        control = suspend;
+        
+        return await_node;
+    }
+
+    // Create a channel node
+    NodeID create_channel(const std::string& element_type, size_t buffer_size = 0) {
+        NodeID chan_node = create_node(Node::Kind::ChannelCreate);
+        Node* node = const_cast<Node*>(graph.get_node(chan_node));
+        node->inputs = {control};
+        node->value = static_cast<int64_t>(buffer_size);
+        
+        node_types[chan_node] = Type::make_ptr("Channel<" + element_type + ">");
+        
+        return chan_node;
+    }
+
+    // Create channel send operation
+    NodeID create_channel_send(NodeID channel, NodeID value) {
+        NodeID send_node = create_node(Node::Kind::ChannelSend);
+        const_cast<Node*>(graph.get_node(send_node))->inputs = {control, channel, value};
+        
+        // Send may suspend if buffer is full
+        NodeID suspend = create_node(Node::Kind::SuspendPoint);
+        const_cast<Node*>(graph.get_node(suspend))->inputs = {send_node};
+        
+        control = suspend;
+        
+        return send_node;
+    }
+
+    // Create channel receive operation
+    NodeID create_channel_recv(NodeID channel) {
+        NodeID recv_node = create_node(Node::Kind::ChannelRecv);
+        const_cast<Node*>(graph.get_node(recv_node))->inputs = {control, channel};
+        
+        // Recv may suspend if buffer is empty
+        NodeID suspend = create_node(Node::Kind::SuspendPoint);
+        const_cast<Node*>(graph.get_node(suspend))->inputs = {recv_node};
+        
+        control = suspend;
+        
+        return recv_node;
+    }
+
+    // Create a parallel for loop node (for GPU/CPU kernel conversion)
+    NodeID create_parallel_for(NodeID lower, NodeID upper, NodeID step, const std::string& mapping) {
+        NodeID par_node = create_node(Node::Kind::ParallelFor);
+        const_cast<Node*>(graph.get_node(par_node))->inputs = {control, lower, upper, step};
+        Node* node = const_cast<Node*>(graph.get_node(par_node));
+        node->value = mapping;
+        
+        return par_node;
+    }
+
+    // Create select node for multi-channel operations
+    NodeID create_select(const std::vector<NodeID>& channels) {
+        NodeID select_node = create_node(Node::Kind::Select);
+        Node* node = const_cast<Node*>(graph.get_node(select_node));
+        node->inputs = channels;
+        node->inputs.insert(node->inputs.begin(), control);
+        
+        // Select may suspend until one channel is ready
+        NodeID suspend = create_node(Node::Kind::SuspendPoint);
+        const_cast<Node*>(graph.get_node(suspend))->inputs = {select_node};
+        
+        control = suspend;
+        
+        return select_node;
+    }
+
+    // ========================================================================
+    // Control Flow (Chapter 5)
+    // ========================================================================
+
     // If statement (Chapter 5)
     struct IfRegion {
         NodeID condition;
@@ -537,6 +647,41 @@ private:
                 const auto& call = static_cast<const cpp2_transpiler::CallExpression&>(expr);
                 return convert_call_expression(call);
             }
+            // ================================================================
+            // Concurrency expressions
+            // ================================================================
+            case Kind::Await: {
+                const auto& await_expr = static_cast<const cpp2_transpiler::AwaitExpression&>(expr);
+                NodeID task_handle = convert_expression(*await_expr.value);
+                return builder.create_await(task_handle);
+            }
+            case Kind::Spawn: {
+                const auto& spawn_expr = static_cast<const cpp2_transpiler::SpawnExpression&>(expr);
+                NodeID task = convert_expression(*spawn_expr.task);
+                return builder.create_spawn(task);
+            }
+            case Kind::ChannelSend: {
+                const auto& send_expr = static_cast<const cpp2_transpiler::ChannelSendExpression&>(expr);
+                // Look up channel by name
+                NodeID channel = 0; // TODO: lookup from variables
+                NodeID value = convert_expression(*send_expr.value);
+                return builder.create_channel_send(channel, value);
+            }
+            case Kind::ChannelRecv: {
+                const auto& recv_expr = static_cast<const cpp2_transpiler::ChannelRecvExpression&>(expr);
+                // Look up channel by name
+                NodeID channel = 0; // TODO: lookup from variables
+                return builder.create_channel_recv(channel);
+            }
+            case Kind::ChannelSelect: {
+                const auto& select_expr = static_cast<const cpp2_transpiler::ChannelSelectExpression&>(expr);
+                std::vector<NodeID> channels;
+                for (const auto& case_ : select_expr.cases) {
+                    // TODO: lookup channel by name
+                    channels.push_back(0);
+                }
+                return builder.create_select(channels);
+            }
             default:
                 break;
         }
@@ -590,6 +735,43 @@ private:
                 if (if_stmt.else_stmt) {
                     convert_statement(*if_stmt.else_stmt);
                 }
+                break;
+            }
+            // ================================================================
+            // Concurrency statements
+            // ================================================================
+            case Kind::CoroutineScope: {
+                const auto& scope_stmt = static_cast<const cpp2_transpiler::CoroutineScopeStatement&>(stmt);
+                // Create scope entry node
+                NodeID body_entry = builder.create_node(Node::Kind::Start);
+                NodeID scope_node = builder.create_coroutine_scope(body_entry);
+                
+                // Convert the body
+                if (scope_stmt.body) {
+                    convert_statement(*scope_stmt.body);
+                }
+                break;
+            }
+            case Kind::ParallelFor: {
+                const auto& par_stmt = static_cast<const cpp2_transpiler::ParallelForStatement&>(stmt);
+                NodeID lower = convert_expression(*par_stmt.lower_bound);
+                NodeID upper = convert_expression(*par_stmt.upper_bound);
+                NodeID step = par_stmt.step ? convert_expression(*par_stmt.step) 
+                                            : builder.create_constant(int64_t(1));
+                
+                NodeID par_node = builder.create_parallel_for(lower, upper, step, par_stmt.mapping);
+                
+                // Convert the loop body
+                if (par_stmt.body) {
+                    convert_statement(*par_stmt.body);
+                }
+                break;
+            }
+            case Kind::ChannelDecl: {
+                const auto& ch_stmt = static_cast<const cpp2_transpiler::ChannelDeclarationStatement&>(stmt);
+                std::string elem_type = ch_stmt.element_type ? ch_stmt.element_type->name : "void";
+                NodeID channel = builder.create_channel(elem_type, ch_stmt.buffer_size);
+                // TODO: register channel variable
                 break;
             }
             default:

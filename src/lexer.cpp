@@ -152,7 +152,11 @@ void Lexer::scan_token() {
         }
         case '<': {
             if (match('=')) {
-                add_token(TokenType::LessThanOrEqual);
+                if (match('>')) {
+                    add_token(TokenType::Spaceship);  // <=>
+                } else {
+                    add_token(TokenType::LessThanOrEqual);
+                }
             } else if (match('<')) {
                 if (match('=')) {
                     add_token(TokenType::LeftShiftEqual);
@@ -335,10 +339,16 @@ void Lexer::scan_identifier() {
     }
 
     std::string_view text = source.substr(start, current - start);
-    
+
     // Check for raw string literals: R"...", LR"...", uR"...", UR"...", u8R"..."
     if (peek() == '"' && (text == "R" || text == "LR" || text == "uR" || text == "UR" || text == "u8R")) {
         scan_raw_string();
+        return;
+    }
+
+    // Check for string literal prefixes: u", U", u8", L"
+    if (peek() == '"' && (text == "u" || text == "U" || text == "u8" || text == "L")) {
+        scan_string_with_prefix();
         return;
     }
     
@@ -430,41 +440,130 @@ void Lexer::scan_raw_string() {
 }
 
 void Lexer::scan_number() {
-    while (is_digit(peek())) {
-        advance();
+    // Check for hex, binary, or octal
+    bool is_hex = false;
+    bool is_binary = false;
+    bool is_float = false;
+    
+    if (peek() == '0') {
+        if (peek_next() == 'x' || peek_next() == 'X') {
+            is_hex = true;
+            advance(); // 0
+            advance(); // x
+            while (is_hex_digit(peek()) || peek() == '\'') {
+                advance();
+            }
+        } else if (peek_next() == 'b' || peek_next() == 'B') {
+            is_binary = true;
+            advance(); // 0
+            advance(); // b
+            while (peek() == '0' || peek() == '1' || peek() == '\'') {
+                advance();
+            }
+        }
+    }
+    
+    if (!is_hex && !is_binary) {
+        // Regular decimal number with optional digit separators
+        while (is_digit(peek()) || peek() == '\'') {
+            advance();
+        }
     }
 
-    // Check for fractional part
-    if (peek() == '.' && is_digit(peek_next())) {
+    // Check for fractional part (not for hex/binary)
+    if (!is_hex && !is_binary && peek() == '.' && is_digit(peek_next())) {
+        is_float = true;
         // Consume the decimal point
         advance();
 
-        while (is_digit(peek())) {
+        while (is_digit(peek()) || peek() == '\'') {
             advance();
         }
+    }
 
-        // Check for exponent
-        if (peek() == 'e' || peek() == 'E') {
+    // Check for exponent (not for hex/binary) - can be on int or float
+    if (!is_hex && !is_binary && (peek() == 'e' || peek() == 'E')) {
+        is_float = true;
+        advance();
+        if (peek() == '+' || peek() == '-') {
             advance();
-            if (peek() == '+' || peek() == '-') {
-                advance();
-            }
-            if (!is_digit(peek())) {
-                add_token(TokenType::Unknown);
-                return;
-            }
-            while (is_digit(peek())) {
-                advance();
-            }
+        }
+        if (!is_digit(peek())) {
+            add_token(TokenType::Unknown);
+            return;
+        }
+        while (is_digit(peek()) || peek() == '\'') {
+            advance();
+        }
+    }
+    
+    if (is_float) {
+        // Float suffix: f, F, l, L
+        if (peek() == 'f' || peek() == 'F' || peek() == 'l' || peek() == 'L') {
+            advance();
         }
 
         add_token(TokenType::FloatLiteral);
     } else {
+        // Integer suffixes: u, U, l, L, ll, LL, ul, UL, ull, ULL, etc.
+        // Also z/Z for size_t (C++23) 
+        bool has_unsigned = false;
+        bool has_long = false;
+        bool has_longlong = false;
+        bool has_size = false;
+        
+        // Can be in any order: u, l, ll, z (and combinations)
+        for (int i = 0; i < 3; i++) {
+            char c = peek();
+            if ((c == 'u' || c == 'U') && !has_unsigned) {
+                has_unsigned = true;
+                advance();
+            } else if ((c == 'l' || c == 'L') && !has_long && !has_longlong) {
+                advance();
+                if (peek() == 'l' || peek() == 'L') {
+                    has_longlong = true;
+                    advance();
+                } else {
+                    has_long = true;
+                }
+            } else if ((c == 'z' || c == 'Z') && !has_size) {
+                has_size = true;
+                advance();
+            } else {
+                break;
+            }
+        }
+        
         add_token(TokenType::IntegerLiteral);
     }
 }
 
 void Lexer::scan_string() {
+    while (peek() != '"' && !is_at_end()) {
+        if (peek() == '\n') {
+            line++;
+            column = 1;
+        }
+        if (peek() == '\\') {
+            advance(); // Skip escape character
+        }
+        advance();
+    }
+
+    if (is_at_end()) {
+        add_token(TokenType::Unknown);
+        return;
+    }
+
+    advance(); // Closing quote
+    add_token(TokenType::StringLiteral);
+}
+
+void Lexer::scan_string_with_prefix() {
+    // Called after we've seen u", U", u8", or L"
+    // The prefix has already been consumed, start includes it
+    advance(); // Opening "
+
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             line++;
@@ -616,6 +715,10 @@ bool Lexer::is_digit(char c) const {
     return std::isdigit(static_cast<unsigned char>(c));
 }
 
+bool Lexer::is_hex_digit(char c) const {
+    return std::isxdigit(static_cast<unsigned char>(c));
+}
+
 bool Lexer::is_identifier_start(char c) const {
     return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
 }
@@ -637,19 +740,20 @@ TokenType Lexer::identifier_type() {
     std::string_view text = source.substr(start, current - start);
     static const std::unordered_map<std::string, TokenType, cpp2_transpiler::SimpleStringHash> keywords = {
         {"as", TokenType::As}, {"base", TokenType::Base}, {"break", TokenType::Break}, {"case", TokenType::Case}, {"class", TokenType::Class},
-        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"do", TokenType::Do}, {"else", TokenType::Else},
+        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"decltype", TokenType::Decltype}, {"do", TokenType::Do}, {"else", TokenType::Else},
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
         {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},
         {"inspect", TokenType::Inspect}, {"interface", TokenType::Interface}, {"is", TokenType::Is}, {"implicit", TokenType::Implicit}, {"let", TokenType::Let},
         {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"next", TokenType::Next}, {"operator", TokenType::Operator},
         {"private", TokenType::Private}, {"public", TokenType::Public}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
         {"requires", TokenType::Requires}, {"struct", TokenType::Struct}, {"super", TokenType::Super}, {"switch", TokenType::Switch},
-        {"this", TokenType::This}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
+        {"this", TokenType::This}, {"throw", TokenType::Throw}, {"throws", TokenType::Throws}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
         {"while", TokenType::While}, {"when", TokenType::When}, {"true", TokenType::True}, {"false", TokenType::False},
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
         {"using", TokenType::Using}, {"template", TokenType::Template},
         {"virtual", TokenType::Virtual}, {"override", TokenType::Override},
         {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward}, {"copy", TokenType::Copy},
+        {"in_ref", TokenType::InRef}, {"forward_ref", TokenType::ForwardRef},
         // Concurrency keywords (Kotlin-style)
         {"suspend", TokenType::Suspend}, {"async", TokenType::Async}, {"await", TokenType::Await},
         {"launch", TokenType::Launch}, {"coroutineScope", TokenType::CoroutineScope},

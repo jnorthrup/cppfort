@@ -11,6 +11,7 @@ target_include_directories(Cpp2Dialect PUBLIC
 
 target_link_libraries(Cpp2Dialect PUBLIC
   MLIR
+  LLVM
 )
 
 add_dependencies(Cpp2Dialect Cpp2OpsIncGen)
@@ -46,6 +47,7 @@ target_include_directories(Cpp2SONDialect PUBLIC
 
 target_link_libraries(Cpp2SONDialect PUBLIC
   MLIR
+  LLVM
 )
 
 add_dependencies(Cpp2SONDialect Cpp2SONOpsIncGen)
@@ -62,6 +64,7 @@ target_include_directories(Cpp2ConcurrencyDialect PUBLIC
 )
 target_link_libraries(Cpp2ConcurrencyDialect PUBLIC
   MLIR
+  LLVM
 )
 # Add TableGen generation for concurrency dialect
 # TODO: Add Cpp2ConcurrencyOpsIncGen target when needed
@@ -85,7 +88,7 @@ target_include_directories(SeaOfNodesCore PUBLIC
 
 target_link_libraries(SeaOfNodesCore PUBLIC
   Cpp2Dialect
-  # Cpp2SONDialect  # Disabled: MLIR tablegen issues need investigation
+  Cpp2SONDialect
   MLIR
   clangAST
   clangBasic

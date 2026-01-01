@@ -117,6 +117,13 @@ private:
     void check_bounds_checking(SubscriptExpression* expr);
     void check_mixed_sign_arithmetic(BinaryExpression* expr);
 
+    // Concurrency expression checking (Kotlin-style structured concurrency)
+    void check_await_expression(AwaitExpression* expr);
+    void check_spawn_expression(SpawnExpression* expr);
+    void check_channel_send_expression(ChannelSendExpression* expr);
+    void check_channel_recv_expression(ChannelRecvExpression* expr);
+    void check_channel_select_expression(ChannelSelectExpression* expr);
+
     // Contract checking
     void check_contract(ContractExpression* contract);
     void check_function_contracts(FunctionDeclaration* func);
@@ -141,6 +148,10 @@ private:
     std::unordered_set<std::string, SimpleStringHash> undeclared_variables;
     std::unordered_map<Declaration*, bool> checked_declarations;
     bool has_cpp1_passthrough = false;  // Track if AST contains C++1 passthrough declarations
+
+    // Concurrency state tracking
+    bool in_suspend_function = false;         // True when inside a suspend function
+    int in_coroutine_scope_depth = 0;         // Depth of nested coroutineScope blocks
 
     // Built-in types
     void register_builtin_types();

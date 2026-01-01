@@ -57,6 +57,12 @@ int main(int argc, char* argv[]) {
         cpp2_transpiler::Parser parser(tokens);
         auto ast = parser.parse();
 
+        // Abort if parsing had errors - continuing with incomplete AST causes segfaults
+        if (parser.had_errors()) {
+            std::cerr << "Error: Parsing failed with " << parser.error_count << " error(s)\n";
+            return 1;
+        }
+
         cpp2_transpiler::SemanticAnalyzer semantic_analyzer;
         semantic_analyzer.analyze(*ast);
 

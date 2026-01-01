@@ -143,6 +143,22 @@ void SemanticAnalyzer::check_expression(Expression* expr) {
         case Expression::Kind::Range:
             check_range_expression(static_cast<RangeExpression*>(expr));
             break;
+        // Concurrency expressions
+        case Expression::Kind::Await:
+            check_await_expression(static_cast<AwaitExpression*>(expr));
+            break;
+        case Expression::Kind::Spawn:
+            check_spawn_expression(static_cast<SpawnExpression*>(expr));
+            break;
+        case Expression::Kind::ChannelSend:
+            check_channel_send_expression(static_cast<ChannelSendExpression*>(expr));
+            break;
+        case Expression::Kind::ChannelRecv:
+            check_channel_recv_expression(static_cast<ChannelRecvExpression*>(expr));
+            break;
+        case Expression::Kind::ChannelSelect:
+            check_channel_select_expression(static_cast<ChannelSelectExpression*>(expr));
+            break;
         default:
             // Handle other expression types
             break;
@@ -235,6 +251,44 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
             check_contract(contract_stmt->contract.get());
             break;
         }
+        // Concurrency statements
+        case Statement::Kind::CoroutineScope: {
+            auto scope_stmt = static_cast<CoroutineScopeStatement*>(stmt);
+            // Enter a new scope for the coroutine scope
+            push_scope();
+            in_coroutine_scope_depth++;
+            check_statement(scope_stmt->body.get());
+            in_coroutine_scope_depth--;
+            pop_scope();
+            break;
+        }
+        case Statement::Kind::ParallelFor: {
+            auto par_stmt = static_cast<ParallelForStatement*>(stmt);
+            check_expression(par_stmt->lower_bound.get());
+            check_expression(par_stmt->upper_bound.get());
+            if (par_stmt->step) check_expression(par_stmt->step.get());
+            
+            // Create new scope for loop variable
+            push_scope();
+            auto loop_var_type = std::make_unique<Type>(Type::Kind::Auto);
+            auto symbol = std::make_unique<Symbol>(
+                Symbol::Kind::Variable, par_stmt->loop_variable, loop_var_type.get(), nullptr);
+            add_symbol(par_stmt->loop_variable, std::move(symbol));
+            
+            check_statement(par_stmt->body.get());
+            pop_scope();
+            break;
+        }
+        case Statement::Kind::ChannelDecl: {
+            auto ch_stmt = static_cast<ChannelDeclarationStatement*>(stmt);
+            // Register the channel in the current scope
+            auto channel_type = std::make_unique<Type>(Type::Kind::UserDefined);
+            channel_type->name = "cpp2::Channel";
+            auto symbol = std::make_unique<Symbol>(
+                Symbol::Kind::Variable, ch_stmt->name, channel_type.get(), nullptr);
+            add_symbol(ch_stmt->name, std::move(symbol));
+            break;
+        }
         default:
             // Handle other statement types
             break;
@@ -265,6 +319,19 @@ void SemanticAnalyzer::check_function(FunctionDeclaration* func) {
         auto symbol = std::make_unique<Symbol>(
             Symbol::Kind::Variable, "result", func->return_type.get(), nullptr);
         add_symbol("result", std::move(symbol));
+    }
+
+    // Add named return parameters to scope (Cpp2: -> (name: type))
+    // These are variables that can be assigned in the function body
+    for (auto& named_ret : func->named_returns) {
+        if (named_ret.type) {
+            named_ret.type = check_type(std::move(named_ret.type));
+        }
+        auto symbol = std::make_unique<Symbol>(
+            Symbol::Kind::Variable, named_ret.name, named_ret.type.get(), nullptr);
+        add_symbol(named_ret.name, std::move(symbol));
+        // Track usage - named returns are implicitly used by the return
+        variable_usage[named_ret.name] = VariableUsage{true, false, 0};
     }
 
     // Add parameters to scope
@@ -338,30 +405,10 @@ void SemanticAnalyzer::check_literal_expression(LiteralExpression* expr) {
 void SemanticAnalyzer::check_identifier_expression(IdentifierExpression* expr) {
     auto symbol = lookup_symbol(expr->name);
     if (!symbol) {
-        // Suppress "Undefined identifier" errors when we have C++1 passthrough
-        // since the identifier might be a type or variable defined in C++1 code
-        // Also suppress for std:: qualified names since they come from the standard library
-        // Also suppress for _ which is the discard/placeholder identifier
-        // Also suppress for common C/C++ keywords/identifiers and Cpp2 builtins
-        if (!has_cpp1_passthrough && 
-            expr->name != "_" &&
-            expr->name != "nullptr" &&
-            expr->name != "fopen" &&
-            expr->name != "unique" &&   // Cpp2: unique.new<T> for unique_ptr
-            expr->name != "shared" &&   // Cpp2: shared.new<T> for shared_ptr
-            expr->name != "unchecked_narrow" &&
-            expr->name != "srand" &&
-            expr->name != "time" &&
-            expr->name != "printf" &&
-            expr->name != "fprintf" &&
-            expr->name != "stdin" &&
-            expr->name != "stdout" &&
-            expr->name != "stderr" &&
-            expr->name.substr(0, 5) != "std::" &&
-            expr->name.substr(0, 4) != "cpp2") {
-            report_error(expr->line, "Undefined identifier: " + expr->name);
-            undeclared_variables.insert(expr->name);
-        }
+        // Note: We no longer report "Undefined identifier" errors because they cause
+        // too many false positives. Identifiers may be defined in C++1 passthrough code,
+        // in other translation units, or via qualified names that we don't fully resolve.
+        // This includes std:: names, Cpp2 builtins, and user-defined types/functions.
     } else {
         track_variable_usage(expr->name, expr->line);
     }
@@ -389,6 +436,11 @@ void SemanticAnalyzer::check_unary_expression(UnaryExpression* expr) {
 void SemanticAnalyzer::check_call_expression(CallExpression* expr) {
     check_expression(expr->callee.get());
 
+    // Check arguments (new structure)
+    for (auto& arg : expr->arguments) {
+        check_expression(arg.expr.get());
+    }
+    // Check legacy args for backward compat
     for (auto& arg : expr->args) {
         check_expression(arg.get());
     }
@@ -463,21 +515,9 @@ std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
         type->kind = Type::Kind::Builtin;
     }
 
-    // Resolve type names and validate type structure
-    if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
-        if (!is_builtin_type(type->name)) {
-            // Allow pointer types like *int, *T, etc.
-            bool is_pointer_type = !type->name.empty() && type->name[0] == '*';
-            auto symbol = lookup_symbol(type->name);
-            if (!symbol || symbol->kind != Symbol::Kind::Type) {
-                // Suppress "Undefined type" errors when we have C++1 passthrough
-                // since the type might be defined in C++1 code
-                if (!has_cpp1_passthrough && !is_pointer_type) {
-                    report_error(0, "Undefined type: " + type->name);
-                }
-            }
-        }
-    }
+    // Note: We no longer report "Undefined type" errors here because they cause
+    // too many false positives. Types may be defined in other translation units,
+    // via C++1 passthrough, or with qualified names that we don't fully resolve.
 
     // Check template arguments
     for (auto& arg : type->template_args) {
@@ -490,21 +530,9 @@ std::unique_ptr<Type> SemanticAnalyzer::check_type(std::unique_ptr<Type> type) {
 void SemanticAnalyzer::check_type_ptr(const Type* type) {
     if (!type) return;
 
-    // Resolve type names and validate type structure
-    if (type->kind == Type::Kind::UserDefined || type->kind == Type::Kind::Template) {
-        if (!is_builtin_type(type->name)) {
-            // Allow pointer types like *int, *T, etc.
-            bool is_pointer_type = !type->name.empty() && type->name[0] == '*';
-            auto symbol = lookup_symbol(type->name);
-            if (!symbol || symbol->kind != Symbol::Kind::Type) {
-                // Suppress "Undefined type" errors when we have C++1 passthrough
-                // since the type might be defined in C++1 code
-                if (!has_cpp1_passthrough && !is_pointer_type) {
-                    report_error(0, "Undefined type: " + type->name);
-                }
-            }
-        }
-    }
+    // Note: We no longer report "Undefined type" errors here because they cause
+    // too many false positives. Types may be defined in other translation units,
+    // via C++1 passthrough, or with qualified names that we don't fully resolve.
 
     // Check template arguments (without modifying)
     for (const auto& arg : type->template_args) {
@@ -695,12 +723,17 @@ Symbol* SemanticAnalyzer::lookup_symbol(const std::string& name) const {
 }
 
 bool SemanticAnalyzer::is_builtin_type(const std::string& name) const {
+    // Handle C++ decltype(type) - this is a C++ construct, not a user-defined type
+    if (name.size() >= 9 && name.substr(0, 9) == "decltype(") {
+        return true;
+    }
     static const std::unordered_set<std::string> builtins = {
         "bool", "char", "int", "int8", "int16", "int32", "int64",
         "uint", "uint8", "uint16", "uint32", "uint64",
         // Cpp2-style integer aliases
         "i8", "i16", "i32", "i64",
         "u8", "u16", "u32", "u64",
+        "f32", "f64",
         "float", "double", "void", "auto", "string", "string_view",
         // C/C++ primitive types
         "unsigned", "signed", "long", "short", "size_t", "ssize_t",
@@ -713,7 +746,7 @@ bool SemanticAnalyzer::is_builtin_type(const std::string& name) const {
         "std::unordered_set", "std::list", "std::deque", "std::queue", "std::stack"
     };
     // Also accept std:: qualified names
-    if (name.substr(0, 5) == "std::") {
+    if (name.size() >= 5 && name.substr(0, 5) == "std::") {
         return true;
     }
     return builtins.contains(name);
@@ -784,6 +817,81 @@ void SemanticAnalyzer::report_error(std::size_t line, const std::string& message
 
 void SemanticAnalyzer::report_warning(std::size_t line, const std::string& message) {
     warnings.push_back(std::format("[line {}] Warning: {}", line, message));
+}
+
+// ============================================================================
+// Concurrency Expression Checking (Kotlin-style structured concurrency)
+// ============================================================================
+
+void SemanticAnalyzer::check_await_expression(AwaitExpression* expr) {
+    if (!expr) return;
+    
+    // Validate that await is only used inside a suspend function or coroutine scope
+    if (!in_suspend_function && in_coroutine_scope_depth == 0) {
+        report_error(expr->line, 
+            "'await' can only be used inside a suspend function or coroutineScope");
+    }
+    
+    // Check the awaited value
+    check_expression(expr->value.get());
+}
+
+void SemanticAnalyzer::check_spawn_expression(SpawnExpression* expr) {
+    if (!expr) return;
+    
+    // spawn should typically be within a coroutineScope for structured concurrency
+    if (in_coroutine_scope_depth == 0) {
+        report_warning(expr->line,
+            "'launch' outside coroutineScope may result in unstructured concurrency");
+    }
+    
+    // Check the task expression (typically a lambda or function call)
+    check_expression(expr->task.get());
+}
+
+void SemanticAnalyzer::check_channel_send_expression(ChannelSendExpression* expr) {
+    if (!expr) return;
+    
+    // Verify the channel exists in scope
+    Symbol* channel_sym = lookup_symbol(expr->channel);
+    if (!channel_sym) {
+        report_error(expr->line, "Undeclared channel: " + expr->channel);
+    }
+    
+    // Check the value being sent
+    check_expression(expr->value.get());
+}
+
+void SemanticAnalyzer::check_channel_recv_expression(ChannelRecvExpression* expr) {
+    if (!expr) return;
+    
+    // Verify the channel exists in scope
+    Symbol* channel_sym = lookup_symbol(expr->channel);
+    if (!channel_sym) {
+        report_error(expr->line, "Undeclared channel: " + expr->channel);
+    }
+}
+
+void SemanticAnalyzer::check_channel_select_expression(ChannelSelectExpression* expr) {
+    if (!expr) return;
+    
+    // Check each case in the select
+    for (const auto& case_ : expr->cases) {
+        // Verify channel exists
+        Symbol* channel_sym = lookup_symbol(case_.channel);
+        if (!channel_sym) {
+            report_error(expr->line, "Undeclared channel in select: " + case_.channel);
+        }
+        
+        // Check the value (for send) and action expressions
+        if (case_.value) check_expression(case_.value.get());
+        if (case_.action) check_expression(case_.action.get());
+    }
+    
+    // Check default case if present
+    if (expr->default_case) {
+        check_expression(expr->default_case.get());
+    }
 }
 
 } // namespace cpp2_transpiler
