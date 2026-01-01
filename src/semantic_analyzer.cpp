@@ -195,8 +195,28 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
         }
         case Statement::Kind::While: {
             auto while_stmt = static_cast<WhileStatement*>(stmt);
+            // If there's a loop initializer, it creates a new scope for the loop
+            if (while_stmt->loop_init) {
+                push_scope();
+                // Add loop initializer variable to scope
+                if (while_stmt->loop_init->type) {
+                    while_stmt->loop_init->type = check_type(std::move(while_stmt->loop_init->type));
+                }
+                check_expression(while_stmt->loop_init->initializer.get());
+                auto symbol = std::make_unique<Symbol>(
+                    Symbol::Kind::Variable,
+                    while_stmt->loop_init->name,
+                    while_stmt->loop_init->type.get(),
+                    nullptr);
+                add_symbol(while_stmt->loop_init->name, std::move(symbol));
+                variable_usage[while_stmt->loop_init->name] = VariableUsage{};
+            }
             check_expression(while_stmt->condition.get());
+            if (while_stmt->increment) check_expression(while_stmt->increment.get());
             check_statement(while_stmt->body.get());
+            if (while_stmt->loop_init) {
+                pop_scope();
+            }
             break;
         }
         case Statement::Kind::For: {
@@ -211,6 +231,21 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
             auto range_stmt = static_cast<ForRangeStatement*>(stmt);
             // Range-for introduces a new variable scope for the loop variable.
             push_scope();
+
+            // If there's a loop initializer, add it to scope first
+            if (range_stmt->loop_init) {
+                if (range_stmt->loop_init->type) {
+                    range_stmt->loop_init->type = check_type(std::move(range_stmt->loop_init->type));
+                }
+                check_expression(range_stmt->loop_init->initializer.get());
+                auto symbol = std::make_unique<Symbol>(
+                    Symbol::Kind::Variable,
+                    range_stmt->loop_init->name,
+                    range_stmt->loop_init->type.get(),
+                    nullptr);
+                add_symbol(range_stmt->loop_init->name, std::move(symbol));
+                variable_usage[range_stmt->loop_init->name] = VariableUsage{};
+            }
 
             if (range_stmt->var_type) {
                 range_stmt->var_type = check_type(std::move(range_stmt->var_type));
@@ -228,6 +263,7 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
             }
 
             check_expression(range_stmt->range.get());
+            if (range_stmt->next_clause) check_expression(range_stmt->next_clause.get());
             check_statement(range_stmt->body.get());
 
             pop_scope();

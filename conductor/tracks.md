@@ -84,17 +84,19 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Full completion: 189/189 files transpiling successfully
 
 **Recent Progress**:
+- 2026-01-01: Loop initializer syntax (+1 file, 70.4% → 70.9%)
+  - 134/189 passing (pure2: 93/139 [66.9%], mixed: 41/50 [82.0%])
+  - Implemented: `(copy i:=0)` loop initializer syntax for while/for loops
 - 2026-01-01: Template argument preservation (+13 files, 63.5% → 70.4%)
-  - 133/189 passing (pure2: 93/139 [66.9%], mixed: 40/50 [80.0%])
   - Fixed: Template argument capture for non-type template parameters
 - 2025-12-31: Parser improvements (+120 files, 4.2% → 63.5%)
   - Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
 
-**Remaining Blockers** (56 files):
-1. Variadics (Ts...) parameter packs
-2. Type aliases and namespace aliases
-3. Some inspect/is patterns
-4. UFCS edge cases
+**Remaining Blockers** (55 files):
+1. Variadics (Ts...) parameter packs (~10 files)
+2. Type aliases and namespace aliases (~8 files)
+3. Unary + operator, named returns with defaults (~5 files)
+4. UFCS edge cases, inspect/is patterns (~10+ files)
 
 ---
 

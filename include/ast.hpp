@@ -512,8 +512,21 @@ struct IfStatement : Statement {
           else_stmt(std::move(else_s)) {}
 };
 
+// Loop initializer for Cpp2: (copy i:=0) while/for/do
+struct LoopInitializer {
+    std::string name;           // Variable name
+    std::string param_kind;     // "copy" or "move"
+    std::unique_ptr<Type> type; // Variable type (auto if type-deduced)
+    std::unique_ptr<Expression> initializer; // Initial value
+
+    LoopInitializer() = default;
+    LoopInitializer(std::string n, std::string pk, std::unique_ptr<Type> t, std::unique_ptr<Expression> init)
+        : name(std::move(n)), param_kind(std::move(pk)), type(std::move(t)), initializer(std::move(init)) {}
+};
+
 struct WhileStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
+    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) while ...
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> increment; // Cpp2 'next' clause
     std::unique_ptr<Statement> body;
@@ -553,6 +566,7 @@ struct WhileStatement : Statement {
 
 struct DoWhileStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
+    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) do ...
     std::unique_ptr<Statement> body;
     std::unique_ptr<Expression> increment; // Cpp2 'next' clause (between body and while)
     std::unique_ptr<Expression> condition;
@@ -622,6 +636,7 @@ struct ForStatement : Statement {
 
 struct ForRangeStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
+    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) for ...
     std::string variable;
     std::string var_qualifier;  // Parameter kind: in, inout, out, copy, move, forward
     std::unique_ptr<Type> var_type;

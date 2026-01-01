@@ -79,6 +79,7 @@ private:
     std::unique_ptr<Statement> for_statement();
     std::unique_ptr<Statement> for_range_statement();
     std::unique_ptr<Statement> labeled_loop_statement(std::string label);
+    std::unique_ptr<Statement> try_loop_with_initializer();  // Cpp2 (copy i:=0) while/for/do
     std::unique_ptr<Statement> switch_statement();
     std::unique_ptr<Statement> inspect_statement();
     std::unique_ptr<Expression> inspect_expression();

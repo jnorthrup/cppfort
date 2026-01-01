@@ -946,7 +946,21 @@ void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
 
     bool is_labeled = !stmt->label.empty();
     bool has_increment = stmt->increment != nullptr;
+    bool has_loop_init = stmt->loop_init != nullptr;
     std::string cond_str = generate_expression_to_string(stmt->condition.get());
+
+    // If there's a loop initializer, wrap everything in a scope
+    if (has_loop_init) {
+        write_line("{");
+        indent();
+        // Generate the loop initializer variable
+        std::string type_str = "auto";
+        if (stmt->loop_init->type && stmt->loop_init->type->kind != Type::Kind::Auto) {
+            type_str = generate_type(stmt->loop_init->type.get());
+        }
+        std::string init_str = generate_expression_to_string(stmt->loop_init->initializer.get());
+        write_line(type_str + " " + stmt->loop_init->name + " = " + init_str + ";");
+    }
 
     if (is_labeled) {
         // Labeled while loop - need to use goto pattern for continue to work
@@ -1000,6 +1014,12 @@ void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
             dedent();
             write_line("}");
         }
+    }
+
+    // Close loop initializer scope if present
+    if (has_loop_init) {
+        dedent();
+        write_line("}");
     }
 }
 
@@ -1130,8 +1150,22 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     if (!stmt) return;
 
     bool is_labeled = !stmt->label.empty();
+    bool has_loop_init = stmt->loop_init != nullptr;
     std::string var_type = stmt->var_type ? generate_type(stmt->var_type.get()) : "auto";
     std::string range_str = generate_expression_to_string(stmt->range.get());
+
+    // If there's a loop initializer, wrap everything in a scope
+    if (has_loop_init) {
+        write_line("{");
+        indent();
+        // Generate the loop initializer variable
+        std::string type_str = "auto";
+        if (stmt->loop_init->type && stmt->loop_init->type->kind != Type::Kind::Auto) {
+            type_str = generate_type(stmt->loop_init->type.get());
+        }
+        std::string init_str = generate_expression_to_string(stmt->loop_init->initializer.get());
+        write_line(type_str + " " + stmt->loop_init->name + " = " + init_str + ";");
+    }
 
     if (is_labeled) {
         // Labeled for-range loop - convert to while(true) with explicit iterators
@@ -1184,6 +1218,12 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
         // Non-labeled for-range - generate normally
         write("for (" + var_type + " " + stmt->variable + " : " + range_str + ") ");
         generate_statement(stmt->body.get());
+    }
+
+    // Close loop initializer scope if present
+    if (has_loop_init) {
+        dedent();
+        write_line("}");
     }
 }
 
