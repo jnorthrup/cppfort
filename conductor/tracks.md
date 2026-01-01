@@ -83,18 +83,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Semantic loss target: <0.05 average
 - Full completion: 189/189 files transpiling successfully
 
-**Blockers to Fix**:
-1. P0: Parameter semantics (inout → T&, out → T&, in → const T&)
-2. P1: Mixed-mode C++1 passthrough (50 files blocked)
-3. P2: Minor semantic differences (nested blocks, extra parens)
+**Recent Progress (2025-12-31)**:
+- Pass rate improved from 4.2% to 63.5% (120/189 files)
+- Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
+- pure2: 80/139 (58%), mixed: 39/50 (78%)
 
-**Current Status**:
-- Files transpiled: ~1/189
-- Average semantic loss: 1.0 (HIGH)
-- pure2 files: ~1/139 passing
-- mixed files: 0/50 passing (parser blocked)
-
-**Phase**: 1 (Full Corpus Validation and Repair)
+**Remaining Blockers**:
+1. Template instantiation in expressions (std::integral<T>)
+2. Variadics (Ts...) parameter packs
+3. Some inspect/is patterns
 
 ---
 
