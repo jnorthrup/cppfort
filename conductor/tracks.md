@@ -84,22 +84,17 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Full completion: 189/189 files transpiling successfully
 
 **Current Baseline** (2026-01-02):
-- 21/189 passing (11.1%) - ACCURATE baseline after test framework fix
-- Previous 163/189 (86.2%) claim was based on transpilation success only, NOT full compile+run
-- Test framework fix: Added `-I third_party/cppfront/include` to compilation
+- 32/189 passing (17.0%) - ACCURATE baseline with full test pipeline
+- Recent fixes: chained comparisons, non-type template params, inspect expressions, string interpolation
 
-**Recent Progress**:
-- 2026-01-02: Test framework fix (+10 tests, 11 → 21 passing)
-  - Added cpp2util.h include path to compilation
-  - New passes: mixed-bounds-check, mixed-hello, pure2-hello, pure2-break-continue, etc.
-- 2026-01-02: For-loop disambiguation (transpilation success)
-- 2026-01-02: Type alias support (transpilation success)
-- 2026-01-02: C++1 syntax detection improvements (transpilation success)
-- 2026-01-01: Loop initializer syntax (transpilation success)
-- 2026-01-01: Template argument preservation (transpilation success)
-- 2025-12-31: Parser improvements (transpilation success)
+**Recent Progress** (2026-01-02):
+- Chained comparison support (+1 test): `a <= b <= c` → `a <= b && b <= c`
+- Non-type template parameter support (+10 tests): `CPP2_TYPEOF(x)` syntax
+- Inspect expression fixes: duplicate else, cpp2 library conversion
+- String interpolation using std::ostringstream for universal type support
+- Previous: For-loop disambiguation, type alias, C++1 syntax detection, loop initializer
 
-**Remaining Blockers** (147 non-error tests failing):
+**Remaining Blockers** (157 tests failing):
 1. Pattern matching (`inspect`, `is`, `as` operators) - ~20 tests
 2. Function expressions (unbraced syntax) - ~9 tests
 3. Type system features (advanced types, constraints) - ~17 tests
