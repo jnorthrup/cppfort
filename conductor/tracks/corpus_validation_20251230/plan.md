@@ -10,11 +10,11 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
-**Current Status**: 32/189 passing (17.0%) - 2026-01-02
+**Current Status**: 33/189 passing (17.5%) - 2026-01-02
 
 ### Recent Progress (2026-01-02)
 
-1. **Non-type template parameter support**: +10 tests (11→21→31)
+1. **Non-type template parameter support**: +10 tests (11→21→31→33)
    - Support for function-call syntax in template args (e.g., `CPP2_TYPEOF(x)`)
    - Tests passing: mixed-bounds-safety-with-assert, mixed-default-arguments, etc.
 
@@ -28,10 +28,15 @@
    - Expand `a <= b <= c` to `a <= b && b <= c`
    - Cpp2 supports mathematical chained comparisons, C++ doesn't
 
-4. **Known blockers**:
+4. **String interpolation detection**:
+   - Fixed parser to detect `(expr)$` pattern anywhere in string
+   - Code generator now calls process_string_interpolation for StringInterpolationExpression
+
+5. **Known blockers**:
    - Template argument preservation in function calls (e.g., `X<0>()` → `X()`)
    - as/is expression type conversions for non-compatible types
-   - 157 remaining failing tests need implementation
+   - String format specifiers `(expr:fmt)$` need printf-style formatting
+   - 156 remaining failing tests need implementation
   - [x] mixed-allcpp1-hello.cpp2 (C++1 passthrough mode)
   - [x] mixed-as-for-variant-20-types.cpp2 (template args fixed)
   - [x] mixed-autodiff-taylor.cpp2 (loop initializer implemented)
