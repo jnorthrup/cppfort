@@ -21,7 +21,7 @@ static std::string generate_template_param(const std::string& param) {
 }
 
 // Helper to process Cpp2 string interpolation: (expr)$
-// Transforms "(x)$" into " + std::to_string(x) + "
+// Transforms "(x)$" into proper C++ string concatenation with type-aware conversion
 // This handles the Cpp2 string interpolation syntax
 static std::string process_string_interpolation(const std::string& str) {
     // If string doesn't contain )$, no interpolation needed
@@ -60,8 +60,9 @@ static std::string process_string_interpolation(const std::string& str) {
             if (j < str.length() && str[j] == '$') {
                 // Found interpolation (expr)$
                 std::string expr = str.substr(i + 1, j - i - 2);
-                // Close current string, add to_string call, reopen string
-                result += "\" + std::to_string(" + expr + ") + \"";
+                // Close current string, add type-aware conversion, reopen string
+                // Use streaming with std::ostringstream for universal type support
+                result += "\" + (([&]() { std::ostringstream __oss; __oss << " + expr + "; return __oss.str(); })()) + \"";
                 i = j + 1;  // Skip past the $
             } else {
                 result += str[i];
