@@ -113,6 +113,7 @@ struct Expression {
         ContractExpression,
         InspectExpr,  // Cpp2 inspect expression
         Move,         // Cpp2 move/forward/copy expression
+        Pipeline,     // Cpp2 pipeline operator |>
         // Concurrency expressions
         Await,
         Spawn,
@@ -178,6 +179,19 @@ struct UnaryExpression : Expression {
                     std::size_t l, bool postfix = false)
         : Expression(Kind::Unary, l), op(o),
           operand(std::move(expr)), is_postfix(postfix) {}
+};
+
+// Cpp2 pipeline operator expression (|>)
+// left |> right is equivalent to right(left) syntactically
+// Enables left-to-right function composition
+struct PipelineExpression : Expression {
+    std::unique_ptr<Expression> left;   // Input value/expression
+    std::unique_ptr<Expression> right;  // Function to apply
+
+    PipelineExpression(std::unique_ptr<Expression> lhs,
+                      std::unique_ptr<Expression> rhs, std::size_t l)
+        : Expression(Kind::Pipeline, l), left(std::move(lhs)),
+          right(std::move(rhs)) {}
 };
 
 // Cpp2 move/forward/copy expressions

@@ -105,9 +105,28 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 6*
+## [~] Track: Compositional Orthogonal Combinator Basics for ByteBuffers and StrViews
+*Link: [./conductor/tracks/bytebuffer_combinators_20250102/](./conductor/tracks/bytebuffer_combinators_20250102/)*
+*Status: ACTIVE* - Phases 1-5 complete, working on pipeline operator
+
+**Completed** (90 tests passing):
+- **Phase 1**: Core types (ByteBuffer, StrView, LazyIterator) - checkpoint: c407ac9
+- **Phase 2**: Structural combinators (take, skip, split, chunk, window) - checkpoint: 78442e4
+- **Phase 3**: Transformation combinators (map, filter, enumerate, zip, flat_map) - checkpoint: 2521c41
+- **Phase 4**: Reduction combinators (fold, reduce, scan, find, all/any/count) - checkpoint: ce2015f
+- **Phase 5**: Parsing and validation combinators - checkpoint: a0d0c74
+
+**Remaining**:
+- Pipeline operator `|>` (lexer, grammar, AST, codegen)
+- Standard library integration
+- Documentation
+- Verification/benchmarks
+
+---
+
+*Total Tracks: 7*
 *Completed: 3*
-*In Progress: 0*
+*In Progress: 1*
 *Active: 1*
 *Planned: 1*
 *Blocked: 1*

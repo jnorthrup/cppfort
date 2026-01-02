@@ -2284,6 +2284,23 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
             }
             break;
         }
+        case Expression::Kind::Pipeline: {
+            auto pipeline = static_cast<PipelineExpression*>(expr);
+            // left |> right becomes right(left)
+            // For a |> b |> c, this becomes: c(b(a)) due to left-associativity
+            std::string left_str = generate_expression_to_string(pipeline->left.get());
+            std::string right_str = generate_expression_to_string(pipeline->right.get());
+
+            // The right side could be:
+            // 1. A function identifier: f |> g becomes g(f)
+            // 2. A function call: x |> h(y) needs to become h(x, y)
+            // 3. A lambda: x |> |y| y*2 needs proper handling
+
+            // For now, generate as: right(left)
+            // This handles simple cases like: data |> f
+            expr_output << right_str << "(" << left_str << ")";
+            break;
+        }
         case Expression::Kind::StringInterpolation: {
             auto interp = static_cast<StringInterpolationExpression*>(expr);
             // The parts contain the raw strings with (expr)$ patterns

@@ -3414,7 +3414,7 @@ std::unique_ptr<Statement> Parser::parallel_for_statement() {
 
 // Expressions (precedence climbing)
 std::unique_ptr<Expression> Parser::assignment_expression() {
-    auto expr = ternary_expression();
+    auto expr = pipeline_expression();
 
     if (match({TokenType::Equal, TokenType::PlusEqual, TokenType::MinusEqual,
                TokenType::AsteriskEqual, TokenType::SlashEqual, TokenType::PercentEqual,
@@ -3435,6 +3435,32 @@ std::unique_ptr<Expression> Parser::assignment_expression() {
             op.type,
             std::move(value),
             expr->line
+        );
+    }
+
+    return expr;
+}
+
+// Pipeline expression - handles |> operator for left-to-right function composition
+// a |> b |> c is parsed as c(b(a)) - left associative
+// Precedence: lower than assignment, so x = a |> b means x = (a |> b)
+std::unique_ptr<Expression> Parser::pipeline_expression() {
+    auto expr = ternary_expression();
+
+    while (match(TokenType::Pipeline)) {
+        Token op = previous();
+        auto right = ternary_expression();  // Right side is the function to apply
+
+        if (!expr) {
+            // Error recovery
+            return nullptr;
+        }
+
+        // Create pipeline expression: left |> right
+        expr = std::make_unique<PipelineExpression>(
+            std::move(expr),
+            std::move(right),
+            op.line
         );
     }
 

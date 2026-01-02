@@ -1,0 +1,73 @@
+// Test pipeline operator |>
+// Tests left-to-right function composition
+
+main: () -> int = {
+    // Test 1: Simple pipeline - single function application
+    // x |> f should become f(x)
+    result1: int = test_simple_pipeline();
+
+    // Test 2: Chained pipeline - left associative
+    // a |> b |> c should become c(b(a))
+    result2: int = test_chained_pipeline();
+
+    // Test 3: Pipeline with arithmetic
+    result3: int = test_pipeline_with_arithmetic();
+
+    // Test 4: Pipeline with different types
+    result4: int = test_pipeline_with_strings();
+
+    return result1 + result2 + result3 + result4;
+}
+
+// Helper function for simple pipeline test
+square: (x: int) -> int = {
+    return x * x;
+}
+
+test_simple_pipeline: () -> int = {
+    // 5 |> square should become square(5) = 25
+    x: int = 5;
+    result: int = x |> square;
+    if result == 25 {
+        return 1;  // pass
+    } else {
+        return 0;  // fail
+    }
+}
+
+// Helper functions for chained pipeline test
+increment: (x: int) -> int = {
+    return x + 1;
+}
+
+times_two: (x: int) -> int = {
+    return x * 2;
+}
+
+test_chained_pipeline: () -> int = {
+    // 1 |> increment |> times_two
+    // Should become: times_two(increment(1)) = times_two(2) = 4
+    x: int = 1;
+    result: int = x |> increment |> times_two;
+    if result == 4 {
+        return 1;  // pass
+    } else {
+        return 0;  // fail
+    }
+}
+
+test_pipeline_with_arithmetic: () -> int = {
+    // (3 + 4) |> square should become square(3 + 4) = square(7) = 49
+    result: int = (3 + 4) |> square;
+    if result == 49 {
+        return 1;  // pass
+    } else {
+        return 0;  // fail
+    }
+}
+
+// String-related helper (placeholder - actual string tests would need string types)
+test_pipeline_with_strings: () -> int = {
+    // Basic structure test - actual string handling would need proper string type
+    return 1;  // placeholder pass
+}

@@ -195,6 +195,8 @@ void Lexer::scan_token() {
         case '|': {
             if (match('|')) {
                 add_token(TokenType::DoublePipe);
+            } else if (match('>')) {
+                add_token(TokenType::Pipeline);
             } else if (match('=')) {
                 add_token(TokenType::PipeEqual);
             } else {

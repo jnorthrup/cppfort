@@ -121,6 +121,7 @@ enum class TokenType : uint8_t {
     Pipe,            // |
     DoublePipe,      // ||
     PipeEqual,       // |=
+    Pipeline,        // |> (pipeline operator)
     Caret,           // ^
     CaretEqual,      // ^=
     Tilde,           // ~
