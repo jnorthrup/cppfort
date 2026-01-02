@@ -2,6 +2,8 @@
 #include <iostream>
 #include <format>
 #include <algorithm>
+#include <unordered_set>
+#include <regex>
 
 namespace cpp2_transpiler {
 
@@ -18,7 +20,64 @@ static std::string generate_template_param(const std::string& param) {
     return "typename " + param;
 }
 
-CodeGenerator::CodeGenerator() : indent_level(0), needs_semicolon(true) {}
+// Helper to process Cpp2 string interpolation: (expr)$
+// Transforms "(x)$" into " + std::to_string(x) + "
+// This handles the Cpp2 string interpolation syntax
+static std::string process_string_interpolation(const std::string& str) {
+    // If string doesn't contain )$, no interpolation needed
+    if (str.find(")$") == std::string::npos) {
+        return str;
+    }
+
+    std::string result;
+    size_t i = 0;
+    bool in_string = false;
+    size_t string_start = 0;
+
+    // Track if we're processing content inside the string quotes
+    // Look for (expr)$ patterns
+    while (i < str.length()) {
+        if (str[i] == '"' && (i == 0 || str[i-1] != '\\')) {
+            if (!in_string) {
+                in_string = true;
+                string_start = i;
+                result += '"';
+            } else {
+                in_string = false;
+                result += '"';
+            }
+            i++;
+        } else if (in_string && str[i] == '(' && i > string_start) {
+            // Potential interpolation start - look for matching )$
+            size_t paren_count = 1;
+            size_t j = i + 1;
+            while (j < str.length() && paren_count > 0) {
+                if (str[j] == '(') paren_count++;
+                else if (str[j] == ')') paren_count--;
+                j++;
+            }
+            // Check if ) is followed by $
+            if (j < str.length() && str[j] == '$') {
+                // Found interpolation (expr)$
+                std::string expr = str.substr(i + 1, j - i - 2);
+                // Close current string, add to_string call, reopen string
+                result += "\" + std::to_string(" + expr + ") + \"";
+                i = j + 1;  // Skip past the $
+            } else {
+                result += str[i];
+                i++;
+            }
+        } else {
+            result += str[i];
+            i++;
+        }
+    }
+    return result;
+}
+
+CodeGenerator::CodeGenerator() : indent_level(0), needs_semicolon(true), output_mode_(OutputMode::Inline) {}
+
+CodeGenerator::CodeGenerator(OutputMode mode) : indent_level(0), needs_semicolon(true), output_mode_(mode) {}
 
 std::string CodeGenerator::generate(AST& ast) {
     output.str("");
@@ -112,7 +171,85 @@ std::string CodeGenerator::get_indent() const {
 }
 
 void CodeGenerator::write_includes() {
-    write_line("#include \"cpp2util.h\"");
+    switch (output_mode_) {
+        case OutputMode::PCH:
+            // Fastest: precompiled header provides everything
+            // User compiles with: clang++ -include-pch cpp2_pch.h.pch
+            // No #include needed in generated code
+            write_line("// Requires: -include-pch cpp2_pch.h.pch");
+            write_line("");
+            return;
+            
+        case OutputMode::Header:
+            // Smaller output: use runtime header
+            write_line("#include <iostream>");
+            write_line("#include <string>");
+            write_line("#include <sstream>");
+            write_line("#include <vector>");
+            write_line("#include <memory>");
+            write_line("#include <optional>");
+            write_line("#include <variant>");
+            write_line("#include <functional>");
+            write_line("#include <utility>");
+            write_line("#include <type_traits>");
+            write_line("#include <stdexcept>");
+            write_line("#include <cstdint>");
+            write_line("#include <iterator>");  // For std::ssize
+            write_line("#include <cpp2_runtime.h>");
+            write_line("");
+            return;
+            
+        case OutputMode::Inline:
+        default:
+            // Self-contained: inline everything
+            break;
+    }
+    
+    // Inline mode: embed all headers and runtime
+    write_line("#include <iostream>");
+    write_line("#include <string>");
+    write_line("#include <sstream>");
+    write_line("#include <vector>");
+    write_line("#include <memory>");
+    write_line("#include <optional>");
+    write_line("#include <variant>");
+    write_line("#include <functional>");
+    write_line("#include <utility>");
+    write_line("#include <type_traits>");
+    write_line("#include <stdexcept>");
+    write_line("#include <cstdint>");
+    write_line("#include <iterator>");  // For std::ssize
+    write_line("#include <filesystem>"); // For std::filesystem
+    write_line("");
+    // Inline the minimal cpp2 namespace (matches cpp2_runtime.h API)
+    write_line("namespace cpp2 {");
+    write_line("    template<typename T> auto to_string(T const& x) -> std::string {");
+    write_line("        if constexpr (std::is_same_v<T, std::string>) { return x; }");
+    write_line("        else if constexpr (std::is_same_v<T, const char*>) { return std::string(x); }");
+    write_line("        else if constexpr (std::is_same_v<T, char>) { return std::string(1, x); }");
+    write_line("        else if constexpr (std::is_same_v<T, bool>) { return x ? \"true\" : \"false\"; }");
+    write_line("        else if constexpr (std::is_arithmetic_v<T>) { return std::to_string(x); }");
+    write_line("        else { std::ostringstream oss; oss << x; return oss.str(); }");
+    write_line("    }");
+    write_line("    template<typename T, typename U> constexpr auto is(U const& x) -> bool {");
+    write_line("        if constexpr (std::is_same_v<T, U> || std::is_base_of_v<T, U>) { return true; }");
+    write_line("        else if constexpr (std::is_polymorphic_v<U>) { return dynamic_cast<T const*>(&x) != nullptr; }");
+    write_line("        else { return false; }");
+    write_line("    }");
+    write_line("    template<typename T, typename U> constexpr auto as(U const& x) -> T {");
+    write_line("        if constexpr (std::is_same_v<T, U>) { return x; }");
+    write_line("        else if constexpr (std::is_base_of_v<T, U>) { return static_cast<T const&>(x); }");
+    write_line("        else if constexpr (std::is_polymorphic_v<U>) { return dynamic_cast<T const&>(x); }");
+    write_line("        else { return static_cast<T>(x); }");
+    write_line("    }");
+    write_line("    namespace impl {");
+    write_line("        template<typename T, typename U> constexpr auto is_(U const& x) -> bool { return is<T>(x); }");
+    write_line("        template<typename T, typename U> constexpr auto as_(U const& x) -> T { return as<T>(x); }");
+    write_line("    }");
+    write_line("    // main(args) support");
+    write_line("    struct args_t { int argc; char const* const* argv; };");
+    write_line("    inline auto make_args(int argc, char** argv) -> args_t { return { argc, const_cast<char const* const*>(argv) }; }");
+    write_line("} // namespace cpp2");
     write_line("");
 }
 
@@ -199,6 +336,39 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
 
     std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
 
+    // main() must return int in C++
+    if (decl->name == "main" && return_type == "void") {
+        return_type = "int";
+    }
+
+    // Detect if this is a member function (has 'this' parameter)
+    bool is_member_function = false;
+    bool is_const_member = false;
+    bool is_rvalue_member = false;
+    size_t this_param_index = SIZE_MAX;
+    
+    for (size_t i = 0; i < decl->parameters.size(); ++i) {
+        if (decl->parameters[i].name == "this") {
+            is_member_function = true;
+            this_param_index = i;
+            for (const auto& qual : decl->parameters[i].qualifiers) {
+                if (qual == ParameterQualifier::In) is_const_member = true;
+                if (qual == ParameterQualifier::Move) is_rvalue_member = true;
+            }
+            break;
+        }
+    }
+
+    // Generate template header if this is a template function
+    if (!decl->template_parameters.empty()) {
+        write("template<");
+        for (size_t i = 0; i < decl->template_parameters.size(); ++i) {
+            if (i > 0) write(", ");
+            write(generate_template_param(decl->template_parameters[i]));
+        }
+        write_line(">");
+    }
+
     // [[nodiscard]] goes before the return type for widest compatibility
     if (needs_nodiscard(decl)) {
         write("[[nodiscard]] ");
@@ -207,20 +377,36 @@ void CodeGenerator::generate_function_forward_declaration(FunctionDeclaration* d
     // Use auto return_type syntax for cppfront compatibility
     write("auto " + decl->name + "(");
 
-    // Parameters
+    // Parameters - skip 'this' parameter
+    bool first_param = true;
     for (size_t i = 0; i < decl->parameters.size(); ++i) {
-        if (i > 0) write(", ");
+        if (i == this_param_index) continue;
+        if (!first_param) write(", ");
+        first_param = false;
         const auto& param = decl->parameters[i];
         write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
     }
 
-    write(") -> " + return_type);
+    write(")");
+    
+    // Add const/&& qualifiers
+    if (is_const_member) write(" const");
+    if (is_rvalue_member) write(" &&");
+    
+    write(" -> " + return_type);
 
     write_line(";");
 }
 
 void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     if (!decl) return;
+
+    // Check for special member functions (operator=: patterns)
+    // These need different treatment in C++
+    if (decl->name == "operator=:" || decl->name == "=:") {
+        generate_special_member_function(decl);
+        return;
+    }
 
     // Generate template header if this is a template function
     if (!decl->template_parameters.empty()) {
@@ -233,33 +419,108 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     }
 
     std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
+    
+    // main() must return int per C++ standard
+    if (decl->name == "main" && return_type == "void") {
+        return_type = "int";
+    }
 
     // [[nodiscard]] goes before the return type for widest compatibility
     if (needs_nodiscard(decl)) {
         write("[[nodiscard]] ");
     }
 
+    // Check for main(args) pattern - Cpp2 idiom for command line arguments
+    // main: (args) = { ... } becomes:
+    //   auto main(int argc_, char** argv_) -> int {
+    //       auto const args = cpp2::make_args(argc_, argv_);
+    //       ...
+    //   }
+    bool is_main_with_args = false;
+    std::string args_param_name;
+    if (decl->name == "main" && decl->parameters.size() == 1) {
+        const auto& param = decl->parameters[0];
+        // If parameter type is unspecified (auto) and named something like "args"
+        if (!param.type || generate_type(param.type.get()) == "auto") {
+            is_main_with_args = true;
+            args_param_name = param.name;
+        }
+    }
+
+    // Detect if this is a member function (has 'this' parameter)
+    // In Cpp2: print: (this) = { ... } or f: (this, x: int) = { ... }
+    // In C++: auto print() -> void { ... } or auto f(int x) -> void { ... }
+    bool is_member_function = false;
+    bool is_const_member = false;
+    bool is_rvalue_member = false;  // move this
+    size_t this_param_index = SIZE_MAX;
+    
+    for (size_t i = 0; i < decl->parameters.size(); ++i) {
+        if (decl->parameters[i].name == "this") {
+            is_member_function = true;
+            this_param_index = i;
+            for (const auto& qual : decl->parameters[i].qualifiers) {
+                if (qual == ParameterQualifier::In) is_const_member = true;
+                if (qual == ParameterQualifier::Move) is_rvalue_member = true;
+            }
+            break;
+        }
+    }
+
     // Use auto return_type syntax for cppfront compatibility
     write("auto " + decl->name + "(");
 
-    // Parameters
-    for (size_t i = 0; i < decl->parameters.size(); ++i) {
-        if (i > 0) write(", ");
-        const auto& param = decl->parameters[i];
-        write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
+    // Special case: main(args) -> main(int argc_, char** argv_)
+    if (is_main_with_args) {
+        write("int argc_, char** argv_");
+    } else {
+        // Parameters - skip 'this' parameter as it's implicit in C++
+        bool first_param = true;
+        for (size_t i = 0; i < decl->parameters.size(); ++i) {
+            if (i == this_param_index) continue;  // Skip 'this' parameter
+            if (!first_param) write(", ");
+            first_param = false;
+            const auto& param = decl->parameters[i];
+            write(generate_parameter_type(param.type.get(), param.qualifiers) + " " + param.name);
+        }
     }
 
-    write(") -> " + return_type);
+    write(")");
+    
+    // Add const/&& qualifiers for member functions
+    if (is_const_member) {
+        write(" const");
+    }
+    if (is_rvalue_member) {
+        write(" &&");
+    }
+    
+    write(" -> " + return_type);
 
     if (decl->body) {
         // Check if body is already a BlockStatement - if so, generate it directly
         // to avoid adding extra nested braces
         if (decl->body->kind == Statement::Kind::Block) {
-            write(" ");
-            generate_statement(decl->body.get());
+            write(" {\n");
+            indent();
+            // For main(args), inject the args initialization
+            if (is_main_with_args) {
+                write_line("auto const " + args_param_name + " = cpp2::make_args(argc_, argv_);");
+            }
+            // Generate block contents without the outer braces
+            auto* block = static_cast<BlockStatement*>(decl->body.get());
+            for (auto& stmt : block->statements) {
+                generate_statement(stmt.get());
+            }
+            dedent();
+            write_line("}");
         } else {
             write(" {\n");
             indent();
+            // For main(args), inject the args initialization
+            if (is_main_with_args) {
+                write_line("auto const " + args_param_name + " = cpp2::make_args(argc_, argv_);");
+            }
             generate_statement(decl->body.get());
             dedent();
             write_line("}");
@@ -269,23 +530,143 @@ void CodeGenerator::generate_function_declaration(FunctionDeclaration* decl) {
     }
 }
 
+void CodeGenerator::generate_special_member_function(FunctionDeclaration* decl) {
+    // Handle Cpp2 operator=: patterns which map to C++ special member functions:
+    // - operator=: (out this) -> default constructor
+    // - operator=: (out this, x: T) -> converting constructor
+    // - operator=: (inout this, that) -> copy/move assignment
+    // - operator=: (move this) -> destructor
+    
+    if (!decl || current_class_name.empty()) return;
+    
+    // Analyze parameters to determine what kind of special member function this is
+    bool has_out_this = false;
+    bool has_inout_this = false;
+    bool has_move_this = false;
+    bool has_implicit_this = false;
+    std::vector<FunctionDeclaration::Parameter*> non_this_params;
+    
+    for (const auto& param : decl->parameters) {
+        if (param.name == "this") {
+            for (const auto& qual : param.qualifiers) {
+                if (qual == ParameterQualifier::Out) has_out_this = true;
+                if (qual == ParameterQualifier::InOut) has_inout_this = true;
+                if (qual == ParameterQualifier::Move) has_move_this = true;
+                if (qual == ParameterQualifier::Implicit) has_implicit_this = true;
+            }
+        } else {
+            non_this_params.push_back(const_cast<FunctionDeclaration::Parameter*>(&param));
+        }
+    }
+    
+    if (has_move_this && non_this_params.empty()) {
+        // Destructor: operator=: (move this)
+        write_line("~" + current_class_name + "() {");
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        dedent();
+        write_line("}");
+    } else if (has_out_this) {
+        // Constructor: operator=: (out this, ...)
+        // Could be default, copy, move, or converting constructor
+        
+        if (non_this_params.empty()) {
+            // Default constructor
+            write_line(current_class_name + "() {");
+        } else if (non_this_params.size() == 1 && non_this_params[0]->name == "that") {
+            // Copy or move constructor based on 'that' qualifier
+            bool is_move = false;
+            for (const auto& qual : non_this_params[0]->qualifiers) {
+                if (qual == ParameterQualifier::Move) is_move = true;
+            }
+            if (is_move) {
+                write_line(current_class_name + "(" + current_class_name + "&& that) {");
+            } else {
+                write_line(current_class_name + "(const " + current_class_name + "& that) {");
+            }
+        } else {
+            // Converting constructor
+            std::string explicit_kw = has_implicit_this ? "" : "explicit ";
+            write(explicit_kw + current_class_name + "(");
+            for (size_t i = 0; i < non_this_params.size(); ++i) {
+                if (i > 0) write(", ");
+                auto* param = non_this_params[i];
+                std::string ptype = param->type ? generate_type(param->type.get()) : "auto";
+                write("const " + ptype + "& " + param->name);
+            }
+            write_line(") {");
+        }
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        dedent();
+        write_line("}");
+    } else if (has_inout_this) {
+        // Assignment operator: operator=: (inout this, that)
+        if (non_this_params.size() == 1 && non_this_params[0]->name == "that") {
+            bool is_move = false;
+            for (const auto& qual : non_this_params[0]->qualifiers) {
+                if (qual == ParameterQualifier::Move) is_move = true;
+            }
+            if (is_move) {
+                write_line(current_class_name + "& operator=(" + current_class_name + "&& that) {");
+            } else {
+                write_line(current_class_name + "& operator=(const " + current_class_name + "& that) {");
+            }
+        } else {
+            // General assignment from other types
+            write(current_class_name + "& operator=(");
+            for (size_t i = 0; i < non_this_params.size(); ++i) {
+                if (i > 0) write(", ");
+                auto* param = non_this_params[i];
+                std::string ptype = param->type ? generate_type(param->type.get()) : "auto";
+                write("const " + ptype + "& " + param->name);
+            }
+            write_line(") {");
+        }
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        write_line("return *this;");
+        dedent();
+        write_line("}");
+    } else {
+        // Fallback - just generate as regular function
+        write_line("// WARNING: Unknown operator=: pattern");
+        write("auto operator_assign(");
+        for (size_t i = 0; i < decl->parameters.size(); ++i) {
+            if (i > 0) write(", ");
+            write(generate_parameter_type(decl->parameters[i].type.get(), decl->parameters[i].qualifiers) + " " + decl->parameters[i].name);
+        }
+        write_line(") {");
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        dedent();
+        write_line("}");
+    }
+}
+
 void CodeGenerator::generate_operator_declaration(OperatorDeclaration* decl) {
     if (!decl) return;
 
-    // Cpp2 operator=: is the assignment operator
-    // operator=: (out this, that) = { body }
-    // Transpiles to: ClassName& operator=(ClassName that) { body }
+    // Cpp2 operator=: special member functions
+    // operator=: (out this) -> default constructor
+    // operator=: (out this, x: T) -> converting constructor
+    // operator=: (inout this, that) -> copy/move assignment
+    // operator=: (move this) -> destructor
+    // The parser stores the name as "=:" not "operator=:"
+    
+    if (decl->name == "=:") {
+        // Handle as special member function
+        generate_operator_eq_colon(decl);
+        return;
+    }
 
     std::string return_type = decl->return_type ? generate_type(decl->return_type.get()) : "void";
 
     // Get the class name from the context (outer type)
     std::string class_name = current_class_name.empty() ? "ClassName" : current_class_name;
 
-    // operator=: becomes operator=
-    std::string op_name = decl->name;
-    if (op_name == "operator=:") {
-        op_name = "operator=";
-    }
+    // operator name
+    std::string op_name = "operator" + decl->name;
 
     // Return type: usually ClassName& for assignment operators
     write(class_name + "& " + op_name + "(");
@@ -346,6 +727,114 @@ void CodeGenerator::generate_operator_declaration(OperatorDeclaration* decl) {
         write_line(" {");
         indent();
         write_line("return *this;");
+        dedent();
+        write_line("}");
+    }
+}
+
+void CodeGenerator::generate_operator_eq_colon(OperatorDeclaration* decl) {
+    // Handle Cpp2 operator=: patterns which map to C++ special member functions
+    if (!decl || current_class_name.empty()) return;
+    
+    // Analyze parameters to determine what kind of special member function this is
+    bool has_out_this = false;
+    bool has_inout_this = false;
+    bool has_move_this = false;
+    bool has_implicit_this = false;
+    std::vector<FunctionDeclaration::Parameter*> non_this_params;
+    
+    for (const auto& param : decl->parameters) {
+        if (param->name == "this") {
+            for (const auto& qual : param->qualifiers) {
+                if (qual == ParameterQualifier::Out) has_out_this = true;
+                if (qual == ParameterQualifier::InOut) has_inout_this = true;
+                if (qual == ParameterQualifier::Move) has_move_this = true;
+                if (qual == ParameterQualifier::Implicit) has_implicit_this = true;
+            }
+        } else {
+            non_this_params.push_back(param.get());
+        }
+    }
+    
+    if (has_move_this && non_this_params.empty()) {
+        // Destructor: operator=: (move this)
+        write_line("~" + current_class_name + "() {");
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        dedent();
+        write_line("}");
+    } else if (has_out_this) {
+        // Constructor: operator=: (out this, ...)
+        if (non_this_params.empty()) {
+            // Default constructor
+            write_line(current_class_name + "() {");
+        } else if (non_this_params.size() == 1 && non_this_params[0]->name == "that") {
+            // Copy or move constructor based on 'that' qualifier
+            bool is_move = false;
+            for (const auto& qual : non_this_params[0]->qualifiers) {
+                if (qual == ParameterQualifier::Move) is_move = true;
+            }
+            if (is_move) {
+                write_line(current_class_name + "(" + current_class_name + "&& that) {");
+            } else {
+                write_line(current_class_name + "(const " + current_class_name + "& that) {");
+            }
+        } else {
+            // Converting constructor
+            std::string explicit_kw = has_implicit_this ? "" : "explicit ";
+            write(explicit_kw + current_class_name + "(");
+            for (size_t i = 0; i < non_this_params.size(); ++i) {
+                if (i > 0) write(", ");
+                auto* param = non_this_params[i];
+                std::string ptype = param->type ? generate_type(param->type.get()) : "auto";
+                write("const " + ptype + "& " + param->name);
+            }
+            write_line(") {");
+        }
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        dedent();
+        write_line("}");
+    } else if (has_inout_this) {
+        // Assignment operator: operator=: (inout this, that)
+        if (non_this_params.size() == 1 && non_this_params[0]->name == "that") {
+            bool is_move = false;
+            for (const auto& qual : non_this_params[0]->qualifiers) {
+                if (qual == ParameterQualifier::Move) is_move = true;
+            }
+            if (is_move) {
+                write_line(current_class_name + "& operator=(" + current_class_name + "&& that) {");
+            } else {
+                write_line(current_class_name + "& operator=(const " + current_class_name + "& that) {");
+            }
+        } else {
+            // General assignment from other types
+            write(current_class_name + "& operator=(");
+            for (size_t i = 0; i < non_this_params.size(); ++i) {
+                if (i > 0) write(", ");
+                auto* param = non_this_params[i];
+                std::string ptype = param->type ? generate_type(param->type.get()) : "auto";
+                write("const " + ptype + "& " + param->name);
+            }
+            write_line(") {");
+        }
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
+        write_line("return *this;");
+        dedent();
+        write_line("}");
+    } else {
+        // Fallback - unknown pattern
+        write_line("// WARNING: Unknown operator=: pattern");
+        write("void unknown_operator(");
+        for (size_t i = 0; i < decl->parameters.size(); ++i) {
+            if (i > 0) write(", ");
+            auto& param = decl->parameters[i];
+            write(generate_parameter_type(param->type.get(), param->qualifiers) + " " + param->name);
+        }
+        write_line(") {");
+        indent();
+        if (decl->body) generate_statement(decl->body.get());
         dedent();
         write_line("}");
     }
@@ -1212,6 +1701,19 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     bool has_loop_inits = !stmt->loop_inits.empty();
     std::string var_type = stmt->var_type ? generate_type(stmt->var_type.get()) : "auto";
     std::string range_str = generate_expression_to_string(stmt->range.get());
+    
+    // Apply qualifier to variable type
+    std::string var_ref = "";
+    if (stmt->var_qualifier == "inout" || stmt->var_qualifier == "out") {
+        var_ref = "&";
+    } else if (stmt->var_qualifier == "move" || stmt->var_qualifier == "forward") {
+        var_ref = "&&";
+    } else if (stmt->var_qualifier == "in") {
+        // const reference
+        var_type = "const " + var_type;
+        var_ref = "&";
+    }
+    // copy or empty = pass by value (no ref)
 
     // If there's a loop initializer, wrap everything in a scope
     if (has_loop_inits) {
@@ -1262,7 +1764,7 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
         write_line("");
         write_line("");
 
-        write_line(var_type + " " + stmt->variable + " = *__begin;");
+        write_line(var_type + var_ref + " " + stmt->variable + " = *__begin;");
         write_line("++__begin;");
 
         generate_statement(stmt->body.get());
@@ -1277,7 +1779,7 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
         write_line("}");
     } else {
         // Non-labeled for-range - generate normally
-        write("for (" + var_type + " " + stmt->variable + " : " + range_str + ") ");
+        write("for (" + var_type + var_ref + " " + stmt->variable + " : " + range_str + ") ");
         generate_statement(stmt->body.get());
     }
 
@@ -1330,11 +1832,11 @@ void CodeGenerator::generate_continue_statement(ContinueStatement* stmt) {
 void CodeGenerator::generate_coroutine_scope_statement(CoroutineScopeStatement* stmt) {
     if (!stmt) return;
 
-    // Generate: cpp2::coroutineScope([&](cpp2::CoroutineScope& scope) { ... })
-    // This ensures all launched tasks complete before the scope exits
+    // Structured concurrency scope - for now generate a simple block
+    // TODO: Implement proper coroutine runtime when needed
     write_line("{");
     indent();
-    write_line("cpp2::CoroutineScope __scope;");
+    write_line("// Coroutine scope (structured concurrency)");
     
     // Generate the body - handle both Block and single statement
     if (auto block = dynamic_cast<BlockStatement*>(stmt->body.get())) {
@@ -1345,7 +1847,6 @@ void CodeGenerator::generate_coroutine_scope_statement(CoroutineScopeStatement* 
         generate_statement(stmt->body.get());
     }
     
-    // CoroutineScope destructor will joinAll() automatically
     dedent();
     write_line("}");
 }
@@ -1388,11 +1889,12 @@ void CodeGenerator::generate_parallel_for_statement(ParallelForStatement* stmt) 
 void CodeGenerator::generate_channel_declaration(ChannelDeclarationStatement* stmt) {
     if (!stmt) return;
 
-    // Generate: cpp2::Channel<T> name(capacity);
+    // TODO: Implement proper channel runtime when needed
+    // For now, generate a placeholder comment
     std::string type_str = stmt->element_type ? generate_type(stmt->element_type.get()) : "void";
     std::string capacity_str = std::to_string(stmt->buffer_size);
     
-    write_line("cpp2::Channel<" + type_str + "> " + stmt->name + "(" + capacity_str + ");");
+    write_line("// Channel<" + type_str + "> " + stmt->name + " (capacity: " + capacity_str + ") - not yet supported");
 }
 
 std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
@@ -1429,7 +1931,8 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                     (str_val.size() >= 4 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == 'R' && str_val[3] == '"');
                 
                 if (already_quoted) {
-                    expr_output << str_val;  // Already has quotes
+                    // Process string interpolation (expr)$
+                    expr_output << process_string_interpolation(str_val);
                 } else {
                     expr_output << "\"" << str_val << "\"";  // Regular string, add quotes
                 }
@@ -1440,7 +1943,12 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Identifier: {
             auto id = static_cast<IdentifierExpression*>(expr);
-            expr_output << id->name;
+            // Convert cpp2 library functions to std equivalents
+            if (id->name == "cpp2::to_string") {
+                expr_output << "std::to_string";
+            } else {
+                expr_output << id->name;
+            }
             break;
         }
         case Expression::Kind::Binary: {
@@ -1452,16 +1960,33 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 case TokenType::Minus: expr_output << " - "; break;
                 case TokenType::Asterisk: expr_output << " * "; break;
                 case TokenType::Slash: expr_output << " / "; break;
+                case TokenType::Percent: expr_output << " % "; break;
                 case TokenType::Equal: expr_output << " = "; break;
+                case TokenType::PlusEqual: expr_output << " += "; break;
+                case TokenType::MinusEqual: expr_output << " -= "; break;
+                case TokenType::AsteriskEqual: expr_output << " *= "; break;
+                case TokenType::SlashEqual: expr_output << " /= "; break;
+                case TokenType::PercentEqual: expr_output << " %= "; break;
                 case TokenType::DoubleEqual: expr_output << " == "; break;
                 case TokenType::NotEqual: expr_output << " != "; break;
                 case TokenType::LessThan: expr_output << " < "; break;
                 case TokenType::GreaterThan: expr_output << " > "; break;
                 case TokenType::LessThanOrEqual: expr_output << " <= "; break;
                 case TokenType::GreaterThanOrEqual: expr_output << " >= "; break;
+                case TokenType::Spaceship: expr_output << " <=> "; break;
                 case TokenType::LeftShift: expr_output << " << "; break;
                 case TokenType::RightShift: expr_output << " >> "; break;
-                default: expr_output << " ?op? "; break;
+                case TokenType::LeftShiftEqual: expr_output << " <<= "; break;
+                case TokenType::RightShiftEqual: expr_output << " >>= "; break;
+                case TokenType::Ampersand: expr_output << " & "; break;
+                case TokenType::DoubleAmpersand: expr_output << " && "; break;
+                case TokenType::Pipe: expr_output << " | "; break;
+                case TokenType::DoublePipe: expr_output << " || "; break;
+                case TokenType::Caret: expr_output << " ^ "; break;
+                case TokenType::AmpersandEqual: expr_output << " &= "; break;
+                case TokenType::PipeEqual: expr_output << " |= "; break;
+                case TokenType::CaretEqual: expr_output << " ^= "; break;
+                default: expr_output << " /* unknown op */ "; break;
             }
 
             expr_output << generate_expression_to_string(binary->right.get());
@@ -1491,20 +2016,35 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 break;
             }
 
-            // Check for Cpp2 library functions that need cpp2:: prefix
-            bool needs_cpp2_prefix = false;
-            if (call->callee->kind == Expression::Kind::Identifier) {
-                auto id = static_cast<IdentifierExpression*>(call->callee.get());
-                if (id->name == "unchecked_cast" || id->name == "unchecked_narrow" ||
-                    id->name == "unsafe_cast" || id->name == "unsafe_narrow" ||
-                    id->name == "assert" || id->name == "assume") {
-                    needs_cpp2_prefix = true;
+            // Check for UFCS pattern: x.func() where func is a known free function
+            // Transform x.ssize() -> std::ssize(x), x.size() -> std::size(x), etc.
+            if (call->callee->kind == Expression::Kind::MemberAccess) {
+                auto member = static_cast<MemberAccessExpression*>(call->callee.get());
+                static const std::unordered_set<std::string> std_free_functions = {
+                    "ssize", "size", "data", "empty", "begin", "end", "cbegin", "cend",
+                    "rbegin", "rend", "crbegin", "crend"
+                };
+                if (std_free_functions.count(member->member)) {
+                    // Transform x.ssize() -> std::ssize(x)
+                    expr_output << "std::" << member->member << "(";
+                    expr_output << generate_expression_to_string(member->object.get());
+                    // Add any additional arguments from call
+                    for (size_t i = 0; i < call->arguments.size(); ++i) {
+                        expr_output << ", ";
+                        expr_output << generate_expression_to_string(call->arguments[i].expr.get());
+                    }
+                    for (size_t i = 0; i < call->args.size(); ++i) {
+                        expr_output << ", ";
+                        expr_output << generate_expression_to_string(call->args[i].get());
+                    }
+                    expr_output << ")";
+                    break;
                 }
             }
 
-            if (needs_cpp2_prefix) {
-                expr_output << "cpp2::";
-            }
+            // Note: Cpp2 library functions (assert, assume, unchecked_cast, etc.)
+            // are handled without a cpp2:: prefix - we generate direct C++ equivalents
+            // or rely on standard library facilities
             expr_output << generate_expression_to_string(call->callee.get()) << "(";
 
             // Use new arguments structure if populated, otherwise fall back to legacy args
@@ -1533,7 +2073,25 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::MemberAccess: {
             auto member = static_cast<MemberAccessExpression*>(expr);
-            expr_output << generate_expression_to_string(member->object.get()) << "." << member->member;
+            std::string object_str = generate_expression_to_string(member->object.get());
+
+            // Convert cpp2 library functions to std equivalents
+            if (object_str == "cpp2") {
+                if (member->member == "to_string") {
+                    expr_output << "std::to_string";
+                    break;
+                }
+                // Add more cpp2:: function conversions here as needed
+            }
+
+            // In Cpp2, 'this.x' means member access, but in C++ 'this' is a pointer
+            // So 'this.x' should become 'this->x' or just 'x' (since we're in member context)
+            if (object_str == "this") {
+                // Just use the member name directly - we're inside a member function
+                expr_output << member->member;
+            } else {
+                expr_output << object_str << "." << member->member;
+            }
             break;
         }
         case Expression::Kind::Subscript: {
@@ -1577,6 +2135,15 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
             expr_output << "([&]() {\n";
             expr_output << "    auto __value = " << generate_expression_to_string(inspect_expr->value.get()) << ";\n";
 
+            // Check if there's a wildcard pattern (exhaustive match)
+            bool has_wildcard = false;
+            for (const auto& arm : inspect_expr->arms) {
+                if (arm.pattern_kind == InspectExpression::Arm::PatternKind::Wildcard) {
+                    has_wildcard = true;
+                    break;
+                }
+            }
+
             // Generate if-else chain
             for (size_t i = 0; i < inspect_expr->arms.size(); ++i) {
                 const auto& arm = inspect_expr->arms[i];
@@ -1588,17 +2155,29 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                     // Wildcard always matches - make it the final else
                     expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
                 } else if (arm.pattern_kind == InspectExpression::Arm::PatternKind::Type) {
-                    // Type pattern: check if value is of the given type
-                    expr_output << "if (cpp2::impl::is_<" << generate_type(arm.pattern_type.get()) << ">(__value)) ";
+                    // Type pattern: use std::get_if for variant types
+                    std::string type_str = generate_type(arm.pattern_type.get());
+                    // Check if this is a variant type - use std::get_if for variants
+                    if (type_str.find("std::variant") == 0 || type_str.find("variant") == 0) {
+                        expr_output << "if (std::get_if<" << type_str << ">(&__value)) ";
+                    } else {
+                        // For non-variant types, use dynamic_cast or direct comparison
+                        expr_output << "if (typeid(__value) == typeid(" << type_str << ")) ";
+                    }
                     expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
                 } else {
-                    // Value pattern
-                    expr_output << "if (__value == " << generate_expression_to_string(arm.pattern_value.get()) << ") ";
-                    expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
+                    // Value pattern - use std::get_if for variant comparisons
+                    if (arm.pattern_value) {
+                        expr_output << "if (__value == " << generate_expression_to_string(arm.pattern_value.get()) << ") ";
+                        expr_output << "{ return " << generate_expression_to_string(arm.result_value.get()) << "; }\n";
+                    }
                 }
             }
 
-            expr_output << "    else { throw std::logic_error(\"Non-exhaustive inspect\"); }\n";
+            // Only add throw if no wildcard (non-exhaustive inspect)
+            if (!has_wildcard) {
+                expr_output << "    else { throw std::logic_error(\"Non-exhaustive inspect\"); }\n";
+            }
             expr_output << "})()";
             break;
         }
@@ -1615,16 +2194,32 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::As: {
             auto as_expr = static_cast<AsExpression*>(expr);
-            // Generate: cpp2::impl::as_<Type>(value)
-            expr_output << "cpp2::impl::as_<" << generate_type(as_expr->type.get()) << ">(";
-            expr_output << generate_expression_to_string(as_expr->expr.get()) << ")";
+            // Generate: std::get<Type>(value) for variant types
+            std::string type_str = generate_type(as_expr->type.get());
+            if (type_str.find("std::variant") == 0 || type_str.find("variant") == 0 ||
+                type_str.find("std::optional") == 0 || type_str.find("optional") == 0) {
+                // For variant/optional types, use std::get
+                expr_output << "std::get<" << type_str << ">(";
+                expr_output << generate_expression_to_string(as_expr->expr.get()) << ")";
+            } else {
+                // For other types, use static_cast
+                expr_output << "static_cast<" << type_str << ">(";
+                expr_output << generate_expression_to_string(as_expr->expr.get()) << ")";
+            }
             break;
         }
         case Expression::Kind::Is: {
             auto is_expr = static_cast<IsExpression*>(expr);
-            // Generate: cpp2::impl::is_<Type>(value)
-            expr_output << "cpp2::impl::is_<" << generate_type(is_expr->type.get()) << ">(";
-            expr_output << generate_expression_to_string(is_expr->expr.get()) << ")";
+            // Generate: std::get_if<Type>(&value) != nullptr for variant types
+            std::string type_str = generate_type(is_expr->type.get());
+            if (type_str.find("std::variant") == 0 || type_str.find("variant") == 0 ||
+                type_str.find("std::optional") == 0 || type_str.find("optional") == 0) {
+                expr_output << "(std::get_if<" << type_str << ">(";
+                expr_output << "&" << generate_expression_to_string(is_expr->expr.get()) << ") != nullptr)";
+            } else {
+                // For other types, use typeid
+                expr_output << "(typeid(" << generate_expression_to_string(is_expr->expr.get()) << ") == typeid(" << type_str << "))";
+            }
             break;
         }
         case Expression::Kind::Move: {
@@ -1642,18 +2237,23 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::StringInterpolation: {
             auto interp = static_cast<StringInterpolationExpression*>(expr);
-            // Generate string concatenation using cpp2::to_string()
-            // For "hello $world" generate: "hello " + cpp2::to_string(world)
+            // Generate string concatenation using std::to_string()
+            // For "hello $world" generate: "hello " + std::to_string(world)
             for (size_t i = 0; i < interp->parts.size(); ++i) {
                 if (i > 0) expr_output << " + ";
                 if (std::holds_alternative<std::string>(interp->parts[i])) {
                     // String literal part
                     expr_output << "\"" << std::get<std::string>(interp->parts[i]) << "\"";
                 } else {
-                    // Expression part - wrap with cpp2::to_string
-                    expr_output << "cpp2::to_string(";
-                    expr_output << generate_expression_to_string(std::get<std::unique_ptr<Expression>>(interp->parts[i]).get());
-                    expr_output << ")";
+                    // Expression part - wrap with std::to_string for arithmetic types
+                    expr_output << "(([&]() -> std::string { ";
+                    expr_output << "auto __val = " << generate_expression_to_string(std::get<std::unique_ptr<Expression>>(interp->parts[i]).get()) << "; ";
+                    expr_output << "if constexpr (std::is_arithmetic_v<decltype(__val)>) { ";
+                    expr_output << "return std::to_string(__val); ";
+                    expr_output << "} else { ";
+                    expr_output << "return __val; ";
+                    expr_output << "} ";
+                    expr_output << "})())";
                 }
             }
             break;
@@ -1698,8 +2298,7 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Spawn: {
             auto spawn_expr = static_cast<SpawnExpression*>(expr);
-            // Generate: cpp2::spawn([&]() -> cpp2::Task<void> { <task>; co_return; })
-            // For fire-and-forget coroutine launch
+            // Generate async task launch using std::async
             expr_output << "std::async(std::launch::async, [&]() { ";
             expr_output << generate_expression_to_string(spawn_expr->task.get());
             expr_output << "; })";
@@ -1939,7 +2538,16 @@ std::string CodeGenerator::generate_type(Type* type) {
 }
 
 std::string CodeGenerator::generate_parameter_type(Type* type, const std::vector<ParameterQualifier>& qualifiers) {
-    std::string base_type = type ? generate_type(type) : "auto";
+    std::string base_type;
+    
+    if (!type) {
+        base_type = "auto";
+    } else if (type->kind == Type::Kind::Deduced) {
+        // In parameter context, decltype(auto) is invalid - use auto instead
+        base_type = "auto";
+    } else {
+        base_type = generate_type(type);
+    }
 
     // Check for parameter qualifiers
     for (const auto& qual : qualifiers) {
