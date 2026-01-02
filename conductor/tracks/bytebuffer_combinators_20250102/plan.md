@@ -99,31 +99,31 @@
 
 ---
 
-## Phase 4: Reduction Combinators
+## Phase 4: Reduction Combinators [checkpoint: ce2015f]
 
 ### Tasks
 
-- [ ] Implement `fold(init, f)` in `include/combinators/reduction.hpp`
+- [x] Implement `fold(init, f)` in `include/combinators/reduction.hpp`
   - Left fold over sequence
   - Returns accumulator value
-- [ ] Implement `reduce(f)` combinator
+- [x] Implement `reduce(f)` combinator
   - Uses first element as initial value
   - Returns `std::optional<T>` (empty case)
-- [ ] Implement `scan(init, f)` combinator
+- [x] Implement `scan(init, f)` combinator
   - Prefix sum / running total
   - Returns sequence of intermediate values
-- [ ] Implement `find(pred)` combinator
+- [x] Implement `find(pred)` combinator
   - Short-circuit search
   - Returns `std::optional<T>`
-- [ ] Implement `find_index(pred)` combinator
+- [x] Implement `find_index(pred)` combinator
   - Returns position of first match
-- [ ] Implement `all(pred)` and `any(pred)` combinators
+- [x] Implement `all(pred)` and `any(pred)` combinators
   - Short-circuit boolean logic
-- [ ] Implement `count(pred)` combinator
+- [x] Implement `count(pred)` combinator
   - Counts matching elements
-- [ ] Implement `first()` and `last()` combinators
+- [x] Implement `first()` and `last()` combinators
   - Access first/last element
-- [ ] Unit tests for all reduction combinators
+- [x] Unit tests for all reduction combinators
   - Short-circuit behavior verified
   - Empty sequence handling
 
