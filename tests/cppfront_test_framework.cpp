@@ -307,7 +307,7 @@ TestResult TestRunner::run_transpiler_test(const TestFile& test_file) {
             // Compile the generated C++ code
             std::string temp_binary = std::filesystem::temp_directory_path() /
                                      ("test_" + test_file.name);
-            std::string compile_command = "clang++ -std=c++20 -O0 \"" + temp_output +
+            std::string compile_command = "clang++ -std=c++20 -O0 -I third_party/cppfront/include \"" + temp_output +
                                        "\" -o \"" + temp_binary + "\" 2>&1";
 
             std::string compile_output;

@@ -10,7 +10,9 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
-**Current Status**: 163/189 passing (86.2%) - corpus scan 2026-01-02
+**Current Status**: 21/189 passing (11.1%) - actual baseline 2026-01-02
+- NOTE: Previous 163/189 (86.2%) claim was based on transpilation success only, not full compile+run
+- Test framework fix: Added -I third_party/cppfront/include to compilation (10 additional tests passing)
 - For-loop disambiguation: +1 file (2026-01-02)
 - C++1 syntax detection improvements: +28 files (2026-01-02)
 - Loop initializer implementation: +1 file (2026-01-01)
@@ -23,9 +25,12 @@
 - [x] Set up validation environment and paths
 - [x] Initialize results tracking (CSV: file, status, loss_score, errors, time)
 - [x] Corpus scan completed: 134 PASS, 55 FAIL (see corpus_scan_results.txt)
+- [x] Test framework fix: Added -I third_party/cppfront/include to compilation (2026-01-02)
+  - Baseline corrected: 21/189 passing (11.1%) vs claimed 163/189 (86.2%)
+  - Previous claim was based on transpilation success only, not full compile+run
 - [x] Template argument preservation fix (2026-01-01): +13 files
 - [x] Loop initializer implementation (2026-01-01): +1 file
-- [~] Fix remaining 27 failing files (down from 55 - many now passing)
+- [~] Fix remaining 168 failing files (actual baseline after test framework fix: 21/189 passing)
   - [x] mixed-allcpp1-hello.cpp2 (C++1 passthrough mode)
   - [x] mixed-as-for-variant-20-types.cpp2 (template args fixed)
   - [x] mixed-autodiff-taylor.cpp2 (loop initializer implemented)
