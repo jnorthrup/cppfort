@@ -135,30 +135,30 @@
 
 ---
 
-## Phase 5: Parsing and Validation Combinators
+## Phase 5: Parsing and Validation Combinators [checkpoint: d8952bb]
 
 ### Tasks
 
-- [ ] Implement `byte()` parser in `include/combinators/parsing.hpp`
+- [x] Implement `byte()` parser in `include/combinators/parsing.hpp`
   - Consumes single byte, returns optional
-- [ ] Implement `bytes(n)` parser
+- [x] Implement `bytes(n)` parser
   - Consumes N bytes if available
-- [ ] Implement `until(delimiter)` parser
+- [x] Implement `until(delimiter)` parser
   - Consumes until delimiter found
-- [ ] Implement `while_pred(pred)` parser
+- [x] Implement `while_pred(pred)` parser
   - Consumes while predicate holds
-- [ ] Implement endian integer parsers
+- [x] Implement endian integer parsers
   - `le_i16()`, `be_i16()`
   - `le_i32()`, `be_i32()`
   - `le_i64()`, `be_i64()`
-- [ ] Implement `c_str()` and `pascal_string()` parsers
+- [x] Implement `c_str()` and `pascal_string()` parsers
   - Null-terminated and length-prefixed strings
-- [ ] Implement validation predicates
+- [x] Implement validation predicates
   - `length_eq(n)`, `length_between(min, max)`
   - `starts_with(prefix)`, `ends_with(suffix)`
   - `contains(element)`
   - `is_unique()`, `is_sorted()`
-- [ ] Unit tests for all parsing combinators
+- [x] Unit tests for all parsing combinators
   - Malformed input handling
   - Bounds checking
 
