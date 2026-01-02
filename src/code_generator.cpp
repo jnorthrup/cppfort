@@ -76,6 +76,29 @@ static std::string process_string_interpolation(const std::string& str) {
     return result;
 }
 
+// Helper to check if a token type is a comparison operator
+static bool is_comparison_operator(TokenType op) {
+    return op == TokenType::LessThan ||
+           op == TokenType::GreaterThan ||
+           op == TokenType::LessThanOrEqual ||
+           op == TokenType::GreaterThanOrEqual ||
+           op == TokenType::DoubleEqual ||
+           op == TokenType::NotEqual;
+}
+
+// Helper to get the string representation of a comparison operator
+static std::string get_comparison_operator_string(TokenType op) {
+    switch (op) {
+        case TokenType::LessThan: return "<";
+        case TokenType::GreaterThan: return ">";
+        case TokenType::LessThanOrEqual: return "<=";
+        case TokenType::GreaterThanOrEqual: return ">=";
+        case TokenType::DoubleEqual: return "==";
+        case TokenType::NotEqual: return "!=";
+        default: return "/* unknown */";
+    }
+}
+
 CodeGenerator::CodeGenerator() : indent_level(0), needs_semicolon(true), output_mode_(OutputMode::Inline) {}
 
 CodeGenerator::CodeGenerator(OutputMode mode) : indent_level(0), needs_semicolon(true), output_mode_(mode) {}
@@ -1954,6 +1977,31 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Binary: {
             auto binary = static_cast<BinaryExpression*>(expr);
+
+            // Check for chained comparison: a <= b <= c
+            // Parsed as (a <= b) <= c, needs to become a <= b && b <= c
+            if (is_comparison_operator(binary->op)) {
+                if (binary->left->kind == Expression::Kind::Binary) {
+                    auto* left_binary = static_cast<BinaryExpression*>(binary->left.get());
+                    if (is_comparison_operator(left_binary->op)) {
+                        // This is a chained comparison - expand it
+                        // (a <= b) <= c becomes a <= b && b <= c
+                        // Extract the middle expression (b)
+                        std::string left_str = generate_expression_to_string(left_binary->left.get());
+                        std::string middle_str = generate_expression_to_string(left_binary->right.get());
+                        std::string right_str = generate_expression_to_string(binary->right.get());
+
+                        // Get the operators
+                        std::string op1 = get_comparison_operator_string(left_binary->op);
+                        std::string op2 = get_comparison_operator_string(binary->op);
+
+                        expr_output << "(" << left_str << " " << op1 << " " << middle_str
+                                   << " && " << middle_str << " " << op2 << " " << right_str << ")";
+                        break;
+                    }
+                }
+            }
+
             expr_output << generate_expression_to_string(binary->left.get());
 
             switch (binary->op) {
