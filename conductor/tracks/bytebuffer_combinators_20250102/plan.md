@@ -31,7 +31,7 @@
 
 ---
 
-## Phase 2: Structural Combinators
+## Phase 2: Structural Combinators [checkpoint: 78442e4]
 
 ### Tasks
 
