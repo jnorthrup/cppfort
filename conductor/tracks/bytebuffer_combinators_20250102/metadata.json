@@ -1,0 +1,11 @@
+{
+  "track_id": "bytebuffer_combinators_20250102",
+  "title": "Compositional Orthogonal Combinator Basics for ByteBuffers and StrViews",
+  "created_date": "2026-01-02",
+  "status": "in-progress",
+  "priority": "P1",
+  "estimated_days": "10-14",
+  "phases": 5,
+  "dependencies": [],
+  "tags": ["combinators", "bytebuffer", "strview", "functional", "zero-copy"]
+}

@@ -3,6 +3,7 @@
 ## Phase 1: Core Type Infrastructure [checkpoint: c407ac9]
 
 ### Tasks
+
 - [x] Design ByteBuffer class in `include/bytebuffer.hpp`
   - `pointer: const char*`, `length: size_t` fields
   - `slice(start, end)` method returning new ByteBuffer
@@ -23,6 +24,7 @@
   - Test UTF-8 decoding edge cases
 
 ### Success Criteria
+
 - ByteBuffer slice creates view without copy (verified via pointer equality)
 - StrView correctly handles multi-byte UTF-8 sequences
 - LazyIterator defers evaluation until `collect()`
@@ -32,27 +34,29 @@
 ## Phase 2: Structural Combinators
 
 ### Tasks
-- [ ] Implement `take(n)` combinator in `include/combinators/structural.hpp`
+
+- [x] Implement `take(n)` combinator in `include/combinators/structural.hpp`
   - Returns lazy sequence of first N elements
   - Handles N > size gracefully
-- [ ] Implement `skip(n)` combinator
+- [x] Implement `skip(n)` combinator
   - Returns lazy sequence after N elements
-- [ ] Implement `slice(start, end)` combinator
+- [x] Implement `slice(start, end)` combinator
   - Combines take/skip semantics
-- [ ] Implement `split(delimiter)` combinator
+- [x] Implement `split(delimiter)` combinator
   - Returns lazy iterator of sub-ranges
   - Handles consecutive delimiters
-- [ ] Implement `chunk(size)` combinator
+- [x] Implement `chunk(size)` combinator
   - Divides sequence into fixed-size blocks
   - Last chunk may be smaller
-- [ ] Implement `window(size)` combinator
+- [x] Implement `window(size)` combinator
   - Returns sliding windows of size N
   - Overlapping views
-- [ ] Unit tests for all structural combinators
+- [x] Unit tests for all structural combinators
   - Verify zero-copy for split/chunk/window
   - Edge cases: empty input, single element
 
 ### Success Criteria
+
 - All structural ops are O(1) or O(number of output views)
 - No allocations until iteration
 - 100% test coverage
@@ -62,6 +66,7 @@
 ## Phase 3: Transformation Combinators
 
 ### Tasks
+
 - [ ] Implement `map(f)` combinator in `include/combinators/transformation.hpp`
   - Lazy application of f to each element
   - Type transformation support (T -> U)
@@ -87,6 +92,7 @@
   - Test chaining: map |> filter |> map
 
 ### Success Criteria
+
 - `map` and `filter` chains don't allocate intermediate storage
 - `|>` syntax compiles and generates equivalent code
 - Laws: `map(id) == id`, `filter(true) == id`
@@ -96,6 +102,7 @@
 ## Phase 4: Reduction Combinators
 
 ### Tasks
+
 - [ ] Implement `fold(init, f)` in `include/combinators/reduction.hpp`
   - Left fold over sequence
   - Returns accumulator value
@@ -121,6 +128,7 @@
   - Empty sequence handling
 
 ### Success Criteria
+
 - `all`/`any`/`find` stop on first match
 - `reduce` returns none for empty
 - `scan` produces correct intermediate values
@@ -130,6 +138,7 @@
 ## Phase 5: Parsing and Validation Combinators
 
 ### Tasks
+
 - [ ] Implement `byte()` parser in `include/combinators/parsing.hpp`
   - Consumes single byte, returns optional
 - [ ] Implement `bytes(n)` parser
@@ -154,6 +163,7 @@
   - Bounds checking
 
 ### Success Criteria
+
 - All parsers return none on invalid input
 - No buffer overflow possible
 - Correct endianness handling
@@ -163,6 +173,7 @@
 ## Integration Tasks
 
 ### Parser Extension for Pipeline Operator
+
 - [ ] Extend lexer in `src/lexer.cpp` to recognize `|>` token
 - [ ] Add grammar rule for pipeline expressions in `src/parser.cpp`
 - [ ] Generate AST node `PipelineExpr` with left-to-right chaining
@@ -171,6 +182,7 @@
   - Handle lambda arguments: `a |> map(|x| x*2)`
 
 ### Standard Library Integration
+
 - [ ] Add `std::cpp2::bytebuffer` to `include/cpp2_runtime.h`
 - [ ] Add `std::cpp2::strview` to runtime
 - [ ] Export all combinators in `std::cpp2::combinators` namespace
