@@ -1,6 +1,6 @@
 # Implementation Plan: Compositional Orthogonal Combinator Basics
 
-## Phase 1: Core Type Infrastructure
+## Phase 1: Core Type Infrastructure [checkpoint: c407ac9]
 
 ### Tasks
 - [x] Design ByteBuffer class in `include/bytebuffer.hpp`
