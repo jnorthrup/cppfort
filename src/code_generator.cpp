@@ -2286,23 +2286,16 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::StringInterpolation: {
             auto interp = static_cast<StringInterpolationExpression*>(expr);
-            // Generate string concatenation using std::to_string()
-            // For "hello $world" generate: "hello " + std::to_string(world)
+            // The parts contain the raw strings with (expr)$ patterns
+            // Process them through process_string_interpolation
             for (size_t i = 0; i < interp->parts.size(); ++i) {
-                if (i > 0) expr_output << " + ";
                 if (std::holds_alternative<std::string>(interp->parts[i])) {
-                    // String literal part
-                    expr_output << "\"" << std::get<std::string>(interp->parts[i]) << "\"";
+                    // String literal part - process interpolation
+                    std::string str = std::get<std::string>(interp->parts[i]);
+                    expr_output << process_string_interpolation(str);
                 } else {
-                    // Expression part - wrap with std::to_string for arithmetic types
-                    expr_output << "(([&]() -> std::string { ";
-                    expr_output << "auto __val = " << generate_expression_to_string(std::get<std::unique_ptr<Expression>>(interp->parts[i]).get()) << "; ";
-                    expr_output << "if constexpr (std::is_arithmetic_v<decltype(__val)>) { ";
-                    expr_output << "return std::to_string(__val); ";
-                    expr_output << "} else { ";
-                    expr_output << "return __val; ";
-                    expr_output << "} ";
-                    expr_output << "})())";
+                    // Expression part - direct output (shouldn't happen with current parser)
+                    expr_output << generate_expression_to_string(std::get<std::unique_ptr<Expression>>(interp->parts[i]).get());
                 }
             }
             break;

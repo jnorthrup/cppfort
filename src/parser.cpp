@@ -4110,10 +4110,10 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         // Build full string, supporting adjacent string literal concatenation
         std::string full_lexeme;
         std::size_t start_line = previous().line;
-        
+
         // Handle first string - keep the full raw lexeme for code generation
         full_lexeme = std::string(previous().lexeme);
-        
+
         // Handle adjacent string literals: "a" "b" "c" becomes "a" "b" "c" (passed through)
         while (check(TokenType::StringLiteral)) {
             Token next_str = advance();
@@ -4121,14 +4121,11 @@ std::unique_ptr<Expression> Parser::primary_expression() {
             full_lexeme += std::string(next_str.lexeme);
         }
 
-        // Handle Cpp2 string interpolation: "text$" -> interpolate next expression
-        // Check if last string ends with $"
+        // Handle Cpp2 string interpolation: (expr)$ - anywhere in the string
+        // Check if the string contains the (expr)$ pattern
         bool has_interpolation = false;
-        if (full_lexeme.size() > 2) {
-            size_t last_quote = full_lexeme.rfind('"');
-            if (last_quote != std::string::npos && last_quote > 0 && full_lexeme[last_quote - 1] == '$') {
-                has_interpolation = true;
-            }
+        if (full_lexeme.find(")$") != std::string::npos) {
+            has_interpolation = true;
         }
 
         // Create a literal expression with the raw string (including quotes)
