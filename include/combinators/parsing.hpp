@@ -437,17 +437,7 @@ struct WhilePredCombinator {
 template<typename P>
 auto while_pred(P p) { return WhilePredCombinator<P>(p); }
 
-// skip(n)
-struct SkipCombinator {
-    size_t n;
-    constexpr explicit SkipCombinator(size_t sz) : n(sz) {}
-    
-    auto operator()(const ByteBuffer& buf) const {
-        return skip(buf, n);
-    }
-};
-
-inline auto skip(size_t n) { return SkipCombinator(n); }
+// Note: skip(n) combinator is in structural.hpp to avoid redefinition
 
 // Validation curried versions
 struct LengthEqCombinator {

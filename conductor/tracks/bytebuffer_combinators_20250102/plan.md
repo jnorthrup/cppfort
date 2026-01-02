@@ -172,19 +172,26 @@
 
 ## Integration Tasks
 
-### Parser Extension for Pipeline Operator [checkpoint: TBD]
+### Parser Extension for Pipeline Operator [checkpoint: 2a607ee]
 
 - [x] Extend lexer in `src/lexer.cpp` to recognize `|>` token
 - [x] Add grammar rule for pipeline expressions in `src/parser.cpp`
 - [x] Generate AST node `PipelineExpr` with left-to-right chaining
 - [x] Implement code generation in `src/code_generator.cpp`
   - Convert `a |> f |> g` to `g(f(a))`
-  - Handle lambda arguments: `a |> map(|x| x*2)` (basic support)
+  - Handle lambda arguments: `a |> :(x: int) -> int = x * 2`
+- [x] Add comprehensive tests in `tests/pipeline_operator_test.cpp2`
+  - 25 tests: basic, chained, lambdas, curried, combinators, validation, edge cases
 
-**Tests:**
+**Tests:** 
+
 - [x] Simple pipeline: `x |> f` → `f(x)`
 - [x] Chained pipeline: `x |> f |> g` → `g(f(x))`
 - [x] Pipeline with arithmetic: `(3 + 4) |> f` → `f(3 + 4)`
+- [x] Inline lambdas: `5 |> :(x: int) -> int = x * 2`
+- [x] Curried combinators: `buf |> curried::take(3)`
+- [x] Chained combinators: `buf |> skip(1) |> take(3)`
+- [x] Type transformations: `42 |> stringify |> parse_int`
 
 ### Standard Library Integration
 

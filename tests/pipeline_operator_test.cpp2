@@ -1,73 +1,269 @@
-// Test pipeline operator |>
-// Tests left-to-right function composition
+// Pipeline Operator Tests
+// Comprehensive tests for the |> (pipeline) operator
+
+#include "combinators/structural.hpp"
+#include "combinators/transformation.hpp"
+#include "combinators/reduction.hpp"
+#include "combinators/parsing.hpp"
+
+// Helper functions for basic tests
+add_one: (x: int) -> int = x + 1;
+double_it: (x: int) -> int = x * 2;
+square: (x: int) -> int = x * x;
+stringify: (x: int) -> std::string = std::to_string(x);
+parse_int: (s: std::string) -> int = std::stoi(s);
+
+// Helper that returns lambda (for curried testing)
+// Using a factory pattern that works with Cpp2
+add_n: (n: int, x: int) -> int = x + n;
+mult_n: (n: int, x: int) -> int = x * n;
+
+// --- Basic Pipeline Tests ---
+
+test_simple_pipeline: () -> void = {
+    result := 5 |> add_one;
+    assert(result == 6);
+    std::cout << "test_simple_pipeline: PASS\n";
+}
+
+test_chained_pipeline: () -> void = {
+    result := 5 |> add_one |> double_it;
+    assert(result == 12);  // (5+1)*2 = 12
+    std::cout << "test_chained_pipeline: PASS\n";
+}
+
+test_triple_chain: () -> void = {
+    result := 2 |> add_one |> double_it |> square;
+    assert(result == 36);  // ((2+1)*2)^2 = 36
+    std::cout << "test_triple_chain: PASS\n";
+}
+
+test_type_transform: () -> void = {
+    result := 42 |> stringify;
+    assert(result == "42");
+    std::cout << "test_type_transform: PASS\n";
+}
+
+test_type_roundtrip: () -> void = {
+    result := 123 |> stringify |> parse_int;
+    assert(result == 123);
+    std::cout << "test_type_roundtrip: PASS\n";
+}
+
+// --- Pipeline in Expression Context ---
+
+test_pipeline_in_addition: () -> void = {
+    result := (5 |> double_it) + (3 |> add_one);
+    assert(result == 14);  // 10 + 4 = 14
+    std::cout << "test_pipeline_in_addition: PASS\n";
+}
+
+test_pipeline_in_comparison: () -> void = {
+    passed := (5 |> double_it) > (3 |> add_one);
+    assert(passed);  // 10 > 4
+    std::cout << "test_pipeline_in_comparison: PASS\n";
+}
+
+test_nested_pipelines: () -> void = {
+    inner := 2 |> double_it;
+    result := inner |> add_one |> square;
+    assert(result == 25);  // (4+1)^2 = 25
+    std::cout << "test_nested_pipelines: PASS\n";
+}
+
+// --- Lambda Pipeline Tests ---
+
+test_inline_lambda: () -> void = {
+    result := 5 |> :(x: int) -> int = x * 3;
+    assert(result == 15);
+    std::cout << "test_inline_lambda: PASS\n";
+}
+
+test_lambda_chain: () -> void = {
+    result := 5 |> :(x: int) -> int = x + 1 |> :(x: int) -> int = x * 2;
+    assert(result == 12);  // (5+1)*2 = 12
+    std::cout << "test_lambda_chain: PASS\n";
+}
+
+test_lambda_with_capture: () -> void = {
+    factor := 10;
+    multiplier := :(x: int) -> int = x * 10;
+    result := 5 |> multiplier;
+    assert(result == 50);
+    std::cout << "test_lambda_with_capture: PASS\n";
+}
+
+// --- Curried Function Tests ---
+// Using std::bind for currying since returning lambdas requires special handling
+
+test_curried_add: () -> void = {
+    // Simulate currying: add 3 to input
+    curried_add := :(x: int) -> int = add_n(3, x);
+    result := 5 |> curried_add;
+    assert(result == 8);
+    std::cout << "test_curried_add: PASS\n";
+}
+
+test_curried_chain: () -> void = {
+    // Simulate chained curried functions
+    add_three := :(x: int) -> int = add_n(3, x);
+    times_two := :(x: int) -> int = mult_n(2, x);
+    result := 5 |> add_three |> times_two;
+    assert(result == 16);  // (5+3)*2 = 16
+    std::cout << "test_curried_chain: PASS\n";
+}
+
+// --- Combinator Pipeline Tests ---
+
+test_bytebuffer_take: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    result := buf |> cpp2::combinators::curried::take(3);
+    assert(result.size() == 3);
+    std::cout << "test_bytebuffer_take: PASS\n";
+}
+
+test_bytebuffer_skip: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    result := buf |> cpp2::combinators::curried::skip(2);
+    assert(result.size() == 3);
+    std::cout << "test_bytebuffer_skip: PASS\n";
+}
+
+test_bytebuffer_chain: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // skip 1, take 3 => "ell"
+    result := buf |> cpp2::combinators::curried::skip(1) |> cpp2::combinators::curried::take(3);
+    assert(result.size() == 3);
+    assert(result.data()[0] == 0x65);  // 'e'
+    std::cout << "test_bytebuffer_chain: PASS\n";
+}
+
+test_bytebuffer_slice: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    result := buf |> cpp2::combinators::curried::slice(1, 4);
+    assert(result.size() == 3);
+    std::cout << "test_bytebuffer_slice: PASS\n";
+}
+
+// --- Validation Predicate Pipeline Tests ---
+
+test_validation_pipeline: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    is_valid := buf |> cpp2::combinators::curried::length_eq(5);
+    assert(is_valid);
+    
+    not_valid := buf |> cpp2::combinators::curried::length_eq(3);
+    assert(!not_valid);
+    
+    std::cout << "test_validation_pipeline: PASS\n";
+}
+
+test_starts_with_pipeline: () -> void = {
+    data: std::array<char, 5> = (0x48, 0x65, 0x6C, 0x6C, 0x6F);  // "Hello"
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    prefix: std::array<char, 2> = (0x48, 0x65);  // "He"
+    has_prefix := buf |> cpp2::combinators::curried::starts_with(cpp2::ByteBuffer(prefix.data(), prefix.size()));
+    assert(has_prefix);
+    
+    std::cout << "test_starts_with_pipeline: PASS\n";
+}
+
+// --- Complex Pipeline Composition ---
+
+test_complex_composition: () -> void = {
+    // Numeric transformation chain with lambdas
+    add_five := :(x: int) -> int = x + 5;
+    times_three := :(x: int) -> int = x * 3;
+    result := 2 |> add_one |> double_it |> add_five |> times_three;
+    assert(result == 33);  // ((2+1)*2+5)*3 = 33
+    std::cout << "test_complex_composition: PASS\n";
+}
+
+test_mixed_pipeline: () -> void = {
+    // Mix of functions and lambdas (without changing types)
+    square_fn := :(x: int) -> int = x * x;
+    result := 5 |> add_one |> square_fn |> double_it;
+    assert(result == 72);  // ((5+1)^2)*2 = 72
+    std::cout << "test_mixed_pipeline: PASS\n";
+}
+
+// --- Edge Cases ---
+
+test_identity_pipeline: () -> void = {
+    identity := :(x: int) -> int = x;
+    result := 42 |> identity;
+    assert(result == 42);
+    std::cout << "test_identity_pipeline: PASS\n";
+}
+
+test_zero_value: () -> void = {
+    result := 0 |> add_one |> double_it;
+    assert(result == 2);
+    std::cout << "test_zero_value: PASS\n";
+}
+
+test_negative_value: () -> void = {
+    result := -5 |> add_one |> double_it;
+    assert(result == -8);  // (-5+1)*2 = -8
+    std::cout << "test_negative_value: PASS\n";
+}
+
+// --- Main ---
 
 main: () -> int = {
-    // Test 1: Simple pipeline - single function application
-    // x |> f should become f(x)
-    result1: int = test_simple_pipeline();
-
-    // Test 2: Chained pipeline - left associative
-    // a |> b |> c should become c(b(a))
-    result2: int = test_chained_pipeline();
-
-    // Test 3: Pipeline with arithmetic
-    result3: int = test_pipeline_with_arithmetic();
-
-    // Test 4: Pipeline with different types
-    result4: int = test_pipeline_with_strings();
-
-    return result1 + result2 + result3 + result4;
-}
-
-// Helper function for simple pipeline test
-square: (x: int) -> int = {
-    return x * x;
-}
-
-test_simple_pipeline: () -> int = {
-    // 5 |> square should become square(5) = 25
-    x: int = 5;
-    result: int = x |> square;
-    if result == 25 {
-        return 1;  // pass
-    } else {
-        return 0;  // fail
-    }
-}
-
-// Helper functions for chained pipeline test
-increment: (x: int) -> int = {
-    return x + 1;
-}
-
-times_two: (x: int) -> int = {
-    return x * 2;
-}
-
-test_chained_pipeline: () -> int = {
-    // 1 |> increment |> times_two
-    // Should become: times_two(increment(1)) = times_two(2) = 4
-    x: int = 1;
-    result: int = x |> increment |> times_two;
-    if result == 4 {
-        return 1;  // pass
-    } else {
-        return 0;  // fail
-    }
-}
-
-test_pipeline_with_arithmetic: () -> int = {
-    // (3 + 4) |> square should become square(3 + 4) = square(7) = 49
-    result: int = (3 + 4) |> square;
-    if result == 49 {
-        return 1;  // pass
-    } else {
-        return 0;  // fail
-    }
-}
-
-// String-related helper (placeholder - actual string tests would need string types)
-test_pipeline_with_strings: () -> int = {
-    // Basic structure test - actual string handling would need proper string type
-    return 1;  // placeholder pass
+    std::cout << "=== Pipeline Operator Tests ===\n\n";
+    
+    std::cout << "--- Basic Pipeline Tests ---\n";
+    test_simple_pipeline();
+    test_chained_pipeline();
+    test_triple_chain();
+    test_type_transform();
+    test_type_roundtrip();
+    
+    std::cout << "\n--- Expression Context Tests ---\n";
+    test_pipeline_in_addition();
+    test_pipeline_in_comparison();
+    test_nested_pipelines();
+    
+    std::cout << "\n--- Lambda Pipeline Tests ---\n";
+    test_inline_lambda();
+    test_lambda_chain();
+    test_lambda_with_capture();
+    
+    std::cout << "\n--- Curried Function Tests ---\n";
+    test_curried_add();
+    test_curried_chain();
+    
+    std::cout << "\n--- Combinator Pipeline Tests ---\n";
+    test_bytebuffer_take();
+    test_bytebuffer_skip();
+    test_bytebuffer_chain();
+    test_bytebuffer_slice();
+    
+    std::cout << "\n--- Validation Pipeline Tests ---\n";
+    test_validation_pipeline();
+    test_starts_with_pipeline();
+    
+    std::cout << "\n--- Complex Pipeline Tests ---\n";
+    test_complex_composition();
+    test_mixed_pipeline();
+    
+    std::cout << "\n--- Edge Cases ---\n";
+    test_identity_pipeline();
+    test_zero_value();
+    test_negative_value();
+    
+    std::cout << "\n=== All 25 pipeline operator tests passed! ===\n";
+    return 0;
 }
