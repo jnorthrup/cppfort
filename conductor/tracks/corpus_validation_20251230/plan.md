@@ -10,7 +10,7 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
-**Current Status**: 31/189 passing (16.4%) - 2026-01-02
+**Current Status**: 32/189 passing (17.0%) - 2026-01-02
 
 ### Recent Progress (2026-01-02)
 
@@ -24,19 +24,14 @@
    - Convert cpp2::to_string to std::to_string
    - Fixed string interpolation using std::ostringstream for universal type support
 
-3. **Known blockers**:
-   - std::any requires #include <any>
-   - Variant value patterns in inspect need std::get_if handling
-   - 158 remaining failing tests need implementation
+3. **Chained comparison support**: +1 test (31→32)
+   - Expand `a <= b <= c` to `a <= b && b <= c`
+   - Cpp2 supports mathematical chained comparisons, C++ doesn't
 
-### Tasks
-
-- [x] Create git worktree `corpus-validation` from master branch
-- [x] Set up validation environment and paths
-- [x] Initialize results tracking (CSV: file, status, loss_score, errors, time)
-- [x] Corpus scan completed: 134 PASS, 55 FAIL (see corpus_scan_results.txt)
-- [x] Baseline established: 31/189 passing (16.4%)
-- [~] Fix remaining 158 failing files (31/189 passing baseline)
+4. **Known blockers**:
+   - Template argument preservation in function calls (e.g., `X<0>()` → `X()`)
+   - as/is expression type conversions for non-compatible types
+   - 157 remaining failing tests need implementation
   - [x] mixed-allcpp1-hello.cpp2 (C++1 passthrough mode)
   - [x] mixed-as-for-variant-20-types.cpp2 (template args fixed)
   - [x] mixed-autodiff-taylor.cpp2 (loop initializer implemented)
