@@ -10,7 +10,8 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
-**Current Status**: 162/189 passing (85.7%) - corpus scan 2026-01-02
+**Current Status**: 163/189 passing (86.2%) - corpus scan 2026-01-02
+- For-loop disambiguation: +1 file (2026-01-02)
 - C++1 syntax detection improvements: +28 files (2026-01-02)
 - Loop initializer implementation: +1 file (2026-01-01)
 - Template argument fix: +13 files (2026-01-01)

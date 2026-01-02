@@ -84,6 +84,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Full completion: 189/189 files transpiling successfully
 
 **Recent Progress**:
+- 2026-01-02: For-loop disambiguation (+1 file, 85.7% → 86.2%)
+  - 163/189 passing (86.2% total)
+  - Fixed: Cpp2 for-do loops with parenthesized range expressions
+  - Speculative parsing distinguishes `for (expr).method() do` from traditional loops
+- 2026-01-02: Type alias support (no new files, feature enablement)
+  - Implemented: File-scope type alias syntax `name: type == expr;`
 - 2026-01-02: C++1 syntax detection improvements (+28 files, 70.9% → 85.7%)
   - 162/189 passing (85.7% total)
   - Enhanced: C++1 function/constexpr syntax detection with qualifiers
@@ -96,11 +102,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 - 2025-12-31: Parser improvements (+120 files, 4.2% → 63.5%)
   - Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
 
-**Remaining Blockers** (27 files as of 2026-01-02):
+**Remaining Blockers** (26 files as of 2026-01-02):
 1. UFCS in template arguments/non-local contexts (6 files)
-2. Type aliases and namespace features (5 files)
+2. Type aliases and namespace features (5 files) - Note: basic type alias syntax now supported
 3. Advanced pointer/declaration syntax (4 files)
-4. For-loop syntax extensions (`for range.method() do`) (3 files)
+4. For-loop with lambda ranges (2 files) - Note: method chaining now works
 5. Pattern matching/inspection features (3 files)
 6. String/expression features (3 files)
 7. Function expression syntax (2 files)
