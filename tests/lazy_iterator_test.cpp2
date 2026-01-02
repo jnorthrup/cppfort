@@ -1,0 +1,20 @@
+#include "lazy_iterator.hpp"
+#include <vector>
+#include <iostream>
+
+main: () = {
+    vec: std::vector<int> = (1, 2, 3, 4, 5);
+    
+    lazy := cpp2::iter(vec);
+    
+    // map: x -> x*2 (2, 4, 6, 8, 10)
+    // filter: x > 5 (6, 8, 10)
+    
+    empty_vec: std::vector<int> = ();
+    res := lazy.map(:(x) = x * 2).filter(:(x) = x > 5).collect(empty_vec);
+    
+    std::cout << "size: " << res.size() << "\n";
+    for res do (i) {
+        std::cout << i << "\n";
+    }
+}
