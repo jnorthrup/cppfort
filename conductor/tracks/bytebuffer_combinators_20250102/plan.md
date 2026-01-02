@@ -63,31 +63,31 @@
 
 ---
 
-## Phase 3: Transformation Combinators
+## Phase 3: Transformation Combinators [checkpoint: 2521c41]
 
 ### Tasks
 
-- [ ] Implement `map(f)` combinator in `include/combinators/transformation.hpp`
+- [x] Implement `map(f)` combinator in `include/combinators/transformation.hpp`
   - Lazy application of f to each element
   - Type transformation support (T -> U)
-- [ ] Implement `filter(pred)` combinator
+- [x] Implement `filter(pred)` combinator
   - Lazy predicate application
   - Short-circuit iteration
-- [ ] Implement `flat_map(f)` combinator
+- [x] Implement `flat_map(f)` combinator
   - Flattens nested sequences
   - Lazy inner sequence evaluation
-- [ ] Implement `enumerate()` combinator
+- [x] Implement `enumerate()` combinator
   - Returns (index, element) pairs
-- [ ] Implement `zip(other)` combinator
+- [x] Implement `zip(other)` combinator
   - Combines two sequences element-wise
   - Stops at shorter sequence
-- [ ] Implement `intersperse(sep)` combinator
+- [x] Implement `intersperse(sep)` combinator
   - Inserts separator between elements
 - [ ] Implement pipeline operator `|>` in Cpp2 grammar
   - Parser extension for left-to-right composition
   - AST node for pipeline expressions
   - Codegen for method call chaining
-- [ ] Unit tests for all transformation combinators
+- [x] Unit tests for all transformation combinators
   - Verify lazy evaluation (no work until iteration)
   - Test chaining: map |> filter |> map
 

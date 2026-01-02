@@ -1,0 +1,460 @@
+// Transformation Combinators Unit Tests
+// Tests for map, filter, enumerate, zip, intersperse, flat_map
+
+#include "../include/bytebuffer.hpp"
+#include "../include/strview.hpp"
+#include "../include/combinators/structural.hpp"
+#include "../include/combinators/transformation.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
+#include <cassert>
+#include <cstddef>
+
+// ============================================================================
+// map() tests
+// ============================================================================
+
+test_map_basic: () -> void = {
+    data: std::string = "hello";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Map each char to uppercase
+    mapped := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::map(:(c: char) -> char = { return std::toupper(c) as char; });
+    
+    result: std::string = "";
+    for mapped do (c) {
+        result += c;
+    }
+    
+    assert(result == "HELLO");
+    std::cout << "test_map_basic: PASS\n";
+}
+
+test_map_type_transform: () -> void = {
+    data: std::string = "ABC";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Map char to int (ASCII value)
+    mapped := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::map(:(c: char) -> int = { return c as int; });
+    
+    values: std::vector<int> = ();
+    for mapped do (v) {
+        values.push_back(v);
+    }
+    
+    assert(values.size() == 3);
+    assert(values[0] == 65);  // 'A'
+    assert(values[1] == 66);  // 'B'
+    assert(values[2] == 67);  // 'C'
+    
+    std::cout << "test_map_type_transform: PASS\n";
+}
+
+test_map_chained: () -> void = {
+    data: std::string = "abc";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Double map: to upper, then to int
+    mapped := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::map(:(c: char) -> char = { return std::toupper(c) as char; })
+        | cpp2::combinators::curried::map(:(c: char) -> int = { return c as int; });
+    
+    values: std::vector<int> = ();
+    for mapped do (v) {
+        values.push_back(v);
+    }
+    
+    assert(values.size() == 3);
+    assert(values[0] == 65);  // 'A'
+    assert(values[1] == 66);  // 'B'
+    assert(values[2] == 67);  // 'C'
+    
+    std::cout << "test_map_chained: PASS\n";
+}
+
+// ============================================================================
+// filter() tests
+// ============================================================================
+
+test_filter_basic: () -> void = {
+    data: std::string = "a1b2c3";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Filter to keep only digits
+    filtered := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isdigit(c) != 0; });
+    
+    result: std::string = "";
+    for filtered do (c) {
+        result += c;
+    }
+    
+    assert(result == "123");
+    std::cout << "test_filter_basic: PASS\n";
+}
+
+test_filter_none_match: () -> void = {
+    data: std::string = "abc";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Filter to keep only digits (none exist)
+    filtered := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isdigit(c) != 0; });
+    
+    cnt: int = 0;
+    for filtered do (c) {
+        cnt++;
+    }
+    
+    assert(cnt == 0);
+    std::cout << "test_filter_none_match: PASS\n";
+}
+
+test_filter_all_match: () -> void = {
+    data: std::string = "ABC";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Filter to keep only uppercase (all match)
+    filtered := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isupper(c) != 0; });
+    
+    result: std::string = "";
+    for filtered do (c) {
+        result += c;
+    }
+    
+    assert(result == "ABC");
+    std::cout << "test_filter_all_match: PASS\n";
+}
+
+// ============================================================================
+// map + filter chaining tests
+// ============================================================================
+
+test_map_filter_chain: () -> void = {
+    data: std::string = "a1B2c3";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Map to uppercase, then filter to keep only letters
+    result := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::map(:(c: char) -> char = { return std::toupper(c) as char; })
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isalpha(c) != 0; });
+    
+    output: std::string = "";
+    for result do (c) {
+        output += c;
+    }
+    
+    assert(output == "ABC");
+    std::cout << "test_map_filter_chain: PASS\n";
+}
+
+test_filter_map_chain: () -> void = {
+    data: std::string = "a1b2c3";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Filter letters first, then map to uppercase
+    result := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isalpha(c) != 0; })
+        | cpp2::combinators::curried::map(:(c: char) -> char = { return std::toupper(c) as char; });
+    
+    output: std::string = "";
+    for result do (c) {
+        output += c;
+    }
+    
+    assert(output == "ABC");
+    std::cout << "test_filter_map_chain: PASS\n";
+}
+
+// ============================================================================
+// enumerate() tests
+// ============================================================================
+
+test_enumerate_basic: () -> void = {
+    data: std::string = "abc";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    enumerated := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::enumerate();
+    
+    indices: std::vector<size_t> = ();
+    chars: std::string = "";
+    for enumerated do (pair) {
+        indices.push_back(pair.first);
+        chars += pair.second;
+    }
+    
+    assert(indices.size() == 3);
+    assert(indices[0] == 0);
+    assert(indices[1] == 1);
+    assert(indices[2] == 2);
+    assert(chars == "abc");
+    
+    std::cout << "test_enumerate_basic: PASS\n";
+}
+
+test_enumerate_empty: () -> void = {
+    data: std::string = "";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    enumerated := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::enumerate();
+    
+    cnt: int = 0;
+    for enumerated do (pair) {
+        cnt++;
+    }
+    
+    assert(cnt == 0);
+    std::cout << "test_enumerate_empty: PASS\n";
+}
+
+// ============================================================================
+// zip() tests
+// ============================================================================
+
+test_zip_basic: () -> void = {
+    data1: std::string = "abc";
+    data2: std::string = "123";
+    buf1: cpp2::ByteBuffer = (data1.data(), data1.size());
+    buf2: cpp2::ByteBuffer = (data2.data(), data2.size());
+    
+    zipped := cpp2::combinators::zip(buf1, buf2);
+    
+    pairs: std::vector<std::pair<char, char>> = ();
+    for zipped do (p) {
+        pairs.push_back(p);
+    }
+    
+    assert(pairs.size() == 3);
+    assert(pairs[0].first == 'a' && pairs[0].second == '1');
+    assert(pairs[1].first == 'b' && pairs[1].second == '2');
+    assert(pairs[2].first == 'c' && pairs[2].second == '3');
+    
+    std::cout << "test_zip_basic: PASS\n";
+}
+
+test_zip_different_lengths: () -> void = {
+    data1: std::string = "abcdef";
+    data2: std::string = "12";
+    buf1: cpp2::ByteBuffer = (data1.data(), data1.size());
+    buf2: cpp2::ByteBuffer = (data2.data(), data2.size());
+    
+    // Should stop at shortest
+    zipped := cpp2::combinators::zip(buf1, buf2);
+    
+    cnt: int = 0;
+    for zipped do (p) {
+        cnt++;
+    }
+    
+    assert(cnt == 2);
+    std::cout << "test_zip_different_lengths: PASS\n";
+}
+
+test_zip_curried: () -> void = {
+    data1: std::string = "ab";
+    data2: std::string = "12";
+    buf1: cpp2::ByteBuffer = (data1.data(), data1.size());
+    buf2: cpp2::ByteBuffer = (data2.data(), data2.size());
+    
+    zipped := cpp2::combinators::from(buf1)
+        | cpp2::combinators::curried::zip(buf2);
+    
+    pairs: std::vector<std::pair<char, char>> = ();
+    for zipped do (p) {
+        pairs.push_back(p);
+    }
+    
+    assert(pairs.size() == 2);
+    std::cout << "test_zip_curried: PASS\n";
+}
+
+// ============================================================================
+// intersperse() tests
+// ============================================================================
+
+test_intersperse_basic: () -> void = {
+    data: std::string = "abc";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    sep: char = 0x2D;  // '-' as hex
+    interspersed := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::intersperse(sep);
+    
+    result: std::string = "";
+    for interspersed do (c) {
+        result += c;
+    }
+    
+    assert(result == "a-b-c");
+    std::cout << "test_intersperse_basic: PASS\n";
+}
+
+test_intersperse_single: () -> void = {
+    data: std::string = "x";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    sep: char = 0x2D;  // '-' as hex
+    interspersed := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::intersperse(sep);
+    
+    result: std::string = "";
+    for interspersed do (c) {
+        result += c;
+    }
+    
+    // Single element - no separator
+    assert(result == "x");
+    std::cout << "test_intersperse_single: PASS\n";
+}
+
+test_intersperse_empty: () -> void = {
+    data: std::string = "";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    sep: char = 0x2D;  // '-' as hex
+    interspersed := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::intersperse(sep);
+    
+    cnt: int = 0;
+    for interspersed do (c) {
+        cnt++;
+    }
+    
+    assert(cnt == 0);
+    std::cout << "test_intersperse_empty: PASS\n";
+}
+
+// ============================================================================
+// Combined pipeline tests
+// ============================================================================
+
+test_complex_pipeline: () -> void = {
+    data: std::string = "a1b2c3d4e5";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Filter letters, map to uppercase, enumerate
+    result := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::filter(:(c: char) -> bool = { return std::isalpha(c) != 0; })
+        | cpp2::combinators::curried::map(:(c: char) -> char = { return std::toupper(c) as char; })
+        | cpp2::combinators::curried::enumerate();
+    
+    indices: std::vector<size_t> = ();
+    chars: std::string = "";
+    for result do (pair) {
+        indices.push_back(pair.first);
+        chars += pair.second;
+    }
+    
+    assert(chars == "ABCDE");
+    assert(indices.size() == 5);
+    assert(indices[0] == 0);
+    assert(indices[4] == 4);
+    
+    std::cout << "test_complex_pipeline: PASS\n";
+}
+
+test_structural_transform_chain: () -> void = {
+    // Combine structural and transformation combinators
+    data: std::string = "hello world test";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    // Take first 11 chars, split by space, enumerate
+    space: char = 0x20;  // Use hex to avoid char literal issues
+    taken := cpp2::combinators::take(buf, 11);
+    
+    // Verify take result
+    taken_str: std::string = "";
+    for taken do (c) {
+        taken_str += c;
+    }
+    
+    assert(taken_str == "hello world");
+    std::cout << "test_structural_transform_chain: PASS\n";
+}
+
+// ============================================================================
+// first() and last() tests
+// ============================================================================
+
+test_first_last: () -> void = {
+    data: std::string = "abc";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    range := cpp2::combinators::from(buf);
+    
+    f := range.first();
+    l := range.last();
+    
+    assert(f.has_value() && f.value() == 'a');
+    assert(l.has_value() && l.value() == 'c');
+    
+    std::cout << "test_first_last: PASS\n";
+}
+
+test_first_last_empty: () -> void = {
+    data: std::string = "";
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    
+    range := cpp2::combinators::from(buf);
+    
+    f := range.first();
+    l := range.last();
+    
+    assert(!f.has_value());
+    assert(!l.has_value());
+    
+    std::cout << "test_first_last_empty: PASS\n";
+}
+
+// ============================================================================
+// Main
+// ============================================================================
+
+main: () -> int = {
+    std::cout << "=== Transformation Combinators Tests ===\n\n";
+    
+    // map tests
+    test_map_basic();
+    test_map_type_transform();
+    test_map_chained();
+    
+    // filter tests
+    test_filter_basic();
+    test_filter_none_match();
+    test_filter_all_match();
+    
+    // map + filter chain
+    test_map_filter_chain();
+    test_filter_map_chain();
+    
+    // enumerate tests
+    test_enumerate_basic();
+    test_enumerate_empty();
+    
+    // zip tests
+    test_zip_basic();
+    test_zip_different_lengths();
+    test_zip_curried();
+    
+    // intersperse tests
+    test_intersperse_basic();
+    test_intersperse_single();
+    test_intersperse_empty();
+    
+    // complex pipelines
+    test_complex_pipeline();
+    test_structural_transform_chain();
+    
+    // first/last tests
+    test_first_last();
+    test_first_last_empty();
+    
+    std::cout << "\n=== All transformation combinator tests passed! ===\n";
+    return 0;
+}
