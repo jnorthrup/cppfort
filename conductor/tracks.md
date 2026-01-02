@@ -70,7 +70,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Full Corpus Transpile Validation - Match Cppfront Output
+## [~] Track: Full Corpus Transpile Validation - Match Cppfront Output
 *Link: [./conductor/tracks/corpus_validation_20251230/](./conductor/tracks/corpus_validation_20251230/)*
 *Status: ACTIVE* - Single-phase validation of all 189 corpus files
 
@@ -84,6 +84,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Full completion: 189/189 files transpiling successfully
 
 **Recent Progress**:
+- 2026-01-02: C++1 syntax detection improvements (+28 files, 70.9% → 85.7%)
+  - 162/189 passing (85.7% total)
+  - Enhanced: C++1 function/constexpr syntax detection with qualifiers
+  - Fixed: Null safety in qualified_type parser
 - 2026-01-01: Loop initializer syntax (+1 file, 70.4% → 70.9%)
   - 134/189 passing (pure2: 93/139 [66.9%], mixed: 41/50 [82.0%])
   - Implemented: `(copy i:=0)` loop initializer syntax for while/for loops
@@ -92,11 +96,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 - 2025-12-31: Parser improvements (+120 files, 4.2% → 63.5%)
   - Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
 
-**Remaining Blockers** (55 files):
-1. Variadics (Ts...) parameter packs (~10 files)
-2. Type aliases and namespace aliases (~8 files)
-3. Unary + operator, named returns with defaults (~5 files)
-4. UFCS edge cases, inspect/is patterns (~10+ files)
+**Remaining Blockers** (27 files as of 2026-01-02):
+1. UFCS in template arguments/non-local contexts (6 files)
+2. Type aliases and namespace features (5 files)
+3. Advanced pointer/declaration syntax (4 files)
+4. For-loop syntax extensions (`for range.method() do`) (3 files)
+5. Pattern matching/inspection features (3 files)
+6. String/expression features (3 files)
+7. Function expression syntax (2 files)
+8. Last-use semantics (1 complex file, 1000+ lines)
 
 ---
 
