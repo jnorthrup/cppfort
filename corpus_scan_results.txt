@@ -1,5 +1,5 @@
 === Corpus Scan Results ===
-Date: Fri Jan  2 05:46:29 CST 2026
+Date: Fri Jan  2 06:18:01 CST 2026
 
 PASS: mixed-allcpp1-hello (mixed)
 PASS: mixed-as-for-variant-20-types (mixed)
@@ -108,7 +108,7 @@ PASS: pure2-forward-return (pure2)
 FAIL: pure2-function-body-reflection (pure2) - exit 1
 PASS: pure2-function-multiple-forward-arguments (pure2)
 PASS: pure2-function-single-expression-body-default-return (pure2)
-FAIL: pure2-function-typeids (pure2) - exit 1
+PASS: pure2-function-typeids (pure2)
 PASS: pure2-hashable (pure2)
 PASS: pure2-hello (pure2)
 PASS: pure2-initialization-loop-2-error (pure2)
@@ -188,11 +188,11 @@ PASS: pure2-types-value-types-via-meta-functions (pure2)
 PASS: pure2-ufcs-member-access-and-chaining (pure2)
 PASS: pure2-union (pure2)
 PASS: pure2-unsafe (pure2)
-FAIL: pure2-variadics (pure2) - exit 1
+PASS: pure2-variadics (pure2)
 PASS: pure2-various-string-literals (pure2)
 
 === Summary ===
 Total: 189
-Pass: 160
-Fail: 29
+Pass: 162
+Fail: 27
 Segfault: 0

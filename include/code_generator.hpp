@@ -96,6 +96,7 @@ private:
     std::string generate_array_type(Type* type);
     std::string generate_function_type(Type* type);
     std::string generate_template_type(Type* type);
+    std::string convert_function_type_to_cpp(const std::string& func_type);
 
     // Parameter generation with qualifiers
     std::string generate_parameter_type(Type* type, const std::vector<ParameterQualifier>& qualifiers);

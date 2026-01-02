@@ -1808,6 +1808,70 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
     return expr_output.str();
 }
 
+// Convert Cpp2 function type "(params) -> return_type" to C++ "return_type(params)"
+std::string CodeGenerator::convert_function_type_to_cpp(const std::string& func_type) {
+    // Parse "(params) -> return_type" format
+    // Find the -> separator
+    auto arrow_pos = func_type.find(") ->");
+    if (arrow_pos == std::string::npos) {
+        return func_type;  // Fallback
+    }
+    
+    // Extract params (skip opening paren)
+    std::string params = func_type.substr(1, arrow_pos - 1);
+    
+    // Extract return type (skip ") -> ")
+    std::string return_type = func_type.substr(arrow_pos + 4);
+    
+    // Trim whitespace from return type
+    size_t start = return_type.find_first_not_of(" ");
+    if (start != std::string::npos) {
+        return_type = return_type.substr(start);
+    }
+    
+    // Handle "forward" return kind - just strip it for C++ output
+    if (return_type.starts_with("forward ")) {
+        return_type = return_type.substr(8);
+    }
+    
+    // Convert parameter list from Cpp2 to C++
+    // Cpp2: "x:int, y:int" -> C++: "int, int"
+    std::string cpp_params;
+    std::istringstream param_stream(params);
+    std::string param;
+    bool first = true;
+    
+    while (std::getline(param_stream, param, ',')) {
+        // Trim whitespace
+        size_t pstart = param.find_first_not_of(" ");
+        size_t pend = param.find_last_not_of(" ");
+        if (pstart == std::string::npos) continue;
+        param = param.substr(pstart, pend - pstart + 1);
+        
+        // Find colon separator: "name: type" or "name:type"
+        auto colon_pos = param.find(':');
+        if (colon_pos != std::string::npos) {
+            // Extract type after colon
+            std::string type_part = param.substr(colon_pos + 1);
+            // Trim whitespace from type
+            size_t tstart = type_part.find_first_not_of(" ");
+            if (tstart != std::string::npos) {
+                type_part = type_part.substr(tstart);
+            }
+            
+            if (!first) cpp_params += ", ";
+            cpp_params += type_part;
+            first = false;
+        }
+    }
+    
+    // Generate C++ function type: return_type(params)
+    if (return_type == "void" || return_type.empty()) {
+        return "void(" + cpp_params + ")";
+    }
+    return return_type + "(" + cpp_params + ")";
+}
+
 std::string CodeGenerator::generate_type(Type* type) {
     if (!type) return "void";
 
@@ -1838,6 +1902,17 @@ std::string CodeGenerator::generate_type(Type* type) {
             return result;
         }
         case Type::Kind::Pointer:
+            // Special case: pointer to function type needs special C++ syntax
+            if (type->pointee && type->pointee->kind == Type::Kind::FunctionType) {
+                // Convert function type pointer: need "return_type(*)(params)"
+                std::string func_cpp = convert_function_type_to_cpp(type->pointee->name);
+                // func_cpp is "return_type(params)", need to insert (*) 
+                auto paren_pos = func_cpp.find('(');
+                if (paren_pos != std::string::npos) {
+                    return func_cpp.substr(0, paren_pos) + "(*)" + func_cpp.substr(paren_pos);
+                }
+                return func_cpp + "*";
+            }
             return generate_type(type->pointee.get()) + "*";
         case Type::Kind::Reference:
             return generate_type(type->pointee.get()) + "&";
@@ -1853,6 +1928,11 @@ std::string CodeGenerator::generate_type(Type* type) {
                 return constraint;  // constraint auto param
             }
             return "decltype(auto)";
+        case Type::Kind::FunctionType:
+            // Function type: (params) -> return_type
+            // Convert to C++ function type for use in std::function<> etc.
+            // The name contains the Cpp2 form which we need to convert
+            return convert_function_type_to_cpp(type->name);
         default:
             return type->name;
     }

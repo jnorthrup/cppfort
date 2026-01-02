@@ -53,6 +53,7 @@ struct Type {
         Reference,
         Array,
         Function,
+        FunctionType,   // Cpp2 function type: (params) -> return_type
         Auto,
         Deduced,
         TemplateParameter,

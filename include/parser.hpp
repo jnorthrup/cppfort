@@ -99,6 +99,8 @@ private:
     // Expressions (precedence climbing)
     std::unique_ptr<Expression> assignment_expression();
     std::unique_ptr<Expression> ternary_expression();
+    std::unique_ptr<Expression> requires_constraint_expression();
+    std::unique_ptr<Expression> requires_comparison_expression();
     std::unique_ptr<Expression> logical_or_expression();
     std::unique_ptr<Expression> logical_and_expression();
     std::unique_ptr<Expression> equality_expression();
