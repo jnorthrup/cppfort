@@ -83,34 +83,30 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Semantic loss target: <0.05 average
 - Full completion: 189/189 files transpiling successfully
 
-**Recent Progress**:
-- 2026-01-02: For-loop disambiguation (+1 file, 85.7% → 86.2%)
-  - 163/189 passing (86.2% total)
-  - Fixed: Cpp2 for-do loops with parenthesized range expressions
-  - Speculative parsing distinguishes `for (expr).method() do` from traditional loops
-- 2026-01-02: Type alias support (no new files, feature enablement)
-  - Implemented: File-scope type alias syntax `name: type == expr;`
-- 2026-01-02: C++1 syntax detection improvements (+28 files, 70.9% → 85.7%)
-  - 162/189 passing (85.7% total)
-  - Enhanced: C++1 function/constexpr syntax detection with qualifiers
-  - Fixed: Null safety in qualified_type parser
-- 2026-01-01: Loop initializer syntax (+1 file, 70.4% → 70.9%)
-  - 134/189 passing (pure2: 93/139 [66.9%], mixed: 41/50 [82.0%])
-  - Implemented: `(copy i:=0)` loop initializer syntax for while/for loops
-- 2026-01-01: Template argument preservation (+13 files, 63.5% → 70.4%)
-  - Fixed: Template argument capture for non-type template parameters
-- 2025-12-31: Parser improvements (+120 files, 4.2% → 63.5%)
-  - Fixed: == compile-time functions, @flag_enum, postfix is, named returns, access specifiers, concept keyword
+**Current Baseline** (2026-01-02):
+- 21/189 passing (11.1%) - ACCURATE baseline after test framework fix
+- Previous 163/189 (86.2%) claim was based on transpilation success only, NOT full compile+run
+- Test framework fix: Added `-I third_party/cppfront/include` to compilation
 
-**Remaining Blockers** (26 files as of 2026-01-02):
-1. UFCS in template arguments/non-local contexts (6 files)
-2. Type aliases and namespace features (5 files) - Note: basic type alias syntax now supported
-3. Advanced pointer/declaration syntax (4 files)
-4. For-loop with lambda ranges (2 files) - Note: method chaining now works
-5. Pattern matching/inspection features (3 files)
-6. String/expression features (3 files)
-7. Function expression syntax (2 files)
-8. Last-use semantics (1 complex file, 1000+ lines)
+**Recent Progress**:
+- 2026-01-02: Test framework fix (+10 tests, 11 → 21 passing)
+  - Added cpp2util.h include path to compilation
+  - New passes: mixed-bounds-check, mixed-hello, pure2-hello, pure2-break-continue, etc.
+- 2026-01-02: For-loop disambiguation (transpilation success)
+- 2026-01-02: Type alias support (transpilation success)
+- 2026-01-02: C++1 syntax detection improvements (transpilation success)
+- 2026-01-01: Loop initializer syntax (transpilation success)
+- 2026-01-01: Template argument preservation (transpilation success)
+- 2025-12-31: Parser improvements (transpilation success)
+
+**Remaining Blockers** (147 non-error tests failing):
+1. Pattern matching (`inspect`, `is`, `as` operators) - ~20 tests
+2. Function expressions (unbraced syntax) - ~9 tests
+3. Type system features (advanced types, constraints) - ~17 tests
+4. Contract assertions - ~4 tests
+5. String interpolation (`$"..."$`) - ~3 tests
+6. UFCS in complex contexts - ~6 tests
+7. Various language features (autodiff, bounds, parameters) - ~88 tests
 
 ---
 
