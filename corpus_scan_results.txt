@@ -1,6 +1,3 @@
-=== Corpus Scan Results ===
-Date: Fri Jan  2 06:18:01 CST 2026
-
 PASS: mixed-allcpp1-hello (mixed)
 PASS: mixed-as-for-variant-20-types (mixed)
 PASS: mixed-autodiff-taylor (mixed)
@@ -125,13 +122,13 @@ PASS: pure2-is-with-free-functions-predicate (pure2)
 PASS: pure2-is-with-polymorphic-types (pure2)
 PASS: pure2-is-with-unnamed-predicates (pure2)
 PASS: pure2-is-with-variable-and-value (pure2)
-FAIL: pure2-last-use (pure2) - exit 139
+FAIL: pure2-last-use (pure2) - exit 1
 PASS: pure2-lifetime-safety-pointer-init-1-error (pure2)
 PASS: pure2-lifetime-safety-reject-null-error (pure2)
 PASS: pure2-look-up-parameter-across-unnamed-function (pure2)
 PASS: pure2-main-args (pure2)
 PASS: pure2-more-wildcards (pure2)
-FAIL: pure2-print (pure2) - exit 139
+FAIL: pure2-print (pure2) - exit 1
 FAIL: pure2-range-operators (pure2) - exit 1
 FAIL: pure2-raw-string-literal-and-interpolation (pure2) - exit 1
 PASS: pure2-regex_01_char_matcher (pure2)
@@ -190,9 +187,3 @@ PASS: pure2-union (pure2)
 PASS: pure2-unsafe (pure2)
 PASS: pure2-variadics (pure2)
 PASS: pure2-various-string-literals (pure2)
-
-=== Summary ===
-Total: 189
-Pass: 162
-Fail: 27
-Segfault: 0
