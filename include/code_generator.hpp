@@ -47,6 +47,7 @@ private:
 
     void generate_statement(Statement* stmt);
     void generate_block_statement(BlockStatement* stmt);
+    void generate_scope_block_statement(ScopeBlockStatement* stmt);
     void generate_expression_statement(ExpressionStatement* stmt);
     void generate_if_statement(IfStatement* stmt);
     void generate_while_statement(WhileStatement* stmt);

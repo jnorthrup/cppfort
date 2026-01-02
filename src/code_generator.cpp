@@ -365,6 +365,12 @@ void CodeGenerator::generate_type_declaration(TypeDeclaration* decl) {
         write_line(">");
     }
 
+    // Generate requires clause if present
+    if (decl->requires_clause) {
+        write("requires ");
+        write_line(generate_expression_to_string(decl->requires_clause.get()));
+    }
+
     // Check for @interface and @union metafunctions which need special handling
     bool is_interface = false;
     bool is_union = false;
@@ -834,7 +840,21 @@ void CodeGenerator::generate_namespace_declaration(NamespaceDeclaration* decl) {
 
 void CodeGenerator::generate_using_declaration(UsingDeclaration* decl) {
     if (!decl) return;
-    write_line("using " + decl->name + " = " + decl->target + ";");
+    // Alias form: 'using name = target;'
+    if (!decl->name.empty()) {
+        write_line("using " + decl->name + " = " + decl->target + ";");
+        return;
+    }
+
+    // Non-alias using: either 'using qualified::name;' or wildcard shorthand 'qualified::_'
+    if (decl->target.size() >= 3 && decl->target.compare(decl->target.size() - 3, 3, "::_") == 0) {
+        // Wildcard shorthand; emit 'using namespace QUAL;' where QUAL is target without '::_'
+        std::string qual = decl->target.substr(0, decl->target.size() - 3);
+        write_line("using namespace " + qual + ";");
+    } else {
+        // Emit a direct using-declaration (bring name into scope)
+        write_line("using " + decl->target + ";");
+    }
 }
 
 void CodeGenerator::generate_import_declaration(ImportDeclaration* decl) {
@@ -912,6 +932,9 @@ void CodeGenerator::generate_statement(Statement* stmt) {
         case Statement::Kind::ChannelDecl:
             generate_channel_declaration(static_cast<ChannelDeclarationStatement*>(stmt));
             break;
+        case Statement::Kind::ScopeBlock:
+            generate_scope_block_statement(static_cast<ScopeBlockStatement*>(stmt));
+            break;
         default:
             break;
     }
@@ -925,6 +948,40 @@ void CodeGenerator::generate_block_statement(BlockStatement* stmt) {
     for (auto& s : stmt->statements) {
         generate_statement(s.get());
     }
+    dedent();
+    write_line("}");
+}
+
+void CodeGenerator::generate_scope_block_statement(ScopeBlockStatement* stmt) {
+    if (!stmt) return;
+
+    // Generate: { initializers; body }
+    write_line("{");
+    indent();
+
+    // Generate all initializers as local variables
+    for (const auto& init : stmt->initializers) {
+        std::string init_str = generate_expression_to_string(init->initializer.get());
+        std::string type_str = "auto";
+        if (init->type && init->type->kind != Type::Kind::Auto) {
+            type_str = generate_type(init->type.get());
+        }
+        write_line(type_str + " " + init->name + " = " + init_str + ";");
+    }
+
+    // Generate the body
+    if (stmt->body) {
+        if (stmt->body->kind == Statement::Kind::Block) {
+            // If the body is a block, generate its contents directly (avoid double braces)
+            auto block = static_cast<BlockStatement*>(stmt->body.get());
+            for (auto& s : block->statements) {
+                generate_statement(s.get());
+            }
+        } else {
+            generate_statement(stmt->body.get());
+        }
+    }
+
     dedent();
     write_line("}");
 }
@@ -946,20 +1003,22 @@ void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
 
     bool is_labeled = !stmt->label.empty();
     bool has_increment = stmt->increment != nullptr;
-    bool has_loop_init = stmt->loop_init != nullptr;
+    bool has_loop_inits = !stmt->loop_inits.empty();
     std::string cond_str = generate_expression_to_string(stmt->condition.get());
 
     // If there's a loop initializer, wrap everything in a scope
-    if (has_loop_init) {
+    if (has_loop_inits) {
         write_line("{");
         indent();
-        // Generate the loop initializer variable
-        std::string type_str = "auto";
-        if (stmt->loop_init->type && stmt->loop_init->type->kind != Type::Kind::Auto) {
-            type_str = generate_type(stmt->loop_init->type.get());
+        // Generate all loop initializer variables
+        for (const auto& loop_init : stmt->loop_inits) {
+            std::string type_str = "auto";
+            if (loop_init->type && loop_init->type->kind != Type::Kind::Auto) {
+                type_str = generate_type(loop_init->type.get());
+            }
+            std::string init_str = generate_expression_to_string(loop_init->initializer.get());
+            write_line(type_str + " " + loop_init->name + " = " + init_str + ";");
         }
-        std::string init_str = generate_expression_to_string(stmt->loop_init->initializer.get());
-        write_line(type_str + " " + stmt->loop_init->name + " = " + init_str + ";");
     }
 
     if (is_labeled) {
@@ -1017,7 +1076,7 @@ void CodeGenerator::generate_while_statement(WhileStatement* stmt) {
     }
 
     // Close loop initializer scope if present
-    if (has_loop_init) {
+    if (has_loop_inits) {
         dedent();
         write_line("}");
     }
@@ -1150,21 +1209,23 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     if (!stmt) return;
 
     bool is_labeled = !stmt->label.empty();
-    bool has_loop_init = stmt->loop_init != nullptr;
+    bool has_loop_inits = !stmt->loop_inits.empty();
     std::string var_type = stmt->var_type ? generate_type(stmt->var_type.get()) : "auto";
     std::string range_str = generate_expression_to_string(stmt->range.get());
 
     // If there's a loop initializer, wrap everything in a scope
-    if (has_loop_init) {
+    if (has_loop_inits) {
         write_line("{");
         indent();
-        // Generate the loop initializer variable
-        std::string type_str = "auto";
-        if (stmt->loop_init->type && stmt->loop_init->type->kind != Type::Kind::Auto) {
-            type_str = generate_type(stmt->loop_init->type.get());
+        // Generate all loop initializer variables
+        for (const auto& loop_init : stmt->loop_inits) {
+            std::string type_str = "auto";
+            if (loop_init->type && loop_init->type->kind != Type::Kind::Auto) {
+                type_str = generate_type(loop_init->type.get());
+            }
+            std::string init_str = generate_expression_to_string(loop_init->initializer.get());
+            write_line(type_str + " " + loop_init->name + " = " + init_str + ";");
         }
-        std::string init_str = generate_expression_to_string(stmt->loop_init->initializer.get());
-        write_line(type_str + " " + stmt->loop_init->name + " = " + init_str + ";");
     }
 
     if (is_labeled) {
@@ -1221,7 +1282,7 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     }
 
     // Close loop initializer scope if present
-    if (has_loop_init) {
+    if (has_loop_inits) {
         dedent();
         write_line("}");
     }
@@ -1350,21 +1411,25 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 expr_output << (std::get<bool>(lit->value) ? "true" : "false");
             } else if (std::holds_alternative<std::string>(lit->value)) {
                 const std::string& str_val = std::get<std::string>(lit->value);
-                // Check if this is a string with prefix (u", U", u8", L", R", LR", uR", UR", u8R")
-                // These already include their prefix and quotes in the lexeme
-                bool has_prefix = (str_val.size() >= 2) && (
-                    (str_val[0] == 'u' && str_val[1] == '"') ||
-                    (str_val[0] == 'U' && str_val[1] == '"') ||
-                    (str_val.size() >= 3 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == '"') ||
-                    (str_val[0] == 'L' && str_val[1] == '"') ||
-                    (str_val[0] == 'R' && str_val[1] == '"') ||
-                    (str_val.size() >= 3 && str_val[0] == 'L' && str_val[1] == 'R' && str_val[2] == '"') ||
-                    (str_val.size() >= 3 && str_val[0] == 'u' && str_val[1] == 'R' && str_val[2] == '"') ||
-                    (str_val.size() >= 3 && str_val[0] == 'U' && str_val[1] == 'R' && str_val[2] == '"') ||
-                    (str_val.size() >= 4 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == 'R' && str_val[3] == '"')
-                );
-                if (has_prefix) {
-                    expr_output << str_val;  // Already has prefix and quotes
+                // Check if this is a raw string literal that already includes quotes
+                // (e.g., from adjacent string concatenation or prefix strings)
+                bool already_quoted = (!str_val.empty() && str_val[0] == '"') ||
+                    (str_val.size() >= 2 && (
+                        (str_val[0] == 'u' && str_val[1] == '"') ||
+                        (str_val[0] == 'U' && str_val[1] == '"') ||
+                        (str_val[0] == 'L' && str_val[1] == '"') ||
+                        (str_val[0] == 'R' && str_val[1] == '"')
+                    )) ||
+                    (str_val.size() >= 3 && (
+                        (str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == '"') ||
+                        (str_val[0] == 'L' && str_val[1] == 'R' && str_val[2] == '"') ||
+                        (str_val[0] == 'u' && str_val[1] == 'R' && str_val[2] == '"') ||
+                        (str_val[0] == 'U' && str_val[1] == 'R' && str_val[2] == '"')
+                    )) ||
+                    (str_val.size() >= 4 && str_val[0] == 'u' && str_val[1] == '8' && str_val[2] == 'R' && str_val[3] == '"');
+                
+                if (already_quoted) {
+                    expr_output << str_val;  // Already has quotes
                 } else {
                     expr_output << "\"" << str_val << "\"";  // Regular string, add quotes
                 }
@@ -1404,6 +1469,27 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
         }
         case Expression::Kind::Call: {
             auto call = static_cast<CallExpression*>(expr);
+
+            // Handle constructor-style call expression (null callee) - e.g., (out y)
+            // This is used for initialization with qualified arguments
+            if (!call->callee) {
+                // Just output the arguments as a parenthesized list
+                expr_output << "(";
+                if (!call->arguments.empty()) {
+                    for (size_t i = 0; i < call->arguments.size(); ++i) {
+                        if (i > 0) expr_output << ", ";
+                        if (call->arguments[i].qualifier == ParameterQualifier::Move) {
+                            expr_output << "std::move(";
+                            expr_output << generate_expression_to_string(call->arguments[i].expr.get());
+                            expr_output << ")";
+                        } else {
+                            expr_output << generate_expression_to_string(call->arguments[i].expr.get());
+                        }
+                    }
+                }
+                expr_output << ")";
+                break;
+            }
 
             // Check for Cpp2 library functions that need cpp2:: prefix
             bool needs_cpp2_prefix = false;
@@ -1759,6 +1845,13 @@ std::string CodeGenerator::generate_type(Type* type) {
             return "auto";
         case Type::Kind::Deduced:
             // _ as type means decltype(auto) or auto in return position
+            // Handle constrained deduced types: _ is constraint
+            if (type->name.starts_with("_ is ")) {
+                // Extract constraint name (after "_ is ")
+                std::string constraint = type->name.substr(5);
+                // Generate as C++20 abbreviated template with constraint
+                return constraint;  // constraint auto param
+            }
             return "decltype(auto)";
         default:
             return type->name;

@@ -222,6 +222,11 @@ void Lexer::scan_token() {
         case ':': {
             if (match(':')) {
                 add_token(TokenType::DoubleColon);
+            } else if (peek() == '=' && peek_next() == '=') {
+                // :== is Colon followed by DoubleEqual
+                // Don't consume the ==, just emit the colon
+                add_token(TokenType::Colon);
+                m_has_cpp2_syntax = true;  // :== is Cpp2-specific
             } else if (match('=')) {
                 add_token(TokenType::ColonEqual);
                 m_has_cpp2_syntax = true;  // := is Cpp2-specific

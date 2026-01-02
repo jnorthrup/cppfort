@@ -258,6 +258,7 @@ struct LambdaExpression : Expression {
     std::unique_ptr<Type> return_type;
     std::vector<std::shared_ptr<Statement>> body;
     std::vector<std::string> template_params;
+    bool is_constexpr = false;  // Cpp2: == for compile-time function expressions
 
     LambdaExpression(std::size_t l) : Expression(Kind::Lambda, l) {}
     ~LambdaExpression();
@@ -469,6 +470,7 @@ struct Statement {
         Contract,
         Template,
         StaticAssert,
+        ScopeBlock,  // Cpp2: (copy x := value) { body }
         // Concurrency statements
         ChannelDecl,
         CoroutineScope,
@@ -498,24 +500,10 @@ struct BlockStatement : Statement {
     BlockStatement(std::size_t l) : Statement(Kind::Block, l) {}
 };
 
-struct IfStatement : Statement {
-    std::unique_ptr<Expression> condition;
-    std::unique_ptr<Statement> then_stmt;
-    std::unique_ptr<Statement> else_stmt;
-
-    IfStatement(std::unique_ptr<Expression> cond,
-               std::unique_ptr<Statement> then_s,
-               std::unique_ptr<Statement> else_s, std::size_t l)
-        : Statement(Kind::If, l),
-          condition(std::move(cond)),
-          then_stmt(std::move(then_s)),
-          else_stmt(std::move(else_s)) {}
-};
-
-// Loop initializer for Cpp2: (copy i:=0) while/for/do
+// Loop initializer for Cpp2: (copy i:=0) while/for/do or (copy x := value) { body }
 struct LoopInitializer {
     std::string name;           // Variable name
-    std::string param_kind;     // "copy" or "move"
+    std::string param_kind;     // "copy", "move", "inout", or empty
     std::unique_ptr<Type> type; // Variable type (auto if type-deduced)
     std::unique_ptr<Expression> initializer; // Initial value
 
@@ -524,9 +512,35 @@ struct LoopInitializer {
         : name(std::move(n)), param_kind(std::move(pk)), type(std::move(t)), initializer(std::move(init)) {}
 };
 
+// Cpp2 scope block with initializer: (copy x := value) { body }
+struct ScopeBlockStatement : Statement {
+    std::vector<std::unique_ptr<LoopInitializer>> initializers;
+    std::unique_ptr<Statement> body;
+
+    ScopeBlockStatement(std::vector<std::unique_ptr<LoopInitializer>> inits, std::unique_ptr<Statement> b, std::size_t l)
+        : Statement(Kind::ScopeBlock, l), initializers(std::move(inits)), body(std::move(b)) {}
+};
+
+struct IfStatement : Statement {
+    std::unique_ptr<Expression> condition;
+    std::unique_ptr<Statement> then_stmt;
+    std::unique_ptr<Statement> else_stmt;
+    bool is_constexpr = false;  // 'if constexpr' for compile-time branching
+
+    IfStatement(std::unique_ptr<Expression> cond,
+               std::unique_ptr<Statement> then_s,
+               std::unique_ptr<Statement> else_s, std::size_t l,
+               bool constexpr_if = false)
+        : Statement(Kind::If, l),
+          condition(std::move(cond)),
+          then_stmt(std::move(then_s)),
+          else_stmt(std::move(else_s)),
+          is_constexpr(constexpr_if) {}
+};
+
 struct WhileStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
-    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) while ...
+    std::vector<std::unique_ptr<LoopInitializer>> loop_inits;  // Cpp2 loop initializers: (copy i:=0, copy t:=0.0) while ...
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> increment; // Cpp2 'next' clause
     std::unique_ptr<Statement> body;
@@ -566,7 +580,7 @@ struct WhileStatement : Statement {
 
 struct DoWhileStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
-    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) do ...
+    std::vector<std::unique_ptr<LoopInitializer>> loop_inits;  // Cpp2 loop initializers: (copy i:=0, copy t:=0.0) do ...
     std::unique_ptr<Statement> body;
     std::unique_ptr<Expression> increment; // Cpp2 'next' clause (between body and while)
     std::unique_ptr<Expression> condition;
@@ -636,7 +650,7 @@ struct ForStatement : Statement {
 
 struct ForRangeStatement : Statement {
     std::string label;  // Optional label for labeled break/continue
-    std::unique_ptr<LoopInitializer> loop_init;  // Cpp2 loop initializer: (copy i:=0) for ...
+    std::vector<std::unique_ptr<LoopInitializer>> loop_inits;  // Cpp2 loop initializers: (copy i:=0, copy t:=0.0) for ...
     std::string variable;
     std::string var_qualifier;  // Parameter kind: in, inout, out, copy, move, forward
     std::unique_ptr<Type> var_type;
@@ -865,10 +879,11 @@ struct FunctionDeclaration : Declaration {
         std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, move, forward
     };
 
-    // Named return parameter (e.g., "-> (result: int)")
+    // Named return parameter (e.g., "-> (result: int)" or "-> (result: int = 0)")
     struct NamedReturn {
         std::string name;
         std::unique_ptr<Type> type;
+        std::unique_ptr<Expression> default_value;  // Optional default value
     };
 
     std::vector<Parameter> parameters;
@@ -920,6 +935,7 @@ struct TypeDeclaration : Declaration {
     std::unique_ptr<Type> underlying_type;
     std::vector<std::string> metafunctions;
     std::vector<std::string> template_parameters;  // Template parameters for generic types
+    std::unique_ptr<Expression> requires_clause;   // Optional requires constraint
 
     TypeDeclaration(std::string n, TypeKind tk, std::size_t l)
         : Declaration(Kind::Type, std::move(n), l), type_kind(tk) {}
@@ -939,6 +955,7 @@ struct OperatorDeclaration : Declaration {
     std::unique_ptr<Statement> body;
     bool is_forward_return = false;  // For -> forward T syntax
     std::vector<std::string> template_parameters;  // Template parameters for generic operators
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> named_returns;  // Named return values
 
     OperatorDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Operator, std::move(n), l) {}

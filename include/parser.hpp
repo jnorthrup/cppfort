@@ -154,6 +154,10 @@ private:
     bool is_template_start();
     bool is_type_qualifier();  // Check for type qualifiers (final, virtual, etc.)
     bool is_cpp1_template_start();  // Detect C++1 template syntax for passthrough
+    
+    // Fold expression helpers
+    bool is_fold_operator();
+    std::string generate_fold_expr(Expression* expr);
 
     // Error handling
     void error(const Token& token, const char* message);
