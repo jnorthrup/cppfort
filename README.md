@@ -18,6 +18,8 @@ The transpiler is built with a clean, modular architecture:
 
 1. **Lexer**: Tokenizes Cpp2 source code
 2. **Parser**: Builds an Abstract Syntax Tree (AST) from tokens
+   - Grammar: `grammar/cpp2.combinators.md` (orthogonal combinator spec)
+   - EBNF: `grammar/cpp2.ebnf` (formal grammar)
 3. **Semantic Analyzer**: Performs type checking and symbol resolution
 4. **Safety Checker**: Identifies potential safety issues and injection points
 5. **Metafunction Processor**: Expands metafunction annotations

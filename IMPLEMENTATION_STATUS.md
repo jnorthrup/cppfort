@@ -25,6 +25,8 @@ This is a comprehensive C++23-based implementation of a Cpp2-to-C++1 transpiler.
 
 ### 4. Parser ✓
 - Full Cpp2 grammar implementation
+- Grammar specified in `grammar/cpp2.combinators.md` (orthogonal combinators)
+- Formal EBNF in `grammar/cpp2.ebnf`
 - Error recovery and synchronization
 - Unified declaration syntax parsing
 - Template parameter handling

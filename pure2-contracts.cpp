@@ -5,34 +5,34 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 [[nodiscard]] auto test_condition_evaluation(auto const& tag) -> bool;
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 extern bool audit;
 
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 [[nodiscard]] auto test_condition_evaluation(auto const& tag) -> bool{std::cout << tag << "\n"; return true; }
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 bool audit {true}; 
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
 auto main() -> int{
     //  A few basic tests
     if (cpp2::cpp2_default.is_active() && !(1 != 2) ) { cpp2::cpp2_default.report_violation(CPP2_CONTRACT_MSG("ack, arithmetic is buggy")); }
     if (cpp2::type_safety.is_active() && !(typeid(int) != typeid(double)) ) { cpp2::type_safety.report_violation(CPP2_CONTRACT_MSG("ack, C types are broken")); }
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-contracts.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.HGzfYxQN3L/pure2-contracts.cpp2"
     //  Now test that conditions are only evaluated if there's
     //  a handler active + any other control flags are enabled
 

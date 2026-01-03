@@ -754,7 +754,7 @@ TokenType Lexer::identifier_type() {
         {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"next", TokenType::Next}, {"operator", TokenType::Operator},
         {"private", TokenType::Private}, {"public", TokenType::Public}, {"protected", TokenType::Protected}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
         {"requires", TokenType::Requires}, {"struct", TokenType::Struct}, {"super", TokenType::Super}, {"switch", TokenType::Switch},
-        {"this", TokenType::This}, {"throw", TokenType::Throw}, {"throws", TokenType::Throws}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
+        {"that", TokenType::That}, {"this", TokenType::This}, {"throw", TokenType::Throw}, {"throws", TokenType::Throws}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
         {"while", TokenType::While}, {"when", TokenType::When}, {"true", TokenType::True}, {"false", TokenType::False},
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
         {"using", TokenType::Using}, {"template", TokenType::Template},

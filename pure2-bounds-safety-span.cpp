@@ -5,27 +5,27 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 auto print_and_decorate(auto const& x) -> void;
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 [[nodiscard]] auto main() -> int
 {
     std::vector<std::string> words {"decorated", "hello", "world"}; 
@@ -39,7 +39,7 @@ auto print_and_decorate(auto const& x) -> void;
     }
 }
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/pure2-bounds-safety-span.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PrFPWAATSZ/pure2-bounds-safety-span.cpp2"
 auto print_and_decorate(auto const& x) -> void{
     std::cout << ">> " << x << "\n";
 }

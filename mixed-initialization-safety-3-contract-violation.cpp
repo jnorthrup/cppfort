@@ -8,26 +8,26 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 5 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 18 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 auto fill(
     cpp2::impl::out<std::string> x, 
     cpp2::impl::in<std::string> value, 
     cpp2::impl::in<int> count
     ) -> void;
 
-#line 28 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 28 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 auto print_decorated(auto const& x) -> void;
-#line 31 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 31 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 
 // for test determinism, force "fill" branch
 bool flip_a_coin() {
@@ -39,9 +39,9 @@ bool flip_a_coin() {
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 5 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 [[nodiscard]] auto main() -> int{
     std::set_terminate(std::abort);
 
@@ -55,7 +55,7 @@ bool flip_a_coin() {
     print_decorated(cpp2::move(x.value()));
 }
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 18 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 auto fill(
     cpp2::impl::out<std::string> x, 
     cpp2::impl::in<std::string> value, 
@@ -64,11 +64,11 @@ auto fill(
 
 {
     if (cpp2::cpp2_default.is_active() && !(cpp2::impl::cmp_greater_eq(CPP2_UFCS(ssize)(value),count)) ) { cpp2::cpp2_default.report_violation(CPP2_CONTRACT_MSG("fill: value must contain at least count elements")); }
-#line 25 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 25 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
     x.construct(CPP2_UFCS(substr)(value, 0, count));
 }
 
-#line 28 "/Users/jim/work/cppfort/corpus/inputs/mixed-initialization-safety-3-contract-violation.cpp2"
+#line 28 "/Users/jim/work/cppfort/tests/regression-tests/mixed-initialization-safety-3-contract-violation.cpp2"
 auto print_decorated(auto const& x) -> void{
     std::cout << ">> [" << x << "]\n";
 }

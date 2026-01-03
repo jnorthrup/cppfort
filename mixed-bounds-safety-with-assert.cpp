@@ -5,19 +5,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 2 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 9 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 9 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<int> end) -> void;
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 21 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 
 #include <vector>
 #include <span>
@@ -26,9 +26,9 @@ auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<i
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 2 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 [[nodiscard]] auto main() -> int{
     std::set_terminate(std::abort);
 
@@ -36,7 +36,7 @@ auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<i
     print_subrange(cpp2::move(v), 1, 13);
 }
 
-#line 9 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-safety-with-assert.cpp2"
+#line 9 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-safety-with-assert.cpp2"
 auto print_subrange(auto const& rng, cpp2::impl::in<int> start, cpp2::impl::in<int> end) -> void{
     if (cpp2::bounds_safety.is_active() && !(cpp2::impl::cmp_less_eq(0,start)) ) { cpp2::bounds_safety.report_violation(""); }
     if (cpp2::bounds_safety.is_active() && !(cpp2::impl::cmp_less_eq(end,CPP2_UFCS(ssize)(rng))) ) { cpp2::bounds_safety.report_violation(""); }

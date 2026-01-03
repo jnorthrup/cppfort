@@ -1,4 +1,4 @@
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 2 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 #include <vector>
 
 
@@ -7,21 +7,21 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 
-#line 4 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 4 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 
-#line 4 "/Users/jim/work/cppfort/corpus/inputs/mixed-bounds-check.cpp2"
+#line 4 "/Users/jim/work/cppfort/tests/regression-tests/mixed-bounds-check.cpp2"
 [[nodiscard]] auto main() -> int{
     std::set_terminate(std::abort);
 

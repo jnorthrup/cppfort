@@ -11,21 +11,21 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-function-expression-with-pointer-capture.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-function-expression-with-pointer-capture.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-function-expression-with-pointer-capture.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-function-expression-with-pointer-capture.cpp2"
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-function-expression-with-pointer-capture.cpp2"
+#line 8 "/Users/jim/work/cppfort/tests/regression-tests/mixed-function-expression-with-pointer-capture.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-function-expression-with-pointer-capture.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-function-expression-with-pointer-capture.cpp2"
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-function-expression-with-pointer-capture.cpp2"
+#line 8 "/Users/jim/work/cppfort/tests/regression-tests/mixed-function-expression-with-pointer-capture.cpp2"
 [[nodiscard]] auto main() -> int{
     std::vector<std::string> vec {
             "hello", "2023"}; 

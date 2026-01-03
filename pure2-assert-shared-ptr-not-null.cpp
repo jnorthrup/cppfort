@@ -5,27 +5,27 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto fine() -> int;
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto bad_shared_ptr_access() -> int;
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto fine() -> int
 {
     auto up {CPP2_UFCS_TEMPLATE(cpp2_new<int>)(cpp2::unique, 1)}; 
@@ -35,7 +35,7 @@
     return *cpp2::impl::assert_not_null(cpp2::move(up)) + *cpp2::impl::assert_not_null(cpp2::move(sp)) + *cpp2::impl::assert_not_null(cpp2::move(op)); 
 }
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto bad_shared_ptr_access() -> int
 {
     auto sp {std::make_shared<int>(1)}; 
@@ -43,7 +43,7 @@
     return *cpp2::impl::assert_not_null(cpp2::move(sp)); 
 }
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-assert-shared-ptr-not-null.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.Ca6hj9JYBa/pure2-assert-shared-ptr-not-null.cpp2"
 [[nodiscard]] auto main() -> int
 {
     std::set_terminate(std::abort);
