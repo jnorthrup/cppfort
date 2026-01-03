@@ -205,6 +205,386 @@ bool Parser::consume_if(TokenType type) {
     return false;
 }
 
+// =========================================================================
+// Parser Combinator Helpers - Normalized parsing patterns
+// =========================================================================
+
+// try_parse: Execute a parsing function with automatic backtracking on failure
+// Returns std::optional<T> where T is the return type of the function
+// On success, commits the position; on failure (nullptr or exception), restores position
+template<typename F>
+auto Parser::try_parse(F&& func) -> std::optional<decltype(func())> {
+    using ResultType = decltype(func());
+    ParsePosition pos(*this);
+    Speculative spec(*this);
+    
+    try {
+        ResultType result = func();
+        
+        // For pointer types, nullptr means failure
+        if constexpr (std::is_pointer_v<ResultType>) {
+            if (result == nullptr) {
+                return std::nullopt;
+            }
+        }
+        // For smart pointers, check if empty
+        else if constexpr (requires { static_cast<bool>(result); result.get(); }) {
+            if (!result) {
+                return std::nullopt;
+            }
+        }
+        
+        pos.commit();
+        return result;
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Level 1: Primitive Combinators (Functor)
+// ---------------------------------------------------------------------------
+
+// lookahead: Check if something would parse without consuming input
+template<typename F>
+bool Parser::lookahead(F&& func) {
+    ParsePosition pos(*this);
+    Speculative spec(*this);
+    
+    try {
+        auto result = func();
+        // For pointer/smart pointer types, check for null
+        if constexpr (std::is_pointer_v<decltype(result)>) {
+            return result != nullptr;
+        } else if constexpr (requires { static_cast<bool>(result); }) {
+            return static_cast<bool>(result);
+        }
+        return true;
+    } catch (...) {
+        return false;
+    }
+    // ParsePosition destructor restores position automatically
+}
+
+// match_if: Match current token if predicate is true
+template<typename Pred>
+bool Parser::match_if(Pred&& pred) {
+    if (!is_at_end() && pred(peek())) {
+        advance();
+        return true;
+    }
+    return false;
+}
+
+// ---------------------------------------------------------------------------
+// Level 2: Sequence & Alternative Combinators (Applicative)
+// ---------------------------------------------------------------------------
+
+// seq: Parse first then second, return pair
+template<typename F1, typename F2>
+auto Parser::seq(F1&& first, F2&& second) -> std::pair<decltype(first()), decltype(second())> {
+    auto a = first();
+    auto b = second();
+    return {std::move(a), std::move(b)};
+}
+
+// alt: Try first, if fails try second
+template<typename F1, typename F2>
+auto Parser::alt(F1&& first, F2&& second) -> decltype(first()) {
+    if (auto result = try_parse(std::forward<F1>(first))) {
+        return std::move(*result);
+    }
+    return second();
+}
+
+// opt: Parse optionally
+template<typename F>
+auto Parser::opt(F&& func) -> std::optional<decltype(func())> {
+    return try_parse(std::forward<F>(func));
+}
+
+// ---------------------------------------------------------------------------
+// Level 3: Repetition Combinators (Monad/Kleene)
+// ---------------------------------------------------------------------------
+
+// many: Parse zero or more
+template<typename T, typename F>
+std::vector<T> Parser::many(F&& func) {
+    std::vector<T> results;
+    while (auto item = try_parse(std::forward<F>(func))) {
+        results.push_back(std::move(*item));
+    }
+    return results;
+}
+
+// some: Parse one or more
+template<typename T, typename F>
+std::vector<T> Parser::some(F&& func) {
+    std::vector<T> results;
+    
+    // First one is required
+    auto first = func();
+    results.push_back(std::move(first));
+    
+    // Rest are optional
+    while (auto item = try_parse(std::forward<F>(func))) {
+        results.push_back(std::move(*item));
+    }
+    return results;
+}
+
+// sep_by: Parse items separated by separator
+template<typename T, typename ParseFn>
+std::vector<T> Parser::sep_by(TokenType separator, TokenType terminator, ParseFn&& parse_item) {
+    std::vector<T> items;
+    
+    while (!check(terminator) && !is_at_end()) {
+        items.push_back(parse_item());
+        
+        if (!match(separator)) {
+            break;  // No more separators, we're done
+        }
+        // Allow trailing separator
+        if (check(terminator)) {
+            break;
+        }
+    }
+    
+    return items;
+}
+
+// ---------------------------------------------------------------------------
+// Level 4: Domain-Specific Combinators
+// ---------------------------------------------------------------------------
+
+// Normalized template close: handles > and >> correctly
+// Returns true if successfully consumed a template close
+bool Parser::consume_template_close_normalized() {
+    return consume_template_close();  // Delegate to existing implementation
+}
+
+// Parse template parameters with proper close handling
+// Returns pair of (params, success)
+std::pair<std::vector<std::string>, bool> Parser::parse_template_params() {
+    std::vector<std::string> params;
+    
+    if (!match(TokenType::LessThan)) {
+        return {params, true};  // No template params, still success
+    }
+    
+    params = template_parameters();
+    
+    // Handle > (single) or >> (for nested templates)
+    if (check(TokenType::RightShift)) {
+        advance();  // consume >> as single token
+        return {params, true};
+    } else if (check(TokenType::GreaterThan)) {
+        // Check if this is >> as two separate > tokens
+        if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
+            advance();  // first >
+            advance();  // second >
+        } else {
+            advance();  // single >
+        }
+        return {params, true};
+    }
+    
+    error_at_current("Expected '>' after template parameters");
+    return {params, false};
+}
+
+// Parse decorators: @name or @name<args>
+// Returns vector of decorator strings
+std::vector<std::string> Parser::parse_decorators() {
+    std::vector<std::string> decorators;
+    
+    while (check(TokenType::At)) {
+        advance();  // consume @
+        
+        if (!check(TokenType::Identifier)) {
+            error_at_current("Expected decorator name after '@'");
+            break;
+        }
+        
+        std::string decorator(peek().lexeme);
+        advance();
+        
+        // Check for template arguments: @decorator<args>
+        if (match(TokenType::LessThan)) {
+            decorator += "<";
+            int depth = 1;
+            while (depth > 0 && !is_at_end()) {
+                if (check(TokenType::LessThan)) {
+                    depth++;
+                } else if (check(TokenType::GreaterThan)) {
+                    depth--;
+                } else if (check(TokenType::RightShift)) {
+                    depth -= 2;
+                }
+                decorator += std::string(peek().lexeme);
+                advance();
+            }
+        }
+        
+        decorators.push_back(std::move(decorator));
+    }
+    
+    return decorators;
+}
+
+// Unified parameter list parsing for functions, operators, lambdas
+// Expects to be called after '(' has been consumed
+std::vector<Parser::ParsedParameter> Parser::parse_parameter_list() {
+    std::vector<ParsedParameter> parameters;
+    
+    if (check(TokenType::RightParen)) {
+        return parameters;  // Empty parameter list
+    }
+    
+    do {
+        ParsedParameter param;
+        
+        // Parse qualifiers before parameter name
+        param.qualifiers = parse_parameter_qualifiers();
+        
+        // Parameter name: identifier, 'this', '_', or contextual keywords
+        Token param_name = [this]() -> Token {
+            if (check(TokenType::Identifier)) {
+                return advance();
+            } else if (check(TokenType::This) || check(TokenType::Underscore)) {
+                return advance();
+            } else if (check(TokenType::Func) || check(TokenType::Type) || 
+                       check(TokenType::Namespace) || check(TokenType::Out) || 
+                       check(TokenType::In) || check(TokenType::Inout) ||
+                       check(TokenType::Copy) || check(TokenType::Move) || 
+                       check(TokenType::Forward)) {
+                // Allow contextual keywords as parameter names
+                return advance();
+            } else {
+                return consume(TokenType::Identifier, "Expected parameter name");
+            }
+        }();
+        
+        param.name = std::string(param_name.lexeme);
+        
+        // Check for variadic pack: name... or _...
+        if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
+            param.name += "...";
+            param.is_variadic = true;
+        }
+        
+        // Type annotation is optional in Cpp2 (can be deduced)
+        if (match(TokenType::Colon)) {
+            param.type = type();
+        }
+        
+        // Default value
+        if (match(TokenType::Equal)) {
+            param.default_value = expression();
+        }
+        
+        parameters.push_back(std::move(param));
+    } while (match(TokenType::Comma) && !check(TokenType::RightParen));
+    
+    return parameters;
+}
+
+// Unified return type parsing
+// Handles: -> type, -> forward type, -> (named), =: type
+std::optional<Parser::ParsedReturnType> Parser::parse_return_type() {
+    ParsedReturnType result;
+    
+    // Check for =: syntax
+    if (match(TokenType::EqualColon)) {
+        result.type = type();
+        return result;
+    }
+    
+    // Check for -> syntax
+    if (!match(TokenType::Arrow)) {
+        return std::nullopt;  // No return type specified
+    }
+    
+    // Check for forward return: -> forward type
+    if (match(TokenType::Forward) || match(TokenType::ForwardRef)) {
+        result.is_forward = true;
+    }
+    
+    // Check for parenthesized return (could be named returns or tuple)
+    if (match(TokenType::LeftParen)) {
+        // Peek ahead to determine if named or unnamed
+        ParsePosition lookahead(*this);
+        bool is_named = false;
+        if (check(TokenType::Identifier)) {
+            advance();
+            if (check(TokenType::Colon)) {
+                is_named = true;
+            }
+        }
+        lookahead.reset();
+        
+        if (is_named) {
+            // Named returns: -> (name: type) or -> (name: type = default)
+            do {
+                if (check(TokenType::RightParen)) break;  // Trailing comma
+                
+                Token ret_name = consume(TokenType::Identifier, "Expected return value name");
+                consume(TokenType::Colon, "Expected ':' after return name");
+                auto ret_type = type();
+                
+                result.named_returns.emplace_back(
+                    std::string(ret_name.lexeme), 
+                    std::move(ret_type)
+                );
+            } while (match(TokenType::Comma));
+            
+            consume(TokenType::RightParen, "Expected ')' after named return types");
+            
+            // Generate return type from named returns
+            if (result.named_returns.size() == 1) {
+                // Clone the type
+                auto& nr = result.named_returns[0];
+                result.type = std::make_unique<Type>(nr.second->kind);
+                result.type->name = nr.second->name;
+                result.type->is_const = nr.second->is_const;
+            } else {
+                // Multiple returns - create std::tuple
+                result.type = std::make_unique<Type>(Type::Kind::Template);
+                result.type->name = "std::tuple";
+                for (auto& [name, t] : result.named_returns) {
+                    auto cloned = std::make_unique<Type>(t->kind);
+                    cloned->name = t->name;
+                    cloned->is_const = t->is_const;
+                    result.type->template_args.push_back(std::move(cloned));
+                }
+            }
+        } else {
+            // Unnamed tuple: -> (int, int)
+            result.type = std::make_unique<Type>(Type::Kind::Template);
+            result.type->name = "std::tuple";
+            do {
+                if (check(TokenType::RightParen)) break;
+                auto elem_type = type();
+                if (elem_type) {
+                    result.type->template_args.push_back(std::move(elem_type));
+                }
+            } while (match(TokenType::Comma));
+            
+            consume(TokenType::RightParen, "Expected ')' after tuple return types");
+            
+            // Single element is not a tuple
+            if (result.type->template_args.size() == 1) {
+                result.type = std::move(result.type->template_args[0]);
+            }
+        }
+    } else {
+        // Simple type: -> type
+        result.type = type();
+    }
+    
+    return result;
+}
+
 template<typename F>
 auto Parser::synchronize_on_error(F&& func) -> decltype(func()) {
     if (panic_mode) {
@@ -292,42 +672,35 @@ std::unique_ptr<Declaration> Parser::declaration() {
 
         // Handle decorators starting a declaration (e.g. @value type Name ...)
         if (check(TokenType::At)) {
-            std::size_t saved = current;
-            std::vector<std::string> decorators;
-            while (match(TokenType::At)) {
-                if (check(TokenType::Identifier)) {
-                    decorators.push_back(std::string(advance().lexeme));
-                } else {
-                    // Handle keywords used as decorators
-                    decorators.push_back(std::string(advance().lexeme));
-                }
-            }
+            ParsePosition pos(*this);
+            auto decorators = parse_decorators();
             
             if (match(TokenType::Type)) {
+                pos.commit();
                 auto decl = type_declaration(std::move(decorators));
                 attach_markdown_blocks(decl.get());
                 return decl;
             }
-            
-            // If not a type declaration, backtrack (or handle other decorated declarations)
-            current = saved;
+            // If not a type declaration, backtrack via ParsePosition destructor
         }
 
         // Cpp2 unified syntax: identifier: type = initializer
         // Cpp2 type-deduced syntax: identifier := initializer
         if (is_identifier_like()) {
-            std::size_t saved = current;
+            ParsePosition pos(*this);
+            std::size_t saved = pos.saved_pos;  // Cache position for explicit backtracks
             advance(); // consume identifier
             if (check(TokenType::ColonEqual)) {
                 // Type-deduced variable: name := initializer
-                current = saved; // backtrack
+                pos.reset(); // backtrack
                 advance(); // consume identifier (makes it previous())
                 consume(TokenType::ColonEqual, "Expected ':=' after identifier");
+                pos.commit();
                 auto decl = variable_declaration();
                 attach_markdown_blocks(decl.get());
                 return decl;
             } else if (check(TokenType::Colon)) {
-                current = saved; // backtrack
+                pos.reset(); // backtrack
                 // Could be function or variable
                 advance(); // consume identifier (makes it previous())
                 consume(TokenType::Colon, "Expected ':' after identifier");
@@ -339,6 +712,7 @@ std::unique_ptr<Declaration> Parser::declaration() {
                     // Or variable with template params: name: <T> type = value
                     auto decl = function_declaration();
                     if (decl) {
+                        pos.commit();
                         attach_markdown_blocks(decl.get());
                         return decl;
                     }
@@ -351,27 +725,29 @@ std::unique_ptr<Declaration> Parser::declaration() {
                         // The template params were already consumed by function_declaration
                         // But we need to re-parse from the start because type_declaration
                         // needs to parse the template params itself
-                        current = saved; // backtrack to start
+                        pos.rollback(); // backtrack to start
                         advance(); // consume identifier
                         consume(TokenType::Colon, "Expected ':' after identifier");
                         auto type_decl = type_declaration();
+                        pos.commit();
                         attach_markdown_blocks(type_decl.get());
                         return type_decl;
                     }
 
                     // If function_declaration returned nullptr, it might be a variable
                     // with template parameters. Fall through to variable parsing.
-                    current = saved; // backtrack to try variable declaration
+                    pos.rollback(); // backtrack to try variable declaration
                     advance(); // consume identifier
                     consume(TokenType::Colon, "Expected ':' after identifier");
                     auto var_decl = variable_declaration();
+                    pos.commit();
                     attach_markdown_blocks(var_decl.get());
                     return var_decl;
                 } else if (check(TokenType::At) || check(TokenType::Type) ||
                            check(TokenType::Concept) || is_type_qualifier()) {
                     // Check for type alias: name: type == underlying_type;
                     if (check(TokenType::Type)) {
-                        std::size_t type_saved = current;
+                        ParsePosition type_pos(*this);
                         advance();  // consume 'type'
                         if (check(TokenType::DoubleEqual)) {
                             // This is a type alias declaration
@@ -386,11 +762,12 @@ std::unique_ptr<Declaration> Parser::declaration() {
                                 name.line
                             );
                             type_decl->underlying_type = std::move(underlying);
+                            type_pos.commit();
+                            pos.commit();
                             attach_markdown_blocks(type_decl.get());
                             return type_decl;
                         }
-                        // Not a type alias, backtrack
-                        current = type_saved;
+                        // Not a type alias, backtrack via ParsePosition destructor
                     }
 
                     // Type with decorators: name: @value @ordered type = {...}
@@ -398,21 +775,24 @@ std::unique_ptr<Declaration> Parser::declaration() {
                     // Or type with qualifiers: name: final type = {...}
                     // Or concept: name: concept = expr
                     auto decl = type_declaration();
+                    pos.commit();
                     attach_markdown_blocks(decl.get());
                     return decl;
                 } else if (check(TokenType::Namespace)) {
                     // Namespace: name: namespace = {...}
                     auto decl = namespace_declaration();
+                    pos.commit();
                     attach_markdown_blocks(decl.get());
                     return decl;
                 } else {
                     // Variable: name: type = value
                     auto decl = variable_declaration();
+                    pos.commit();
                     attach_markdown_blocks(decl.get());
                     return decl;
                 }
             }
-            current = saved; // backtrack if no colon or colon-equal
+            // No colon or colon-equal - backtrack via ParsePosition destructor
         }
 
         if (match({TokenType::Let, TokenType::Const})) {
@@ -583,25 +963,29 @@ std::unique_ptr<Statement> Parser::statement() {
         // AND variable declarations: name: type = value or name := value
         // Both start with identifier:, so we need to disambiguate
         if (is_identifier_like()) {
-            std::size_t saved = current;
+            std::size_t name_pos = current;  // Remember identifier position for later use
+            ParsePosition pos(*this);
             advance(); // consume identifier
             if (check(TokenType::Colon)) {
                 // Peek ahead to see if this is followed by a loop keyword
                 advance(); // consume colon
                 if (check(TokenType::While) || check(TokenType::For) || check(TokenType::Do)) {
                     // This is a labeled loop
-                    std::string label = std::string(tokens[saved].lexeme);
+                    pos.commit();
+                    std::string label = std::string(tokens[name_pos].lexeme);
                     return labeled_loop_statement(std::move(label));
                 }
                 
                 // Check for local type alias: name: type == underlying_type;
                 if (check(TokenType::Type)) {
-                    std::size_t type_saved = current;
+                    ParsePosition type_pos(*this);
                     advance();  // consume 'type'
                     if (check(TokenType::DoubleEqual)) {
                         // This is a type alias declaration
                         advance();  // consume '=='
-                        Token name = tokens[saved];
+                        type_pos.commit();
+                        pos.commit();
+                        Token name = tokens[name_pos];
                         auto underlying = type();  // Parse the underlying type
                         consume(TokenType::Semicolon, "Expected ';' after type alias");
                         
@@ -613,18 +997,19 @@ std::unique_ptr<Statement> Parser::statement() {
                         type_decl->underlying_type = std::move(underlying);
                         return std::make_unique<DeclarationStatement>(std::move(type_decl), name.line);
                     }
-                    // Not a type alias, backtrack
-                    current = type_saved;
+                    // Not a type alias, backtrack type_pos via destructor
                 }
                 
                 // Check for local namespace alias: name: namespace == target_namespace;
                 if (check(TokenType::Namespace)) {
-                    std::size_t ns_saved = current;
+                    ParsePosition ns_pos(*this);
                     advance();  // consume 'namespace'
                     if (check(TokenType::DoubleEqual)) {
                         // This is a namespace alias declaration
                         advance();  // consume '=='
-                        Token name = tokens[saved];
+                        ns_pos.commit();
+                        pos.commit();
+                        Token name = tokens[name_pos];
                         std::string target;
                         // Handle qualified names like ::std or std::literals
                         if (match(TokenType::DoubleColon)) {
@@ -646,13 +1031,13 @@ std::unique_ptr<Statement> Parser::statement() {
                         ns_decl->alias_target = target;
                         return std::make_unique<DeclarationStatement>(std::move(ns_decl), name.line);
                     }
-                    // Not a namespace alias, backtrack
-                    current = ns_saved;
+                    // Not a namespace alias, backtrack ns_pos via destructor
                 }
                 
                 // Not a labeled loop, so it's a variable declaration - continue parsing
-                // Don't backtrack, continue with variable declaration parsing
-                Token name = tokens[saved]; // the identifier
+                // Commit to this path since we're past identifier:
+                pos.commit();
+                Token name = tokens[name_pos]; // the identifier
                 // Parse type and initializer
                 std::unique_ptr<Type> var_type = nullptr;
                 if (!check(TokenType::Equal) && !check(TokenType::DoubleEqual)) {
@@ -704,7 +1089,7 @@ std::unique_ptr<Statement> Parser::statement() {
 
                 return std::make_unique<DeclarationStatement>(std::move(decl), previous().line);
             }
-            current = saved; // backtrack if no colon or colon-equal
+            // No colon or colon-equal - backtrack via ParsePosition destructor
         }
 
         // Check for Cpp2 loop initializer: (copy/move name := expr) while/for/do
@@ -848,32 +1233,14 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     // Check if called from keyword syntax (func) or unified syntax (name:)
     if (prev.type == TokenType::Func) {
         // Keyword syntax: func name(...) -> type = body
-        // Historically this parser also accepted/expected a ':' after the function name.
-        // Keep ':' optional for compatibility with existing tests and cppfront-like syntax.
         name = consume(TokenType::Identifier, "Expected function name");
-        // Template parameters
-        if (match(TokenType::LessThan)) {
-            template_params = template_parameters();
-            // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-            if (check(TokenType::RightShift)) {
-                advance(); // consume >> (as a single token)
-            } else if (check(TokenType::GreaterThan)) {
-                // Check if this is >> (two separate > tokens)
-                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                    advance(); // consume first >
-                    advance(); // consume second >
-                } else {
-                    advance(); // consume single >
-                }
-            } else {
-                consume(TokenType::GreaterThan, "Expected '>' after template parameters");
-            }
-        }
+        // Template parameters (normalized)
+        auto [params, success] = parse_template_params();
+        if (success) template_params = std::move(params);
         match(TokenType::Colon); // Optional
     } else {
         // Unified syntax: name: <T> (...) -> type = body
         // identifier and colon were already consumed in declaration()
-        // After consuming identifier and colon, tokens[current - 2] is the identifier
         if (current >= 2) {
             TokenType name_type = tokens[current - 2].type;
             // Accept identifier or contextual keywords as function names
@@ -885,26 +1252,10 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
                 name = tokens[current - 2]; // identifier/keyword before colon
             }
         }
-        // else: keep prev as fallback (though this indicates a parsing bug)
 
-        // Template parameters in unified syntax: name: <T> (params)
-        if (match(TokenType::LessThan)) {
-            template_params = template_parameters();
-            // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-            if (check(TokenType::RightShift)) {
-                advance(); // consume >> (as a single token)
-            } else if (check(TokenType::GreaterThan)) {
-                // Check if this is >> (two separate > tokens)
-                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                    advance(); // consume first >
-                    advance(); // consume second >
-                } else {
-                    advance(); // consume single >
-                }
-            } else {
-                consume(TokenType::GreaterThan, "Expected '>' after template parameters");
-            }
-        }
+        // Template parameters in unified syntax: name: <T> (params) (normalized)
+        auto [params, success] = parse_template_params();
+        if (success) template_params = std::move(params);
     }
 
     // Check if this is actually a function (next token should be '(')
@@ -924,55 +1275,16 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
 
     consume(TokenType::LeftParen, "Expected '(' after function name");
 
+    // Use normalized parameter list parsing
+    auto parsed_params = parse_parameter_list();
     std::vector<FunctionDeclaration::Parameter> parameters;
-    if (!check(TokenType::RightParen)) {
-        do {
-            // Parse qualifiers before parameter name
-            std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
-
-            // Parameter name can be an identifier, 'this' keyword, '_' placeholder, or contextual keywords
-            Token param_name = [this]() -> Token {
-                if (check(TokenType::Identifier)) {
-                    return advance();
-                } else if (check(TokenType::This) || check(TokenType::Underscore)) {
-                    return advance();
-                } else if (check(TokenType::Func) || check(TokenType::Type) || check(TokenType::Namespace) ||
-                           check(TokenType::Out) || check(TokenType::In) || check(TokenType::Inout) ||
-                           check(TokenType::Copy) || check(TokenType::Move) || check(TokenType::Forward)) {
-                    // Allow contextual keywords as parameter names
-                    return advance();
-                } else {
-                    return consume(TokenType::Identifier, "Expected parameter name");
-                }
-            }();
-            
-            // Check for variadic pack parameter: name... or _...
-            std::string param_name_str(param_name.lexeme);
-            bool is_variadic = false;
-            if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
-                param_name_str += "...";
-                is_variadic = true;
-            }
-
-            // Type annotation is optional in Cpp2 (type can be deduced)
-            std::unique_ptr<Type> param_type = nullptr;
-            if (match(TokenType::Colon)) {
-                param_type = type();
-            }
-
-            std::unique_ptr<Expression> default_value = nullptr;
-            if (match(TokenType::Equal)) {
-                default_value = expression();
-            }
-
-            parameters.push_back({
-                param_name_str,
-                std::move(param_type),
-                std::move(default_value)
-            });
-            // Add qualifiers to the parameter
-            parameters.back().qualifiers = std::move(qualifiers);
-        } while (match(TokenType::Comma) && !check(TokenType::RightParen));
+    for (auto& pp : parsed_params) {
+        FunctionDeclaration::Parameter param;
+        param.name = std::move(pp.name);
+        param.type = std::move(pp.type);
+        param.default_value = std::move(pp.default_value);
+        param.qualifiers = std::move(pp.qualifiers);
+        parameters.push_back(std::move(param));
     }
 
     consume(TokenType::RightParen, "Expected ')' after parameters");
@@ -1330,7 +1642,7 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                         }
                     } else if (check(TokenType::Identifier)) {
                         // Check if this is a parameter declaration (name:type or name : type)
-                        std::size_t saved = current;
+                        ParsePosition param_pos(*this);
                         std::string param_name = std::string(advance().lexeme);
                         // Check for variadic: T...
                         if (check(TokenType::TripleDot) || check(TokenType::Ellipsis)) {
@@ -1338,6 +1650,7 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                         }
                         if (match(TokenType::Colon)) {
                             // This is a parameter declaration - consume the type constraint
+                            param_pos.commit();
                             // The type constraint can be:
                             // - A keyword like "type" (meaning any type)
                             // - A regular type
@@ -1349,16 +1662,18 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                             } else {
                                 auto param_type = type();
                             }
-                        } else if (current != saved + 1 || (current == saved + 1 && !check(TokenType::Comma) && !check(TokenType::GreaterThan))) {
-                            // Not a parameter declaration but we consumed something other than just the name
-                            // or there's more to parse - backtrack
-                            current = saved;
+                        } else if (!check(TokenType::Comma) && !check(TokenType::GreaterThan)) {
+                            // Not a parameter declaration - backtrack via destructor and parse as type
+                            param_pos.reset();
                             // Parse as a regular type
                             auto arg = type();
                             // Check for pack expansion
                             if (check(TokenType::TripleDot) || check(TokenType::Ellipsis)) {
                                 advance();
                             }
+                        } else {
+                            // Just an identifier (type name) - commit
+                            param_pos.commit();
                         }
                     } else if (!check(TokenType::GreaterThan)) {
                         // Parse as a regular type (only if not at closing >)
@@ -1575,11 +1890,12 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
 
         // Check for base class declaration: "this: BaseType" or "this: BaseType = ();"
         if (check(TokenType::This)) {
-            std::size_t saved = current;
+            ParsePosition pos(*this);
             advance();  // consume 'this'
             
             if (match(TokenType::Colon)) {
                 // This is a base class declaration
+                pos.commit();
                 auto base_type = type();
                 std::unique_ptr<Expression> initializer = nullptr;
                 
@@ -1594,20 +1910,19 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                 base.initializer = std::move(initializer);
                 type_decl->base_classes.push_back(std::move(base));
                 continue;
-            } else {
-                // Not a base class, backtrack
-                current = saved;
             }
+            // Not a base class, backtrack via ParsePosition destructor
         }
 
         // Special case for enum members: just an identifier followed by ; or :=
         // e.g., "member;" or "member := value;"
         if (kind == TypeDeclaration::TypeKind::Enum && check(TokenType::Identifier)) {
-            std::size_t saved = current;
+            ParsePosition pos(*this);
             std::string member_name = std::string(advance().lexeme); // consume identifier
 
             if (check(TokenType::ColonEqual) || check(TokenType::Semicolon)) {
                 // This is an enum member declaration
+                pos.commit();
                 std::unique_ptr<Expression> init_value = nullptr;
                 if (match(TokenType::ColonEqual)) {
                     init_value = expression();
@@ -1622,10 +1937,8 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                 enum_member->initializer = std::move(init_value);
                 type_decl->members.push_back(std::move(enum_member));
                 continue;
-            } else {
-                // Not an enum member, backtrack
-                current = saved;
             }
+            // Not an enum member, backtrack via ParsePosition destructor
         }
 
         auto member = declaration();
@@ -1777,35 +2090,33 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
         consume(TokenType::Colon, "Expected ':' after operator");
     }
 
-    // Parse optional template parameters: operator++: <T> (...)
-    std::vector<std::string> template_params;
-    if (match(TokenType::LessThan)) {
-        template_params = template_parameters();
-        // Handle > or >>
-        if (check(TokenType::RightShift)) {
-            advance();
-        } else if (check(TokenType::GreaterThan)) {
-            advance();
-        } else {
-            consume(TokenType::GreaterThan, "Expected '>' after template parameters");
-        }
-    }
+    // Parse optional template parameters (normalized): operator++: <T> (...)
+    auto [template_params, _] = parse_template_params();
 
     consume(TokenType::LeftParen, "Expected '(' after operator");
 
     auto op_decl = std::make_unique<OperatorDeclaration>(op_name, op_line);
     op_decl->template_parameters = std::move(template_params);
 
+    // Use normalized parameter list parsing
+    // Note: operator parameters also accept 'that' and 'implicit' keywords
     if (!check(TokenType::RightParen)) {
         do {
             // Parse qualifiers before parameter name
             std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
 
-            // Parameter name can be identifier or 'this' keyword (for constructors/assignment)
+            // Parameter name: identifier, 'this', 'that' (copy/move), '_', 'implicit'
             Token param_name = [this]() -> Token {
                 if (check(TokenType::Identifier)) {
                     return advance();
-                } else if (check(TokenType::This) || check(TokenType::Underscore) || check(TokenType::Implicit)) {
+                } else if (check(TokenType::This) || check(TokenType::That) || 
+                           check(TokenType::Underscore) || check(TokenType::Implicit)) {
+                    return advance();
+                } else if (check(TokenType::Func) || check(TokenType::Type) || 
+                           check(TokenType::Namespace) || check(TokenType::Out) || 
+                           check(TokenType::In) || check(TokenType::Inout) ||
+                           check(TokenType::Copy) || check(TokenType::Move) || 
+                           check(TokenType::Forward)) {
                     return advance();
                 } else {
                     return consume(TokenType::Identifier, "Expected parameter name");
@@ -1813,7 +2124,6 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
             }();
 
             // Type annotation is optional for operator parameters
-            // (e.g., operator=: (out this) - type is implied from context)
             std::unique_ptr<Type> param_type = nullptr;
             if (match(TokenType::Colon)) {
                 param_type = type();
@@ -2072,7 +2382,7 @@ std::unique_ptr<Type> Parser::type() {
     // This syntax is used for function pointers and std::function template args
     if (check(TokenType::LeftParen)) {
         // Look ahead to see if this is a function type: (params) ->
-        std::size_t saved = current;
+        ParsePosition pos(*this);
         advance();  // consume (
         
         // Skip past matching parens to find ->
@@ -2092,7 +2402,7 @@ std::unique_ptr<Type> Parser::type() {
             found_arrow = true;
         }
         
-        current = saved;  // restore position
+        pos.reset();  // restore position
         
         if (found_arrow) {
             // Parse as function type by collecting the entire signature
@@ -2674,18 +2984,16 @@ std::unique_ptr<Statement> Parser::for_statement() {
     //   for collection do(var) { body }
     //   for (expr).method() do(var) { body }  - where expr starts with paren
 
-    std::size_t saved_pos = current;
-    bool saved_panic = panic_mode;
-    suppress_errors = true;  // Speculative parse
+    ParsePosition pos(*this);
+    Speculative spec(*this);
 
     auto collection = expression();
 
     // Check if this could be Cpp2 syntax (followed by 'next' or 'do')
     bool is_cpp2_for = collection && (check(TokenType::Next) || check(TokenType::Do));
 
-    suppress_errors = false;
-
     if (is_cpp2_for) {
+        pos.commit();  // Commit to Cpp2 for syntax
         // cpp2: for <collection> do(<var>) { body }
         // cpp2: for <collection> next <expr> do(<var>) { body }
         // cpp2: for <collection> do(inout var) { body }
@@ -2732,9 +3040,8 @@ std::unique_ptr<Statement> Parser::for_statement() {
         return stmt;
     }
 
-    // Not Cpp2 syntax, backtrack and parse as traditional C-style for loop
-    current = saved_pos;
-    panic_mode = saved_panic;
+    // Not Cpp2 syntax, backtrack via ParsePosition destructor and parse as traditional C-style for loop
+    pos.rollback();
 
     consume(TokenType::LeftParen, "Expected '(' after 'for'");
 
@@ -4060,6 +4367,14 @@ std::unique_ptr<Expression> Parser::postfix_expression() {
                     previous().line
                 );
             }
+        } else if (expr->kind == Expression::Kind::Lambda && 
+                   check(TokenType::Semicolon) && current + 1 < tokens.size() && tokens[current + 1].type == TokenType::LeftParen) {
+            // Cpp2 IIFE (Immediately Invoked Function Expression): lambda;(args)
+            // The semicolon terminates the lambda definition, then (args) invokes it
+            // Only valid when expr is actually a lambda/function expression
+            advance();  // consume ;
+            advance();  // consume (
+            expr = call_expression(std::move(expr));
         } else {
             break;
         }
@@ -4078,6 +4393,10 @@ std::unique_ptr<Expression> Parser::primary_expression() {
     if (match(TokenType::This)) {
         // 'this' is a reference to the current object
         return std::make_unique<IdentifierExpression>("this", previous().line);
+    }
+    if (match(TokenType::That)) {
+        // 'that' is a reference to the source object in copy/move constructors
+        return std::make_unique<IdentifierExpression>("that", previous().line);
     }
     if (match(TokenType::Underscore)) {
         // '_' is a discard/wildcard pattern or placeholder
@@ -4169,10 +4488,27 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         return str_expr;
     }
     if (match(TokenType::CharacterLiteral)) {
-        return std::make_unique<LiteralExpression>(
-            previous().lexeme[0],
-            previous().line
-        );
+        // Lexeme includes quotes: 'x' -> extract character at position 1
+        // Handle escape sequences: '\n' -> lexeme is "'\\n'"
+        std::string_view lex = previous().lexeme;
+        char c;
+        if (lex.size() >= 4 && lex[1] == '\\') {
+            // Escape sequence
+            switch (lex[2]) {
+                case 'n': c = '\n'; break;
+                case 't': c = '\t'; break;
+                case 'r': c = '\r'; break;
+                case '0': c = '\0'; break;
+                case '\\': c = '\\'; break;
+                case '\'': c = '\''; break;
+                default: c = lex[2]; break;
+            }
+        } else if (lex.size() >= 3) {
+            c = lex[1];  // Normal character
+        } else {
+            c = '\0';  // Malformed
+        }
+        return std::make_unique<LiteralExpression>(c, previous().line);
     }
     // Handle global scope resolution starting with ::
     // E.g., ::print(...), ::std::cout, etc.
@@ -4572,34 +4908,15 @@ std::unique_ptr<Expression> Parser::lambda_expression() {
 
     consume(TokenType::LeftParen, "Expected '(' for lambda");
 
-    if (!check(TokenType::RightParen)) {
-        do {
-            LambdaExpression::Parameter param;
-
-            // Parse qualifiers before parameter name
-            param.qualifiers = parse_parameter_qualifiers();
-
-            Token name = [this]() -> Token {
-                if (check(TokenType::Identifier)) {
-                    return advance();
-                } else if (check(TokenType::Underscore)) {
-                    return advance();
-                } else {
-                    return consume(TokenType::Identifier, "Expected parameter name");
-                }
-            }();
-            param.name = std::string(name.lexeme);
-
-            if (match(TokenType::Colon)) {
-                param.type = type();
-            }
-
-            if (match(TokenType::Equal)) {
-                param.default_value = expression();
-            }
-
-            lambda->parameters.push_back(std::move(param));
-        } while (match(TokenType::Comma) && !check(TokenType::RightParen));
+    // Use normalized parameter list parsing
+    auto parsed_params = parse_parameter_list();
+    for (auto& pp : parsed_params) {
+        LambdaExpression::Parameter param;
+        param.name = std::move(pp.name);
+        param.type = std::move(pp.type);
+        param.default_value = std::move(pp.default_value);
+        param.qualifiers = std::move(pp.qualifiers);
+        lambda->parameters.push_back(std::move(param));
     }
 
     consume(TokenType::RightParen, "Expected ')' after lambda parameters");
@@ -4747,50 +5064,21 @@ std::unique_ptr<Expression> Parser::function_expression() {
 
     auto lambda = std::make_unique<LambdaExpression>(previous().line);
 
-    // Check for template parameters: :<T, U> (params)
-    if (match(TokenType::LessThan)) {
-        lambda->template_params = template_parameters();
-        // Handle >> as two > for nested templates
-        if (check(TokenType::RightShift)) {
-            // This is >> - consume it as >>, but we only need one >
-            // Split: advance past >> but note we've consumed extra >
-            // For now, just consume normally - the outer parser will deal with it
-            advance();
-        } else {
-            consume(TokenType::GreaterThan, "Expected '>' after template parameters");
-        }
-    }
+    // Check for template parameters (normalized): :<T, U> (params)
+    auto [template_params, _] = parse_template_params();
+    lambda->template_params = std::move(template_params);
 
     consume(TokenType::LeftParen, "Expected '(' after ':' for function expression");
 
-    if (!check(TokenType::RightParen)) {
-        do {
-            LambdaExpression::Parameter param;
-
-            // Parse qualifiers before parameter name
-            param.qualifiers = parse_parameter_qualifiers();
-
-            Token name = [this]() -> Token {
-                if (check(TokenType::Identifier)) {
-                    return advance();
-                } else if (check(TokenType::Underscore)) {
-                    return advance();
-                } else {
-                    return consume(TokenType::Identifier, "Expected parameter name");
-                }
-            }();
-            param.name = std::string(name.lexeme);
-
-            if (match(TokenType::Colon)) {
-                param.type = type();
-            }
-
-            if (match(TokenType::Equal)) {
-                param.default_value = expression();
-            }
-
-            lambda->parameters.push_back(std::move(param));
-        } while (match(TokenType::Comma) && !check(TokenType::RightParen));
+    // Use normalized parameter list parsing
+    auto parsed_params = parse_parameter_list();
+    for (auto& pp : parsed_params) {
+        LambdaExpression::Parameter param;
+        param.name = std::move(pp.name);
+        param.type = std::move(pp.type);
+        param.default_value = std::move(pp.default_value);
+        param.qualifiers = std::move(pp.qualifiers);
+        lambda->parameters.push_back(std::move(param));
     }
 
     consume(TokenType::RightParen, "Expected ')' after function expression parameters");
@@ -5339,7 +5627,7 @@ bool Parser::is_cpp1_template_start() {
     //
     // Key: After template<...>, we expect C++1 keywords, not Cpp2 syntax
 
-    std::size_t saved = current;
+    ParsePosition pos(*this);
 
     // Check for 'template' keyword (TokenType::Template)
     if (!check(TokenType::Template)) {
@@ -5350,7 +5638,6 @@ bool Parser::is_cpp1_template_start() {
 
     // Check for '<' after template
     if (!check(TokenType::LessThan)) {
-        current = saved;
         return false;
     }
 
@@ -5381,8 +5668,7 @@ bool Parser::is_cpp1_template_start() {
         }
     }
 
-    current = saved;
-    return is_cpp1;
+    return is_cpp1;  // Position auto-restored by ParsePosition destructor
 }
 
 bool Parser::check_cpp1_struct_syntax() {
@@ -5395,7 +5681,7 @@ bool Parser::check_cpp1_struct_syntax() {
     // Key distinction from Cpp2: Cpp2 uses "Name: struct = {" syntax
     // C++1 uses "struct Name {" syntax
 
-    std::size_t saved = current;
+    ParsePosition pos(*this);
 
     // Check for struct/class/union/enum keyword at current position
     if (check(TokenType::Struct) || check(TokenType::Class) || 
@@ -5422,14 +5708,12 @@ bool Parser::check_cpp1_struct_syntax() {
             }
             
             if (check(TokenType::LeftBrace) || check(TokenType::Colon) || check(TokenType::Semicolon)) {
-                current = saved;
-                return true;
+                return true;  // Position auto-restored
             }
         }
     }
     
-    current = saved;
-    return false;
+    return false;  // Position auto-restored by ParsePosition destructor
 }
 
 bool Parser::check_cpp1_function_syntax() {
@@ -5437,11 +5721,13 @@ bool Parser::check_cpp1_function_syntax() {
     // - "auto name(...) -> type {" - trailing return type
     // - "type name(...) {" - standard function
     // - "[qualifiers] type name(...) {" - with C++1 qualifiers (constexpr, inline, static, virtual)
+    // - "auto operator<<(...) -> type {" - C++1 operator overload
     //
     // Key distinction from Cpp2: Cpp2 uses ':' after name, C++1 does NOT
     // We only trigger this if we're NOT at a Cpp2 declaration
 
-    std::size_t saved = current;
+    ParsePosition pos(*this);
+    std::size_t start_pos = current;
 
     // Skip C++1 function qualifiers: constexpr, inline, static, virtual, extern, friend
     while (check(TokenType::Identifier) &&
@@ -5454,15 +5740,25 @@ bool Parser::check_cpp1_function_syntax() {
         advance();
     }
 
-    // Check for "auto name(..." pattern - C++1 trailing return type
+    // Check for "auto name(..." or "auto operator<<(..." pattern - C++1 trailing return type
     if (check(TokenType::Auto) ||
         (check(TokenType::Identifier) && peek().lexeme == "auto")) {
         advance(); // consume 'auto'
+        // In C++1, function name can be 'operator' followed by operator symbol
+        if (check(TokenType::Operator)) {
+            advance(); // consume 'operator'
+            // Skip the operator symbol(s): <<, >>, +, -, *, /, ==, etc.
+            while (!check(TokenType::LeftParen) && !is_at_end()) {
+                advance();
+            }
+            if (check(TokenType::LeftParen)) {
+                return true; // "[qualifiers] auto operator<<(..." - C++1
+            }
+        }
         // In C++1, function name can be keywords that are contextual in Cpp2
-        if (check(TokenType::Identifier) || is_identifier_like()) {
+        else if (check(TokenType::Identifier) || is_identifier_like()) {
             advance(); // consume function name
             if (check(TokenType::LeftParen)) {
-                current = saved;
                 return true; // "[qualifiers] auto name(..." - C++1
             }
         }
@@ -5474,7 +5770,7 @@ bool Parser::check_cpp1_function_syntax() {
     if (check(TokenType::Identifier)) {
         std::string_view first_lexeme = peek().lexeme;
         // Skip Cpp2 keywords - but not if we already consumed qualifiers
-        if (current == saved) {
+        if (current == start_pos) {
             if (first_lexeme == "func" || first_lexeme == "type" ||
                 first_lexeme == "namespace" || first_lexeme == "struct" ||
                 first_lexeme == "class" || first_lexeme == "union" ||
@@ -5504,18 +5800,25 @@ bool Parser::check_cpp1_function_syntax() {
             advance();
         }
 
-        // Now we expect function name
-        if (check(TokenType::Identifier) || is_identifier_like()) {
+        // Now we expect function name or 'operator'
+        if (check(TokenType::Operator)) {
+            advance(); // consume 'operator'
+            // Skip the operator symbol(s)
+            while (!check(TokenType::LeftParen) && !is_at_end()) {
+                advance();
+            }
+            if (check(TokenType::LeftParen)) {
+                return true; // "[qualifiers] type operator<<(..." - C++1
+            }
+        } else if (check(TokenType::Identifier) || is_identifier_like()) {
             advance(); // consume function name
             if (check(TokenType::LeftParen)) {
-                current = saved;
                 return true; // "[qualifiers] type name(..." - C++1
             }
         }
     }
-    current = saved;
 
-    return false;
+    return false;  // Position auto-restored by ParsePosition destructor
 }
 
 bool Parser::check_cpp1_constexpr_syntax() {
@@ -5528,7 +5831,8 @@ bool Parser::check_cpp1_constexpr_syntax() {
     //   constexpr type<T> name{};   // brace initialization
     //   constexpr type<T> name(...);  // parenthesized initialization
     
-    std::size_t saved = current;
+    ParsePosition pos(*this);
+    std::size_t start_pos = current;
     
     // Skip optional inline/static
     while (check(TokenType::Identifier) && 
@@ -5539,7 +5843,7 @@ bool Parser::check_cpp1_constexpr_syntax() {
     // Now check if we have "constexpr" or if we already passed it
     // We should have at least "constexpr" in the sequence
     bool has_constexpr = false;
-    for (std::size_t i = saved; i < current; i++) {
+    for (std::size_t i = start_pos; i < current; i++) {
         if (tokens[i].lexeme == "constexpr") {
             has_constexpr = true;
             break;
@@ -5547,7 +5851,6 @@ bool Parser::check_cpp1_constexpr_syntax() {
     }
     
     if (!has_constexpr) {
-        current = saved;
         return false;
     }
     
@@ -5568,7 +5871,6 @@ bool Parser::check_cpp1_constexpr_syntax() {
             }
         }
     } else {
-        current = saved;
         return false;
     }
     
@@ -5579,18 +5881,15 @@ bool Parser::check_cpp1_constexpr_syntax() {
         // Check for = (assignment), { (brace init), or ( (paren init) 
         // which distinguishes C++1 variable from Cpp2
         if (check(TokenType::Equal) || check(TokenType::LeftBrace) || check(TokenType::LeftParen)) {
-            current = saved;
-            return true;
+            return true;  // Position auto-restored
         }
         // Also handle direct initialization without initializer (constexpr T x;)
         if (check(TokenType::Semicolon)) {
-            current = saved;
-            return true;
+            return true;  // Position auto-restored
         }
     }
     
-    current = saved;
-    return false;
+    return false;  // Position auto-restored by ParsePosition destructor
 }
 
 std::unique_ptr<Declaration> Parser::cpp1_passthrough_declaration(bool is_struct_type) {

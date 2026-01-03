@@ -5,20 +5,20 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 
-#line 7 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 7 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 class crash_m0;
   
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 7 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 7 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 class crash_m0 {
   public: [[nodiscard]] auto operator-([[maybe_unused]] auto const& unnamed_param_2) const& -> int;
   public: crash_m0() = default;
@@ -26,21 +26,21 @@ class crash_m0 {
   public: auto operator=(crash_m0 const&) -> void = delete;
 
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 };
 
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
 [[nodiscard]] auto main() -> int{
   auto x {crash_m0()}; 
   static_cast<void>(cpp2::move(x));
 }
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-late-comments.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.dMh3PVvcGX/pure2-bugfix-for-late-comments.cpp2"
   [[nodiscard]] auto crash_m0::operator-([[maybe_unused]] auto const& unnamed_param_2) const& -> int { return 0;  }/* Comment starts here
 And continues here
 */

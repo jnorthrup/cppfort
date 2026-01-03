@@ -1,0 +1,572 @@
+// Combinator Benchmark Suite
+// Compares combinator pipeline performance against hand-written loops
+// Target: <5% overhead
+
+#include "../include/bytebuffer.hpp"
+#include "../include/strview.hpp"
+#include "../include/combinators/structural.hpp"
+#include "../include/combinators/transformation.hpp"
+#include "../include/combinators/reduction.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
+#include <chrono>
+#include <cstddef>
+#include <random>
+#include <iomanip>
+
+// ============================================================================
+// Benchmark Infrastructure
+// ============================================================================
+
+// High-resolution timer
+using Clock = std::chrono::high_resolution_clock;
+using Duration = std::chrono::duration<double, std::nano>;
+
+// Generate test data
+generate_data: (size: size_t, seed: int) -> std::string = {
+    gen: std::mt19937 = (seed);
+    dist: std::uniform_int_distribution<int> = (0, 255);
+    result: std::string = ();
+    result.reserve(size);
+    i := 0;
+    while i < size {
+        result += dist(gen) as char;
+        i++;
+    }
+    return result;
+}
+
+// Benchmark result
+BenchmarkResult: @struct type = {
+    name: std::string;
+    hand_ns: double;
+    combinator_ns: double;
+    overhead_pct: double;
+}
+
+print_result: (r: BenchmarkResult) = {
+    status := "";
+    if r.overhead_pct <= 5.0 { status = "✓ PASS"; }
+    else { status = "✗ FAIL"; }
+    
+    std::cout << std::left << std::setw(35) << r.name
+              << std::right << std::setw(12) << std::fixed << std::setprecision(2) << r.hand_ns << " ns  "
+              << std::setw(12) << r.combinator_ns << " ns  "
+              << std::setw(8) << r.overhead_pct << "%  "
+              << status << "\n";
+}
+
+// Run benchmark with warmup
+WARMUP_ITERS: int == 100;
+BENCH_ITERS: int == 10000;
+
+// ============================================================================
+// Benchmark: Sum of Elements (fold vs loop)
+// ============================================================================
+
+bench_sum_hand: (data: std::string) -> int = {
+    sum := 0;
+    i := 0;
+    while i < data.size() {
+        sum += data[i] as int;
+        i++;
+    }
+    return sum;
+}
+
+bench_sum_combinator: (data: std::string) -> int = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    return cpp2::combinators::reduce_from(buf)
+        .fold(0, :(acc: int, c: char) -> int = acc + (c as int));
+}
+
+benchmark_sum: (data: std::string) -> BenchmarkResult = {
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_sum_hand(data);
+        _ := bench_sum_combinator(data);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_sum_hand(data);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_sum_combinator(data);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("fold (sum)", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Filter + Count (filter + loop vs loop)
+// ============================================================================
+
+bench_filter_count_hand: (data: std::string) -> int = {
+    count := 0;
+    i := 0;
+    while i < data.size() {
+        if (data[i] as int) % 2 == 0 {  // Even bytes
+            count++;
+        }
+        i++;
+    }
+    return count;
+}
+
+bench_filter_count_combinator: (data: std::string) -> int = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    return cpp2::combinators::reduce_from(buf)
+        .count(:(c: char) -> bool = (c as int) % 2 == 0);
+}
+
+benchmark_filter_count: (data: std::string) -> BenchmarkResult = {
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_filter_count_hand(data);
+        _ := bench_filter_count_combinator(data);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_filter_count_hand(data);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_filter_count_combinator(data);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("filter + count", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Take first N elements
+// ============================================================================
+
+bench_take_hand: (data: std::string, n: size_t) -> size_t = {
+    sum: size_t = 0;
+    limit := n;
+    if limit > data.size() { limit = data.size(); }
+    i := 0;
+    while i < limit {
+        sum += data[i] as size_t;
+        i++;
+    }
+    return sum;
+}
+
+bench_take_combinator: (data: std::string, n: size_t) -> size_t = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    result := cpp2::combinators::take(buf, n);
+    sum: size_t = 0;
+    for result do (c) {
+        sum += c as size_t;
+    }
+    return sum;
+}
+
+benchmark_take: (data: std::string) -> BenchmarkResult = {
+    n: size_t = 1000;
+    
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_take_hand(data, n);
+        _ := bench_take_combinator(data, n);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_take_hand(data, n);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_take_combinator(data, n);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("take(1000)", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Skip first N elements
+// ============================================================================
+
+bench_skip_hand: (data: std::string, n: size_t) -> size_t = {
+    sum: size_t = 0;
+    start_idx := n;
+    if start_idx > data.size() { start_idx = data.size(); }
+    i := start_idx;
+    while i < data.size() {
+        sum += data[i] as size_t;
+        i++;
+    }
+    return sum;
+}
+
+bench_skip_combinator: (data: std::string, n: size_t) -> size_t = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    result := cpp2::combinators::skip(buf, n);
+    sum: size_t = 0;
+    for result do (c) {
+        sum += c as size_t;
+    }
+    return sum;
+}
+
+benchmark_skip: (data: std::string) -> BenchmarkResult = {
+    n: size_t = 1000;
+    
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_skip_hand(data, n);
+        _ := bench_skip_combinator(data, n);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_skip_hand(data, n);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_skip_combinator(data, n);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("skip(1000)", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Map transformation
+// ============================================================================
+
+bench_map_hand: (data: std::string) -> size_t = {
+    sum: size_t = 0;
+    i := 0;
+    while i < data.size() {
+        // Transform: uppercase then sum ASCII
+        c := data[i];
+        if c >= 'a' && c <= 'z' {
+            c = (c - 32) as char;
+        }
+        sum += c as size_t;
+        i++;
+    }
+    return sum;
+}
+
+bench_map_combinator: (data: std::string) -> size_t = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    mapped := cpp2::combinators::from(buf)
+        | cpp2::combinators::curried::map(:(c: char) -> char = {
+            if c >= 'a' && c <= 'z' { return (c - 32) as char; }
+            return c;
+        });
+    sum: size_t = 0;
+    for mapped do (c) {
+        sum += c as size_t;
+    }
+    return sum;
+}
+
+benchmark_map: (data: std::string) -> BenchmarkResult = {
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_map_hand(data);
+        _ := bench_map_combinator(data);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_map_hand(data);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_map_combinator(data);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("map (toupper)", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Pipeline composition (skip + take + map + fold)
+// ============================================================================
+
+bench_pipeline_hand: (data: std::string) -> int = {
+    sum := 0;
+    // Skip 100, take 500, uppercase, sum
+    start_idx: size_t = 100;
+    end_idx: size_t = 600;
+    if end_idx > data.size() { end_idx = data.size(); }
+    if start_idx > data.size() { start_idx = data.size(); }
+    
+    i := start_idx;
+    while i < end_idx {
+        c := data[i];
+        if c >= 'a' && c <= 'z' {
+            c = (c - 32) as char;
+        }
+        sum += c as int;
+        i++;
+    }
+    return sum;
+}
+
+bench_pipeline_combinator: (data: std::string) -> int = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    return cpp2::combinators::reduce_from(
+        cpp2::combinators::from(buf)
+            | cpp2::combinators::curried::skip(100)
+            | cpp2::combinators::curried::take(500)
+            | cpp2::combinators::curried::map(:(c: char) -> char = {
+                if c >= 'a' && c <= 'z' { return (c - 32) as char; }
+                return c;
+            })
+    ).fold(0, :(acc: int, c: char) -> int = acc + (c as int));
+}
+
+benchmark_pipeline: (data: std::string) -> BenchmarkResult = {
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_pipeline_hand(data);
+        _ := bench_pipeline_combinator(data);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_pipeline_hand(data);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_pipeline_combinator(data);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("pipeline (skip+take+map+fold)", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: Find first match
+// ============================================================================
+
+bench_find_hand: (data: std::string, target: char) -> int = {
+    i := 0;
+    while i < data.size() {
+        if data[i] == target {
+            return i as int;
+        }
+        i++;
+    }
+    return -1;
+}
+
+bench_find_combinator: (data: std::string, target: char) -> int = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    result := cpp2::combinators::reduce_from(buf)
+        .find_index(:(c: char, t: char) -> bool = c == t, target);
+    if result.has_value() { return result.value() as int; }
+    return -1;
+}
+
+benchmark_find: (data: std::string) -> BenchmarkResult = {
+    target: char = 'X';  // Likely somewhere in random data
+    
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_find_hand(data, target);
+        _ := bench_find_combinator(data, target);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_find_hand(data, target);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_find_combinator(data, target);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("find", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// Benchmark: All predicate check
+// ============================================================================
+
+bench_all_hand: (data: std::string) -> bool = {
+    i := 0;
+    while i < data.size() {
+        if (data[i] as int) < 0 {  // Never true for valid char, but exercises the loop
+            return false;
+        }
+        i++;
+    }
+    return true;
+}
+
+bench_all_combinator: (data: std::string) -> bool = {
+    buf: cpp2::ByteBuffer = (data.data(), data.size());
+    return cpp2::combinators::reduce_from(buf)
+        .all(:(c: char) -> bool = (c as int) >= 0);
+}
+
+benchmark_all: (data: std::string) -> BenchmarkResult = {
+    // Warmup
+    i := 0;
+    while i < WARMUP_ITERS {
+        _ := bench_all_hand(data);
+        _ := bench_all_combinator(data);
+        i++;
+    }
+    
+    // Benchmark hand-written
+    start := Clock::now();
+    j := 0;
+    while j < BENCH_ITERS {
+        _ := bench_all_hand(data);
+        j++;
+    }
+    hand_time := (Clock::now() - start).count() as double / BENCH_ITERS;
+    
+    // Benchmark combinator
+    start2 := Clock::now();
+    k := 0;
+    while k < BENCH_ITERS {
+        _ := bench_all_combinator(data);
+        k++;
+    }
+    combinator_time := (Clock::now() - start2).count() as double / BENCH_ITERS;
+    
+    overhead := (combinator_time - hand_time) / hand_time * 100.0;
+    return BenchmarkResult("all", hand_time, combinator_time, overhead);
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+main: () -> int = {
+    std::cout << "=== Combinator Performance Benchmark ===\n";
+    std::cout << "Target: <5% overhead vs hand-written loops\n\n";
+    
+    // Generate test data of different sizes
+    sizes: std::vector<size_t> = (1000, 10000);
+    
+    for sizes do (size) {
+        data := generate_data(size, 42);
+        
+        std::cout << "--- Data size: " << size << " bytes ---\n";
+        std::cout << std::left << std::setw(35) << "Operation"
+                  << std::right << std::setw(15) << "Hand-written"
+                  << std::setw(15) << "Combinator"
+                  << std::setw(12) << "Overhead"
+                  << "  Status\n";
+        std::cout << std::string(85, '-') << "\n";
+        
+        results: std::vector<BenchmarkResult> = ();
+        
+        results.push_back(benchmark_sum(data));
+        results.push_back(benchmark_filter_count(data));
+        results.push_back(benchmark_take(data));
+        results.push_back(benchmark_skip(data));
+        results.push_back(benchmark_map(data));
+        results.push_back(benchmark_pipeline(data));
+        results.push_back(benchmark_find(data));
+        results.push_back(benchmark_all(data));
+        
+        passed := 0;
+        for results do (r) {
+            print_result(r);
+            if r.overhead_pct <= 5.0 {
+                passed++;
+            }
+        }
+        
+        std::cout << "\nPassed: " << passed << "/" << results.size() << " benchmarks (<5% overhead)\n\n";
+    }
+    
+    std::cout << "=== Benchmark Complete ===\n";
+    return 0;
+}

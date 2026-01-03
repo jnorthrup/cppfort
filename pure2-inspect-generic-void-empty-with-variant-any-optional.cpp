@@ -5,24 +5,24 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 auto test_generic(auto const& x, auto const& msg) -> void;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 [[nodiscard]] auto main() -> int{
     std::unique_ptr<int> p {}; 
     std::vector<int>::iterator i {}; 
@@ -39,7 +39,7 @@ auto test_generic(auto const& x, auto const& msg) -> void;
     test_generic(cpp2::move(o), "optional<string>");
 }
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.84HXq4ZYbP/pure2-inspect-generic-void-empty-with-variant-any-optional.cpp2"
 auto test_generic(auto const& x, auto const& msg) -> void{
     std::cout 
         << "\n" << msg << "\n    ..." 

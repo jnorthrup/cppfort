@@ -52,6 +52,7 @@ enum class TokenType : uint8_t {
     Requires,
     Auto,
     This,
+    That,   // Cpp2 'that' parameter for copy/move constructors
     Base,
     Super,
     Import,

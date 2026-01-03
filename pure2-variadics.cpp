@@ -5,33 +5,33 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Ts> class x;
     
 
-#line 10 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 10 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<int ...Ts> class y;
 
-#line 16 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 16 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...UnnamedTypeParam1_1> class t0;
   
 
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 21 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<auto ...T> class t1;
   
 
-#line 26 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 26 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<auto ...UnnamedTypeParam1_2> class t2;
   
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 
 //  Type pack expansion
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Ts> class x {
     private: std::tuple<Ts...> tup {}; 
 
@@ -40,7 +40,7 @@ template<typename ...Ts> class x {
     public: x(x const&) = delete; /* No 'that' constructor, suppress copy */
     public: auto operator=(x const&) -> void = delete;
 
-#line 7 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 7 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 };
 
 //  int pack expansion
@@ -51,7 +51,7 @@ template<int ...Ts> class y {
     public: y(y const&) = delete; /* No 'that' constructor, suppress copy */
     public: auto operator=(y const&) -> void = delete;
 
-#line 13 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 13 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 };
 
 // Discard type name pack expansion
@@ -71,10 +71,10 @@ template<auto ...UnnamedTypeParam1_2> class t2 {
 
 template<typename ...Args> auto left_fold_print(std::ostream& out, Args const& ...args) -> void;
 
-#line 35 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 35 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Args> [[nodiscard]] auto all(Args const& ...args) -> bool;
 
-#line 39 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 39 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Args> [[nodiscard]] auto make_string(Args&& ...args) -> decltype(auto);
 
 template  <typename T, typename ...Args> [[nodiscard]] auto make(Args&& ...args) -> decltype(auto);
@@ -83,41 +83,41 @@ auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
     template <typename ...Ts> auto x<Ts...>::func() -> void{}
 
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
     template <int ...Ts> [[nodiscard]] auto y<Ts...>::func() -> decltype(auto) { return (0 + ... + Ts);  }
 
-#line 17 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 17 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
   template <typename ...UnnamedTypeParam1_1> template<int UnnamedTypeParam1_3> [[nodiscard]] auto t0<UnnamedTypeParam1_1...>::f() -> cpp2::i32 { return 0;  }
 
-#line 22 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 22 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
   template <auto ...T> template<int UnnamedTypeParam1_4> [[nodiscard]] auto t1<T...>::f() -> cpp2::i32 { return 0;  }
 
-#line 27 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 27 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
   template <auto ...UnnamedTypeParam1_2> template<int UnnamedTypeParam1_5> [[nodiscard]] auto t2<UnnamedTypeParam1_2...>::f() -> cpp2::i32 { return 0;  }
 
-#line 30 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 30 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Args> auto left_fold_print(std::ostream& out, Args const& ...args) -> void{
     //  Binary left fold expression
     (out << ... << args);
 }
 
-#line 35 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 35 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Args> [[nodiscard]] auto all(Args const& ...args) -> bool { 
     //  Unary left fold expression
     return (... && args);  }
 
-#line 39 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 39 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template<typename ...Args> [[nodiscard]] auto make_string(Args&& ...args) -> decltype(auto) { return std::string{CPP2_FORWARD(args)...};  }
 
-#line 41 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 41 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 template  <typename T, typename ...Args> [[nodiscard]] auto make(Args&& ...args) -> decltype(auto) { return T{CPP2_FORWARD(args)...}; }
 
-#line 43 "/Users/jim/work/cppfort/corpus/inputs/pure2-variadics.cpp2"
+#line 43 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.N5oLwFCzR7/pure2-variadics.cpp2"
 auto main() -> int
 {
     x<int,long,std::string> auto_1 {}; 

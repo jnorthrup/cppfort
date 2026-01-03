@@ -5,19 +5,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-assign-expression-list.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.E8MWGS6sMD/pure2-bugfix-for-assign-expression-list.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-assign-expression-list.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.E8MWGS6sMD/pure2-bugfix-for-assign-expression-list.cpp2"
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-assign-expression-list.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.E8MWGS6sMD/pure2-bugfix-for-assign-expression-list.cpp2"
 auto main() -> int{
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-assign-expression-list.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.E8MWGS6sMD/pure2-bugfix-for-assign-expression-list.cpp2"
   using vec = std::vector<int>;
   vec v {0}; 
   v                   = {  };

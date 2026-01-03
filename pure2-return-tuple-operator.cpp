@@ -5,79 +5,79 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 class A;
     
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 class A {
 struct operator_call_ret { int x; int y; };
 
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     public: [[nodiscard]] auto operator()() const& -> operator_call_ret;
 struct operator_dereference_ret { int x; int y; };
 
 
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     public: [[nodiscard]] auto operator*() const& -> operator_dereference_ret;
 struct operator_subscript_ret { int x; int y; };
 
 
 
-#line 13 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 13 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     public: [[nodiscard]] auto operator[](cpp2::impl::in<int> idx) const& -> operator_subscript_ret;
     public: A() = default;
     public: A(A const&) = delete; /* No 'that' constructor, suppress copy */
     public: auto operator=(A const&) -> void = delete;
 
 
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 };
 
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 21 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     [[nodiscard]] auto A::operator()() const& -> operator_call_ret{
             cpp2::impl::deferred_init<int> x;
             cpp2::impl::deferred_init<int> y;
-#line 4 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 4 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
         x.construct(12);
         y.construct(34);
         return  { std::move(x.value()), std::move(y.value()) }; 
     }
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     [[nodiscard]] auto A::operator*() const& -> operator_dereference_ret{
             cpp2::impl::deferred_init<int> x;
             cpp2::impl::deferred_init<int> y;
-#line 9 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 9 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
         x.construct(23);
         y.construct(45);
         return  { std::move(x.value()), std::move(y.value()) }; 
     }
-#line 13 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 13 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
     [[nodiscard]] auto A::operator[](cpp2::impl::in<int> idx) const& -> operator_subscript_ret{
             cpp2::impl::deferred_init<int> x;
             cpp2::impl::deferred_init<int> y;
-#line 14 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 14 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
         x.construct(34 * (idx + 1));
         y.construct(56 * (idx + 1));
         return  { std::move(x.value()), std::move(y.value()) }; 
     }
 
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/pure2-return-tuple-operator.cpp2"
+#line 21 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.lbsqzbtDwY/pure2-return-tuple-operator.cpp2"
 auto main() -> int{
 
     A a {}; 

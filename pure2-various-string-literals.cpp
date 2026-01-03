@@ -5,19 +5,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-various-string-literals.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.u1onvlOEVJ/pure2-various-string-literals.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-various-string-literals.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.u1onvlOEVJ/pure2-various-string-literals.cpp2"
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-various-string-literals.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.u1onvlOEVJ/pure2-various-string-literals.cpp2"
 auto main() -> int{
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-various-string-literals.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.u1onvlOEVJ/pure2-various-string-literals.cpp2"
     auto s1 {u"u\""}; 
     auto s2 {U"U\""}; 
     auto s3 {u8"u8\""}; 

@@ -1,0 +1,11 @@
+pure2-break-continue
+pure2-bugfix-for-declaration-equal-error
+pure2-bugfix-for-optional-template-argument-list
+pure2-bugfix-for-requires-clause-unbraced-function-initializer
+pure2-concept-definition
+pure2-cpp1-prefix-expression-error
+pure2-forward-return
+pure2-hello
+pure2-intro-example-hello-2022
+pure2-lifetime-safety-reject-null-error
+pure2-main-args

@@ -5,20 +5,20 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 class base;
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
     
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 class mystruct;
     
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 class base {
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
     public: cpp2::i32 h; 
     public: base(auto&& h_)
 CPP2_REQUIRES_ (std::is_convertible_v<CPP2_TYPEOF(h_), std::add_const_t<cpp2::i32>&>) ;
@@ -27,7 +27,7 @@ public: auto operator=(auto&& h_) -> base&
 CPP2_REQUIRES_ (std::is_convertible_v<CPP2_TYPEOF(h_), std::add_const_t<cpp2::i32>&>) ;
 public: [[nodiscard]] auto hash() const& -> size_t;
 
-#line 3 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 3 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 };
 
 class mystruct: public base {
@@ -39,14 +39,14 @@ class mystruct: public base {
 CPP2_REQUIRES_ (std::is_convertible_v<CPP2_TYPEOF(i_), std::add_const_t<cpp2::i32>&> && std::is_convertible_v<CPP2_TYPEOF(j_), std::add_const_t<std::string>&> && std::is_convertible_v<CPP2_TYPEOF(k_), std::add_const_t<cpp2::u64>&>) ;
 public: [[nodiscard]] auto hash() const& -> size_t;
 
-#line 10 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 10 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 };
 
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 
 
 base::base(auto&& h_)
@@ -78,7 +78,7 @@ cpp2::hash_combine(ret, std::hash<std::string>()(j));
 cpp2::hash_combine(ret, std::hash<cpp2::u64>()(k));
 return ret; 
 }
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-hashable.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.S26YXcQygn/pure2-hashable.cpp2"
 auto main() -> int{
     mystruct x {2, "three", 4u}; 
     std::cout << CPP2_UFCS(hash)(cpp2::move(x));

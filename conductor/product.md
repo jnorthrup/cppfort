@@ -34,6 +34,8 @@ Cpp2 Source
 
 ### ✅ Working
 - **Lexer/Parser**: Full Cpp2 grammar (pure2 mode)
+  - Grammar: `grammar/cpp2.combinators.md` (orthogonal combinator spec)
+  - EBNF: `grammar/cpp2.ebnf` (formal grammar)
 - **AST**: Complete node definitions with semantic info scaffolding
 - **Type System**: Deduction, templates, UFCS resolution
 - **MLIR Dialects**: FIR (Front-IR) + SON (Sea-of-Nodes) operational
@@ -42,6 +44,7 @@ Cpp2 Source
 - **Safety Checks**: Bounds, null, division-by-zero, integer overflow warnings
 - **Metafunctions**: 14+ implemented (@value, @ordered, @interface, @regex, @autodiff, etc.)
 - **Test Infrastructure**: 17 unit tests passing, regression framework operational
+- **Reference Corpus**: Lazy-cached cppfront output + Clang AST dumps in `tests/reference/`
 
 ### 🔧 In Progress
 - **Semantic AST Enhancements**: Escape analysis, borrowing, external memory integration
@@ -49,10 +52,10 @@ Cpp2 Source
 - **Mixed-Mode Support**: Parser support for C++1 syntax intermixed with Cpp2
 
 ### 📊 Corpus Analysis
-- **Reference Corpus**: 189 .cpp2 files from cppfront (158 transpiled, 31 expected errors)
+- **Reference Corpus**: 158 transpiled tests in `tests/reference/` (lazy-cached via `tools/reference_corpus.sh`)
+- **Head-to-Head**: 26/158 (16.5%) passing against cppfront (`tests/results/H2H_SUMMARY.md`)
 - **AST Database**: 1.4M isomorphs extracted, 13.5K unique patterns, 100% MLIR region coverage
-- **Semantic Loss**: Current 1.0 (max) for pure2-hello.cpp2, target <0.15
-- **Test Results**: pure2 files work, mixed files blocked (50/189 tests)
+- **Failure Categories**: 110 compile diff, 14 transpile fail, 7 output diff
 
 ## Guiding Principles
 

@@ -5,13 +5,13 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 
-#line 7 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 7 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 class t;
   
 
-#line 58 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 58 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 namespace ns {
 template<int T, int U> class t;
   
@@ -21,16 +21,16 @@ template<int T, int U> class t;
 class A;
   
 
-#line 68 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 68 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 class B;
   
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 [[nodiscard]] auto print_res(cpp2::impl::in<cpp2::i32> x) -> cpp2::i32;
 
-#line 7 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 7 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 class t {
   public: [[nodiscard]] auto f() & -> cpp2::i32;
   public: [[nodiscard]] auto f([[maybe_unused]] auto const& unnamed_param_2) & -> cpp2::i32;
@@ -63,7 +63,7 @@ extern cpp2::i32 auto_18;
 
 auto main() -> int;
 
-#line 55 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 55 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 // _: i32 = 0.std::min<int>(0);
 extern cpp2::i32 auto_19;
 
@@ -86,46 +86,46 @@ CPP2_REQUIRES_ (std::is_convertible_v<CPP2_TYPEOF(m_), std::add_const_t<A>&>) ;
 public: auto operator=(auto&& m_) -> B& 
 CPP2_REQUIRES_ (std::is_convertible_v<CPP2_TYPEOF(m_), std::add_const_t<A>&>) ;
 
-#line 71 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 71 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 };
 
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 [[nodiscard]] auto print_res(cpp2::impl::in<cpp2::i32> x) -> cpp2::i32{
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   std::cout << x;
   if (x == 9) {std::cout << '\n'; }
   return x; 
 }
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   [[nodiscard]] auto t::f() & -> cpp2::i32 { return print_res(0);  }
-#line 9 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 9 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   [[nodiscard]] auto t::f([[maybe_unused]] auto const& unnamed_param_2) & -> cpp2::i32 { return print_res(1);  }
-#line 10 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 10 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   template<typename UnnamedTypeParam1_1> [[nodiscard]] auto t::f() & -> cpp2::i32 { return print_res(2);  }
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   template<typename UnnamedTypeParam1_2> [[nodiscard]] auto t::f([[maybe_unused]] auto const& unnamed_param_2) & -> cpp2::i32 { return print_res(3);  }
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   template<typename UnnamedTypeParam1_3, typename U> [[nodiscard]] auto t::f([[maybe_unused]] auto const& unnamed_param_2, [[maybe_unused]] auto const& unnamed_param_3) & -> cpp2::i32 { return print_res(4);  }
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 [[nodiscard]] auto f([[maybe_unused]] cpp2::impl::in<t> unnamed_param_1) -> cpp2::i32 { return print_res(5);  }
-#line 16 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 16 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 [[nodiscard]] auto f([[maybe_unused]] cpp2::impl::in<t> unnamed_param_1, [[maybe_unused]] auto const& unnamed_param_2) -> cpp2::i32 { return print_res(6);  }
-#line 17 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 17 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 template<typename UnnamedTypeParam1_4> [[nodiscard]] auto f([[maybe_unused]] cpp2::impl::in<t> unnamed_param_1) -> cpp2::i32 { return print_res(7);  }
-#line 18 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 18 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 template<typename UnnamedTypeParam1_5> [[nodiscard]] auto f([[maybe_unused]] cpp2::impl::in<t> unnamed_param_1, [[maybe_unused]] auto const& unnamed_param_2) -> cpp2::i32 { return print_res(8);  }
-#line 19 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 19 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 template<typename UnnamedTypeParam1_6, typename U> [[nodiscard]] auto f([[maybe_unused]] cpp2::impl::in<t> unnamed_param_1, [[maybe_unused]] auto const& unnamed_param_2, [[maybe_unused]] auto const& unnamed_param_3) -> cpp2::i32 { return print_res(9);  }
 
 t m {}; 
 t const n {}; 
 
-#line 25 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 25 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 cpp2::i32 auto_8 {CPP2_UFCS_NONLOCAL(f)(m)}; 
 cpp2::i32 auto_9 {CPP2_UFCS_NONLOCAL(f)(m, 0)}; 
 cpp2::i32 auto_10 {CPP2_UFCS_TEMPLATE_NONLOCAL(f<t>)(m)}; 
@@ -138,7 +138,7 @@ cpp2::i32 auto_16 {CPP2_UFCS_TEMPLATE_NONLOCAL(f<t>)(n, 0)};
 cpp2::i32 auto_17 {CPP2_UFCS_TEMPLATE_NONLOCAL(f<t,t>)(n, 0, 0)}; 
 cpp2::i32 auto_18 {CPP2_UFCS_TEMPLATE_NONLOCAL(f<t,t>)(a<t,t>, 0, 0)}; 
 
-#line 37 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 37 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 auto main() -> int{
   static_cast<void>(CPP2_UFCS(f)(m));
   static_cast<void>(CPP2_UFCS(f)(m, 0));
@@ -157,20 +157,20 @@ auto main() -> int{
   static_cast<void>(CPP2_UFCS_QUALIFIED_TEMPLATE((ns::t<0,0>::),f<0>)(0));
 }
 
-#line 56 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 56 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
 cpp2::i32 auto_19 {CPP2_UFCS_QUALIFIED_TEMPLATE_NONLOCAL((ns::t<0,0>::),f<0>)(0)}; 
 
 namespace ns {
 
-#line 60 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 60 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   template <int T, int U> template<int V> [[nodiscard]] auto t<T,U>::f([[maybe_unused]] cpp2::impl::in<int> unnamed_param_1) -> cpp2::i32 { return 0;  }
 
 }
 
-#line 65 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 65 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   auto A::f() const& -> void{}
 
-#line 70 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-arguments.cpp2"
+#line 70 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.pwTAe8Gz5F/pure2-bugfix-for-ufcs-arguments.cpp2"
   auto B::f() const& -> void{CPP2_UFCS(f)(m); }
 
   B::B(auto&& m_)

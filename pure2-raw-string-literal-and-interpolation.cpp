@@ -5,19 +5,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-raw-string-literal-and-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.p3Jz8JRSnt/pure2-raw-string-literal-and-interpolation.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-raw-string-literal-and-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.p3Jz8JRSnt/pure2-raw-string-literal-and-interpolation.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-raw-string-literal-and-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.p3Jz8JRSnt/pure2-raw-string-literal-and-interpolation.cpp2"
 [[nodiscard]] auto main() -> int{
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-raw-string-literal-and-interpolation.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.p3Jz8JRSnt/pure2-raw-string-literal-and-interpolation.cpp2"
     auto i {42}; 
     std::map<std::string,int> m {}; 
     CPP2_ASSERT_IN_BOUNDS(m, "one") = 1;

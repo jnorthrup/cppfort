@@ -1,4 +1,4 @@
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 #include <iostream>
 #include <random>
 
@@ -8,19 +8,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 [[nodiscard]] auto main() -> int;
 
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 21 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 auto print_and_decorate(auto const& x) -> void;
-#line 24 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 24 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 
 bool flip_a_coin() {
     // Change std::mt19937 to std::random_device for non-deterministic PRNG
@@ -31,9 +31,9 @@ bool flip_a_coin() {
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 [[nodiscard]] auto main() -> int{
     int x {42}; 
     int y {43}; 
@@ -50,7 +50,7 @@ bool flip_a_coin() {
     print_and_decorate(*cpp2::impl::assert_not_null(cpp2::move(p.value())));
 }
 
-#line 21 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-pointer-init-4.cpp2"
+#line 21 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.0gWJkqOoJv/mixed-lifetime-safety-pointer-init-4.cpp2"
 auto print_and_decorate(auto const& x) -> void{
     std::cout << ">> " << x << "\n";
 }

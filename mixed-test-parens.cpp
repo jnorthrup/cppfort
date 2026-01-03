@@ -6,27 +6,27 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
 
 template<auto>
 auto f(auto, auto) -> void { }
 
 constexpr int a = 1;
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-test-parens.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.fgNMBvjm7J/mixed-test-parens.cpp2"
 [[nodiscard]] auto main() -> int{
     auto p {cpp2_new<int>(11)}; 
     std::cout << *cpp2::impl::assert_not_null(cpp2::move(p)) << "\n";

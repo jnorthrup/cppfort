@@ -1,0 +1,216 @@
+=== mixed-bounds-check ===
+REF OUTPUT:
+mixed-bounds-check.cpp2(9) int main(): Bounds safety violation: out of bounds access attempt detected - attempted access at index 5, [min,max] range is [0,4]
+__TIMEOUT__
+FORT OUTPUT:
+-999
+
+=== mixed-bounds-safety-with-assert-2 ===
+REF OUTPUT:
+1
+44
+45
+46
+5
+FORT OUTPUT:
+1
+2
+3
+4
+5
+
+=== mixed-bounds-safety-with-assert ===
+REF OUTPUT:
+mixed-bounds-safety-with-assert.cpp2(11) void print_subrange(const auto &, cpp2::impl::in<int>, cpp2::impl::in<int>) [rng:auto = std::vector<int>]: Bounds safety violation
+__TIMEOUT__
+FORT OUTPUT:
+
+
+=== mixed-float-literals ===
+REF OUTPUT:
+123
+123
+123
+123
+123
+123
+123456
+123
+123
+123
+123
+123
+123
+123456
+123456
+123456
+456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+123456
+123456
+456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+123
+123
+123
+123
+123
+123
+123456
+123
+123
+123
+123
+123
+123
+123456
+123456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+123456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+FORT OUTPUT:
+123
+123
+123
+123
+123
+123
+123456
+123
+123
+123
+123
+123
+123
+123456
+123456
+123456
+456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+123456
+123456
+456
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+1e-10
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+123
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+0.1
+123
+456
+1e+10
+1e+10
+1e-10
+1e-10
+1e-10
+1e-10
+0.1
+
+=== mixed-function-expression-and-std-for-each ===
+REF OUTPUT:
+hello-ish maybe
+2022-ish maybe
+FORT OUTPUT:
+hello
+2022
+
+=== mixed-intro-for-with-counter-include-last ===
+REF OUTPUT:
+1 42
+2 84
+3 168
+4 336
+5 672
+FORT OUTPUT:
+1 42
+2 42
+3 42
+4 42
+5 42
+
+=== pure2-types-that-parameters ===
+REF OUTPUT:
+name 'Henry', addr '123 Ford Dr.'
+-----
+name 'Henry', addr '123 Ford Dr.'
+name 'Henry', addr '123 Ford Dr.'
+-----
+name '', addr ''
+name 'Henry', addr '123 Ford Dr.'
+FORT OUTPUT:
+name 'Henry', addr '123 Ford Dr.'
+-----
+name 'Henry', addr '123 Ford Dr.'
+name 'Henry', addr '123 Ford Dr.'
+-----
+name 'Henry', addr '123 Ford Dr.'
+name 'Henry', addr '123 Ford Dr.'
+

@@ -1,4 +1,4 @@
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -9,22 +9,22 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 [[nodiscard]] auto main() -> int;
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 
 //  Calling Cpp1 is the easiest way to create a null...
 auto null_from_cpp1() -> int* { return nullptr; }
 
 auto try_pointer_stuff() -> void;
-#line 20 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 20 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 
 auto call_my_framework(const char* msg CPP2_SOURCE_LOCATION_PARAM) {
     std::cout
@@ -44,16 +44,16 @@ auto call_my_framework(const char* msg CPP2_SOURCE_LOCATION_PARAM) {
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 [[nodiscard]] auto main() -> int{
     CPP2_UFCS(set_handler)(cpp2::null_safety, &call_my_framework);
     try_pointer_stuff();
     std::cout << "done\n";
 }
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/mixed-lifetime-safety-and-null-contracts.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.hZtEYAZjEE/mixed-lifetime-safety-and-null-contracts.cpp2"
 auto try_pointer_stuff() -> void{
     int* p {null_from_cpp1()}; 
     *cpp2::impl::assert_not_null(p) = 42;// deliberate null dereference

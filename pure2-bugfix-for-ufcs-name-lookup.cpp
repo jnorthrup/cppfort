@@ -5,16 +5,16 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 class identity;
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 class t;
   
 
-#line 9 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 9 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 class u;
 
 namespace ns {
@@ -24,9 +24,9 @@ namespace ns {
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 class identity {
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   public: [[nodiscard]] constexpr auto operator()(auto&& x) const& -> decltype(auto);
 };
 
@@ -49,21 +49,21 @@ auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   [[nodiscard]] constexpr auto identity::operator()(auto&& x) const& -> decltype(auto) { return CPP2_FORWARD(x);  }
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   [[nodiscard]] constexpr auto t::f() const& -> int { return 0;  }
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 namespace ns {
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 [[nodiscard]] constexpr auto f([[maybe_unused]] auto const& unnamed_param_1) -> int { return 1;  }
 }
 
-#line 20 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 20 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
 auto main() -> int{
   {
     int f {CPP2_UFCS(f)(t())}; 
@@ -79,15 +79,15 @@ auto main() -> int{
   }
 {
 auto const& f{t().f()};
-#line 33 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 33 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   if (cpp2::cpp2_default.is_active() && !(f == 0) ) { cpp2::cpp2_default.report_violation(""); }
 }
 {
 auto const& f{t().f()};
-#line 34 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 34 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   if (cpp2::cpp2_default.is_active() && !(f == 0) ) { cpp2::cpp2_default.report_violation(""); }
 }
-#line 35 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 35 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
   {
     auto constexpr f{ t().f() };
     static_assert(f == 0);
@@ -114,15 +114,15 @@ auto const& f{t().f()};
     auto f {[]() -> void{
 {
 cpp2::impl::in<identity> f{identity()};
-#line 59 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 59 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
       if (cpp2::cpp2_default.is_active() && !(CPP2_UFCS(f)(t()) == 0) ) { cpp2::cpp2_default.report_violation(""); }
 }
 {
 cpp2::impl::in<identity> f{identity()};
-#line 60 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 60 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
       static_cast<void>(CPP2_UFCS(f)(u()));
 }
-#line 61 "/Users/jim/work/cppfort/corpus/inputs/pure2-bugfix-for-ufcs-name-lookup.cpp2"
+#line 61 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.UDvrSUx2F0/pure2-bugfix-for-ufcs-name-lookup.cpp2"
     }}; 
     static_cast<void>(cpp2::move(f));
   }

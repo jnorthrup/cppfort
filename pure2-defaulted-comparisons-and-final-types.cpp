@@ -5,23 +5,23 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 class widget;
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 class widget final
  {
     private: int v; 
 
     public: widget(cpp2::impl::in<int> value);
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
     public: auto operator=(cpp2::impl::in<int> value) -> widget& ;
 
     public: [[nodiscard]] auto operator==(widget const& that) const& -> bool = default;
@@ -30,24 +30,24 @@ class widget final
     public: widget(widget const&) = delete; /* No 'that' constructor, suppress copy */
     public: auto operator=(widget const&) -> void = delete;
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 };
 
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
     widget::widget(cpp2::impl::in<int> value)
                                           : v{ value }{}
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
     auto widget::operator=(cpp2::impl::in<int> value) -> widget& {
                                           v = value;
                                           return *this; }
 
-#line 13 "/Users/jim/work/cppfort/corpus/inputs/pure2-defaulted-comparisons-and-final-types.cpp2"
+#line 13 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.mYJ4lEVd3o/pure2-defaulted-comparisons-and-final-types.cpp2"
 auto main() -> int{
     widget a {1}; 
     widget b {2}; 

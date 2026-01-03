@@ -9,24 +9,24 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
+#line 5 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
 
 struct custom_struct_with_no_stringize_customization { } custom;
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
 
-#line 8 "/Users/jim/work/cppfort/corpus/inputs/mixed-string-interpolation.cpp2"
+#line 8 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.YvGysdvZnN/mixed-string-interpolation.cpp2"
 [[nodiscard]] auto main() -> int{
     auto a {2}; 
     std::optional<int> b {}; 

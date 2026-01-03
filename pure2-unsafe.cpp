@@ -5,24 +5,24 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 auto f(cpp2::impl::in<cpp2::i32> i, std::string& s) -> void;
 
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 auto f(cpp2::impl::in<cpp2::i32> i, std::string& s) -> void{
     // j := i as i16;                     // error, maybe-lossy narrowing
     auto j {cpp2::unchecked_narrow<cpp2::i16>(i)}; // ok, 'unchecked' is explicit
@@ -33,7 +33,7 @@ auto f(cpp2::impl::in<cpp2::i32> i, std::string& s) -> void{
     *cpp2::impl::assert_not_null(ps) = "plugh";
 }
 
-#line 12 "/Users/jim/work/cppfort/corpus/inputs/pure2-unsafe.cpp2"
+#line 12 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.6Hd5MPPnZX/pure2-unsafe.cpp2"
 auto main() -> int{
     std::string str {"xyzzy"}; 
     f(42, str);

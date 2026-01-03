@@ -1,0 +1,3 @@
+# Cppfort Transpilation Rules
+# Extracted from cppfront corpus
+

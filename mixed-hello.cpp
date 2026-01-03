@@ -1,4 +1,4 @@
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 2 "tests/regression-tests/mixed-hello.cpp2"
 #include <iostream>
 #include <string>
 
@@ -8,19 +8,19 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 1 "tests/regression-tests/mixed-hello.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 1 "tests/regression-tests/mixed-hello.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 5 "tests/regression-tests/mixed-hello.cpp2"
 [[nodiscard]] auto name() -> std::string;
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 11 "tests/regression-tests/mixed-hello.cpp2"
 auto decorate(std::string& s) -> void;
-#line 14 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 14 "tests/regression-tests/mixed-hello.cpp2"
 
 auto main() -> int {
     // name();
@@ -30,16 +30,16 @@ auto main() -> int {
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 1 "tests/regression-tests/mixed-hello.cpp2"
 
-#line 5 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 5 "tests/regression-tests/mixed-hello.cpp2"
 [[nodiscard]] auto name() -> std::string{
     std::string s {"world"}; 
     decorate(s);
     return s; 
 }
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/mixed-hello.cpp2"
+#line 11 "tests/regression-tests/mixed-hello.cpp2"
 auto decorate(std::string& s) -> void{
     s = "[" + s + "]";
 }

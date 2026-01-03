@@ -1,361 +1,303 @@
-# Implementation Plan: EBNF-Driven Parser Rewrite
+# Implementation Plan: Combinator-Based Parser Rewrite
 
 ## Overview
 
-Rewrite the existing 5,700+ line hand-written recursive descent parser to be driven 
-by a formal EBNF grammar specification. This enables:
-- Grammar verification and validation
-- Automatic parser generation/verification
-- Cleaner separation of syntax from semantics
-- Easier grammar extensions
-- Better error messages with grammar context
+Rewrite the existing hand-written recursive descent parser using orthogonal parser combinators.
+The formal grammar is defined in `grammar/cpp2.combinators.md` and `grammar/cpp2.ebnf`.
 
-**Current State:** Hand-written parser in `src/parser.cpp` (5,772 lines)
-**Target State:** EBNF grammar file + grammar-driven parser infrastructure
+**Grammar Reference:** `grammar/cpp2.combinators.md` (1,110 lines - combinator specification)
+**Formal EBNF:** `grammar/cpp2.ebnf` (653 lines - formal grammar)
+**Current State:** Hand-written parser in `src/parser.cpp` (5,800+ lines)
+**Target State:** Combinator-driven parser using `include/combinators/` infrastructure
 
 ---
 
-## Phase 1: Grammar Extraction and Specification [checkpoint: TBD]
+## Combinator Primitives
 
-### 1.1 Document Existing Grammar
+The parser will be built from these orthogonal combinators (see `grammar/cpp2.combinators.md`):
 
-- [ ] Extract declaration grammar from `Parser::declaration()` (~250 lines)
-  - Variable declarations: `name : type = expr`
-  - Function declarations: `name : (params) -> type = body`
-  - Type declarations: `name : type = { members }`
-  - Namespace declarations
-  - Using/import declarations
-  - C++1 passthrough detection
+| Combinator | Type Signature | Description |
+|------------|---------------|-------------|
+| `seq(a, b, ...)` | `Parser<tuple<A,B,...>>` | Sequencing |
+| `alt(a, b, ...)` | `Parser<variant<A,B,...>>` | Alternation |
+| `many(p)` | `Parser<vector<T>>` | Zero or more |
+| `many1(p)` | `Parser<vector<T>>` | One or more |
+| `opt(p)` | `Parser<optional<T>>` | Optional |
+| `sep_by(p, d)` | `Parser<vector<T>>` | Separated list |
+| `between(l, p, r)` | `Parser<T>` | Bracketed |
+| `map(p, f)` | `Parser<U>` | Transform |
+| `try_(p)` | `Parser<T>` | Backtrack on fail |
 
-- [ ] Extract statement grammar from `Parser::statement()` (~220 lines)
-  - Block statements
-  - Control flow: if/while/do/for/switch
-  - Pattern matching: inspect
-  - Contracts: pre/post/assert
-  - Exception handling: try/throw
+---
 
-- [ ] Extract expression grammar (precedence levels)
-  - Level 1: Assignment (`=`, `:=`, `+=`, etc.)
-  - Level 2: Pipeline (`|>`)
-  - Level 3: Ternary (`? :`)
-  - Level 4: Logical OR (`||`)
-  - Level 5: Logical AND (`&&`)
-  - Level 6: Bitwise OR (`|`)
-  - Level 7: Bitwise XOR (`^`)
-  - Level 8: Bitwise AND (`&`)
-  - Level 9: Equality (`==`, `!=`)
-  - Level 10: Comparison (`<`, `>`, `<=`, `>=`, `<=>`)
-  - Level 11: Range (`..`, `..<`, `..=`)
-  - Level 12: Shift (`<<`, `>>`)
-  - Level 13: Addition (`+`, `-`)
-  - Level 14: Multiplication (`*`, `/`, `%`)
-  - Level 15: Prefix (`!`, `-`, `~`, `&`, `*`, `++`, `--`)
-  - Level 16: Postfix (call, member, subscript, `++`, `--`)
-  - Level 17: Primary (literals, identifiers, grouping)
+## Phase 1: Grammar Validation ✓ [COMPLETE]
 
-- [ ] Extract type grammar from `Parser::type()` (~250 lines)
-  - Builtin types
-  - User-defined types
-  - Pointer/reference types
-  - Template types
-  - Function types
-  - Qualified types (const, volatile)
+### Completed
+- [x] Extract grammar from `src/parser.cpp` 
+- [x] Create `grammar/cpp2.ebnf` (653 lines)
+- [x] Create `grammar/cpp2.combinators.md` (1,110 lines)
+- [x] Document disambiguation rules
+- [x] Define precedence levels (16 expression levels)
 
-### 1.2 Create EBNF Grammar File
+### Grammar Files
+```
+grammar/
+├── cpp2.combinators.md   # Combinator specification (authoritative)
+└── cpp2.ebnf             # Formal EBNF (reference)
+```
 
-- [ ] Create `grammar/cpp2.ebnf` with formal grammar
-- [ ] Add grammar validation tests
-- [ ] Document ambiguities and resolution rules
-- [ ] Add precedence/associativity annotations
+---
+
+## Phase 2: Combinator Infrastructure [checkpoint: TBD]
+
+### 2.1 Core Combinator Types
+
+Location: `include/combinators/`
+
+```cpp
+// Parser result
+template<typename T>
+using ParseResult = std::expected<T, ParseError>;
+
+// Parser type
+template<typename T>
+using Parser = std::function<ParseResult<T>(TokenStream&)>;
+
+// Primitive combinators (from grammar/cpp2.combinators.md)
+template<typename... Ps>
+auto seq(Ps... parsers) -> Parser<std::tuple<parse_result_t<Ps>...>>;
+
+template<typename... Ps>
+auto alt(Ps... parsers) -> Parser<std::variant<parse_result_t<Ps>...>>;
+
+template<typename P>
+auto many(P parser) -> Parser<std::vector<parse_result_t<P>>>;
+
+template<typename P>
+auto opt(P parser) -> Parser<std::optional<parse_result_t<P>>>;
+```
+
+### 2.2 Token Matchers
+
+```cpp
+// Terminal matchers
+auto token(TokenType t) -> Parser<Token>;
+auto keyword(std::string_view kw) -> Parser<Token>;
+auto punct(std::string_view p) -> Parser<Token>;
+
+// From grammar/cpp2.combinators.md:
+// identifier = token(Identifier) | filter(token(Keyword), is_contextual_keyword)
+auto identifier() -> Parser<Token>;
+```
+
+### 2.3 Expression Combinators
+
+```cpp
+// Precedence climbing for expressions (16 levels in cpp2.combinators.md)
+auto expression() -> Parser<ExprPtr>;
+auto precedence_climb(int min_prec) -> Parser<ExprPtr>;
+
+// From grammar spec:
+// assignment = logical_or [ assignment_op assignment ]
+// pipeline = ternary { "|>" ternary }
+auto assignment() -> Parser<ExprPtr>;
+auto pipeline() -> Parser<ExprPtr>;
+```
 
 ### Success Criteria
-- Complete EBNF grammar covering all current parser functionality
-- Grammar passes validation (no unreachable rules, no ambiguities)
-- Documentation of all disambiguation rules
+- Combinator types compile with C++20
+- Token matchers work with existing lexer
+- Basic expression parsing passes tests
 
 ---
 
-## Phase 2: Grammar Infrastructure [checkpoint: TBD]
+## Phase 3: Grammar Implementation [checkpoint: TBD]
 
-### 2.1 EBNF Parser
+### 3.1 Declarations (from `grammar/cpp2.combinators.md`)
 
-- [ ] Create `include/grammar/ebnf_parser.hpp`
-  - EBNF lexer for grammar files
-  - EBNF AST representation
-  - Grammar rule storage
+```cpp
+// declaration = alt(
+//     namespace_decl,
+//     function_decl,
+//     type_decl,
+//     variable_decl,
+//     using_decl,
+//     cpp1_passthrough
+// )
+auto declaration() -> Parser<DeclPtr> {
+    return alt(
+        namespace_decl(),
+        function_decl(),
+        type_decl(),
+        variable_decl(),
+        using_decl(),
+        cpp1_passthrough()
+    );
+}
 
-- [ ] Create `src/grammar/ebnf_parser.cpp`
-  - Parse EBNF syntax: `rule ::= alternatives ;`
-  - Handle: sequences, alternatives, optionals, repetitions
-  - Support: grouping, character classes, literals
-  - Parse precedence annotations
+// function_decl = seq(
+//     identifier,
+//     opt(template_params),
+//     punct(":"),
+//     param_list,
+//     opt(seq(punct("->"), return_type)),
+//     opt(contracts),
+//     function_body
+// )
+```
 
-- [ ] Unit tests for EBNF parser
-  - Basic rule parsing
-  - Complex alternatives
-  - Recursive rules
-  - Error reporting
+### 3.2 Statements (from `grammar/cpp2.combinators.md`)
 
-### 2.2 Grammar Data Structures
+```cpp
+// statement = alt(
+//     block_stmt,
+//     if_stmt,
+//     while_stmt,
+//     for_stmt,
+//     inspect_stmt,
+//     return_stmt,
+//     contract_stmt,
+//     expression_stmt
+// )
+```
 
-- [ ] Create `include/grammar/grammar.hpp`
-  ```cpp
-  struct GrammarRule {
-      std::string name;
-      std::vector<Alternative> alternatives;
-      int precedence = 0;
-      Associativity assoc = Associativity::Left;
-  };
-  
-  struct Alternative {
-      std::vector<Symbol> symbols;
-      std::optional<SemanticAction> action;
-  };
-  
-  struct Symbol {
-      enum Kind { Terminal, NonTerminal, Optional, Star, Plus };
-      Kind kind;
-      std::string name;
-      TokenType token; // for terminals
-  };
-  ```
+### 3.3 Types (from `grammar/cpp2.combinators.md`)
 
-- [ ] Create `include/grammar/grammar_set.hpp`
-  - First/Follow set computation
-  - Nullable detection
-  - LL(k) analysis utilities
+```cpp
+// type = alt(
+//     builtin_type,
+//     qualified_id,
+//     pointer_type,
+//     reference_type,
+//     array_type,
+//     function_type,
+//     template_type
+// )
+```
 
 ### Success Criteria
-- EBNF parser can load and validate grammar files
-- Grammar data structures support all Cpp2 constructs
-- First/Follow sets computed correctly
+- All grammar rules from `cpp2.combinators.md` implemented
+- Parser produces identical AST to current implementation
+- All regression tests pass
 
 ---
 
-## Phase 3: Parser Generator Framework [checkpoint: TBD]
+## Phase 4: AST Construction [checkpoint: TBD]
 
-### 3.1 Parse Table Generation
+### 4.1 Semantic Actions
 
-- [ ] Create `include/grammar/parse_table.hpp`
-  - LL(1) parse table representation
-  - Conflict detection and reporting
-  - Table serialization for caching
+```cpp
+// Transform parse results into AST nodes
+auto function_decl() -> Parser<DeclPtr> {
+    return seq(
+        identifier(),
+        opt(template_params()),
+        punct(":"),
+        param_list(),
+        opt(seq(punct("->"), return_type())),
+        opt(contracts()),
+        function_body()
+    ) |> map([](auto&& parts) {
+        auto [name, tparams, _, params, ret, contracts, body] = parts;
+        return make_function_decl(name, tparams, params, ret, contracts, body);
+    });
+}
+```
 
-- [ ] Create `src/grammar/parse_table_gen.cpp`
-  - Generate LL(1) parse tables
-  - Handle left-recursion elimination
-  - Handle left-factoring
-  - Report conflicts with grammar context
+### 4.2 Error Recovery
 
-### 3.2 Packrat Parser Support (for backtracking)
-
-- [ ] Create `include/grammar/packrat.hpp`
-  - Memoization table for parse results
-  - Backtracking support for ambiguous grammars
-  - Cut operator for committed choice
-
-- [ ] Create `src/grammar/packrat.cpp`
-  - Implement packrat parsing algorithm
-  - Memory-efficient memoization
-  - Integration with existing Token stream
-
-### 3.3 Parser Driver
-
-- [ ] Create `include/grammar/grammar_parser.hpp`
-  - Generic grammar-driven parser
-  - Semantic action hooks
-  - Error recovery strategies
-
-- [ ] Create `src/grammar/grammar_parser.cpp`
-  - Table-driven parsing loop
-  - AST construction via semantic actions
-  - Error synchronization points
+```cpp
+// Sync points from grammar spec
+// statement ::= ... @sync(';', '}')
+auto statement_with_recovery() -> Parser<StmtPtr> {
+    return recover(statement(), sync_to(punct(";"), punct("}")));
+}
+```
 
 ### Success Criteria
-- Parse tables generated for Cpp2 grammar
-- Packrat parser handles ambiguous constructs
-- Parser driver produces correct AST for test cases
+- AST construction integrated with combinators
+- Error recovery at statement/declaration boundaries
+- Error messages include grammar context
 
 ---
 
-## Phase 4: Semantic Actions [checkpoint: TBD]
-
-### 4.1 AST Builder Actions
-
-- [ ] Create `include/grammar/ast_actions.hpp`
-  - Semantic action interface
-  - AST node factory methods
-  - Action registration mechanism
-
-- [ ] Create `src/grammar/ast_actions.cpp`
-  - Declaration builders
-  - Statement builders  
-  - Expression builders
-  - Type builders
-
-### 4.2 Action DSL
-
-- [ ] Design action syntax for EBNF file
-  ```ebnf
-  function_decl ::= 
-      IDENTIFIER ':' param_list '->' type '=' body
-      { make_function($1, $3, $5, $7) }
-      ;
-  ```
-
-- [ ] Implement action code generation
-  - Parse action expressions
-  - Generate C++ action code
-  - Type-safe argument passing
-
-### Success Criteria
-- Semantic actions produce identical AST to current parser
-- Action DSL is concise and type-safe
-- All 99 parser methods have equivalent actions
-
----
-
-## Phase 5: Migration and Integration [checkpoint: TBD]
+## Phase 5: Migration [checkpoint: TBD]
 
 ### 5.1 Parallel Implementation
-
-- [ ] Create `include/parser_v2.hpp` - new grammar-driven parser
-- [ ] Create `src/parser_v2.cpp` - parser driver implementation
-- [ ] Load grammar from `grammar/cpp2.ebnf` at startup
-- [ ] Implement same public API as existing Parser
+- [ ] Create `src/parser_combinators.cpp`
+- [ ] Implement all combinators from `grammar/cpp2.combinators.md`
+- [ ] Same public API as existing Parser class
 
 ### 5.2 Test Harness
+- [ ] Run both parsers on regression corpus
+- [ ] Compare AST output
+- [ ] Head-to-head with cppfront reference
 
-- [ ] Create comparison test harness
-  - Run both parsers on same input
-  - Compare resulting AST
-  - Report differences
-
-- [ ] Port all existing parser tests
-- [ ] Add grammar-specific tests
-  - Ambiguity resolution
-  - Error recovery
-  - Precedence handling
-
-### 5.3 Gradual Migration
-
-- [ ] Add `--parser-v2` flag to cppfort
-- [ ] Run corpus tests with both parsers
-- [ ] Identify and fix discrepancies
-- [ ] Performance comparison
+### 5.3 Switch Over
+- [ ] Add `--parser=combinators` flag
+- [ ] Validate against 158 reference tests
+- [ ] Performance benchmarking
 
 ### Success Criteria
-- New parser passes all existing tests
-- No regressions in corpus parsing
-- Performance within 20% of hand-written parser
+- All 26 passing tests still pass
+- No regressions in 158-test corpus
+- Performance within 20% of hand-written
 
 ---
 
-## Phase 6: Error Recovery and Diagnostics [checkpoint: TBD]
+## Phase 6: Optimization [checkpoint: TBD]
 
-### 6.1 Grammar-Aware Errors
+### 6.1 Memoization
+- Packrat-style memoization for backtracking
+- Cache expression parse results
 
-- [ ] Extract expected tokens from parse state
-- [ ] Generate "expected X, found Y" messages
-- [ ] Include grammar rule context in errors
+### 6.2 Fast Paths
+- Inline token matching for hot paths
+- Specialized expression precedence climber
 
-### 6.2 Error Recovery
-
-- [ ] Implement panic-mode recovery with sync points
-- [ ] Add grammar annotations for recovery
-  ```ebnf
-  statement ::= ... @sync(';', '}') ;
-  ```
-- [ ] Implement Burke-Fisher error repair (optional)
-
-### 6.3 Suggestion Engine
-
-- [ ] Detect common mistakes (missing semicolon, etc.)
-- [ ] Suggest fixes based on grammar
-- [ ] Integration with IDE diagnostics
+### 6.3 Grammar Compilation
+- Pre-compute first/follow sets
+- Static parse tables where applicable
 
 ### Success Criteria
-- Error messages include grammar context
-- Parser recovers gracefully from errors
-- Common mistakes get helpful suggestions
+- Performance within 10% of hand-written
+- Memory usage acceptable
 
 ---
 
-## Phase 7: Optimization and Finalization [checkpoint: TBD]
+## Reference Materials
 
-### 7.1 Performance Optimization
-
-- [ ] Profile grammar-driven parser
-- [ ] Optimize hot paths in parse loop
-- [ ] Consider partial hand-optimization for expressions
-- [ ] Cache compiled grammar
-
-### 7.2 Grammar Tooling
-
-- [ ] Grammar pretty-printer
-- [ ] Railroad diagram generator
-- [ ] Grammar diff tool
-
-### 7.3 Documentation
-
-- [ ] Document grammar syntax
-- [ ] Document extension process
-- [ ] Document semantic action interface
-
-### 7.4 Deprecate Old Parser
-
-- [ ] Mark old parser as deprecated
-- [ ] Remove old parser (after stabilization)
-- [ ] Update all dependent code
-
-### Success Criteria
-- Parser performance within 10% of hand-written
-- Complete grammar documentation
-- Clean removal of old parser code
+| Document | Purpose |
+|----------|---------|
+| `grammar/cpp2.combinators.md` | Authoritative combinator grammar |
+| `grammar/cpp2.ebnf` | Formal EBNF reference |
+| `include/combinators/` | Combinator implementation |
+| `tests/reference/` | cppfront reference corpus |
+| `tests/results/H2H_SUMMARY.md` | Head-to-head baseline |
 
 ---
 
-## Track Completion Checklist
+## Current Baseline
 
-- [ ] Phase 1: Grammar extracted and documented
-- [ ] Phase 2: EBNF infrastructure complete
-- [ ] Phase 3: Parser generator working
-- [ ] Phase 4: Semantic actions implemented
-- [ ] Phase 5: Migration complete, tests passing
-- [ ] Phase 6: Error recovery improved
-- [ ] Phase 7: Optimization and cleanup done
-- [ ] All corpus tests passing with new parser
-- [ ] Old parser removed
-- [ ] Documentation complete
+From head-to-head testing against cppfront:
+- **26/158 (16.5%)** tests passing
+- **110** fail due to C++ compile differences  
+- **14** fail at transpilation
+- **7** have output differences
+- **1** compiles when reference doesn't
 
 ---
 
 ## Risk Mitigation
 
-**Risk: Performance regression**
-- Mitigation: Keep hand-written expression parser as fast-path
-- Fallback: Hybrid approach with critical paths hand-optimized
+**Risk: Combinator overhead**
+- Mitigation: Inline critical parsers, memoization
+- Fallback: Hybrid with hand-written expression parser
 
-**Risk: Grammar ambiguities**
-- Mitigation: Packrat parser with backtracking
-- Fallback: Disambiguation predicates in grammar
+**Risk: Grammar coverage gaps**
+- Mitigation: Reference corpus validation
+- Fallback: Incremental migration per construct
 
-**Risk: Missing edge cases**
-- Mitigation: Comprehensive corpus testing
-- Fallback: Maintain old parser for comparison during transition
-
----
-
-## Estimated Timeline
-
-| Phase | Effort | Dependencies |
-|-------|--------|--------------|
-| Phase 1 | 2-3 days | None |
-| Phase 2 | 3-4 days | Phase 1 |
-| Phase 3 | 4-5 days | Phase 2 |
-| Phase 4 | 3-4 days | Phase 3 |
-| Phase 5 | 3-4 days | Phase 4 |
-| Phase 6 | 2-3 days | Phase 5 |
-| Phase 7 | 2-3 days | Phase 6 |
-
-**Total: ~20-26 days**
+**Risk: AST incompatibility**
+- Mitigation: AST comparison test harness
+- Fallback: Adapter layer for existing AST types

@@ -152,6 +152,133 @@ private:
     // Parameter qualifier parsing (Cpp2-specific)
     std::vector<ParameterQualifier> parse_parameter_qualifiers();
 
+    // =========================================================================
+    // Parser Combinator Hierarchy - Category Theory Foundation
+    // =========================================================================
+    
+    // ---------------------------------------------------------------------------
+    // Level 0: Position & State Management (Backtracking Monad)
+    // ---------------------------------------------------------------------------
+    
+    // RAII position guard for speculative parsing / backtracking
+    struct ParsePosition {
+        Parser& parser;
+        std::size_t saved_pos;
+        bool saved_panic;
+        bool saved_suppress;
+        bool committed = false;
+        
+        explicit ParsePosition(Parser& p) 
+            : parser(p), saved_pos(p.current), saved_panic(p.panic_mode), saved_suppress(p.suppress_errors) {}
+        ~ParsePosition() { if (!committed) rollback(); }
+        void commit() { committed = true; }
+        void rollback() { parser.current = saved_pos; parser.panic_mode = saved_panic; }
+        void reset() { parser.current = saved_pos; }  // Alias for rollback position only
+    };
+    
+    // Speculative parsing context (suppresses errors during lookahead)
+    struct Speculative {
+        Parser& parser;
+        bool saved_suppress;
+        
+        explicit Speculative(Parser& p) : parser(p), saved_suppress(p.suppress_errors) { 
+            parser.suppress_errors = true; 
+        }
+        ~Speculative() { parser.suppress_errors = saved_suppress; }
+    };
+    
+    // ---------------------------------------------------------------------------
+    // Level 1: Primitive Combinators (Functor)
+    // ---------------------------------------------------------------------------
+    
+    // Try to parse, returning nullopt on failure (position auto-restored)
+    template<typename F>
+    auto try_parse(F&& func) -> std::optional<decltype(func())>;
+    
+    // Lookahead: peek at what would parse without consuming
+    template<typename F>
+    bool lookahead(F&& func);
+    
+    // Match if predicate is true at current position
+    template<typename Pred>
+    bool match_if(Pred&& pred);
+    
+    // ---------------------------------------------------------------------------
+    // Level 2: Sequence & Alternative Combinators (Applicative)
+    // ---------------------------------------------------------------------------
+    
+    // Parse first, then second (sequence/product)
+    template<typename F1, typename F2>
+    auto seq(F1&& first, F2&& second) -> std::pair<decltype(first()), decltype(second())>;
+    
+    // Try first, if fails try second (alternative/coproduct)
+    template<typename F1, typename F2>
+    auto alt(F1&& first, F2&& second) -> decltype(first());
+    
+    // Optional: parse if possible, otherwise return nullopt
+    template<typename F>
+    auto opt(F&& func) -> std::optional<decltype(func())>;
+    
+    // ---------------------------------------------------------------------------
+    // Level 3: Repetition Combinators (Monad/Kleene)
+    // ---------------------------------------------------------------------------
+    
+    // Parse zero or more (Kleene star)
+    template<typename T, typename F>
+    std::vector<T> many(F&& func);
+    
+    // Parse one or more (Kleene plus)
+    template<typename T, typename F>
+    std::vector<T> some(F&& func);
+    
+    // Parse delimited list: item (delimiter item)* [trailing_delimiter]
+    template<typename T, typename ParseFn>
+    std::vector<T> parse_delimited_list(TokenType delimiter, TokenType end_token, ParseFn&& parse_item);
+    
+    // Parse separated list with optional trailing separator
+    template<typename T, typename ParseFn>
+    std::vector<T> sep_by(TokenType separator, TokenType terminator, ParseFn&& parse_item);
+    
+    // ---------------------------------------------------------------------------
+    // Level 4: Domain-Specific Combinators (Cpp2 Grammar)
+    // ---------------------------------------------------------------------------
+    
+    // Unified parameter list parsing for functions, operators, lambdas
+    struct ParsedParameter {
+        std::string name;
+        std::unique_ptr<Type> type;
+        std::unique_ptr<Expression> default_value;
+        std::vector<ParameterQualifier> qualifiers;
+        bool is_variadic = false;
+    };
+    std::vector<ParsedParameter> parse_parameter_list();
+    
+    // Unified return type parsing: -> type, -> forward type, -> (named), =: type
+    struct ParsedReturnType {
+        std::unique_ptr<Type> type;
+        bool is_forward = false;
+        std::vector<std::pair<std::string, std::unique_ptr<Type>>> named_returns;
+    };
+    std::optional<ParsedReturnType> parse_return_type();
+    
+    // Template parameter handling with >> disambiguation
+    bool consume_template_close_normalized();
+    std::pair<std::vector<std::string>, bool> parse_template_params();
+    
+    // Decorator parsing: @name or @name<args>
+    std::vector<std::string> parse_decorators();
+    
+    // Identifier-like token parsing (contextual keywords)
+    std::optional<Token> parse_identifier_like();
+    
+    // ---------------------------------------------------------------------------
+    // Level 5: Syntax Detection Predicates
+    // ---------------------------------------------------------------------------
+    
+    // C++1 vs Cpp2 syntax detection (for mixed-mode parsing)
+    bool is_cpp1_syntax();
+    bool is_cpp2_declaration();
+
     // Template handling
     std::vector<std::string> template_parameters();
     bool is_template_start();

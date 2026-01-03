@@ -5,12 +5,12 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 void literals_cpp1() {
   // integers
   std::cout << 123 << std::endl;
@@ -67,17 +67,17 @@ void literals_cpp1() {
   // 1e - 10.0f;
 }
 
-#line 57 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 57 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 auto literals_cpp2() -> void;
 
-#line 114 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 114 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 1 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 
-#line 57 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 57 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 auto literals_cpp2() -> void{
   // integers
   std::cout << 123 << std::endl;
@@ -135,7 +135,7 @@ auto literals_cpp2() -> void{
   // 1.E-10F;
 }
 
-#line 114 "/Users/jim/work/cppfort/corpus/inputs/mixed-float-literals.cpp2"
+#line 114 "/Users/jim/work/cppfort/tests/regression-tests/mixed-float-literals.cpp2"
 [[nodiscard]] auto main() -> int{
   literals_cpp1();
   literals_cpp2();

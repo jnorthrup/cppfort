@@ -244,6 +244,7 @@ void CodeGenerator::write_includes() {
     write_line("#include <cstdint>");
     write_line("#include <iterator>");  // For std::ssize
     write_line("#include <filesystem>"); // For std::filesystem
+    write_line("#include <cassert>");    // For assert()
     write_line("");
     // Inline the minimal cpp2 namespace (matches cpp2_runtime.h API)
     write_line("namespace cpp2 {");
@@ -2336,12 +2337,9 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 expr_output << " -> " << generate_type(lambda->return_type.get());
             }
             expr_output << " { ";
-            // Generate body - for simple lambdas, assume single expression return
+            // Generate all statements in the lambda body
             for (const auto& stmt : lambda->body) {
-                // Simplified - full implementation would call generate_statement
-                if (auto ret_stmt = dynamic_cast<ReturnStatement*>(stmt.get())) {
-                    expr_output << "return " << generate_expression_to_string(ret_stmt->value.get()) << "; ";
-                }
+                expr_output << generate_statement_to_string(stmt.get()) << " ";
             }
             expr_output << "}";
             break;
@@ -2447,13 +2445,9 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
                 expr_output << " -> " << generate_type(lambda->return_type.get());
             }
             expr_output << " { ";
-            // Generate body - simplified
+            // Generate all statements in the lambda body
             for (const auto& stmt : lambda->body) {
-                if (auto ret_stmt = dynamic_cast<ReturnStatement*>(stmt.get())) {
-                    expr_output << "return " << generate_expression_to_string(ret_stmt->value.get()) << "; ";
-                } else if (auto expr_stmt = dynamic_cast<ExpressionStatement*>(stmt.get())) {
-                    expr_output << generate_expression_to_string(expr_stmt->expr.get()) << "; ";
-                }
+                expr_output << generate_statement_to_string(stmt.get()) << " ";
             }
             expr_output << "}";
             break;
@@ -2464,6 +2458,94 @@ std::string CodeGenerator::generate_expression_to_string(Expression* expr) {
     }
 
     return expr_output.str();
+}
+
+// Generate a statement to a string (for lambda bodies)
+std::string CodeGenerator::generate_statement_to_string(Statement* stmt) {
+    if (!stmt) return "";
+
+    std::ostringstream stmt_output;
+    
+    switch (stmt->kind) {
+        case Statement::Kind::Expression: {
+            auto expr_stmt = static_cast<ExpressionStatement*>(stmt);
+            stmt_output << generate_expression_to_string(expr_stmt->expr.get()) << ";";
+            break;
+        }
+        case Statement::Kind::Declaration: {
+            auto decl_stmt = static_cast<DeclarationStatement*>(stmt);
+            auto decl = decl_stmt->declaration.get();
+            if (auto var_decl = dynamic_cast<VariableDeclaration*>(decl)) {
+                std::string type_str = "auto";
+                if (var_decl->type && var_decl->type->kind != Type::Kind::Auto) {
+                    type_str = generate_type(var_decl->type.get());
+                }
+                stmt_output << type_str << " " << var_decl->name;
+                if (var_decl->initializer) {
+                    stmt_output << " = " << generate_expression_to_string(var_decl->initializer.get());
+                }
+                stmt_output << ";";
+            }
+            break;
+        }
+        case Statement::Kind::Return: {
+            auto ret_stmt = static_cast<ReturnStatement*>(stmt);
+            if (ret_stmt->value) {
+                stmt_output << "return " << generate_expression_to_string(ret_stmt->value.get()) << ";";
+            } else {
+                stmt_output << "return;";
+            }
+            break;
+        }
+        case Statement::Kind::While: {
+            auto while_stmt = static_cast<WhileStatement*>(stmt);
+            stmt_output << "while (" << generate_expression_to_string(while_stmt->condition.get()) << ") ";
+            // Handle next clause (increment expression)
+            if (while_stmt->increment) {
+                stmt_output << "{ ";
+                if (while_stmt->body) {
+                    // Generate body statements
+                    if (while_stmt->body->kind == Statement::Kind::Block) {
+                        auto block = static_cast<BlockStatement*>(while_stmt->body.get());
+                        for (const auto& s : block->statements) {
+                            stmt_output << generate_statement_to_string(s.get()) << " ";
+                        }
+                    } else {
+                        stmt_output << generate_statement_to_string(while_stmt->body.get()) << " ";
+                    }
+                }
+                stmt_output << generate_expression_to_string(while_stmt->increment.get()) << "; }";
+            } else if (while_stmt->body) {
+                stmt_output << generate_statement_to_string(while_stmt->body.get());
+            } else {
+                stmt_output << "{}";
+            }
+            break;
+        }
+        case Statement::Kind::If: {
+            auto if_stmt = static_cast<IfStatement*>(stmt);
+            stmt_output << "if (" << generate_expression_to_string(if_stmt->condition.get()) << ") ";
+            stmt_output << generate_statement_to_string(if_stmt->then_stmt.get());
+            if (if_stmt->else_stmt) {
+                stmt_output << " else " << generate_statement_to_string(if_stmt->else_stmt.get());
+            }
+            break;
+        }
+        case Statement::Kind::Block: {
+            auto block_stmt = static_cast<BlockStatement*>(stmt);
+            stmt_output << "{ ";
+            for (const auto& s : block_stmt->statements) {
+                stmt_output << generate_statement_to_string(s.get()) << " ";
+            }
+            stmt_output << "}";
+            break;
+        }
+        default:
+            stmt_output << "/* stmt kind " << static_cast<int>(stmt->kind) << " */";
+            break;
+    }
+    
+    return stmt_output.str();
 }
 
 // Convert Cpp2 function type "(params) -> return_type" to C++ "return_type(params)"

@@ -5,41 +5,41 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 auto print(auto const& x) -> void;
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 auto decorate_and_print(auto& x) -> void;
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 [[nodiscard]] auto main() -> int;
-#line 31 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 31 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 auto print(auto const& x) -> void{
     std::cout << ">> " << x << "\n";
 }
 
-#line 6 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 6 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 auto decorate_and_print(auto& x) -> void{
     x = "[" + x + "]";
     print(x);
 }
 
-#line 11 "/Users/jim/work/cppfort/corpus/inputs/pure2-intro-example-three-loops.cpp2"
+#line 11 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.ljwBa0Aali/pure2-intro-example-three-loops.cpp2"
 [[nodiscard]] auto main() -> int{
     std::vector<std::string> words {
         "hello", "big", "world"}; 

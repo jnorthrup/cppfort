@@ -5,22 +5,22 @@
 
 #include "cpp2util.h"
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
 auto fun(auto const& v) -> void;
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
 [[nodiscard]] auto main() -> int;
 
 //=== Cpp2 function definitions =================================================
 
-#line 1 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 1 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
 auto fun(auto const& v) -> void{
-#line 2 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 2 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
     if (cpp2::impl::is(v, ([](cpp2::impl::in<int> x) -> decltype(auto) { return cpp2::impl::cmp_greater(x,3); }))) {
         std::cout << "" + cpp2::to_string(v) + " is integer bigger than 3" << std::endl;
     }
@@ -34,7 +34,7 @@ auto fun(auto const& v) -> void{
     }
 }
 
-#line 15 "/Users/jim/work/cppfort/corpus/inputs/pure2-is-with-unnamed-predicates.cpp2"
+#line 15 "/var/folders/kd/t4gdhlf137n0zbd6x34z1hcm0000gn/T/tmp.PuFhcjYR7v/pure2-is-with-unnamed-predicates.cpp2"
 [[nodiscard]] auto main() -> int{
     fun(3.14);
     fun(42);
