@@ -9,15 +9,27 @@
 
 namespace cpp2_transpiler {
 
+// Output mode for generated code
+enum class OutputMode {
+    Inline,      // Inline all runtime code (self-contained, larger output)
+    Header,      // Use #include <cpp2_runtime.h> (smaller, needs header)
+    PCH          // Use #include <cpp2_pch.h> (fastest, needs precompiled header)
+};
+
 class CodeGenerator {
 public:
     CodeGenerator();
+    explicit CodeGenerator(OutputMode mode);
     std::string generate(AST& ast);
+    
+    void set_output_mode(OutputMode mode) { output_mode_ = mode; }
+    OutputMode output_mode() const { return output_mode_; }
 
 private:
     std::ostringstream output;
     int indent_level = 0;
     bool needs_semicolon = true;
+    OutputMode output_mode_ = OutputMode::Inline;
 
     // State tracking
     std::unordered_set<std::string> generated_functions;
@@ -38,6 +50,8 @@ private:
     void generate_variable_declaration(VariableDeclaration* decl);
     void generate_function_forward_declaration(FunctionDeclaration* decl);
     void generate_function_declaration(FunctionDeclaration* decl);
+    void generate_special_member_function(FunctionDeclaration* decl);  // operator=: patterns
+    void generate_operator_eq_colon(OperatorDeclaration* decl);       // operator=: for OperatorDeclaration
     void generate_type_declaration(TypeDeclaration* decl);
     void generate_namespace_declaration(NamespaceDeclaration* decl);
     void generate_operator_declaration(OperatorDeclaration* decl);
@@ -70,6 +84,7 @@ private:
 
     void generate_expression(Expression* expr);
     std::string generate_expression_to_string(Expression* expr);
+    std::string generate_statement_to_string(Statement* stmt);  // Generate statement to string for lambda bodies
     void generate_literal_expression(LiteralExpression* expr);
     void generate_identifier_expression(IdentifierExpression* expr);
     void generate_binary_expression(BinaryExpression* expr);
