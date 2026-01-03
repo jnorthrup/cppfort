@@ -742,6 +742,7 @@ void SemanticAnalyzer::resolve_ufcs(CallExpression* call) {
 
 bool SemanticAnalyzer::is_member_call(Expression* callee) const {
     // Check if this is a member function call
+    if (!callee) return false;
     return callee->kind == Expression::Kind::MemberAccess;
 }
 

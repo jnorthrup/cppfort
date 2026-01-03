@@ -19,6 +19,12 @@ for file in "$CORPUS_DIR"/*.cpp2; do
   total=$((total + 1))
   basename=$(basename "$file" .cpp2)
   category=$(echo "$basename" | cut -d'-' -f1)
+  
+  # Check if this is an error test (should fail with errors)
+  is_error_test=false
+  if [[ "$basename" == *"-error" ]]; then
+    is_error_test=true
+  fi
 
   echo -n "[$total] $basename... " >&2
 
@@ -26,17 +32,32 @@ for file in "$CORPUS_DIR"/*.cpp2; do
   exit_code=$?
 
   if [ $exit_code -eq 0 ]; then
-    pass=$((pass + 1))
-    echo "PASS" >&2
-    echo "PASS: $basename ($category)" >> "$OUTPUT"
-  elif echo "$output" | grep -q "Segmentation fault"; then
+    if [ "$is_error_test" = true ]; then
+      # Error test should have failed but didn't
+      fail=$((fail + 1))
+      echo "FAIL (should error)" >&2
+      echo "FAIL: $basename ($category) - should have produced error" >> "$OUTPUT"
+    else
+      pass=$((pass + 1))
+      echo "PASS" >&2
+      echo "PASS: $basename ($category)" >> "$OUTPUT"
+    fi
+  elif [ $exit_code -eq 139 ] || [ $exit_code -eq 134 ] || [ $exit_code -eq 136 ] || echo "$output" | grep -qi "segmentation fault\|abort\|signal"; then
+    # 139 = SIGSEGV, 134 = SIGABRT, 136 = SIGFPE
     segfault=$((segfault + 1))
-    echo "SEGFAULT" >&2
-    echo "SEGFAULT: $basename ($category)" >> "$OUTPUT"
+    echo "SEGFAULT (exit $exit_code)" >&2
+    echo "SEGFAULT: $basename ($category) - exit $exit_code" >> "$OUTPUT"
   else
-    fail=$((fail + 1))
-    echo "FAIL (exit $exit_code)" >&2
-    echo "FAIL: $basename ($category) - exit $exit_code" >> "$OUTPUT"
+    if [ "$is_error_test" = true ]; then
+      # Error test correctly produced an error
+      pass=$((pass + 1))
+      echo "PASS (expected error)" >&2
+      echo "PASS: $basename ($category) - expected error" >> "$OUTPUT"
+    else
+      fail=$((fail + 1))
+      echo "FAIL (exit $exit_code)" >&2
+      echo "FAIL: $basename ($category) - exit $exit_code" >> "$OUTPUT"
+    fi
   fi
 done
 

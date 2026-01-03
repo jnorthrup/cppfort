@@ -99,12 +99,12 @@ bool Parser::is_identifier_like() const {
         return true;
     }
     // 'func', 'type', 'namespace' can be used as identifiers when followed by ':'
-    // in unified declaration syntax (e.g., func: () = { })
+    // in unified declaration syntax (e.g., func: () = { }) or := in type-deduced syntax
     if (check(TokenType::Func) || check(TokenType::Type) || check(TokenType::Namespace)) {
         std::size_t lookahead = current + 1;
         if (lookahead < tokens.size()) {
             TokenType next_tok = tokens[lookahead].type;
-            if (next_tok == TokenType::Colon) {
+            if (next_tok == TokenType::Colon || next_tok == TokenType::ColonEqual) {
                 return true;
             }
         }
@@ -762,18 +762,8 @@ std::unique_ptr<Declaration> Parser::variable_declaration() {
     std::vector<std::string> template_params;
     if (match(TokenType::LessThan)) {
         template_params = template_parameters();
-        // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-        if (check(TokenType::RightShift)) {
-            advance(); // consume >> (as a single token)
-        } else if (check(TokenType::GreaterThan)) {
-            // Check if this is >> (two separate > tokens)
-            if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                advance(); // consume first >
-                advance(); // consume second >
-            } else {
-                advance(); // consume single >
-            }
-        } else {
+        // Handle > or >> using consume_template_close for proper pending_gt handling
+        if (!consume_template_close()) {
             consume(TokenType::GreaterThan, "Expected '>' after template parameters");
         }
     }
@@ -854,18 +844,8 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
         // Template parameters
         if (match(TokenType::LessThan)) {
             template_params = template_parameters();
-            // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-            if (check(TokenType::RightShift)) {
-                advance(); // consume >> (as a single token)
-            } else if (check(TokenType::GreaterThan)) {
-                // Check if this is >> (two separate > tokens)
-                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                    advance(); // consume first >
-                    advance(); // consume second >
-                } else {
-                    advance(); // consume single >
-                }
-            } else {
+            // Handle > or >> using consume_template_close for proper pending_gt handling
+            if (!consume_template_close()) {
                 consume(TokenType::GreaterThan, "Expected '>' after template parameters");
             }
         }
@@ -890,18 +870,8 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
         // Template parameters in unified syntax: name: <T> (params)
         if (match(TokenType::LessThan)) {
             template_params = template_parameters();
-            // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-            if (check(TokenType::RightShift)) {
-                advance(); // consume >> (as a single token)
-            } else if (check(TokenType::GreaterThan)) {
-                // Check if this is >> (two separate > tokens)
-                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                    advance(); // consume first >
-                    advance(); // consume second >
-                } else {
-                    advance(); // consume single >
-                }
-            } else {
+            // Handle > or >> using consume_template_close for proper pending_gt handling
+            if (!consume_template_close()) {
                 consume(TokenType::GreaterThan, "Expected '>' after template parameters");
             }
         }
@@ -1239,18 +1209,8 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
         // Parse template parameters before decorators: <T, U>
         if (match(TokenType::LessThan)) {
             template_params = template_parameters();
-            // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-            if (check(TokenType::RightShift)) {
-                advance(); // consume >> (as a single token)
-            } else if (check(TokenType::GreaterThan)) {
-                // Check if this is >> (two separate > tokens)
-                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-                    advance(); // consume first >
-                    advance(); // consume second >
-                } else {
-                    advance(); // consume single >
-                }
-            } else {
+            // Handle > or >> (via pending_gt mechanism from nested templates)
+            if (!consume_template_close()) {
                 consume(TokenType::GreaterThan, "Expected '>' after template parameters");
             }
         }
@@ -1781,12 +1741,8 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
     std::vector<std::string> template_params;
     if (match(TokenType::LessThan)) {
         template_params = template_parameters();
-        // Handle > or >>
-        if (check(TokenType::RightShift)) {
-            advance();
-        } else if (check(TokenType::GreaterThan)) {
-            advance();
-        } else {
+        // Handle > or >> (via pending_gt mechanism from nested templates)
+        if (!consume_template_close()) {
             consume(TokenType::GreaterThan, "Expected '>' after template parameters");
         }
     }
@@ -1907,8 +1863,11 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
     }
 
     // Cpp2 supports both block bodies and expression bodies
+    // Cpp2 supports both block bodies and expression bodies
     // - operator=: (params) -> type = { body }
     // - operator=: (params) -> type = expr;
+    // - operator=: (params) -> type == { body }  (compile-time operator)
+    // - operator=: (params) -> type == expr;     (compile-time operator)
     // - operator=: (params) -> type;  (forward declaration)
     std::unique_ptr<Statement> body = nullptr;
     
@@ -1919,7 +1878,8 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
         return op_decl;
     }
     
-    bool has_equals = match(TokenType::Equal); // '=' is optional for historical compatibility
+    bool is_compile_time = match(TokenType::DoubleEqual); // '==' for compile-time functions
+    bool has_equals = is_compile_time || match(TokenType::Equal); // '=' or '==' before body
     if (match(TokenType::LeftBrace)) {
         body = block_statement();
     } else if (has_equals) {
@@ -1941,6 +1901,7 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
     }
 
     op_decl->body = std::move(body);
+    op_decl->is_constexpr = is_compile_time;
 
     return op_decl;
 }
@@ -2041,18 +2002,8 @@ std::unique_ptr<Declaration> Parser::template_declaration() {
     
     consume(TokenType::LessThan, "Expected '<' after template");
     auto params = template_parameters();
-    // Handle > (single) or >> (two separate GreaterThan tokens, or one RightShift token)
-    if (check(TokenType::RightShift)) {
-        advance(); // consume >> (as a single token)
-    } else if (check(TokenType::GreaterThan)) {
-        // Check if this is >> (two separate > tokens)
-        if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::GreaterThan) {
-            advance(); // consume first >
-            advance(); // consume second >
-        } else {
-            advance(); // consume single >
-        }
-    } else {
+    // Handle > or >> (via pending_gt mechanism from nested templates)
+    if (!consume_template_close()) {
         consume(TokenType::GreaterThan, "Expected '>' after template parameters");
     }
 
@@ -2329,42 +2280,83 @@ std::unique_ptr<Type> Parser::qualified_type() {
                 if (check(TokenType::GreaterThan) || check(TokenType::RightShift)) {
                     break;
                 }
-                // Template arguments can be types or constant expressions
-                if (check(TokenType::IntegerLiteral) || check(TokenType::FloatLiteral) || check(TokenType::Minus)) {
-                    // Capture constant expression as template argument
-                    std::string const_expr;
-                    int depth = 0;
-                    while (!is_at_end()) {
-                        if (check(TokenType::LessThan)) {
-                            const_expr += peek().lexeme;
-                            depth++;
-                            advance();
-                        } else if (check(TokenType::GreaterThan) || check(TokenType::RightShift)) {
-                            if (depth == 0) break;
-                            const_expr += peek().lexeme;
-                            depth--;
-                            if (check(TokenType::RightShift)) depth--;  // >> closes two levels
-                            advance();
-                        } else if (check(TokenType::Comma) && depth == 0) {
+                // Template arguments can be types or expressions (including function calls like f(), o.f())
+                // Use a token-collecting approach to handle complex expressions
+                std::string arg_text;
+                int angle_depth = 0;
+                int paren_depth = 0;
+                TokenType prev_type = TokenType::EndOfFile;
+                bool split_right_shift = false;  // Set when we split >> into > and pending >
+                
+                while (!is_at_end()) {
+                    // Check termination conditions at depth 0
+                    if (angle_depth == 0 && paren_depth == 0) {
+                        if (check(TokenType::GreaterThan) || check(TokenType::RightShift) ||
+                            check(TokenType::Comma)) {
                             break;
-                        } else {
-                            const_expr += peek().lexeme;
+                        }
+                    }
+                    
+                    // Track nesting
+                    if (check(TokenType::LessThan)) {
+                        angle_depth++;
+                    } else if (check(TokenType::GreaterThan)) {
+                        if (angle_depth > 0) angle_depth--;
+                        else break;  // This > closes our template
+                    } else if (check(TokenType::RightShift)) {
+                        // >> could close two levels or one level + our template
+                        if (angle_depth >= 2) {
+                            // Add >> to close two nested templates
+                            arg_text += ">>";
                             advance();
+                            angle_depth -= 2;
+                            continue;  // Skip the normal token add below
+                        } else if (angle_depth == 1) {
+                            // Split >>: add one > to close the nested template,
+                            // set pending_gt for the outer template
+                            arg_text += ">";
+                            split_right_shift = true;
+                            pending_gt = true;
+                            angle_depth--;
+                            break;  // Stop - the outer close will handle the second >
+                        } else {
+                            break;  // Both > close outer templates
+                        }
+                    } else if (check(TokenType::LeftParen)) {
+                        paren_depth++;
+                    } else if (check(TokenType::RightParen)) {
+                        if (paren_depth > 0) paren_depth--;
+                    }
+                    
+                    // Add spacing intelligently
+                    if (!arg_text.empty()) {
+                        TokenType curr = peek().type;
+                        bool no_space_before = (curr == TokenType::RightParen ||
+                                               curr == TokenType::GreaterThan ||
+                                               curr == TokenType::DoubleColon ||
+                                               curr == TokenType::Dot ||
+                                               curr == TokenType::Comma);
+                        bool no_space_after = (prev_type == TokenType::LeftParen ||
+                                              prev_type == TokenType::LessThan ||
+                                              prev_type == TokenType::DoubleColon ||
+                                              prev_type == TokenType::Dot);
+                        if (!no_space_before && !no_space_after) {
+                            arg_text += " ";
                         }
                     }
-                    // Store constant as a pseudo-type with the value as its name
-                    auto const_type = std::make_unique<Type>(Type::Kind::Builtin);
-                    const_type->name = const_expr;
-                    t->template_args.push_back(std::move(const_type));
-                } else {
-                    auto arg = type();
-                    if (arg) {
-                        // Check for pack expansion: Type...
-                        if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
-                            arg->name += "...";
-                        }
-                        t->template_args.push_back(std::move(arg));
+                    
+                    arg_text += std::string(peek().lexeme);
+                    prev_type = peek().type;
+                    advance();
+                }
+                
+                if (!arg_text.empty()) {
+                    auto arg_type = std::make_unique<Type>(Type::Kind::UserDefined);
+                    arg_type->name = arg_text;
+                    if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
+                        arg_type->name += "...";
                     }
+                    t->template_args.push_back(std::move(arg_type));
                 }
             } while (match(TokenType::Comma));
             // Handle both > and >> (for nested templates)
@@ -2421,44 +2413,85 @@ std::unique_ptr<Type> Parser::basic_type() {
                 if (check(TokenType::GreaterThan) || check(TokenType::RightShift)) {
                     break;
                 }
-                // Try to parse as type first
-                // But if it's a numeric literal or other expression, capture it
-                if (check(TokenType::IntegerLiteral) || check(TokenType::FloatLiteral) || check(TokenType::Minus)) {
-                    // Capture constant expression as template argument
-                    // Track < > depth and collect tokens
-                    std::string const_expr;
-                    int depth = 0;
-                    while (!is_at_end()) {
-                        if (check(TokenType::LessThan)) {
-                            const_expr += peek().lexeme;
-                            depth++;
-                            advance();
-                        } else if (check(TokenType::GreaterThan) || check(TokenType::RightShift)) {
-                            if (depth == 0) break;
-                            const_expr += peek().lexeme;
-                            depth--;
-                            if (check(TokenType::RightShift)) depth--;  // >> closes two levels
-                            advance();
-                        } else if (check(TokenType::Comma) && depth == 0) {
+                // Template arguments can be types or expressions (including function calls like f(), o.f())
+                // Use a token-collecting approach to handle complex expressions
+                std::string arg_text;
+                int angle_depth = 0;
+                int paren_depth = 0;
+                TokenType prev_type = TokenType::EndOfFile;
+                bool split_right_shift = false;  // Set when we split >> into > and pending >
+                
+                while (!is_at_end()) {
+                    // Check termination conditions at depth 0
+                    if (angle_depth == 0 && paren_depth == 0) {
+                        if (check(TokenType::GreaterThan) || check(TokenType::RightShift) ||
+                            check(TokenType::Comma)) {
                             break;
-                        } else {
-                            const_expr += peek().lexeme;
+                        }
+                    }
+                    
+                    // Track nesting
+                    if (check(TokenType::LessThan)) {
+                        angle_depth++;
+                    } else if (check(TokenType::GreaterThan)) {
+                        if (angle_depth > 0) angle_depth--;
+                        else break;  // This > closes our template
+                    } else if (check(TokenType::RightShift)) {
+                        // >> could close two levels or one level + our template
+                        if (angle_depth >= 2) {
+                            // Add >> to close two nested templates
+                            arg_text += ">>";
                             advance();
+                            angle_depth -= 2;
+                            continue;  // Skip the normal token add below
+                        } else if (angle_depth == 1) {
+                            // Split >>: add one > to close the nested template,
+                            // set pending_gt for the outer template
+                            arg_text += ">";
+                            split_right_shift = true;
+                            pending_gt = true;
+                            angle_depth--;
+                            break;  // Stop - the outer close will handle the second >
+                        } else {
+                            break;  // Both > close outer templates
+                        }
+                    } else if (check(TokenType::LeftParen)) {
+                        paren_depth++;
+                    } else if (check(TokenType::RightParen)) {
+                        if (paren_depth > 0) paren_depth--;
+                    }
+                    
+                    // Add spacing intelligently
+                    if (!arg_text.empty()) {
+                        TokenType curr = peek().type;
+                        bool no_space_before = (curr == TokenType::RightParen ||
+                                               curr == TokenType::GreaterThan ||
+                                               curr == TokenType::DoubleColon ||
+                                               curr == TokenType::Dot ||
+                                               curr == TokenType::Comma);
+                        bool no_space_after = (prev_type == TokenType::LeftParen ||
+                                              prev_type == TokenType::LessThan ||
+                                              prev_type == TokenType::DoubleColon ||
+                                              prev_type == TokenType::Dot);
+                        if (!no_space_before && !no_space_after) {
+                            arg_text += " ";
                         }
                     }
-                    // Store constant as a pseudo-type with the value as its name
-                    auto const_type = std::make_unique<Type>(Type::Kind::Builtin);
-                    const_type->name = const_expr;
-                    t->template_args.push_back(std::move(const_type));
-                } else {
-                    auto arg = type();
-                    if (arg) {
-                        // Check for pack expansion: Type... 
-                        if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
-                            arg->name += "...";
-                        }
-                        t->template_args.push_back(std::move(arg));
+                    
+                    arg_text += std::string(peek().lexeme);
+                    prev_type = peek().type;
+                    advance();
+                }
+                
+                if (!arg_text.empty()) {
+                    // Store as a pseudo-type with the expression text as its name
+                    auto arg_type = std::make_unique<Type>(Type::Kind::UserDefined);
+                    arg_type->name = arg_text;
+                    // Check for pack expansion: ...
+                    if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
+                        arg_type->name += "...";
                     }
+                    t->template_args.push_back(std::move(arg_type));
                 }
             } while (match(TokenType::Comma));
             // Handle both > and >> (for nested templates like X<Y<Z>>)
@@ -2978,11 +3011,9 @@ std::unique_ptr<Statement> Parser::try_loop_with_initializer() {
         return nullptr;
     }
     
-    // Now we expect while, for, do, or just { for a scope block
-    if (!check(TokenType::While) && !check(TokenType::For) && !check(TokenType::Do) && !check(TokenType::LeftBrace)) {
-        current = saved;
-        return nullptr;
-    }
+    // Statement scope: (decl) stmt
+    // Handle loops specially to attach initializers to loop statements
+    // For any other statement, wrap in a ScopeBlockStatement
     
     // Check for scope block: (copy x := value) { body }
     if (check(TokenType::LeftBrace)) {
@@ -3057,7 +3088,14 @@ std::unique_ptr<Statement> Parser::try_loop_with_initializer() {
         return stmt;
     }
     
-    return nullptr;
+    // For any other statement (assert, if, expression, etc.), wrap in a ScopeBlockStatement
+    auto body = statement();
+    if (!body) {
+        current = saved;
+        return nullptr;
+    }
+    auto scope_stmt = std::make_unique<ScopeBlockStatement>(std::move(initializers), std::move(body), previous().line);
+    return scope_stmt;
 }
 
 std::unique_ptr<Statement> Parser::switch_statement() {
@@ -3942,15 +3980,19 @@ std::unique_ptr<Expression> Parser::postfix_expression() {
             bool looks_like_postfix =
                 next == TokenType::Semicolon || next == TokenType::Comma ||
                 next == TokenType::RightParen || next == TokenType::RightBracket ||
-                next == TokenType::RightBrace || next == TokenType::Dot ||
+                next == TokenType::RightBrace || next == TokenType::LeftBrace ||  // { starts new block (if p* {)
+                next == TokenType::Dot ||
                 next == TokenType::PlusPlus || next == TokenType::MinusMinus ||
                 next == TokenType::Dollar ||  // Cpp2 capture operator
                 next == TokenType::Asterisk || next == TokenType::Ampersand ||  // chained postfix
                 // Also treat as postfix when followed by binary operators
                 // (e.g., p* + q* means (*p) + (*q))
                 next == TokenType::Plus || next == TokenType::Minus ||
-                next == TokenType::Slash ||
+                next == TokenType::Slash || next == TokenType::Percent ||
+                next == TokenType::Caret || next == TokenType::Pipe ||  // bitwise XOR and OR
+                next == TokenType::DoubleAmpersand || next == TokenType::DoublePipe ||  // logical AND/OR
                 next == TokenType::Equal || next == TokenType::DoubleEqual ||
+                next == TokenType::NotEqual || next == TokenType::LessThanOrEqual || next == TokenType::GreaterThanOrEqual ||
                 next == TokenType::LessThan || next == TokenType::GreaterThan ||
                 next == TokenType::LeftShift || next == TokenType::RightShift ||
                 // Compound assignment operators (p* += 1 means (*p) += 1)
@@ -4240,9 +4282,12 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         // Check if this starts with a parameter qualifier (out, inout, etc.)
         // This indicates a constructor call with qualified arguments: (out y)
         // BUT only if the qualifier is followed by an identifier (not by an operator or colon)
+        // NOTE: We specifically exclude 'move' and 'forward' here because they can also be
+        // prefix operators: (move x) is a grouped move expression, not a call with move qualifier
         auto is_qualifier_context = [this]() -> bool {
+            // Only out/inout/in_ref/forward_ref unambiguously indicate qualifier context
+            // move/forward can be prefix operators so don't trigger qualifier context
             if (!check(TokenType::Out) && !check(TokenType::Inout) &&
-                !check(TokenType::Move) && !check(TokenType::Forward) &&
                 !check(TokenType::InRef) && !check(TokenType::ForwardRef)) {
                 return false;
             }
@@ -4442,6 +4487,11 @@ std::unique_ptr<Expression> Parser::primary_expression() {
         }
         // Just : type - create a placeholder
         return std::make_unique<IdentifierExpression>("_type_", previous().line);
+    }
+
+    // Handle 'decltype' as an identifier so it can be used in expressions like decltype(expr)
+    if (match(TokenType::Decltype)) {
+        return std::make_unique<IdentifierExpression>("decltype", previous().line);
     }
 
     error_at_current("Expected expression");
@@ -4750,13 +4800,8 @@ std::unique_ptr<Expression> Parser::function_expression() {
     // Check for template parameters: :<T, U> (params)
     if (match(TokenType::LessThan)) {
         lambda->template_params = template_parameters();
-        // Handle >> as two > for nested templates
-        if (check(TokenType::RightShift)) {
-            // This is >> - consume it as >>, but we only need one >
-            // Split: advance past >> but note we've consumed extra >
-            // For now, just consume normally - the outer parser will deal with it
-            advance();
-        } else {
+        // Handle > or >> (via pending_gt mechanism from nested templates)
+        if (!consume_template_close()) {
             consume(TokenType::GreaterThan, "Expected '>' after template parameters");
         }
     }
@@ -5336,6 +5381,7 @@ bool Parser::is_type_qualifier() {
 bool Parser::is_cpp1_template_start() {
     // Check for C++1 template patterns:
     // template<...> struct/class/union/namespace name {...}
+    // template<...> auto/type name(...) {...}  (function template)
     //
     // Key: After template<...>, we expect C++1 keywords, not Cpp2 syntax
 
@@ -5370,7 +5416,7 @@ bool Parser::is_cpp1_template_start() {
 
     // After loop, current is past the final '>'
     // Now check what follows - C++1 keywords (struct/class/union/namespace/enum/using)
-    // These keywords have their own token types, not Identifier
+    // or function templates (auto/identifier followed by identifier and '(')
     bool is_cpp1 = false;
     if (!is_at_end()) {
         TokenType next_type = peek().type;
@@ -5378,6 +5424,42 @@ bool Parser::is_cpp1_template_start() {
             next_type == TokenType::Union || next_type == TokenType::Namespace ||
             next_type == TokenType::Enum || next_type == TokenType::Using) {
             is_cpp1 = true;
+        }
+        // Check for C++1 function template: template<...> auto/type name(...)
+        // The return type can be: auto, const, or identifier (like void, int, static, inline)
+        else if (next_type == TokenType::Auto || next_type == TokenType::Const ||
+                 next_type == TokenType::Identifier) {
+            // Could be a C++1 function template - check if followed by identifier then '('
+            std::size_t lookahead_saved = current;
+            // Skip qualifiers like const, static, inline, constexpr (all identifiers in lexer)
+            while (peek().type == TokenType::Const || peek().type == TokenType::Identifier) {
+                std::string_view lexeme = peek().lexeme;
+                // Only skip known C++1 qualifiers/specifiers
+                if (peek().type == TokenType::Const ||
+                    lexeme == "static" || lexeme == "inline" || lexeme == "constexpr") {
+                    advance();
+                } else {
+                    break;
+                }
+            }
+            // Skip return type tokens (auto or identifier like void, int, etc.)
+            if (peek().type == TokenType::Auto || peek().type == TokenType::Identifier) {
+                advance();
+                // Check for pointer/reference
+                while (peek().type == TokenType::Asterisk || peek().type == TokenType::Ampersand ||
+                       peek().type == TokenType::Const) {
+                    advance();
+                }
+                // After return type, expect function name (identifier)
+                if (peek().type == TokenType::Identifier) {
+                    advance();
+                    // After function name, expect '(' for C++1 function template
+                    if (peek().type == TokenType::LeftParen) {
+                        is_cpp1 = true;
+                    }
+                }
+            }
+            current = lookahead_saved;
         }
     }
 
@@ -5458,9 +5540,18 @@ bool Parser::check_cpp1_function_syntax() {
     if (check(TokenType::Auto) ||
         (check(TokenType::Identifier) && peek().lexeme == "auto")) {
         advance(); // consume 'auto'
-        // In C++1, function name can be keywords that are contextual in Cpp2
-        if (check(TokenType::Identifier) || is_identifier_like()) {
+        // In C++1, function name can be: identifier, keyword, or 'operator' for operator overloads
+        if (check(TokenType::Identifier) || is_identifier_like() || check(TokenType::Operator)) {
             advance(); // consume function name
+            
+            // For operator overloads like operator<<, skip the operator symbol(s)
+            if (previous().type == TokenType::Operator) {
+                // Skip operator symbol(s): <<, ==, [], etc.
+                while (!is_at_end() && !check(TokenType::LeftParen)) {
+                    advance();
+                }
+            }
+            
             if (check(TokenType::LeftParen)) {
                 current = saved;
                 return true; // "[qualifiers] auto name(..." - C++1
@@ -5479,9 +5570,10 @@ bool Parser::check_cpp1_function_syntax() {
                 first_lexeme == "namespace" || first_lexeme == "struct" ||
                 first_lexeme == "class" || first_lexeme == "union" ||
                 first_lexeme == "interface" || first_lexeme == "enum" ||
-                first_lexeme == "operator" || first_lexeme == "let" ||
+                first_lexeme == "let" ||
                 first_lexeme == "const" || first_lexeme == "import" ||
                 first_lexeme == "using" || first_lexeme == "template") {
+                // Note: 'operator' is NOT excluded - "auto operator<<(...)" is valid C++1
                 return false;
             }
         }
@@ -5504,9 +5596,18 @@ bool Parser::check_cpp1_function_syntax() {
             advance();
         }
 
-        // Now we expect function name
-        if (check(TokenType::Identifier) || is_identifier_like()) {
+        // Now we expect function name - can be identifier or 'operator' for operator overloads
+        if (check(TokenType::Identifier) || is_identifier_like() || check(TokenType::Operator)) {
             advance(); // consume function name
+            
+            // For operator overloads like operator<<, skip the operator symbol(s)
+            if (previous().type == TokenType::Operator) {
+                // Skip operator symbol(s): <<, ==, [], etc.
+                while (!is_at_end() && !check(TokenType::LeftParen)) {
+                    advance();
+                }
+            }
+            
             if (check(TokenType::LeftParen)) {
                 current = saved;
                 return true; // "[qualifiers] type name(..." - C++1

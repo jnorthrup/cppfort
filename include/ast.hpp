@@ -969,6 +969,7 @@ struct OperatorDeclaration : Declaration {
     std::vector<std::unique_ptr<FunctionDeclaration::Parameter>> parameters;
     std::unique_ptr<Statement> body;
     bool is_forward_return = false;  // For -> forward T syntax
+    bool is_constexpr = false;       // For == (compile-time) syntax
     std::vector<std::string> template_parameters;  // Template parameters for generic operators
     std::vector<std::pair<std::string, std::unique_ptr<Type>>> named_returns;  // Named return values
 
