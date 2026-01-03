@@ -193,12 +193,18 @@
 - [x] Chained combinators: `buf |> skip(1) |> take(3)`
 - [x] Type transformations: `42 |> stringify |> parse_int`
 
-### Standard Library Integration
+### Standard Library Integration [checkpoint: 1dd43cf]
 
-- [ ] Add `std::cpp2::bytebuffer` to `include/cpp2_runtime.h`
-- [ ] Add `std::cpp2::strview` to runtime
-- [ ] Export all combinators in `std::cpp2::combinators` namespace
+- [x] Add `std::cpp2::bytebuffer` to `include/cpp2_runtime.h`
+  - Added to `cpp2_pch.h` for easy access
+  - Created convenience header `cpp2_combinators.hpp`
+- [x] Add `std::cpp2::strview` to runtime
+  - Available via `cpp2_pch.h` or `cpp2_combinators.hpp`
+- [x] Export all combinators in `std::cpp2::combinators` namespace
+  - Already in `cpp2::combinators` namespace
+  - All headers included in PCH
 - [ ] Add Cpp2 syntax sugar: `buffer.take(10)` vs `take(10)(buffer)`
+  - NOTE: UFCS requires parser changes (deferred to separate track)
 
 ---
 
