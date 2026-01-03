@@ -208,13 +208,24 @@
 
 ---
 
-## Documentation Tasks
+## Documentation Tasks [checkpoint: f152937]
 
-- [ ] Write tutorial for combinator usage
-- [ ] Document each combinator with examples
-- [ ] Create "Recipes" section for common patterns
-- [ ] Add performance characteristics documentation
-- [ ] Document zero-copy invariants
+- [x] Write tutorial for combinator usage
+  - Created docs/COMBINATORS.md with comprehensive guide
+  - Quick start, core types, all combinator categories
+- [x] Document each combinator with examples
+  - Structural: take, skip, slice, split, chunk, window
+  - Transformation: map, filter, enumerate, zip, intersperse
+  - Reduction: fold, reduce, scan, find, all/any/count
+  - Parsing: byte, bytes, until, endian parsers
+- [x] Create "Recipes" section for common patterns
+  - HTTP header parsing, null-terminated strings, sliding window sums
+- [x] Add performance characteristics documentation
+  - Complexity table for all combinators
+  - Overhead metrics (<5% vs hand-written loops)
+- [x] Document zero-copy invariants
+  - Guaranteed invariants section
+  - Verification example
 
 ---
 
