@@ -1804,7 +1804,19 @@ void CodeGenerator::generate_for_range_statement(ForRangeStatement* stmt) {
     } else {
         // Non-labeled for-range - generate normally
         write("for (" + var_type + var_ref + " " + stmt->variable + " : " + range_str + ") ");
-        generate_statement(stmt->body.get());
+
+        // If there's a next clause, we need to wrap the body and add the next clause
+        if (stmt->next_clause) {
+            write_line("{");
+            indent();
+            generate_statement(stmt->body.get());
+            std::string next_str = generate_expression_to_string(stmt->next_clause.get());
+            write_line(next_str + ";");
+            dedent();
+            write_line("}");
+        } else {
+            generate_statement(stmt->body.get());
+        }
     }
 
     // Close loop initializer scope if present

@@ -1095,7 +1095,12 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     std::unique_ptr<Statement> body = nullptr;
     bool is_compile_time = match(TokenType::DoubleEqual); // '==' for compile-time functions
     bool has_equals = is_compile_time || match(TokenType::Equal); // '=' or '==' before body
+    std::cerr << "[DEBUG] function_declaration: is_compile_time=" << is_compile_time 
+              << " has_equals=" << has_equals 
+              << " current_token=" << static_cast<int>(peek().type) 
+              << " lexeme=" << peek().lexeme << std::endl;
     if (match(TokenType::LeftBrace)) {
+        std::cerr << "[DEBUG] Matched LeftBrace, parsing block" << std::endl;
         body = block_statement();
     } else if (has_equals) {
         // Expression-bodied function
@@ -1532,6 +1537,11 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
 
     while (!check(TokenType::RightBrace) && !is_at_end()) {
         std::size_t before = current;
+
+        // Skip standalone semicolons in type body
+        if (match(TokenType::Semicolon)) {
+            continue;
+        }
 
         // Check for base class declaration: "this: BaseType" or "this: BaseType = ();"
         if (check(TokenType::This)) {
@@ -3981,7 +3991,7 @@ std::unique_ptr<Expression> Parser::postfix_expression() {
                 next == TokenType::Semicolon || next == TokenType::Comma ||
                 next == TokenType::RightParen || next == TokenType::RightBracket ||
                 next == TokenType::RightBrace || next == TokenType::LeftBrace ||  // { starts new block (if p* {)
-                next == TokenType::Dot ||
+                next == TokenType::Dot || next == TokenType::Arrow ||  // -> for inspect return type
                 next == TokenType::PlusPlus || next == TokenType::MinusMinus ||
                 next == TokenType::Dollar ||  // Cpp2 capture operator
                 next == TokenType::Asterisk || next == TokenType::Ampersand ||  // chained postfix

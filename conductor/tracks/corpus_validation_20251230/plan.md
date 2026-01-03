@@ -41,13 +41,13 @@
   - [x] mixed-as-for-variant-20-types.cpp2 (template args fixed)
   - [x] mixed-autodiff-taylor.cpp2 (loop initializer implemented)
   - [x] mixed-bounds-check.cpp2 (now passing with C++1 improvements)
-  - [ ] mixed-bounds-safety-with-assert-2.cpp2
-  - [ ] mixed-bounds-safety-with-assert.cpp2
-  - [ ] mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
-  - [ ] mixed-bugfix-for-double-pound-else-error.cpp2
-  - [ ] mixed-bugfix-for-literal-as-nttp.cpp2
-  - [ ] mixed-bugfix-for-ufcs-non-local.cpp2
-  - [ ] mixed-captures-in-expressions-and-postconditions.cpp2
+  - [x] mixed-bounds-safety-with-assert-2.cpp2
+  - [x] mixed-bounds-safety-with-assert.cpp2
+  - [x] mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
+  - [x] mixed-bugfix-for-double-pound-else-error.cpp2
+  - [x] mixed-bugfix-for-literal-as-nttp.cpp2
+  - [ ] mixed-bugfix-for-ufcs-non-local.cpp2 (BLOCKED: CPP2_UFCS_NONLOCAL macro needed)
+  - [ ] mixed-captures-in-expressions-and-postconditions.cpp2 (BLOCKED: postconditions, old value $, expression captures)
   - [ ] mixed-default-arguments.cpp2
   - [ ] mixed-fixed-type-aliases.cpp2
   - [ ] mixed-float-literals.cpp2
