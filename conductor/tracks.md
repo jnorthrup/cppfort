@@ -124,9 +124,27 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 7*
-*Completed: 3*
+## [x] Track: Documentation Consolidation - EBNF-to-Combinator Orchestration
+*Link: [./conductor/tracks/docs_consolidation_20260103/](./conductor/tracks/docs_consolidation_20260103/)*
+*Status: COMPLETE*
+
+**Deliverable**: `conductor/PARSER_ORCHESTRATION.md` - Single DRY backbone documenting EBNF grammar → parser combinator orchestration → AST isomorphs → loss scoring
+
+**Summary**:
+- Created unified PARSER_ORCHESTRATION.md with 5 sections
+- Deleted 16 scattered documentation files
+- Root now contains only README.md
+- docs/ contains only external references (cpp2/, cppfront/, sea-of-nodes/, Simple/)
+- Preserved grammar/cpp2.ebnf (canonical EBNF)
+- Updated conductor/product.md documentation references
+
+---
+
+*Total Tracks: 8*
+*Completed: 4*
 *In Progress: 1*
 *Active: 1*
-*Planned: 1*
+*Planned: 2*
 *Blocked: 1*
+*New: 0*
+
