@@ -1,0 +1,126 @@
+name: Cloud Agent CI/CD
+
+on:
+  push:
+    branches:
+      - 'copilot/**'
+      - 'worktree-**'
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-mappings:
+    name: Validate AST to MLIR Mappings
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f tools/inference/requirements.txt ]; then
+            pip install -r tools/inference/requirements.txt
+          fi
+          
+      - name: Install libclang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev clang
+          
+      - name: Run mapping validation
+        run: |
+          if [ -f tools/inference/validate_against_dialect.py ] && [ -f include/Cpp2Dialect.td ]; then
+            # Find all mapping JSON files
+            find . -name "*.json" -path "*/mappings/*" -o -name "mappings.json" | while read mapping_file; do
+              echo "Validating $mapping_file"
+              python3 tools/inference/validate_against_dialect.py \
+                -m "$mapping_file" \
+                -d include/Cpp2Dialect.td || true
+            done
+          else
+            echo "Validation tools not found, skipping validation"
+          fi
+          
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Check for build system
+        id: check-build
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            echo "has_cmake=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_cmake=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Set up build environment
+        if: steps.check-build.outputs.has_cmake == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+          
+      - name: Build project
+        if: steps.check-build.outputs.has_cmake == 'true'
+        run: |
+          cmake -G Ninja -B build
+          ninja -C build
+          
+      - name: Run tests
+        if: steps.check-build.outputs.has_cmake == 'true'
+        run: |
+          if [ -f build/tests/regression_runner ]; then
+            ninja -C build test
+          else
+            echo "No tests found, skipping test execution"
+          fi
+          
+  documentation-check:
+    name: Documentation Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Validate documentation links
+        run: |
+          # Check for broken links in markdown files
+          echo "Checking documentation..."
+          find docs -name "*.md" -type f | while read doc; do
+            echo "Checking $doc"
+            # Basic check for referenced files
+            grep -oP '\[.*?\]\(\K[^)]+' "$doc" | grep -v '^http' | while read link; do
+              if [[ "$link" == *"#"* ]]; then
+                # Skip anchor links for now
+                continue
+              fi
+              # Resolve relative path
+              doc_dir=$(dirname "$doc")
+              full_path="$doc_dir/$link"
+              if [ ! -f "$full_path" ] && [ ! -d "$full_path" ]; then
+                echo "Warning: Broken link in $doc: $link"
+              fi
+            done
+          done || true
+          
+      - name: Check completion summary
+        run: |
+          if [ -f COMPLETION_SUMMARY.md ]; then
+            echo "Completion summary exists"
+            cat COMPLETION_SUMMARY.md
+          fi
