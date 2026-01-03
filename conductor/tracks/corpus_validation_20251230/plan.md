@@ -48,17 +48,17 @@
   - [x] mixed-bugfix-for-literal-as-nttp.cpp2
   - [ ] mixed-bugfix-for-ufcs-non-local.cpp2 (BLOCKED: CPP2_UFCS_NONLOCAL macro needed)
   - [ ] mixed-captures-in-expressions-and-postconditions.cpp2 (BLOCKED: postconditions, old value $, expression captures)
-  - [ ] mixed-default-arguments.cpp2
-  - [ ] mixed-fixed-type-aliases.cpp2
-  - [ ] mixed-float-literals.cpp2
-  - [ ] mixed-forwarding.cpp2
-  - [ ] mixed-function-expression-and-std-for-each.cpp2
-  - [ ] mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2
-  - [ ] mixed-function-expression-and-std-ranges-for-each.cpp2
-  - [ ] mixed-function-expression-with-pointer-capture.cpp2
-  - [ ] mixed-function-expression-with-repeated-capture.cpp2
-  - [ ] mixed-hello.cpp2
-  - [ ] mixed-increment-decrement.cpp2
+  - [x] mixed-default-arguments.cpp2
+  - [ ] mixed-fixed-type-aliases.cpp2 (BLOCKED: CPP2_TYPEOF, namespace aliases, args struct)
+  - [x] mixed-float-literals.cpp2
+  - [ ] mixed-forwarding.cpp2 (BLOCKED: forward parameter with auto&&, CPP2_REQUIRES)
+  - [x] mixed-function-expression-and-std-for-each.cpp2
+  - [ ] mixed-function-expression-and-std-ranges-for-each-with-capture.cpp2 (BLOCKED: capture $ syntax, inout, decltype(auto))
+  - [ ] mixed-function-expression-and-std-ranges-for-each.cpp2 (BLOCKED: function expression param qualifiers)
+  - [ ] mixed-function-expression-with-pointer-capture.cpp2 (BLOCKED: complex capture & $ * syntax)
+  - [ ] mixed-function-expression-with-repeated-capture.cpp2 (BLOCKED: function expression param qualifiers)
+  - [x] mixed-hello.cpp2
+  - [ ] mixed-increment-decrement.cpp2 (BLOCKED: @value types, operator overloading, inout this)
   - [ ] mixed-initialization-safety-1-error.cpp2
   - [ ] mixed-initialization-safety-2-error.cpp2
   - [ ] mixed-initialization-safety-3-contract-violation.cpp2
