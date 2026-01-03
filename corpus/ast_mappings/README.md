@@ -123,7 +123,9 @@ FunctionDecl 'std::string ()'
 | `std::unique_ptr<T>` | `std::unique_ptr<T>` | `TemplateSpecializationType` | Owned pointer |
 | `std::shared_ptr<T>` | `std::shared_ptr<T>` | `TemplateSpecializationType` | Shared ownership |
 
-## Generating Mappings
+## Generating Mappings (LAZY/ON-DEMAND)
+
+**IMPORTANT**: All AST files (`*.ast`, `*.ast.txt`, `*.ast.json`) and mapping files are **generated on-demand** and **NOT committed to git**. These files are tracked in `.gitignore` for reproducibility.
 
 ### Prerequisites
 
@@ -140,6 +142,13 @@ FunctionDecl 'std::string ()'
    clang++ --version  # Should be 14+
    ```
 
+### Idempotent Generation
+
+The generation is **idempotent** - running it multiple times produces identical outputs because:
+- Source `.cpp2` files are hash-locked (see `tools/lock_corpus_hashes.sh`)
+- AST generation is deterministic for identical inputs
+- Generated files are timestamped with source file hash for verification
+
 ### Usage
 
 ```bash
@@ -154,6 +163,18 @@ FunctionDecl 'std::string ()'
 
 # Specify cppfront path
 ./tools/generate_ast_mappings.py --cppfront /path/to/cppfront
+
+# Generate single file mapping
+./tools/generate_ast_mappings.py --corpus-dir corpus/inputs --pattern "mixed-hello.cpp2"
+```
+
+### Cleaning Generated Files
+
+```bash
+# Remove all generated AST files
+rm -f corpus/reference_ast/*.ast*
+rm -f tests/reference/*.ast
+rm -f corpus/ast_mappings/generated/*
 ```
 
 ### Manual Mapping Creation

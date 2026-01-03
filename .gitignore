@@ -93,3 +93,13 @@ third_party/cppfront/source/cppfront
 corpus/isomorphs/
 corpus/tagged/
 corpus/database/
+
+# AST mappings (generated on-demand, idempotent)
+*.ast
+*.ast.txt
+*.ast.json
+*.mapping
+*.mapping.md
+corpus/reference_ast/
+tests/reference/*.ast
+corpus/ast_mappings/generated/

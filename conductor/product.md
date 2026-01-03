@@ -34,7 +34,7 @@ Cpp2 Source
 
 ### ✅ Working
 - **Lexer/Parser**: Full Cpp2 grammar (pure2 mode)
-  - Grammar: `grammar/cpp2.combinators.md` (orthogonal combinator spec)
+  - Grammar: `conductor/PARSER_ORCHESTRATION.md` (EBNF → combinator mappings, single source of truth)
   - EBNF: `grammar/cpp2.ebnf` (formal grammar)
 - **AST**: Complete node definitions with semantic info scaffolding
 - **Type System**: Deduction, templates, UFCS resolution
@@ -120,9 +120,11 @@ C++ developers seeking:
 
 ## Documentation
 
+- **conductor/PARSER_ORCHESTRATION.md**: EBNF design → combinator mappings → AST isomorphs → loss scoring (single source of truth)
 - **conductor/tech-stack.md**: Tools and infrastructure
 - **conductor/workflow.md**: Development process and quality gates
 - **conductor/tracks.md**: Active feature tracks
-- **docs/SEMANTIC_AST_ENHANCEMENTS.md**: Semantic analysis roadmap
-- **docs/REGRESSION_TEST_STATUS.md**: Corpus regression testing status
-- **IMPLEMENTATION_STATUS.md**: Feature-by-feature completion status
+- **docs/cpp2/**: Cpp2 language reference (external)
+- **docs/cppfront/**: Cppfront reference (external)
+- **docs/sea-of-nodes/**: Sea-of-Nodes reference (external)
+- **docs/Simple/**: Simple IR reference (external)
