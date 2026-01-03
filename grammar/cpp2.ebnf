@@ -1,0 +1,653 @@
+(* ============================================================================ *)
+(* CPP2 GRAMMAR SPECIFICATION - FORMAL EBNF                                    *)
+(* ============================================================================ *)
+(* Extracted from cppfort/src/parser.cpp (5,801 lines, 73 parser methods)      *)
+(* This is the authoritative grammar for EBNF-driven parser generation         *)
+(* ============================================================================ *)
+
+(* ============================================================================ *)
+(* LEXICAL STRUCTURE                                                           *)
+(* ============================================================================ *)
+
+IDENTIFIER          = LETTER { LETTER | DIGIT | "_" } ;
+INTEGER_LITERAL     = DIGIT { DIGIT } [ INTEGER_SUFFIX ] ;
+FLOAT_LITERAL       = DIGIT { DIGIT } "." { DIGIT } [ EXPONENT ] [ FLOAT_SUFFIX ] ;
+STRING_LITERAL      = '"' { STRING_CHAR | INTERPOLATION } '"' ;
+CHAR_LITERAL        = "'" CHAR_CHAR "'" ;
+
+LETTER              = "a" | "b" | ... | "z" | "A" | "B" | ... | "Z" | "_" ;
+DIGIT               = "0" | "1" | ... | "9" ;
+STRING_CHAR         = ? any character except '"' and '\' ? | ESCAPE_SEQ ;
+CHAR_CHAR           = ? any character except "'" and '\' ? | ESCAPE_SEQ ;
+ESCAPE_SEQ          = "\\" ( "n" | "r" | "t" | "\\" | '"' | "'" | "0" | "x" HEX_DIGIT HEX_DIGIT ) ;
+INTERPOLATION       = "(" expression ")$" ;
+
+INTEGER_SUFFIX      = "u" | "U" | "l" | "L" | "ll" | "LL" | "ull" | "ULL" ;
+FLOAT_SUFFIX        = "f" | "F" | "l" | "L" ;
+EXPONENT            = ( "e" | "E" ) [ "+" | "-" ] DIGIT { DIGIT } ;
+
+(* User-defined literal: 10s, 1.5ms *)
+USER_DEFINED_LITERAL = ( INTEGER_LITERAL | FLOAT_LITERAL ) IDENTIFIER ;
+
+(* ============================================================================ *)
+(* KEYWORDS                                                                     *)
+(* ============================================================================ *)
+
+KEYWORD             = "as" | "assert" | "auto" | "await" | "base" | "break" | "case"
+                    | "catch" | "channel" | "concept" | "const" | "constexpr"
+                    | "continue" | "copy" | "coroutineScope" | "decltype" | "default"
+                    | "do" | "else" | "enum" | "explicit" | "false" | "final" | "for"
+                    | "forward" | "forward_ref" | "func" | "if" | "implicit" | "import"
+                    | "in" | "in_ref" | "inout" | "inspect" | "interface" | "is"
+                    | "launch" | "let" | "move" | "namespace" | "next" | "noexcept"
+                    | "operator" | "out" | "override" | "parallel_for" | "post" | "pre"
+                    | "private" | "protected" | "public" | "requires" | "return"
+                    | "select" | "static_assert" | "struct" | "switch" | "template"
+                    | "that" | "this" | "throw" | "throws" | "true" | "try" | "type"
+                    | "union" | "using" | "virtual" | "while" ;
+
+(* Contextual keywords: can be used as identifiers in many contexts *)
+CONTEXTUAL_KEYWORD  = "in" | "out" | "inout" | "copy" | "move" | "forward"
+                    | "func" | "type" | "namespace" | "in_ref" | "forward_ref"
+                    | "base" | "next" ;
+
+(* ============================================================================ *)
+(* TOP LEVEL                                                                    *)
+(* ============================================================================ *)
+
+translation_unit    = { declaration } EOF ;
+
+declaration         = [ access_specifier ] declaration_body ;
+
+access_specifier    = "public" | "private" | "protected" ;
+
+declaration_body    = preprocessor_directive
+                    | decorator_declaration
+                    | unified_declaration
+                    | keyword_declaration
+                    | cpp1_passthrough
+                    | statement ;
+
+preprocessor_directive = "#" { ? any character except newline ? } ;
+
+(* ============================================================================ *)
+(* UNIFIED DECLARATION SYNTAX: name : kind = value                             *)
+(* ============================================================================ *)
+
+unified_declaration = identifier_like ":" declaration_suffix
+                    | identifier_like ":=" expression ";" ;
+
+identifier_like     = IDENTIFIER | CONTEXTUAL_KEYWORD | "_" ;
+
+declaration_suffix  = function_suffix
+                    | type_suffix
+                    | namespace_suffix
+                    | variable_suffix ;
+
+function_suffix     = [ template_params ] param_list [ throws_spec ] [ return_spec ]
+                      [ requires_clause ] [ contracts ] function_body ;
+
+type_suffix         = { metafunction } ( "type" | "concept" ) [ template_params ]
+                      [ requires_clause ] type_body_or_alias ;
+
+namespace_suffix    = "namespace" ( namespace_alias | namespace_body ) ;
+
+variable_suffix     = [ template_params ] type_specifier [ initializer ] ";" ;
+
+(* ============================================================================ *)
+(* KEYWORD DECLARATIONS                                                         *)
+(* ============================================================================ *)
+
+keyword_declaration = let_declaration
+                    | func_declaration
+                    | type_declaration_kw
+                    | namespace_declaration_kw
+                    | operator_declaration
+                    | import_declaration
+                    | using_declaration
+                    | template_declaration ;
+
+let_declaration     = ( "let" | "const" ) IDENTIFIER [ ":" type_specifier ] initializer ";" ;
+
+func_declaration    = "func" IDENTIFIER [ ":" ] [ template_params ] param_list
+                      [ throws_spec ] [ return_spec ] [ requires_clause ]
+                      [ contracts ] function_body ;
+
+type_declaration_kw = "type" IDENTIFIER [ template_params ] [ requires_clause ] type_body ;
+
+namespace_declaration_kw = "namespace" IDENTIFIER ( namespace_alias | namespace_body ) ;
+
+(* ============================================================================ *)
+(* TEMPLATE PARAMETERS                                                          *)
+(* ============================================================================ *)
+
+template_params     = "<" [ template_param_list ] ">" ;
+
+template_param_list = template_param { "," template_param } [ "," ] ;
+
+template_param      = template_param_name [ "..." ] [ ":" type_constraint ] [ "=" default_value ] ;
+
+template_param_name = IDENTIFIER | "_" ;
+
+type_constraint     = type_specifier | "_" | "type" ;
+
+default_value       = type_specifier | expression ;
+
+template_args       = "<" [ template_arg_list ] ">" ;
+
+template_arg_list   = template_arg { "," template_arg } ;
+
+template_arg        = type_specifier | expression | nttp_expression ;
+
+nttp_expression     = IDENTIFIER "(" expression ")" ;  (* CPP2_TYPEOF(x) etc. *)
+
+(* ============================================================================ *)
+(* FUNCTIONS                                                                    *)
+(* ============================================================================ *)
+
+param_list          = "(" [ parameter_list ] ")" ;
+
+parameter_list      = parameter { "," parameter } [ "," ] ;
+
+parameter           = { param_qualifier } param_name [ param_variadic ] [ ":" type_specifier ] [ "=" expression ] ;
+
+param_name          = IDENTIFIER | "this" | "that" | "_" | CONTEXTUAL_KEYWORD ;
+
+param_variadic      = "..." ;
+
+param_qualifier     = "in" | "copy" | "inout" | "out" | "move" | "forward"
+                    | "in_ref" | "forward_ref"
+                    | "virtual" | "override" | "implicit" ;
+
+throws_spec         = "throws" | "noexcept" ;
+
+return_spec         = "->" return_type
+                    | "=:" type_specifier ;
+
+return_type         = [ return_modifier ] type_specifier
+                    | "(" named_return_list ")" ;
+
+return_modifier     = "forward" | "move" ;
+
+named_return_list   = named_return { "," named_return } [ "," ] ;
+
+named_return        = IDENTIFIER ":" type_specifier [ "=" expression ] ;
+
+requires_clause     = "requires" requires_expression ;
+
+requires_expression = requires_term { ( "&&" | "||" ) requires_term } ;
+
+requires_term       = prefix_expression { "::" IDENTIFIER [ template_args ] } ;
+
+contracts           = { contract_clause } ;
+
+contract_clause     = ( "pre" | "post" | "assert" ) [ "<" IDENTIFIER ">" ]
+                      ( ":" expression | "(" expression [ "," STRING_LITERAL ] ")" ) ;
+
+function_body       = "=" expression ";"
+                    | "==" expression ";"
+                    | "=" block_statement
+                    | block_statement
+                    | ";" ;
+
+(* ============================================================================ *)
+(* TYPES                                                                        *)
+(* ============================================================================ *)
+
+type_body_or_alias  = type_alias | type_body ;
+
+type_alias          = "==" type_specifier ";"
+                    | "=" type_specifier ";" ;
+
+type_body           = "=" "{" { type_member } "}" [ ";" ] ;
+
+type_member         = [ access_specifier ] ( base_class_decl | declaration ) ;
+
+base_class_decl     = "this" ":" type_specifier [ initializer ] ";" ;
+
+metafunction        = "@" IDENTIFIER [ template_args ] ;
+
+(* ============================================================================ *)
+(* OPERATOR DECLARATIONS                                                        *)
+(* ============================================================================ *)
+
+operator_declaration = "operator" operator_name ":" [ template_params ] param_list
+                       [ return_spec ] [ requires_clause ] function_body ;
+
+operator_name       = "=" | "<=>" | "==" | "!=" | "<" | ">" | "<=" | ">="
+                    | "+" | "-" | "*" | "/" | "%" 
+                    | "+=" | "-=" | "*=" | "/=" | "%="
+                    | "<<" | ">>" | "<<=" | ">>="
+                    | "&" | "|" | "^" | "&=" | "|=" | "^="
+                    | "~" | "!" | "&&" | "||"
+                    | "++" | "--"
+                    | "[" "]" | "(" ")" | "->" | "->*"
+                    | "new" | "delete" | "new" "[" "]" | "delete" "[" "]"
+                    | "co_await"
+                    | STRING_LITERAL ;
+
+(* ============================================================================ *)
+(* NAMESPACES                                                                   *)
+(* ============================================================================ *)
+
+namespace_alias     = "==" qualified_name ";" ;
+
+namespace_body      = [ "=" ] "{" { declaration } "}" ;
+
+(* ============================================================================ *)
+(* USING & IMPORT                                                               *)
+(* ============================================================================ *)
+
+using_declaration   = "using" ( using_alias | using_path | using_namespace ) ;
+
+using_alias         = IDENTIFIER "=" qualified_name ";" ;
+
+using_path          = qualified_name ";" ;
+
+using_namespace     = "namespace" IDENTIFIER ";" ;
+
+import_declaration  = "import" IDENTIFIER ";" ;
+
+(* ============================================================================ *)
+(* STATEMENTS                                                                   *)
+(* ============================================================================ *)
+
+statement           = block_statement
+                    | if_statement
+                    | while_statement
+                    | for_statement
+                    | do_while_statement
+                    | switch_statement
+                    | inspect_statement
+                    | return_statement
+                    | break_statement
+                    | continue_statement
+                    | try_statement
+                    | throw_statement
+                    | contract_statement
+                    | static_assert_statement
+                    | concurrency_statement
+                    | labeled_statement
+                    | local_declaration
+                    | expression_statement
+                    | ";" ;
+
+block_statement     = "{" { statement } "}" ;
+
+(* ============================================================================ *)
+(* CONTROL FLOW                                                                 *)
+(* ============================================================================ *)
+
+if_statement        = "if" [ "constexpr" ] expression block_statement
+                      [ "else" ( block_statement | if_statement ) ] ;
+
+while_statement     = [ loop_label ] [ loop_params ] "while" expression
+                      [ "next" expression ] block_statement ;
+
+for_statement       = [ loop_label ] [ loop_params ] "for" expression
+                      [ "next" expression ] "do" "(" parameter ")" block_statement ;
+
+do_while_statement  = [ loop_label ] [ loop_params ] "do" block_statement
+                      [ "next" expression ] "while" expression ";" ;
+
+loop_label          = IDENTIFIER ":" ;
+
+loop_params         = "(" loop_param_list ")" ;
+
+loop_param_list     = loop_param { "," loop_param } ;
+
+loop_param          = [ "copy" | "move" ] IDENTIFIER [ ":=" expression ] ;
+
+switch_statement    = "switch" expression "{" { switch_case } "}" ;
+
+switch_case         = "case" expression ":" statement
+                    | "default" ":" statement ;
+
+inspect_statement   = "inspect" expression [ "->" type_specifier ]
+                      "{" { inspect_arm } "}" ;
+
+inspect_arm         = pattern "=>" statement ;
+
+pattern             = "_"
+                    | IDENTIFIER [ ":" type_specifier ]
+                    | "is" type_specifier
+                    | "is" "(" expression ")"
+                    | "is" literal
+                    | expression ;
+
+(* ============================================================================ *)
+(* JUMP STATEMENTS                                                              *)
+(* ============================================================================ *)
+
+return_statement    = "return" [ expression ] ";" ;
+
+break_statement     = "break" [ IDENTIFIER ] ";" ;
+
+continue_statement  = "continue" [ IDENTIFIER ] ";" ;
+
+throw_statement     = "throw" [ expression ] ";" ;
+
+try_statement       = "try" block_statement { catch_clause } ;
+
+catch_clause        = "catch" "(" [ catch_param ] ")" block_statement ;
+
+catch_param         = type_specifier [ IDENTIFIER ] | "..." ;
+
+contract_statement  = ( "assert" | "pre" | "post" ) [ "<" IDENTIFIER ">" ]
+                      expression ";" ;
+
+static_assert_statement = "static_assert" "(" expression [ "," STRING_LITERAL ] ")" ";" ;
+
+(* ============================================================================ *)
+(* CONCURRENCY STATEMENTS                                                       *)
+(* ============================================================================ *)
+
+concurrency_statement = coroutine_scope_statement
+                      | channel_declaration
+                      | parallel_for_statement ;
+
+coroutine_scope_statement = "coroutineScope" block_statement ;
+
+channel_declaration = "channel" IDENTIFIER ":" type_specifier
+                      [ "(" INTEGER_LITERAL ")" ] ";" ;
+
+parallel_for_statement = "parallel_for" "(" IDENTIFIER ":" expression ".." expression
+                         [ "step" expression ] [ "mapping" STRING_LITERAL ] ")"
+                         block_statement ;
+
+(* ============================================================================ *)
+(* LOCAL DECLARATIONS                                                           *)
+(* ============================================================================ *)
+
+local_declaration   = IDENTIFIER ":" type_specifier [ initializer ] ";"
+                    | IDENTIFIER ":=" expression ";"
+                    | IDENTIFIER ":" "type" "==" type_specifier ";"
+                    | IDENTIFIER ":" "namespace" "==" qualified_name ";" ;
+
+labeled_statement   = IDENTIFIER ":" ( while_statement | for_statement | do_while_statement ) ;
+
+expression_statement = expression ";" ;
+
+(* ============================================================================ *)
+(* EXPRESSIONS - PRECEDENCE LEVELS (highest to lowest)                          *)
+(* ============================================================================ *)
+
+expression          = assignment_expression ;
+
+(* Level 15: Assignment - right associative *)
+assignment_expression = pipeline_expression [ assignment_op assignment_expression ] ;
+
+assignment_op       = "=" | "+=" | "-=" | "*=" | "/=" | "%="
+                    | "<<=" | ">>=" | "&=" | "|=" | "^=" ;
+
+(* Level 14: Pipeline - left associative *)
+pipeline_expression = ternary_expression { "|>" ternary_expression } ;
+
+(* Level 13: Ternary - right associative *)
+ternary_expression  = logical_or_expression [ "?" expression ":" ternary_expression ] ;
+
+(* Level 12: Logical OR - left associative *)
+logical_or_expression = logical_and_expression { "||" logical_and_expression } ;
+
+(* Level 11: Logical AND - left associative *)
+logical_and_expression = bitwise_or_expression { "&&" bitwise_or_expression } ;
+
+(* Level 10: Bitwise OR - left associative *)
+bitwise_or_expression = bitwise_xor_expression { "|" bitwise_xor_expression } ;
+
+(* Level 9: Bitwise XOR - left associative *)
+bitwise_xor_expression = bitwise_and_expression { "^" bitwise_and_expression } ;
+
+(* Level 8: Bitwise AND - left associative *)
+bitwise_and_expression = equality_expression { "&" equality_expression } ;
+
+(* Level 7: Equality - left associative *)
+equality_expression = comparison_expression { ( "==" | "!=" ) comparison_expression } ;
+
+(* Level 6: Comparison - left associative *)
+comparison_expression = range_expression { comparison_op range_expression } ;
+
+comparison_op       = "<" | ">" | "<=" | ">=" | "<=>" ;
+
+(* Level 5: Range - left associative *)
+range_expression    = shift_expression { ( "..=" | "..<" ) shift_expression } ;
+
+(* Level 4: Shift - left associative *)
+shift_expression    = additive_expression { ( "<<" | ">>" ) additive_expression } ;
+
+(* Level 3: Additive - left associative *)
+additive_expression = multiplicative_expression { ( "+" | "-" ) multiplicative_expression } ;
+
+(* Level 2: Multiplicative - left associative *)
+multiplicative_expression = prefix_expression { ( "*" | "/" | "%" ) prefix_expression } ;
+
+(* Level 1: Prefix - right associative *)
+prefix_expression   = postfix_expression
+                    | "await" prefix_expression
+                    | "launch" prefix_expression
+                    | "select" select_body
+                    | ( "move" | "forward" | "copy" ) prefix_expression
+                    | prefix_op prefix_expression ;
+
+prefix_op           = "+" | "-" | "!" | "~" | "++" | "--" | "&" | "*" ;
+
+(* Level 0: Postfix - left associative *)
+postfix_expression  = primary_expression { postfix_op } ;
+
+postfix_op          = call_op
+                    | template_call_op
+                    | member_op
+                    | explicit_member_op
+                    | subscript_op
+                    | postfix_deref
+                    | postfix_addr
+                    | postfix_inc_dec
+                    | capture_op
+                    | pack_expand
+                    | as_cast
+                    | is_test
+                    | scope_op ;
+
+call_op             = "(" [ argument_list ] ")" ;
+
+template_call_op    = template_args [ "(" [ argument_list ] ")" ] ;
+
+member_op           = "." member_name [ call_op ] ;
+
+explicit_member_op  = ".." IDENTIFIER [ call_op ] ;
+
+subscript_op        = "[" expression "]" ;
+
+postfix_deref       = "*" ;  (* only when followed by delimiter *)
+
+postfix_addr        = "&" ;  (* only when followed by delimiter *)
+
+postfix_inc_dec     = "++" | "--" ;
+
+capture_op          = "$" ;
+
+pack_expand         = "..." ;
+
+as_cast             = "as" type_specifier ;
+
+is_test             = "is" is_pattern ;
+
+is_pattern          = type_specifier
+                    | "(" expression ")"
+                    | literal ;
+
+scope_op            = "::" IDENTIFIER ;
+
+member_name         = IDENTIFIER | CONTEXTUAL_KEYWORD ;
+
+argument_list       = argument { "," argument } [ "," ] ;
+
+argument            = [ argument_qualifier ] expression ;
+
+argument_qualifier  = "out" | "inout" | "move" | "forward" | "in_ref" | "forward_ref" ;
+
+(* ============================================================================ *)
+(* PRIMARY EXPRESSIONS                                                          *)
+(* ============================================================================ *)
+
+primary_expression  = literal
+                    | identifier_expression
+                    | "this"
+                    | "that"
+                    | "_"
+                    | grouped_expression
+                    | list_expression
+                    | struct_initializer
+                    | inspect_expression
+                    | metafunction_call
+                    | function_expression
+                    | typed_construction ;
+
+literal             = "true" | "false"
+                    | INTEGER_LITERAL [ IDENTIFIER ]
+                    | FLOAT_LITERAL [ IDENTIFIER ]
+                    | STRING_LITERAL
+                    | CHAR_LITERAL ;
+
+identifier_expression = [ "::" ] qualified_name ;
+
+qualified_name      = IDENTIFIER { "::" IDENTIFIER } ;
+
+grouped_expression  = "(" grouped_content ")" ;
+
+grouped_content     = (* empty *)
+                    | expression
+                    | expression "," expression_list
+                    | fold_expression
+                    | qualified_argument ;
+
+expression_list     = expression { "," expression } ;
+
+fold_expression     = "..." fold_op expression
+                    | expression fold_op "..."
+                    | expression fold_op "..." fold_op expression ;
+
+fold_op             = "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|"
+                    | "&&" | "||" | "," | "<" | ">" | "<=" | ">="
+                    | "==" | "!=" | "<<" | ">>" ;
+
+qualified_argument  = argument_qualifier expression ;
+
+list_expression     = "[" [ expression_list ] "]"
+                    | "[" cpp1_lambda_body "]" ;
+
+struct_initializer  = "{" IDENTIFIER "{" field_init_list "}" "}" ;
+
+field_init_list     = field_init { "," field_init } [ "," ] ;
+
+field_init          = IDENTIFIER ":" expression ;
+
+inspect_expression  = "inspect" expression [ "->" type_specifier ]
+                      "{" { inspect_arm } "}" ;
+
+metafunction_call   = "@" IDENTIFIER [ "(" [ argument_list ] ")" ] ;
+
+(* ============================================================================ *)
+(* FUNCTION EXPRESSIONS (LAMBDAS)                                               *)
+(* ============================================================================ *)
+
+function_expression = ":" [ template_params ] param_list [ "->" type_specifier ]
+                      function_body ;
+
+typed_construction  = ":" type_specifier "=" expression ;
+
+cpp1_lambda_body    = [ capture_list ] "]" "(" [ cpp1_param_list ] ")"
+                      [ "->" type_specifier ] block_statement ;
+
+capture_list        = capture { "," capture } ;
+
+capture             = "=" | "&" | "this" | "&" IDENTIFIER | IDENTIFIER ;
+
+cpp1_param_list     = cpp1_param { "," cpp1_param } ;
+
+cpp1_param          = [ "auto" | type_specifier ] IDENTIFIER ;
+
+(* ============================================================================ *)
+(* CONCURRENCY EXPRESSIONS                                                      *)
+(* ============================================================================ *)
+
+select_body         = "{" { select_case } [ default_select ] "}" ;
+
+select_case         = "onSend" "(" IDENTIFIER "," expression ")" block_statement
+                    | "onRecv" "(" IDENTIFIER ")" block_statement ;
+
+default_select      = "default" "=>" expression ;
+
+channel_send        = IDENTIFIER "<-" expression ;
+
+channel_recv        = "<-" IDENTIFIER ;
+
+(* ============================================================================ *)
+(* TYPE SPECIFIERS                                                              *)
+(* ============================================================================ *)
+
+type_specifier      = function_type
+                    | pointer_type
+                    | qualified_type ;
+
+function_type       = "(" [ param_type_list ] ")" "->" [ return_modifier ] type_specifier ;
+
+param_type_list     = [ param_qualifier ] type_specifier { "," [ param_qualifier ] type_specifier } ;
+
+pointer_type        = "*" [ "const" ] type_specifier ;
+
+qualified_type      = basic_type { "::" IDENTIFIER [ template_args ] } { "*" | "&" } ;
+
+basic_type          = { type_modifier } [ base_type_name ] [ template_args ]
+                    | "auto"
+                    | "_" [ "is" type_specifier ]
+                    | "type"
+                    | "decltype" "(" expression ")"
+                    | "const" type_specifier
+                    | IDENTIFIER [ template_args ] ;
+
+type_modifier       = "unsigned" | "signed" | "short" | "long" ;
+
+base_type_name      = "int" | "char" | "double" | "float" | "void" | "bool" ;
+
+initializer         = "=" expression | "==" expression ;
+
+(* ============================================================================ *)
+(* C++1 PASSTHROUGH                                                             *)
+(* ============================================================================ *)
+
+cpp1_passthrough    = cpp1_function | cpp1_struct | cpp1_constexpr | cpp1_template ;
+
+cpp1_function       = [ "auto" ] IDENTIFIER "(" ? C++1 parameters ? ")" [ "->" type_specifier ]
+                      ( block_statement | ";" ) ;
+
+cpp1_struct         = ( "struct" | "class" | "union" | "enum" ) IDENTIFIER
+                      [ ":" ? base classes ? ] "{" ? C++1 body ? "}" [ ";" ] ;
+
+cpp1_constexpr      = [ "inline" ] "constexpr" [ "auto" ] IDENTIFIER "=" expression ";" ;
+
+cpp1_template       = "template" "<" ? C++1 template params ? ">" cpp1_passthrough ;
+
+(* ============================================================================ *)
+(* DISAMBIGUATION NOTES                                                         *)
+(* ============================================================================ *)
+
+(* 
+ * < Disambiguation:
+ *   - After identifier: try template args, backtrack if fails
+ *   - Speculative parsing with panic recovery
+ *
+ * : Disambiguation:
+ *   - identifier: at statement start → label or declaration
+ *   - ? expr : → ternary expression
+ *   - case expr: → switch case
+ *
+ * Postfix * and &:
+ *   - Recognized when followed by: ; , ) ] } . ++ -- $ * & + - / = == < > << >>
+ *   - Compound assignment: += -= *= /= %= &= |= ^= <<= >>=
+ *   - Keywords: is as
+ *)
+
+(* ============================================================================ *)
+(* END OF GRAMMAR                                                               *)
+(* ============================================================================ *)
