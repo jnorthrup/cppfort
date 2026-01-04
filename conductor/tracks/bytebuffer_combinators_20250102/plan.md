@@ -275,7 +275,7 @@
 
 ## Verification Tasks
 
-- [ ] Property-based tests for combinator laws
+- [~] Property-based tests for combinator laws
 - [ ] Benchmark suite vs hand-written loops
 - [ ] Zero-copy verification (valgrind, ASAN)
 - [ ] Integration tests with real parsers (HTTP, binary protocols)

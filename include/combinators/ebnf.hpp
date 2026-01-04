@@ -319,7 +319,7 @@ struct Many {
     
     template<typename Input>
     constexpr auto parse(Input input) const {
-        using T = decltype(parser.parse(input).value());
+        using T = std::remove_cvref_t<decltype(parser.parse(input).value())>;
         std::vector<T> results;
         
         while (true) {
@@ -340,7 +340,7 @@ struct Some {
     
     template<typename Input>
     constexpr auto parse(Input input) const {
-        using T = decltype(parser.parse(input).value());
+        using T = std::remove_cvref_t<decltype(parser.parse(input).value())>;
         
         auto first = parser.parse(input);
         if (!first.success()) {
@@ -369,7 +369,7 @@ struct Opt {
     
     template<typename Input>
     constexpr auto parse(Input input) const {
-        using T = decltype(parser.parse(input).value());
+        using T = std::remove_cvref_t<decltype(parser.parse(input).value())>;
         auto r = parser.parse(input);
         if (r.success()) {
             return Result<std::optional<T>, Input>::ok(std::optional<T>(std::move(r.value())), r.remaining());
@@ -409,7 +409,7 @@ struct SepBy {
     
     template<typename Input>
     constexpr auto parse(Input input) const {
-        using T = decltype(parser.parse(input).value());
+        using T = std::remove_cvref_t<decltype(parser.parse(input).value())>;
         std::vector<T> results;
         
         auto first = parser.parse(input);
@@ -443,7 +443,7 @@ struct SepByTrailing {
     
     template<typename Input>
     constexpr auto parse(Input input) const {
-        using T = decltype(parser.parse(input).value());
+        using T = std::remove_cvref_t<decltype(parser.parse(input).value())>;
         std::vector<T> results;
         
         auto first = parser.parse(input);
