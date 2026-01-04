@@ -1,4 +1,4 @@
-# Parser Orchestration: EBNF to Combinator Mappings
+mmerge the ebnf and the combinator tracks into the same thing dsdsds# Parser Orchestration: EBNF to Combinator Mappings
 
 **Version**: cppfort EBNF standard v0.1.0 (2026-01-03)
 
@@ -360,6 +360,97 @@ The combinator library guarantees:
 - **No allocation in structural ops** - `take`, `skip`, `slice` return views only
 - **Lazy until terminal** - Transformation combinators defer work
 - **View lifetime** - Views don't extend lifetime of underlying data
+
+### 2.7 Grammar Type Aliases (Boost Spirit Pattern)
+
+**Implementation**: `include/parser_grammar.hpp`
+
+Following Boost Spirit's design pattern, cppfort defines type aliases that map each EBNF grammar symbol to its corresponding parser result type. This creates a direct bridge between the formal grammar specification and the AST implementation.
+
+#### Type Alias Pattern
+
+```cpp
+namespace cpp2_transpiler::parser::grammar {
+    // EBNF: expression ::= assignment_expression
+    using expression_result = std::unique_ptr<Expression>;
+
+    // EBNF: declaration ::= namespace_declaration | template_declaration | ...
+    using declaration_result = std::unique_ptr<Declaration>;
+
+    // EBNF: statement ::= block_statement | if_statement | ...
+    using statement_result = std::unique_ptr<Statement>;
+}
+```
+
+#### Purpose
+
+1. **Self-documenting grammar**: Type aliases make the parser structure explicit
+2. **EBNF-to-AST mapping**: Each grammar symbol has a clear result type
+3. **Combinator foundation**: Enables future parser combinator refactoring
+4. **Type safety**: Compiler enforces grammar structure at compile time
+
+#### Namespace Structure
+
+```
+cpp2_transpiler::parser::grammar
+├── [Type Aliases]          (e.g., expression_result, declaration_result)
+├── combinators::           (Future combinator compositions)
+└── operators::             (Precedence table and associativity)
+```
+
+#### Example: Future Combinator Refactoring
+
+The type aliases serve as a specification for future combinator-based parser:
+
+```cpp
+// Current (hand-written recursive descent):
+std::unique_ptr<Declaration> Parser::declaration() {
+    if (check(TokenType::Namespace)) return namespace_declaration();
+    if (check(TokenType::Template)) return template_declaration();
+    // ... more branches
+}
+
+// Future (combinator-based):
+namespace cpp2_transpiler::parser::grammar::combinators {
+    using declaration_parser = alt<
+        namespace_declaration_parser,
+        template_declaration_parser,
+        type_declaration_parser,
+        function_declaration_parser,
+        variable_declaration_parser,
+        using_declaration_parser,
+        import_declaration_parser,
+        statement_parser
+    >;
+}
+```
+
+#### Operator Precedence
+
+The `operators` namespace provides compile-time precedence and associativity:
+
+```cpp
+namespace cpp2_transpiler::parser::grammar::operators {
+    enum class binary_op { multiply, add, less, equal, logical_and, ... };
+
+    constexpr int precedence(binary_op op);        // Returns precedence level (3-13)
+    constexpr associativity assoc(binary_op op);   // Returns left or right
+}
+```
+
+#### Coverage
+
+All EBNF sections from Section 1 have corresponding type aliases:
+
+- Section 1.2: Lexical structure (`identifier`, `integer_literal`, etc.)
+- Section 1.3: Top-level structure (`translation_unit_result`, `declaration_result`)
+- Section 1.4: Template parameters (`template_params_result`)
+- Section 1.5: Function declarations (`function_declaration_result`, `parameter_list_result`)
+- Section 1.6: Type declarations (`type_declaration_result`, `metafunctions_result`)
+- Section 1.7: Statements (`statement_result`, `if_statement_result`, etc.)
+- Section 1.8: Expressions (all precedence levels)
+- Section 1.9: Pattern matching (`inspect_expression_result`, `pattern_result`)
+- Section 1.10: Type specifiers (`type_specifier_result`, `pointer_type_result`)
 
 ---
 

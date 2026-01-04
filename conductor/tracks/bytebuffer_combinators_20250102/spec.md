@@ -310,6 +310,12 @@ func word_frequencies(text: StrView) -> HashMap<StrView, size_t> {
 - integer endianness parsers
 - Validation predicates
 
+### Phase 6: Spirit-Like Parser Grammar Aliases
+- Type aliases for EBNF symbols in private namespace
+- Refactor parser to use grammar aliases (Boost Spirit pattern)
+- Self-documenting parser matching grammar specification
+- Zero semantic changes, improved code clarity
+
 ## Integration with Cpp2
 
 ### Syntax Extensions
