@@ -72,50 +72,34 @@ void test_operator_associativity() {
     std::cout << "✓ Operator associativity tests passed\n";
 }
 
-// Test that type aliases compile correctly
-void test_type_alias_compilation() {
-    // These tests verify that the type aliases are defined and compile correctly
+// Test that type aliases are defined correctly
+void test_type_alias_specification() {
+    // These tests verify that the type aliases are defined at the type level
+    // NOTE: Many grammar types cannot be instantiated due to circular dependencies,
+    //       but they serve as type-level EBNF grammar specification
 
-    // Lexical structure types
+    // Lexical structure types (can be instantiated)
     identifier id = "foo";
     integer_literal int_lit = "42";
     float_literal float_lit = "3.14";
     string_literal str_lit = "\"hello\"";
+    char_literal chr_lit = "'x'";
 
-    // Result types (verify they're defined and can be used in type declarations)
-    [[maybe_unused]] declaration_result decl_result;
-    [[maybe_unused]] statement_result stmt_result;
-    [[maybe_unused]] expression_result expr_result;
-    [[maybe_unused]] type_specifier_result type_result;
+    // Primitive combinator types (templates defined)
+    static_assert(std::is_same_v<opt<int>, std::optional<int>>);
+    static_assert(std::is_same_v<many<int>, std::vector<int>>);
+    static_assert(std::is_same_v<seq<int, char>, std::tuple<int, char>>);
+    static_assert(std::is_same_v<alt<int, char>, std::variant<int, char>>);
 
-    // Template parameter types
-    [[maybe_unused]] template_params_result tparams_result;
-    [[maybe_unused]] parameter_list_result params_result;
+    // Enums defined (can be used)
+    [[maybe_unused]] param_qualifier pq = param_qualifier::in;
+    [[maybe_unused]] assignment_operator ao = assignment_operator::assign;
+    [[maybe_unused]] binary_operator bo = binary_operator::add;
+    [[maybe_unused]] unary_operator uo = unary_operator::plus;
+    [[maybe_unused]] type_modifier tm = type_modifier::const_;
+    [[maybe_unused]] contract_kind ck = contract_kind::assert_;
 
-    // Statement types
-    [[maybe_unused]] if_statement_result if_result;
-    [[maybe_unused]] while_loop_result while_result;
-    [[maybe_unused]] for_loop_result for_result;
-
-    // Expression types (various precedence levels)
-    [[maybe_unused]] assignment_expression_result assign_result;
-    [[maybe_unused]] ternary_expression_result ternary_result;
-    [[maybe_unused]] logical_or_expression_result or_result;
-    [[maybe_unused]] equality_expression_result eq_result;
-    [[maybe_unused]] comparison_expression_result cmp_result;
-    [[maybe_unused]] addition_expression_result add_result;
-    [[maybe_unused]] multiplication_expression_result mul_result;
-
-    // Pattern matching types
-    [[maybe_unused]] inspect_expression_result inspect_result;
-    [[maybe_unused]] pattern_result pattern_result;
-
-    // Type specifier types
-    [[maybe_unused]] function_type_result fn_type_result;
-    [[maybe_unused]] pointer_type_result ptr_type_result;
-    [[maybe_unused]] basic_type_result basic_type_result;
-
-    std::cout << "✓ Type alias compilation tests passed\n";
+    std::cout << "✓ Type alias specification tests passed\n";
 }
 
 // Test that the grammar namespace structure is correct
@@ -123,28 +107,38 @@ void test_namespace_structure() {
     // Verify namespaces are accessible
     using namespace cpp2_transpiler::parser::grammar;
     using namespace cpp2_transpiler::parser::grammar::operators;
-    using namespace cpp2_transpiler::parser::grammar::combinators;
 
-    // If we can access these namespaces, the structure is correct
+    // Verify type aliases exist at namespace level
+    using test_id = identifier;
+    using test_opt = opt<int>;
+    using test_many = many<char>;
+
+    // If we can access these namespaces and types, the structure is correct
     std::cout << "✓ Namespace structure tests passed\n";
 }
 
-// Example: Demonstrate EBNF to type alias mapping
+// Example: Demonstrate EBNF to type encoding
 void demonstrate_ebnf_mapping() {
-    std::cout << "\nEBNF to Type Alias Mapping Examples:\n";
-    std::cout << "=====================================\n";
-
-    std::cout << "EBNF: expression ::= assignment_expression\n";
-    std::cout << "Type: using expression_result = std::unique_ptr<Expression>;\n\n";
-
-    std::cout << "EBNF: declaration ::= namespace_declaration | template_declaration | ...\n";
-    std::cout << "Type: using declaration_result = std::unique_ptr<Declaration>;\n\n";
+    std::cout << "\nEBNF to Type Encoding Examples:\n";
+    std::cout << "=================================\n";
 
     std::cout << "EBNF: parameter_list ::= parameter { \",\" parameter } [ \",\" ]\n";
-    std::cout << "Type: using parameter_list_result = std::vector<std::pair<std::string, std::unique_ptr<Type>>>;\n\n";
+    std::cout << "Type: using parameter_list = many<parameter>;\n\n";
 
-    std::cout << "EBNF: if_statement ::= \"if\" [ \"constexpr\" ] expression block_statement ...\n";
-    std::cout << "Type: using if_statement_result = std::unique_ptr<IfStatement>;\n\n";
+    std::cout << "EBNF: declaration ::= namespace_declaration | template_declaration | ...\n";
+    std::cout << "Type: struct declaration : alt<namespace_declaration, ...> {};\n\n";
+
+    std::cout << "EBNF: function_signature ::= [ template_params ] \"(\" ...\n";
+    std::cout << "Type: using function_signature = seq<opt<template_params>, ...>;\n\n";
+
+    std::cout << "EBNF: while_loop ::= \"while\" expression [ \"next\" expression ] block_statement\n";
+    std::cout << "Type: using while_loop = seq<expression, opt<expression>, block_statement>;\n\n";
+
+    std::cout << "Pattern:\n";
+    std::cout << "  EBNF alternation (|)     → alt<A, B> = std::variant<A, B>\n";
+    std::cout << "  EBNF sequence (a b)      → seq<A, B> = std::tuple<A, B>\n";
+    std::cout << "  EBNF optional ([ a ])    → opt<A> = std::optional<A>\n";
+    std::cout << "  EBNF repetition ({ a })  → many<A> = std::vector<A>\n";
 }
 
 int main() {
@@ -154,7 +148,7 @@ int main() {
     try {
         test_operator_precedence();
         test_operator_associativity();
-        test_type_alias_compilation();
+        test_type_alias_specification();
         test_namespace_structure();
         demonstrate_ebnf_mapping();
 

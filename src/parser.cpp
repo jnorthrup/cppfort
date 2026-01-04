@@ -1076,8 +1076,8 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     }
 
     // Exception specification (Cpp2-style): throws or noexcept
-    bool can_throw = false;
-    bool is_noexcept = false;
+    [[maybe_unused]] bool can_throw = false;
+    [[maybe_unused]] bool is_noexcept = false;
     if (match(TokenType::Throws)) {
         can_throw = true;
     } else if (match(TokenType::Noexcept)) {
@@ -2296,7 +2296,7 @@ std::unique_ptr<Type> Parser::qualified_type() {
                 int angle_depth = 0;
                 int paren_depth = 0;
                 TokenType prev_type = TokenType::EndOfFile;
-                bool split_right_shift = false;  // Set when we split >> into > and pending >
+                [[maybe_unused]] bool split_right_shift = false;  // Set when we split >> into > and pending >
                 
                 while (!is_at_end()) {
                     // Check termination conditions at depth 0
@@ -2429,7 +2429,7 @@ std::unique_ptr<Type> Parser::basic_type() {
                 int angle_depth = 0;
                 int paren_depth = 0;
                 TokenType prev_type = TokenType::EndOfFile;
-                bool split_right_shift = false;  // Set when we split >> into > and pending >
+                [[maybe_unused]] bool split_right_shift = false;  // Set when we split >> into > and pending >
                 
                 while (!is_at_end()) {
                     // Check termination conditions at depth 0
@@ -3294,7 +3294,7 @@ std::unique_ptr<Statement> Parser::try_statement() {
     while (match(TokenType::Catch)) {
         consume(TokenType::LeftParen, "Expected '(' after catch");
         Token exception_type = consume(TokenType::Identifier, "Expected exception type");
-        Token exception_name = consume(TokenType::Identifier, "Expected exception name");
+        [[maybe_unused]] Token exception_name = consume(TokenType::Identifier, "Expected exception name");
         consume(TokenType::RightParen, "Expected ')' after catch exception");
 
         auto catch_block = block_statement();
@@ -3327,7 +3327,7 @@ std::unique_ptr<Statement> Parser::contract_statement() {
 
     // Check for annotation level syntax: assert<name>(condition)
     // vs function contract syntax: assert : condition
-    bool has_annotation = false;
+    [[maybe_unused]] bool has_annotation = false;
     std::optional<std::string> annotation;
 
     if (match(TokenType::LessThan)) {
@@ -4377,7 +4377,7 @@ std::unique_ptr<Expression> Parser::primary_expression() {
             std::size_t lookahead = current;
             int paren_depth = 1;
             bool found_fold = false;
-            std::size_t fold_pos = 0;
+            [[maybe_unused]] std::size_t fold_pos = 0;
             
             while (lookahead < tokens.size() && paren_depth > 0) {
                 if (tokens[lookahead].type == TokenType::LeftParen) paren_depth++;
@@ -5797,7 +5797,7 @@ std::unique_ptr<Declaration> Parser::cpp1_passthrough_declaration(bool is_struct
 }
 
 // Error handling
-void Parser::error(const Token& token, const char* message) {
+void Parser::error(const Token& token, [[maybe_unused]] const char* message) {
     if (token.type == TokenType::EndOfFile) {
         error_at(token, " at end");
     } else {

@@ -336,6 +336,12 @@ target_include_directories(test_sccp_debug_logging PRIVATE ${CMAKE_SOURCE_DIR}/i
 target_link_libraries(test_sccp_debug_logging PRIVATE Cpp2SCCP)
 add_test(NAME sccp_debug_logging_tests COMMAND test_sccp_debug_logging)
 
+# Combinator laws property-based tests
+add_executable(combinator_laws_test combinator_laws_test.cpp)
+target_include_directories(combinator_laws_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(combinator_laws_test PRIVATE Cpp2Transpiler)
+add_test(NAME combinator_laws_tests COMMAND combinator_laws_test)
+
 # Markdown blocks test
 add_executable(test_markdown_blocks test_markdown_blocks.cpp)
 target_include_directories(test_markdown_blocks PRIVATE ${CMAKE_SOURCE_DIR}/include)

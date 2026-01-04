@@ -399,28 +399,20 @@ test_pipeline_associativity: () -> void = {
 
 test_lazy_evaluation: () -> void = {
     std::cout << "test_lazy_evaluation\n";
-    
+
     data: std::string = "0123456789";
     buf: cpp2::ByteBuffer = (data.data(), data.size());
-    
+
     // Create a pipeline - no iteration yet
-    call_count: * int = new<int>(0);
-    counter := :(c: char) -> char = {
-        // Note: in real code we'd increment call_count
-        return c;
-    };
-    
     // Pipeline setup doesn't iterate
     pipeline := cpp2::combinators::from(buf)
         | cpp2::combinators::curried::take(3)
-        | cpp2::combinators::curried::map(counter);
-    
+        | cpp2::combinators::curried::map(:(c: char) -> char = c);
+
     // Only when we iterate do elements get processed
     result := collect_chars(pipeline);
     assert(result.size() == 3);
-    
-    delete call_count;
-    
+
     std::cout << "  PASS (lazy construction verified)\n";
 }
 
