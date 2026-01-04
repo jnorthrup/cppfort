@@ -1,206 +1,134 @@
-# Cpp2 Transpiler
+# cppfort
 
-A comprehensive C++23 source-to-source transpiler that converts Cpp2 code to modern C++ (C++20/23).
+**Cpp2 → C++ transpiler with MLIR-based Sea-of-Nodes IR pipeline**
 
-## Features
+## Overview
 
-- **Full Cpp2 Language Support**: Implements all major Cpp2 features including unified declaration syntax, UFCS, contracts, metafunctions, and pattern matching
-- **Safety by Default**: Injects runtime checks for bounds, null pointers, division by zero, and mixed-sign comparisons
-- **Modern C++ Generation**: Produces idiomatic C++20/23 code with move semantics, concepts, and ranges
-- **Contract System**: Full support for preconditions, postconditions, and assertions with customizable violation handlers
-- **Metafunction System**: Compile-time code generation for common patterns (value semantics, ordering, copyability, etc.)
-- **Template Support**: Full C++ template generation from Cpp2 template syntax
-- **Based on C++23**: Uses modern C++23 features including spans, string_views, and std::format
+Cppfort is an experimental compiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a Sea-of-Nodes (SoN) intermediate representation using MLIR. It combines:
+
+- **Traditional AST pipeline**: Direct Cpp2 → C++ transpilation
+- **SoN/MLIR pipeline**: Graph-based optimization with MLIR dialect
+- **Clang AST mapping**: Inverse inference from C++ AST to MLIR regions
+
+## Key Components
+
+### MLIR Dialect (`include/Cpp2Dialect.td`)
+TableGen-defined dialect with ops for:
+- Control flow: `if`, `for`, `while`, `loop`, `return`
+- Data flow: `constant`, `add`, `sub`, `mul`, `div`, `phi`, `binop`
+- Functions: `func`, `call`, `ufcs_call`
+- Memory: `new`, `load`, `store` with alias classes
+- Cpp2 features: `contract`, `metafunction`, `var`
+
+### Mapping Tools (`tools/inference/`)
+Python toolchain for extracting Clang AST → MLIR op mappings:
+- **emit_mappings.py**: Extract mapping candidates from C++ source
+- **batch_emit_mappings.py**: Process multiple files, aggregate results
+- **validate_against_dialect.py**: Validate mappings against dialect
+- **run_inference.sh**: Wrapper with libclang configuration
+
+### Documentation
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design
+- **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification
+- **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition
+- **[docs/MAPPING_PROGRESS.md](docs/MAPPING_PROGRESS.md)**: Implementation status
+- **[docs/sea-of-nodes/](docs/sea-of-nodes/)**: 24 chapters from Cliff Click's book
+
+## Quick Start
+
+### Generate Mappings
+
+```bash
+# Single file
+./tools/inference/run_inference.sh tools/inference/emit_mappings.py \
+  -i tools/inference/samples/sample_son.cpp \
+  -o mappings.json -- -std=c++20
+
+# Batch process
+python3 tools/inference/batch_emit_mappings.py \
+  -i corpus/inputs \
+  -o output_dir \
+  --limit 10 \
+  --aggregate
+```
+
+### Validate Mappings
+
+```bash
+python3 tools/inference/validate_against_dialect.py \
+  -m mappings.json \
+  -d include/Cpp2Dialect.td
+```
+
+## Project Status
+
+### Completed
+- ✅ MLIR dialect with 24 ops (control flow, data flow, memory, cpp2-specific)
+- ✅ Mapping extraction toolchain
+- ✅ Schema validation (6,301 mappings, 100% pass rate)
+- ✅ Sample corpus and test infrastructure
+- ✅ Documentation and usage guides
+
+### In Progress
+- 🔄 MLIR emitter (template → MLIR IR code generation)
+- 🔄 Cpp2 file transpilation integration
+- 🔄 Full corpus validation
+
+### Planned
+- 📋 CI/CD pipeline
+- 📋 Sea-of-Nodes chapter pattern extraction
+- 📋 Roundtrip validation (C++ → AST → MLIR → C++)
+
+## Validation Results
+
+Latest validation (sample_son.cpp, 6,301 mappings):
+- **call**: 2,170 mappings (CallExpr)
+- **func**: 1,497 mappings (FunctionDecl)
+- **return**: 1,021 mappings (ReturnStmt)
+- **var**: 677 mappings (VarDecl)
+- **binop**: 599 mappings (BinaryOperator)
+- **if**: 249 mappings (IfStmt)
+- **while**: 46 mappings (WhileStmt)
+- **for**: 42 mappings (ForStmt)
+
+All mappings validate successfully against the dialect definition.
 
 ## Architecture
 
-The transpiler is built with a clean, modular architecture:
-
-1. **Lexer**: Tokenizes Cpp2 source code
-2. **Parser**: Builds an Abstract Syntax Tree (AST) from tokens
-   - Grammar: `grammar/cpp2.combinators.md` (orthogonal combinator spec)
-   - EBNF: `grammar/cpp2.ebnf` (formal grammar)
-3. **Semantic Analyzer**: Performs type checking and symbol resolution
-4. **Safety Checker**: Identifies potential safety issues and injection points
-5. **Metafunction Processor**: Expands metafunction annotations
-6. **Contract Processor**: Processes and generates contract checks
-7. **Code Generator**: Generates C++20/23 code from the processed AST
-
-## Building
-
-### Prerequisites
-
-- C++23 compliant compiler (GCC 13+, Clang 16+, MSVC 19.36+)
-- CMake 3.28 or later
-- Git
-
-### Build Steps
-
-```bash
-git clone <repository-url>
-cd cppfort
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+```
+C++ Source (.cpp2) 
+    ↓
+[cppfront transpiler] → C++ (.cpp)
+    ↓
+[Clang AST parser]
+    ↓
+[Mapping Extractor] → Mapping Artifacts (JSON)
+    ↓
+[MLIR Emitter] → cpp2 Dialect Ops
+    ↓
+[SoN Optimizer] → Optimized MLIR
+    ↓
+[Code Generator] → Target Code
 ```
 
-## Usage
+## Dependencies
 
-```bash
-# Transpile a Cpp2 file
-./cpp2_transpiler input.cpp2 output.cpp
+- **LLVM/MLIR**: 17.0+ (for dialect and TableGen)
+- **Clang**: 17.0+ (for AST parsing)
+- **Python**: 3.10+ with libclang bindings
+- **CMake**: 3.20+ (for build system)
+- **Ninja**: (recommended build tool)
 
-# Compile the generated C++ code
-g++ -std=c++23 -O2 output.cpp -o output
-```
+## References
 
-## Cpp2 Language Features
-
-### Unified Declaration Syntax
-
-```cpp2
-// Variables
-let x: i32 = 42;          // Immutable
-mut y: f64 = 3.14;        // Mutable
-const z: string = "hello"; // Compile-time constant
-
-// Functions
-func add(a: i32, b: i32) -> i32 = a + b;
-
-// Types
-type Point = {
-    x: f64,
-    y: f64,
-};
-```
-
-### Unified Function Call Syntax (UFCS)
-
-```cpp2
-func length(s: string) -> i32 = s.len();
-
-// Both are equivalent
-let len1 = "hello".length();
-let len2 = length("hello");
-```
-
-### Postfix Operators
-
-```cpp2
-let p: i32* = &x;
-let value = p*;     // Dereference
-let addr = value&;  // Address
-```
-
-### Contracts
-
-```cpp2
-func divide(a: i32, b: i32) -> i32
-    pre: b != 0
-    post: result * b == a
-{
-    return a / b;
-}
-```
-
-### Pattern Matching
-
-```cpp2
-inspect value {
-    0 => "zero",
-    1..=9 => "single digit",
-    n if n < 0 => "negative",
-    _ => "other",
-}
-```
-
-### String Interpolation
-
-```cpp2
-let name = "World";
-let message = "Hello, $(name)!";
-```
-
-### Range Operators
-
-```cpp2
-for i in 0..<10 {    // Exclusive range
-    // ...
-}
-
-for i in 0..=10 {    // Inclusive range
-    // ...
-}
-```
-
-### Metafunctions
-
-```cpp2
-@value          // Generate value semantics
-@ordered        // Generate comparison operators
-@copyable       // Ensure copy operations
-@hashable       // Generate hash function
-type Person = {
-    name: string,
-    age: i32,
-};
-```
-
-## Safety Features
-
-The transpiler automatically injects safety checks:
-
-- **Array bounds checking**: Validates array/subscript access
-- **Null pointer checks**: Prevents null dereferencing
-- **Division by zero**: Checks for zero divisors
-- **Mixed-sign comparisons**: Warns about signed/unsigned comparisons
-- **Use-after-move detection**: Identifies potential use-after-move scenarios
-
-## Testing
-
-Run the test suite:
-
-```bash
-cd build
-make test
-# Or
-./cpp2_tests
-```
-
-## Examples
-
-See the `examples/` directory for Cpp2 examples:
-
-- `hello.cpp2`: Simple hello world
-- `vector.cpp2`: Using arrays and UFCS
-- `person.cpp2`: Metafunctions and contracts
-
-## Project Structure
-
-```
-cppfort/
-├── include/           # Header files
-├── src/              # Source implementations
-├── tests/            # Test suite
-├── examples/         # Cpp2 examples
-├── docs/             # Documentation
-├── CMakeLists.txt     # Build configuration
-└── README.md
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+- [cppfront](https://github.com/hsutter/cppfront) - Herb Sutter's Cpp2 transpiler
+- [Sea of Nodes IR](https://github.com/SeaOfNodes/Simple) - Cliff Click's SoN book/reference
+- [MLIR](https://mlir.llvm.org/) - Multi-Level IR framework
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+[License details to be determined]
 
-## Acknowledgments
+## Contributing
 
-Based on the Cpp2 design by Herb Sutter and the ISO C++ committee.
+See [.github/copilot-instructions.md](.github/copilot-instructions.md) for development guidelines.
