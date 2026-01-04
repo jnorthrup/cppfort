@@ -4,7 +4,7 @@
 
 - [x] Implement `EscapeInfo` and `EscapeKind` enums in include/ast.hpp
 - [x] Add escape analysis pass in src/semantic_analyzer.cpp after type checking
-- [ ] Attach `EscapeInfo` to all `VarDecl` nodes
+- [x] Attach `EscapeInfo` to all `VarDecl` nodes
 - [ ] Write unit tests for basic escape scenarios (NoEscape, EscapeToReturn, EscapeToHeap)
 - [ ] Validate against pure2 corpus files (start with pure2-hello.cpp2)
 

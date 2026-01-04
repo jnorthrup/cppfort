@@ -12,6 +12,9 @@ class EscapeAnalyzer {
 public:
     std::unordered_map<std::string, EscapeInfo> variable_escapes;
 
+    // Map from variable name to VarDecl pointer for attaching info later
+    std::unordered_map<std::string, VariableDeclaration*> variable_decls;
+
     // Analyze a single statement for variable escapes
     void analyze_statement(Statement* stmt) {
         if (!stmt) return;
@@ -44,6 +47,7 @@ public:
                 info.kind = EscapeKind::NoEscape;
                 info.needs_lifetime_extension = false;
                 variable_escapes[var_decl->name] = info;
+                variable_decls[var_decl->name] = var_decl;  // Track decl for later attachment
             }
         }
         else if (auto* if_stmt = dynamic_cast<IfStatement*>(stmt)) {
@@ -91,13 +95,18 @@ public:
 
         // Clear previous analysis
         variable_escapes.clear();
+        variable_decls.clear();
 
         // Analyze function body
         analyze_statement(func->body.get());
 
-        // At this point, variable_escapes contains escape info for all variables
-        // In a full implementation, we would attach this info back to the AST nodes
-        // For now, the analysis is just computed but not yet attached
+        // Attach escape info to all variable declarations
+        for (auto& [var_name, escape_info] : variable_escapes) {
+            auto it = variable_decls.find(var_name);
+            if (it != variable_decls.end()) {
+                it->second->escape_info = escape_info;
+            }
+        }
     }
 };
 
