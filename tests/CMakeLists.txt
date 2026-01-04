@@ -408,6 +408,12 @@ add_executable(test_escape_analysis_pass test_escape_analysis_pass.cpp
 target_include_directories(test_escape_analysis_pass PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME escape_analysis_pass_tests COMMAND test_escape_analysis_pass)
 
+# Escape analysis comprehensive scenario tests
+add_executable(test_escape_scenarios test_escape_scenarios.cpp
+    ${CMAKE_SOURCE_DIR}/src/semantic_analyzer.cpp)
+target_include_directories(test_escape_scenarios PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME escape_scenarios_tests COMMAND test_escape_scenarios)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -467,5 +473,6 @@ set(_cppfort_all_ctest_tests
     markdown_integration_tests
     escape_analysis_tests
     escape_analysis_pass_tests
+    escape_scenarios_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})
