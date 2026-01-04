@@ -2,7 +2,7 @@
 
 ## Phase 1: Core Escape Analysis
 
-- [ ] Implement `EscapeInfo` and `EscapeKind` enums in include/ast.hpp
+- [x] Implement `EscapeInfo` and `EscapeKind` enums in include/ast.hpp
 - [ ] Add escape analysis pass in src/semantic_analyzer.cpp after type checking
 - [ ] Attach `EscapeInfo` to all `VarDecl` nodes
 - [ ] Write unit tests for basic escape scenarios (NoEscape, EscapeToReturn, EscapeToHeap)
