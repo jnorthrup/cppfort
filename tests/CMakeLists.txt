@@ -342,6 +342,30 @@ target_include_directories(combinator_laws_test PRIVATE ${CMAKE_SOURCE_DIR}/incl
 target_link_libraries(combinator_laws_test PRIVATE Cpp2Transpiler)
 add_test(NAME combinator_laws_tests COMMAND combinator_laws_test)
 
+# Combinator benchmark tests
+add_executable(benchmark_combinators benchmark_combinators.cpp)
+target_include_directories(benchmark_combinators PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(benchmark_combinators PRIVATE Cpp2Transpiler)
+add_test(NAME benchmark_combinators_tests COMMAND benchmark_combinators)
+
+# Zero-copy verification tests
+add_executable(zero_copy_verification_test zero_copy_verification_test.cpp)
+target_include_directories(zero_copy_verification_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(zero_copy_verification_test PRIVATE Cpp2Transpiler)
+add_test(NAME zero_copy_verification_tests COMMAND zero_copy_verification_test)
+
+# Combinator integration tests (real-world parsing scenarios)
+add_executable(combinator_integration_test combinator_integration_test.cpp)
+target_include_directories(combinator_integration_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(combinator_integration_test PRIVATE Cpp2Transpiler)
+add_test(NAME combinator_integration_tests COMMAND combinator_integration_test)
+
+# Pipeline operator tests
+add_executable(pipeline_operator_test pipeline_operator_test.cpp)
+target_include_directories(pipeline_operator_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(pipeline_operator_test PRIVATE Cpp2Transpiler)
+add_test(NAME pipeline_operator_tests COMMAND pipeline_operator_test)
+
 # Markdown blocks test
 add_executable(test_markdown_blocks test_markdown_blocks.cpp)
 target_include_directories(test_markdown_blocks PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -371,6 +395,12 @@ add_executable(test_markdown_integration test_markdown_integration.cpp)
 target_include_directories(test_markdown_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_markdown_integration PRIVATE Cpp2Transpiler)
 add_test(NAME markdown_integration_tests COMMAND test_markdown_integration)
+
+# Escape analysis infrastructure test
+add_executable(escape_analysis_test escape_analysis_test.cpp)
+target_include_directories(escape_analysis_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+# No library linking needed - header-only test of EscapeKind and EscapeInfo
+add_test(NAME escape_analysis_tests COMMAND escape_analysis_test)
 
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
@@ -419,5 +449,16 @@ set(_cppfort_all_ctest_tests
     sccp_comparison_folding_tests
     sccp_float_special_tests
     sccp_range_analysis_tests
+    combinator_laws_tests
+    benchmark_combinators_tests
+    zero_copy_verification_tests
+    combinator_integration_tests
+    pipeline_operator_tests
+    markdown_blocks_tests
+    markdown_hash_tests
+    markdown_ast_metadata_tests
+    markdown_code_generation_tests
+    markdown_integration_tests
+    escape_analysis_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})
