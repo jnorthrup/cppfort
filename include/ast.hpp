@@ -64,6 +64,30 @@ struct AST {
 };
 
 // ============================================================================
+// Semantic Analysis - Escape Analysis
+// ============================================================================
+// (Defined early so VariableDeclaration can reference it)
+
+// Categorizes how a value escapes its local scope
+enum class EscapeKind {
+    NoEscape,          // Value stays local (stack)
+    EscapeToHeap,      // Stored in heap-allocated object
+    EscapeToReturn,    // Returned from function
+    EscapeToParam,     // Stored via pointer/reference parameter
+    EscapeToGlobal,    // Stored in global variable
+    EscapeToChannel,   // Sent through channel
+    EscapeToGPU,       // Transferred to GPU memory
+    EscapeToDMA        // Transferred via DMA buffer
+};
+
+// Tracks escape information for a variable
+struct EscapeInfo {
+    EscapeKind kind = EscapeKind::NoEscape;
+    std::vector<void*> escape_points;  // ASTNode* escape points (void* to avoid forward decl)
+    bool needs_lifetime_extension = false;
+};
+
+// ============================================================================
 // Type Representation
 // ============================================================================
 
@@ -198,7 +222,8 @@ struct VariableDeclaration : Declaration {
     bool is_const = false;
     bool is_let = false;
     bool is_constexpr = false;
-    
+    std::optional<EscapeInfo> escape_info;  // Filled by semantic analysis
+
     VariableDeclaration() = default;
     VariableDeclaration(std::string name, std::uint32_t ln)
         : Declaration(std::move(name), ln) {}
@@ -729,29 +754,6 @@ struct ChannelSelectExpression : Expression {
 
     ChannelSelectExpression() = default;
     explicit ChannelSelectExpression(std::uint32_t ln) : Expression(ln) {}
-};
-
-// ============================================================================
-// Semantic Analysis - Escape Analysis
-// ============================================================================
-
-// Categorizes how a value escapes its local scope
-enum class EscapeKind {
-    NoEscape,          // Value stays local (stack)
-    EscapeToHeap,      // Stored in heap-allocated object
-    EscapeToReturn,    // Returned from function
-    EscapeToParam,     // Stored via pointer/reference parameter
-    EscapeToGlobal,    // Stored in global variable
-    EscapeToChannel,   // Sent through channel
-    EscapeToGPU,       // Transferred to GPU memory
-    EscapeToDMA        // Transferred via DMA buffer
-};
-
-// Tracks escape information for a variable
-struct EscapeInfo {
-    EscapeKind kind = EscapeKind::NoEscape;
-    std::vector<void*> escape_points;  // ASTNode* escape points (void* to avoid forward decl)
-    bool needs_lifetime_extension = false;
 };
 
 } // namespace cpp2_transpiler
