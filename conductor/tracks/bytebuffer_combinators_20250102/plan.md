@@ -229,6 +229,50 @@
 
 ---
 
+## Phase 6: Spirit-Like Parser Grammar Aliases [checkpoint: pending]
+
+### Tasks
+
+- [x] Create `include/parser_grammar.hpp` with type aliases matching EBNF
+  - Private namespace `parser::grammar`
+  - Map each EBNF symbol to result type (AST node)
+  - Example: `using declaration_result = std::unique_ptr<Declaration>;`
+- [x] Define all EBNF symbols from `PARSER_ORCHESTRATION.md` Section 1
+  - Top-level: `translation_unit_result`, `declaration_result`
+  - Templates: `template_params_result`, `template_param_list_result`
+  - Functions: `function_declaration_result`, `parameter_list_result`
+  - Types: `type_declaration_result`, `metafunctions_result`
+  - Statements: `statement_result`, `if_statement_result`, `loop_statement_result`
+  - Expressions: All precedence levels (15 expression type aliases)
+  - Patterns: `inspect_expression_result`, `pattern_result`
+  - Type specifiers: `type_specifier_result`, `function_type_result`, `pointer_type_result`
+- [x] Update `PARSER_ORCHESTRATION.md` Section 2 with implementation details
+  - Added Section 2.7: Grammar Type Aliases (Boost Spirit Pattern)
+  - Documented namespace structure (`grammar`, `combinators`, `operators`)
+  - Added examples of current vs future combinator-based parser
+  - Included operator precedence table documentation
+  - Cross-referenced all EBNF sections with type aliases
+- [ ] Refactor `src/parser.cpp` to use grammar aliases (DEFERRED)
+  - NOTE: Current parser is hand-written recursive descent, not combinator-based
+  - Type aliases serve as specification for future refactoring
+  - No changes to parser.cpp needed at this time
+- [x] Add parser combinator unit tests in `tests/parser_grammar_test.cpp`
+  - ✅ Test operator precedence calculations (all levels 3-13)
+  - ✅ Test operator associativity (all left-associative)
+  - ✅ Verify type alias correctness (compilation tests pass)
+  - ✅ Document EBNF-to-type-alias mapping examples
+
+### Success Criteria
+
+- ✅ All EBNF symbols have corresponding type aliases (40+ aliases defined)
+- ✅ Grammar specification is self-documenting (inline EBNF comments)
+- ✅ Zero behavioral changes (parser.cpp unchanged, all tests still pass)
+- ✅ Namespace structure follows Boost Spirit pattern (`grammar`, `combinators`, `operators`)
+- ✅ Type aliases enable future combinator refactoring (documented in combinators namespace)
+- ✅ Operator precedence table implemented and tested (constexpr functions)
+
+---
+
 ## Verification Tasks
 
 - [ ] Property-based tests for combinator laws
@@ -243,6 +287,7 @@
 
 - [x] All 5 phases implemented and tested
 - [x] Pipeline operator `|>` working in Cpp2 syntax
+- [ ] Phase 6: Spirit-like grammar aliases implemented
 - [ ] Zero-copy properties verified for all structural ops
 - [ ] Benchmark targets met (<5% overhead)
 - [ ] Documentation complete
