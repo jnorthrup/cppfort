@@ -402,6 +402,12 @@ target_include_directories(escape_analysis_test PRIVATE ${CMAKE_SOURCE_DIR}/incl
 # No library linking needed - header-only test of EscapeKind and EscapeInfo
 add_test(NAME escape_analysis_tests COMMAND escape_analysis_test)
 
+# Escape analysis pass test
+add_executable(test_escape_analysis_pass test_escape_analysis_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/semantic_analyzer.cpp)
+target_include_directories(test_escape_analysis_pass PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME escape_analysis_pass_tests COMMAND test_escape_analysis_pass)
+
 # SCCP performance benchmark - standalone version (no MLIR dependencies)
 add_executable(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 target_include_directories(benchmark_sccp_standalone PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -460,5 +466,6 @@ set(_cppfort_all_ctest_tests
     markdown_code_generation_tests
     markdown_integration_tests
     escape_analysis_tests
+    escape_analysis_pass_tests
 )
 set_tests_properties(${_cppfort_all_ctest_tests} PROPERTIES TIMEOUT ${CPPFORT_TEST_TIMEOUT_SECONDS})
