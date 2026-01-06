@@ -36,9 +36,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
+## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
 *Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: PLANNED* - 6-phase roadmap (15-18 days)
+*Status: IN PROGRESS*
 
 **Objectives**:
 - Escape analysis framework (track value lifetimes and escape points)
@@ -140,11 +140,18 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 8*
+---
+
+## [ ] Track: Pure CMake Build System with Brew LLVM/MLIR for All Components
+*Link: [./conductor/tracks/pure_cmake_build_20260104/](./conductor/tracks/pure_cmake_build_20260104/)*
+
+---
+
+*Total Tracks: 9*
 *Completed: 4*
 *In Progress: 1*
 *Active: 1*
 *Planned: 2*
 *Blocked: 1*
-*New: 0*
+*New: 1*
 

@@ -1,3 +1,0 @@
-main: () = {
-    t: type == array<int, 10>;
-}

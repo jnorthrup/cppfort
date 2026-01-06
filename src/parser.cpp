@@ -897,6 +897,35 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     std::vector<FunctionDeclaration::Parameter> parameters;
     if (!check(TokenType::RightParen)) {
         do {
+            // Check for type-first parameter syntax: in_ref name, forward_ref name
+            std::unique_ptr<Type> param_type = nullptr;
+            if (check(TokenType::InRef) || check(TokenType::ForwardRef)) {
+                // Parse the type first (in_ref or forward_ref)
+                param_type = basic_type();
+
+                // Then parse the parameter name
+                Token param_name = consume(TokenType::Identifier, "Expected parameter name after type");
+                std::string param_name_str(param_name.lexeme);
+
+                // Check for variadic
+                if (match(TokenType::TripleDot) || match(TokenType::Ellipsis)) {
+                    param_name_str += "...";
+                }
+
+                std::unique_ptr<Expression> default_value = nullptr;
+                if (match(TokenType::Equal)) {
+                    default_value = expression();
+                }
+
+                parameters.push_back({
+                    param_name_str,
+                    std::move(param_type),
+                    std::move(default_value)
+                });
+
+                continue; // Skip to next parameter
+            }
+
             // Parse qualifiers before parameter name
             std::vector<ParameterQualifier> qualifiers = parse_parameter_qualifiers();
 
@@ -904,7 +933,7 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
             Token param_name = [this]() -> Token {
                 if (check(TokenType::Identifier)) {
                     return advance();
-                } else if (check(TokenType::This) || check(TokenType::Underscore)) {
+                } else if (check(TokenType::This) || check(TokenType::That) || check(TokenType::Underscore)) {
                     return advance();
                 } else if (check(TokenType::Func) || check(TokenType::Type) || check(TokenType::Namespace) ||
                            check(TokenType::Out) || check(TokenType::In) || check(TokenType::Inout) ||
@@ -925,7 +954,7 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
             }
 
             // Type annotation is optional in Cpp2 (type can be deduced)
-            std::unique_ptr<Type> param_type = nullptr;
+            // param_type already declared at top of loop
             if (match(TokenType::Colon)) {
                 param_type = type();
             }
@@ -964,12 +993,27 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     bool is_forward_return = false;
     
     if (match(TokenType::Arrow)) {
-        // Check for forward return: -> forward type or -> forward_ref type
-        if (match(TokenType::Forward) || match(TokenType::ForwardRef)) {
-            is_forward_return = true;
+        // Check for forward_ref as a return type: -> forward_ref _
+        if (match(TokenType::ForwardRef)) {
+            // forward_ref can be followed by _ or a type
+            if (match(TokenType::Underscore)) {
+                // forward_ref _ → auto&&
+                return_type = std::make_unique<Type>(Type::Kind::UserDefined);
+                return_type->name = "auto&&";
+            } else {
+                // forward_ref SomeType → SomeType&&
+                auto base = type();
+                return_type = std::make_unique<Type>(Type::Kind::Reference);
+                return_type->pointee = std::move(base);
+                return_type->name = return_type->pointee->name + "&&";
+            }
         }
-        
-        if (match(TokenType::LeftParen)) {
+        // Check for forward return modifier: -> forward type
+        else if (match(TokenType::Forward)) {
+            is_forward_return = true;
+            return_type = type(); // Parse the actual type after forward
+        }
+        else if (match(TokenType::LeftParen)) {
             // Return type can be:
             // - Named returns: -> (name: type) or -> (n1: t1, n2: t2)
             // - Unnamed tuple: -> (int, int) or -> (int)
@@ -1059,7 +1103,8 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
                     return_type = std::move(tuple_type);
                 }
             }
-        } else {
+        } else if (!return_type) {
+            // Normal return type (not forward_ref or forward modifier)
             return_type = type();
         }
     } else if (match(TokenType::EqualColon)) {
@@ -1465,12 +1510,45 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
         if (is_concept) {
             // Concept definition: parse constraint expression as a type (user-defined type with the expression text)
             // We need to collect the constraint text until the semicolon
+            // But we need to track paren/brace/bracket depth to handle nested expressions like :() = {}
+            // Also handle function expressions with immediate invocation: :() = {}();
             std::string constraint_text;
             TokenType prev_type = TokenType::EndOfFile;  // sentinel
-            
-            while (!is_at_end() && !check(TokenType::Semicolon)) {
+            int paren_depth = 0;
+            int brace_depth = 0;
+            int bracket_depth = 0;
+            bool seen_function_expr = false;  // Track if we've seen a function expression start
+
+            while (!is_at_end()) {
+                // Check for semicolon at depth 0 (potential end of constraint)
+                if (check(TokenType::Semicolon) && paren_depth == 0 && brace_depth == 0 && bracket_depth == 0) {
+                    // If we've seen a function expression and the next token is '(', this is an immediate invocation
+                    // Continue collecting to include the invocation
+                    if (seen_function_expr && current + 1 < tokens.size() && tokens[current + 1].type == TokenType::LeftParen) {
+                        // Consume the semicolon and continue to capture the invocation
+                        Token tok = advance();  // consume ';'
+                        constraint_text += std::string(tok.lexeme);
+                        prev_type = tok.type;
+                        continue;
+                    } else {
+                        break;  // This is the real end of the constraint
+                    }
+                }
                 Token tok = advance();
-                
+
+                // Track if we've seen a function expression start ':'
+                if (tok.type == TokenType::Colon) {
+                    seen_function_expr = true;
+                }
+
+                // Track depth
+                if (tok.type == TokenType::LeftParen) paren_depth++;
+                else if (tok.type == TokenType::RightParen) paren_depth--;
+                else if (tok.type == TokenType::LeftBrace) brace_depth++;
+                else if (tok.type == TokenType::RightBrace) brace_depth--;
+                else if (tok.type == TokenType::LeftBracket) bracket_depth++;
+                else if (tok.type == TokenType::RightBracket) bracket_depth--;
+
                 // Add spacing between tokens intelligently
                 if (!constraint_text.empty()) {
                     // No space after: <, (, ::
@@ -1496,7 +1574,7 @@ std::unique_ptr<Declaration> Parser::type_declaration(std::vector<std::string> d
                 prev_type = tok.type;
             }
             consume(TokenType::Semicolon, "Expected ';' after concept constraint");
-            
+
             // Store the constraint as a user-defined type
             auto constraint_type = std::make_unique<Type>(Type::Kind::UserDefined);
             constraint_type->name = constraint_text;
@@ -1771,7 +1849,8 @@ std::unique_ptr<Declaration> Parser::operator_declaration() {
             Token param_name = [this]() -> Token {
                 if (check(TokenType::Identifier)) {
                     return advance();
-                } else if (check(TokenType::This) || check(TokenType::Underscore) || check(TokenType::Implicit)) {
+                } else if (check(TokenType::This) || check(TokenType::That) ||
+                           check(TokenType::Underscore) || check(TokenType::Implicit)) {
                     return advance();
                 } else {
                     return consume(TokenType::Identifier, "Expected parameter name");
@@ -2547,6 +2626,20 @@ std::unique_ptr<Type> Parser::basic_type() {
     if (match(TokenType::Base)) {
         auto t = std::make_unique<Type>(Type::Kind::UserDefined);
         t->name = "base";
+        return t;
+    }
+
+    // in_ref type alias: in_ref → auto const&
+    if (match(TokenType::InRef)) {
+        auto t = std::make_unique<Type>(Type::Kind::UserDefined);
+        t->name = "auto const&";
+        return t;
+    }
+
+    // forward_ref type alias: forward_ref → auto&&
+    if (match(TokenType::ForwardRef)) {
+        auto t = std::make_unique<Type>(Type::Kind::UserDefined);
+        t->name = "auto&&";
         return t;
     }
 
@@ -4257,10 +4350,10 @@ std::unique_ptr<Expression> Parser::primary_expression() {
     }
     // Allow contextual keywords (func, type, namespace, in, out, etc.) as identifiers in expressions
     // These are used both as parameter passing modes and as regular identifiers
-    if (match(TokenType::Identifier) || match(TokenType::Func) || match(TokenType::Type) || 
+    if (match(TokenType::Identifier) || match(TokenType::Func) || match(TokenType::Type) ||
         match(TokenType::Namespace) || match(TokenType::In) || match(TokenType::Out) ||
         match(TokenType::Inout) || match(TokenType::Copy) || match(TokenType::Move) ||
-        match(TokenType::Forward)) {
+        match(TokenType::Forward) || match(TokenType::That) || match(TokenType::Base)) {
         std::string qname(previous().lexeme);
         std::size_t line = previous().line;
         // Support scope resolution :: chains
@@ -4642,7 +4735,7 @@ std::unique_ptr<Expression> Parser::lambda_expression() {
             Token name = [this]() -> Token {
                 if (check(TokenType::Identifier)) {
                     return advance();
-                } else if (check(TokenType::Underscore)) {
+                } else if (check(TokenType::This) || check(TokenType::That) || check(TokenType::Underscore)) {
                     return advance();
                 } else {
                     return consume(TokenType::Identifier, "Expected parameter name");
@@ -4828,7 +4921,7 @@ std::unique_ptr<Expression> Parser::function_expression() {
             Token name = [this]() -> Token {
                 if (check(TokenType::Identifier)) {
                     return advance();
-                } else if (check(TokenType::Underscore)) {
+                } else if (check(TokenType::This) || check(TokenType::That) || check(TokenType::Underscore)) {
                     return advance();
                 } else {
                     return consume(TokenType::Identifier, "Expected parameter name");
@@ -5160,13 +5253,11 @@ std::vector<ParameterQualifier> Parser::parse_parameter_qualifiers() {
         } else if (check(TokenType::Forward) && !peek_for_name()) {
             advance();
             qualifiers.push_back(ParameterQualifier::Forward);
-        } else if (match(TokenType::InRef)) {
-            qualifiers.push_back(ParameterQualifier::In);  // in_ref is reference In
-        } else if (match(TokenType::ForwardRef)) {
-            qualifiers.push_back(ParameterQualifier::Forward);  // forward_ref is Forward
-        } else if (match(TokenType::Virtual)) {
+        } else if (check(TokenType::Virtual) && !peek_for_name()) {
+            advance();
             qualifiers.push_back(ParameterQualifier::Virtual);
-        } else if (match(TokenType::Override)) {
+        } else if (check(TokenType::Override) && !peek_for_name()) {
+            advance();
             qualifiers.push_back(ParameterQualifier::Override);
         } else if (match(TokenType::Implicit)) {
             qualifiers.push_back(ParameterQualifier::Implicit);
@@ -5783,10 +5874,82 @@ std::unique_ptr<Declaration> Parser::cpp1_passthrough_declaration(bool is_struct
                     raw_code += peek().lexeme;
                     advance();
                 }
-            } else if (!is_at_end() && check(TokenType::Semicolon)) {
-                // For functions, just check for optional semicolon
-                raw_code += peek().lexeme;
-                advance();
+            } else {
+                // For functions, check for semicolon OR function-try-catch handlers
+                // After function body closing brace, we might have:
+                // - Semicolon: end of declaration
+                // - Catch handler: function-try-catch block
+                while (!is_at_end()) {
+                    if (check(TokenType::Semicolon)) {
+                        raw_code += " ";
+                        raw_code += peek().lexeme;
+                        advance();
+                        break;
+                    }
+                    if (check(TokenType::Catch)) {
+                        // Found catch handler - capture it completely
+                        raw_code += " ";
+                        raw_code += peek().lexeme;
+                        advance();
+
+                        // Expect '(' after catch
+                        if (check(TokenType::LeftParen)) {
+                            raw_code += peek().lexeme;
+                            advance();
+
+                            // Find matching closing paren for exception declaration
+                            int paren_depth = 1;
+                            while (!is_at_end() && paren_depth > 0) {
+                                const Token& inner = peek();
+                                if (inner.type == TokenType::LeftParen) paren_depth++;
+                                else if (inner.type == TokenType::RightParen) paren_depth--;
+                                raw_code += inner.lexeme;
+                                advance();
+
+                                // Add whitespace
+                                if (!is_at_end() && current < tokens.size()) {
+                                    const Token& next_tok = peek();
+                                    if (next_tok.line == inner.line && next_tok.column > inner.column + inner.lexeme.length()) {
+                                        raw_code += " ";
+                                    } else if (next_tok.line > inner.line) {
+                                        raw_code += "\n";
+                                    }
+                                }
+                            }
+
+                            // Expect '{' for catch handler body
+                            if (check(TokenType::LeftBrace)) {
+                                raw_code += " ";
+                                raw_code += peek().lexeme;
+                                advance();
+
+                                // Find matching closing brace for catch handler
+                                int brace_depth = 1;
+                                while (!is_at_end() && brace_depth > 0) {
+                                    const Token& inner = peek();
+                                    if (inner.type == TokenType::LeftBrace) brace_depth++;
+                                    else if (inner.type == TokenType::RightBrace) brace_depth--;
+                                    raw_code += inner.lexeme;
+                                    advance();
+
+                                    // Add whitespace
+                                    if (!is_at_end() && current < tokens.size()) {
+                                        const Token& next_tok = peek();
+                                        if (next_tok.line == inner.line && next_tok.column > inner.column + inner.lexeme.length()) {
+                                            raw_code += " ";
+                                        } else if (next_tok.line > inner.line) {
+                                            raw_code += "\n";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Continue to check for additional catch handlers
+                    } else {
+                        // Unexpected token - stop here
+                        break;
+                    }
+                }
             }
             break;
         }
