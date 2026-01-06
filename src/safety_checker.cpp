@@ -1,4 +1,4 @@
-#include "safety_checker.hpp"
+#include "../include/safety_checker.hpp"
 #include <iostream>
 #include <format>
 
@@ -304,6 +304,161 @@ bool SafetyChecker::is_potential_overflow(BinaryExpression* expr) const {
 
 void SafetyChecker::report_issue(SafetyIssue::Severity severity, SafetyIssue::Kind kind,
                                 std::size_t line, const std::string& message) {
+    issues.emplace_back(severity, kind, line, message);
+}
+
+// ============================================================================
+// BorrowChecker Implementation
+// ============================================================================
+
+BorrowChecker::BorrowChecker() {}
+
+void BorrowChecker::check(AST& ast) {
+    // Run all borrow checking passes
+    check_no_aliasing_violations(ast);
+    check_borrow_outlives_owner(ast);
+    check_move_invalidates_borrows(ast);
+    enforce_exclusive_mut_borrow(ast);
+
+    // Report all borrow issues
+    for (const auto& issue : issues) {
+        const char* severity_str = issue.severity == BorrowIssue::Severity::Error ? "Error" : "Warning";
+        std::cerr << std::format("[line {}] {} Borrow {}: {}",
+                                issue.line, severity_str,
+                                static_cast<int>(issue.kind), issue.message) << std::endl;
+    }
+}
+
+void BorrowChecker::check_no_aliasing_violations(AST& ast) {
+    // Traverse AST and check for aliasing violations
+    // Rule: Cannot have multiple mutable borrows or mutable + immutable borrows simultaneously
+    for (auto& decl : ast.declarations) {
+        check_declaration(decl.get());
+    }
+}
+
+void BorrowChecker::check_borrow_outlives_owner(AST& ast) {
+    // Check that borrows don't outlive their owners
+    // Rule: A borrow must have a lifetime that is contained within the owner's lifetime
+    for (auto& decl : ast.declarations) {
+        check_declaration(decl.get());
+    }
+}
+
+void BorrowChecker::check_move_invalidates_borrows(AST& ast) {
+    // Check that moved values are not used after the move
+    // Rule: After a value is moved, it cannot be used or borrowed
+    for (auto& decl : ast.declarations) {
+        check_declaration(decl.get());
+    }
+}
+
+void BorrowChecker::enforce_exclusive_mut_borrow(AST& ast) {
+    // Enforce exclusive mutable borrow rule
+    // Rule: Only one mutable borrow can exist at a time
+    for (auto& decl : ast.declarations) {
+        check_declaration(decl.get());
+    }
+}
+
+void BorrowChecker::check_declaration(Declaration* decl) {
+    if (!decl) return;
+
+    // For now, just traverse the structure
+    // Full implementation would track ownership and borrow state
+    switch (decl->kind) {
+        case Declaration::Kind::Function: {
+            auto func = static_cast<FunctionDeclaration*>(decl);
+            if (func->body) {
+                check_statement(func->body.get());
+            }
+            break;
+        }
+        case Declaration::Kind::Type: {
+            auto type_decl = static_cast<TypeDeclaration*>(decl);
+            for (auto& member : type_decl->members) {
+                check_declaration(member.get());
+            }
+            break;
+        }
+        case Declaration::Kind::Namespace: {
+            auto ns = static_cast<NamespaceDeclaration*>(decl);
+            for (auto& member : ns->members) {
+                check_declaration(member.get());
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void BorrowChecker::check_statement(Statement* stmt) {
+    if (!stmt) return;
+
+    // Traverse statement tree
+    switch (stmt->kind) {
+        case Statement::Kind::Expression:
+            check_expression(static_cast<ExpressionStatement*>(stmt)->expr.get());
+            break;
+        case Statement::Kind::Block: {
+            auto block = static_cast<BlockStatement*>(stmt);
+            for (auto& s : block->statements) {
+                check_statement(s.get());
+            }
+            break;
+        }
+        case Statement::Kind::If: {
+            auto if_stmt = static_cast<IfStatement*>(stmt);
+            check_expression(if_stmt->condition.get());
+            check_statement(if_stmt->then_stmt.get());
+            if (if_stmt->else_stmt) {
+                check_statement(if_stmt->else_stmt.get());
+            }
+            break;
+        }
+        case Statement::Kind::While: {
+            auto while_stmt = static_cast<WhileStatement*>(stmt);
+            check_expression(while_stmt->condition.get());
+            check_statement(while_stmt->body.get());
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void BorrowChecker::check_expression(Expression* expr) {
+    if (!expr) return;
+
+    // Traverse expression tree
+    switch (expr->kind) {
+        case Expression::Kind::Binary: {
+            auto bin = static_cast<BinaryExpression*>(expr);
+            check_expression(bin->left.get());
+            check_expression(bin->right.get());
+            break;
+        }
+        case Expression::Kind::Unary: {
+            auto unary = static_cast<UnaryExpression*>(expr);
+            check_expression(unary->operand.get());
+            break;
+        }
+        case Expression::Kind::Call: {
+            auto call = static_cast<CallExpression*>(expr);
+            check_expression(call->callee.get());
+            for (auto& arg : call->arguments) {
+                check_expression(arg.expr.get());
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void BorrowChecker::report_issue(BorrowIssue::Severity severity, BorrowIssue::Kind kind,
+                                 std::size_t line, const std::string& message) {
     issues.emplace_back(severity, kind, line, message);
 }
 

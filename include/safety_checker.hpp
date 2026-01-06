@@ -75,4 +75,55 @@ private:
                      std::size_t line, const std::string& message);
 };
 
+// ============================================================================
+// Borrow Checker: Rust-like ownership and borrowing validation
+// ============================================================================
+
+class BorrowChecker {
+public:
+    BorrowChecker();
+
+    // Main entry point for borrow checking
+    void check(AST& ast);
+
+    // Specific borrow checking rules
+    void check_no_aliasing_violations(AST& ast);
+    void check_borrow_outlives_owner(AST& ast);
+    void check_move_invalidates_borrows(AST& ast);
+    void enforce_exclusive_mut_borrow(AST& ast);
+
+private:
+    struct BorrowIssue {
+        enum class Severity {
+            Warning,
+            Error
+        };
+
+        enum class Kind {
+            AliasingViolation,       // Multiple mutable borrows or mutable + immutable
+            BorrowOutlivesOwner,     // Borrow outlives the owner's lifetime
+            UseAfterMove,            // Using a moved value
+            ExclusiveBorrowViolation // Non-exclusive mutable borrow
+        };
+
+        Severity severity;
+        Kind kind;
+        std::size_t line;
+        std::string message;
+
+        BorrowIssue(Severity s, Kind k, std::size_t l, std::string m)
+            : severity(s), kind(k), line(l), message(std::move(m)) {}
+    };
+
+    std::vector<BorrowIssue> issues;
+
+    // Helper methods
+    void check_declaration(Declaration* decl);
+    void check_statement(Statement* stmt);
+    void check_expression(Expression* expr);
+
+    void report_issue(BorrowIssue::Severity severity, BorrowIssue::Kind kind,
+                     std::size_t line, const std::string& message);
+};
+
 } // namespace cpp2_transpiler
