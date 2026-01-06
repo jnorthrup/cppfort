@@ -61,6 +61,30 @@ private:
     std::shared_ptr<Scope> parent_scope;
 };
 
+// ============================================================================
+// Parameter Qualifier to Ownership Mapping
+// ============================================================================
+
+// Maps Cpp2 parameter qualifiers to ownership semantics for borrow checking
+inline OwnershipKind map_qualifier_to_ownership(ParameterQualifier qualifier) {
+    switch (qualifier) {
+        case ParameterQualifier::In:
+            return OwnershipKind::Borrowed;      // Immutable borrow (const T&)
+        case ParameterQualifier::Out:
+            return OwnershipKind::MutBorrowed;   // Mutable borrow, write-before-return (T&)
+        case ParameterQualifier::InOut:
+            return OwnershipKind::MutBorrowed;   // Mutable borrow with read/write (T&)
+        case ParameterQualifier::Move:
+            return OwnershipKind::Moved;         // Ownership transfer (T&&)
+        case ParameterQualifier::Forward:
+            // Forward is conditional: Moved for rvalues, Borrowed for lvalues
+            // At the AST level, we default to Moved; actual semantics resolved during codegen
+            return OwnershipKind::Moved;
+        default:
+            return OwnershipKind::Owned;         // Default: owned value
+    }
+}
+
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
