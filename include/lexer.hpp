@@ -14,6 +14,7 @@ enum class TokenType : uint8_t {
     IntegerLiteral,
     FloatLiteral,
     StringLiteral,
+    InterpolatedRawStringLiteral,  // Cpp2 $R"..." raw string with interpolation
     CharacterLiteral,
     BooleanLiteral,
 
@@ -236,7 +237,7 @@ private:
     void scan_number();
     void scan_string();
     void scan_string_with_prefix();  // u", U", u8", L" string prefixes
-    void scan_raw_string();  // C++11 R"..." raw string literals
+    void scan_raw_string(bool is_interpolated = false);  // C++11 R"..." or Cpp2 $R"..." raw string literals
     void scan_character();
     void scan_line_comment();
     void scan_block_comment();

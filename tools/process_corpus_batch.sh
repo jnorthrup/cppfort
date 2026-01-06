@@ -1,7 +1,8 @@
 #!/bin/bash
 # Process corpus files and track results
 
-CSV="corpus_results.csv"
+BUILD_DIR="build"
+CSV="$BUILD_DIR/corpus_results.csv"
 CORPUS_DIR="third_party/cppfront/regression-tests"
 
 echo "file,status,loss_score,errors,time_ms" > "$CSV"
@@ -29,7 +30,7 @@ for file in "${FILES[@]}"; do
   echo -n "Testing $basename... "
 
   START=$(python3 -c "import time; print(int(time.time()*1000))")
-  timeout 5 ./build/src/cppfort "$filepath" "/tmp/cppfort-$basename.cpp" 2>/dev/null >/dev/null
+  timeout 5 ./build/src/cppfort "$filepath" "$BUILD_DIR/cppfort-$basename.cpp" 2>/dev/null >/dev/null
   EXIT_CODE=$?
   END=$(python3 -c "import time; print(int(time.time()*1000))")
   TIME=$((END - START))

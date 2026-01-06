@@ -4313,6 +4313,23 @@ std::unique_ptr<Expression> Parser::primary_expression() {
 
         return str_expr;
     }
+    if (match(TokenType::InterpolatedRawStringLiteral)) {
+        // Cpp2 interpolated raw string: $R"delimiter(...)delimiter"
+        // These always have interpolation enabled
+        std::string full_lexeme = std::string(previous().lexeme);
+        std::size_t start_line = previous().line;
+
+        // Handle adjacent interpolated raw strings: $R"a(...)" $R"b(...)"
+        while (check(TokenType::InterpolatedRawStringLiteral) || check(TokenType::StringLiteral)) {
+            Token next_str = advance();
+            full_lexeme += " ";
+            full_lexeme += std::string(next_str.lexeme);
+        }
+
+        auto interp = std::make_unique<StringInterpolationExpression>(start_line);
+        interp->parts.push_back(full_lexeme);
+        return interp;
+    }
     if (match(TokenType::CharacterLiteral)) {
         return std::make_unique<LiteralExpression>(
             previous().lexeme[0],

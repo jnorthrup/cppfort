@@ -358,8 +358,19 @@ void Lexer::scan_identifier() {
     std::string_view text = source.substr(start, current - start);
 
     // Check for raw string literals: R"...", LR"...", uR"...", UR"...", u8R"..."
+    // Also check for interpolated raw strings: $R"..." (Cpp2 interpolation in raw strings)
     if (peek() == '"' && (text == "R" || text == "LR" || text == "uR" || text == "UR" || text == "u8R")) {
-        scan_raw_string();
+        // Check if there's a $ immediately before R (for $R"..." interpolated raw strings)
+        bool has_dollar_prefix = (start > 0 && source[start - 1] == '$');
+        if (has_dollar_prefix) {
+            // Remove the Dollar token that was already emitted
+            if (!tokens.empty() && tokens.back().type == TokenType::Dollar) {
+                tokens.pop_back();
+            }
+            scan_raw_string(true);  // is_interpolated = true
+        } else {
+            scan_raw_string(false);  // is_interpolated = false
+        }
         return;
     }
 
@@ -407,27 +418,27 @@ void Lexer::scan_identifier() {
     add_token(type, text);
 }
 
-void Lexer::scan_raw_string() {
-    // Called after we've seen R", LR", uR", UR", or u8R"
+void Lexer::scan_raw_string(bool is_interpolated) {
+    // Called after we've seen R", LR", uR", UR", u8R", or $R" (interpolated)
     // Current position is at the opening quote
     advance(); // consume opening quote
-    
+
     // Read delimiter (if any) until we hit '('
     std::string delimiter;
     while (peek() != '(' && !is_at_end()) {
         delimiter += advance();
     }
-    
+
     if (is_at_end()) {
         add_token(TokenType::Unknown);
         return;
     }
-    
+
     advance(); // consume opening paren
-    
+
     // Now read until we find ')delimiter"'
     std::string closing = ")" + delimiter + "\"";
-    
+
     while (!is_at_end()) {
         // Check if we've found the closing sequence
         bool found_closing = true;
@@ -437,7 +448,7 @@ void Lexer::scan_raw_string() {
                 break;
             }
         }
-        
+
         if (found_closing) {
             // Consume the closing sequence
             for (size_t i = 0; i < closing.length(); ++i) {
@@ -445,15 +456,20 @@ void Lexer::scan_raw_string() {
             }
             break;
         }
-        
+
         if (peek() == '\n') {
             line++;
             column = 1;
         }
         advance();
     }
-    
-    add_token(TokenType::StringLiteral);
+
+    // Emit InterpolatedRawStringLiteral for $R"..." or StringLiteral for R"..."
+    if (is_interpolated) {
+        add_token(TokenType::InterpolatedRawStringLiteral);
+    } else {
+        add_token(TokenType::StringLiteral);
+    }
 }
 
 void Lexer::scan_number() {
@@ -756,7 +772,7 @@ TokenType Lexer::check_keyword(std::size_t start, std::size_t length,
 TokenType Lexer::identifier_type() {
     std::string_view text = source.substr(start, current - start);
     static const std::unordered_map<std::string, TokenType, cpp2_transpiler::SimpleStringHash> keywords = {
-        {"as", TokenType::As}, {"base", TokenType::Base}, {"break", TokenType::Break}, {"case", TokenType::Case}, {"class", TokenType::Class},
+        {"as", TokenType::As}, {"base", TokenType::Base}, {"break", TokenType::Break}, {"case", TokenType::Case}, {"catch", TokenType::Catch}, {"class", TokenType::Class},
         {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"decltype", TokenType::Decltype}, {"do", TokenType::Do}, {"else", TokenType::Else},
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
         {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},

@@ -56,11 +56,11 @@ for test in "${CPP2_TESTS[@]}"; do
     fi
     
     echo -n "Transpiling $test.cpp2 ... "
-    if "$CPPFORT" "$cpp2_file" "$cpp_file" > /tmp/transpile_${test}.log 2>&1; then
+    if "$CPPFORT" "$cpp2_file" "$cpp_file" > build/transpile_${test}.log 2>&1; then
         echo -e "${GREEN}OK${NC}"
     else
         echo -e "${RED}FAIL${NC}"
-        cat /tmp/transpile_${test}.log | head -5
+        cat build/transpile_${test}.log | head -5
         ((FAILED++))
         continue
     fi
@@ -87,22 +87,22 @@ for test in "${CPP2_TESTS[@]}"; do
         EXTRA_FLAGS=""
     fi
     
-    if $CXX $CXXFLAGS $EXTRA_FLAGS -o "$exe_file" "$cpp_file" > /tmp/compile_${test}.log 2>&1; then
+    if $CXX $CXXFLAGS $EXTRA_FLAGS -o "$exe_file" "$cpp_file" > build/compile_${test}.log 2>&1; then
         echo -e "${GREEN}OK${NC}"
         
         # Run the test
         echo -n "Running $test ... "
-        if timeout 30 "$exe_file" > /tmp/run_${test}.log 2>&1; then
+        if timeout 30 "$exe_file" > build/run_${test}.log 2>&1; then
             echo -e "${GREEN}PASS${NC}"
             ((PASSED++))
         else
             echo -e "${RED}FAIL${NC}"
-            tail -10 /tmp/run_${test}.log | sed 's/^/  /'
+            tail -10 build/run_${test}.log | sed 's/^/  /'
             ((FAILED++))
         fi
     else
         echo -e "${RED}FAIL${NC}"
-        tail -10 /tmp/compile_${test}.log | sed 's/^/  /'
+        tail -10 build/compile_${test}.log | sed 's/^/  /'
         ((FAILED++))
     fi
 done

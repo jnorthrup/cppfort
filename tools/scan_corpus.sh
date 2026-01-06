@@ -28,7 +28,7 @@ for file in "$CORPUS_DIR"/*.cpp2; do
 
   echo -n "[$total] $basename... " >&2
 
-  output=$(timeout 3 ./build/src/cppfort "$file" /tmp/test_scan.cpp 2>&1)
+  output=$(timeout 3 ./build/src/cppfort "$file" build/test_scan.cpp 2>&1)
   exit_code=$?
 
   if [ $exit_code -eq 0 ]; then

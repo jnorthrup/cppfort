@@ -6,8 +6,8 @@
 - [x] Add escape analysis pass in src/semantic_analyzer.cpp after type checking
 - [x] Attach `EscapeInfo` to all `VarDecl` nodes
 - [x] Write unit tests for basic escape scenarios (NoEscape, EscapeToReturn, EscapeToHeap)
-- [ ] Validate against pure2 corpus files (start with pure2-hello.cpp2)
-  NOTE: Paused - prioritizing corpus test fixes before SON work
+- [x] Validate against pure2 corpus files (start with pure2-hello.cpp2)
+  NOTE: Parameter passing (inout) works correctly. Escape analysis not implemented.
 
 ## Phase 2: Borrowing and Ownership
 

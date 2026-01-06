@@ -9,7 +9,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build}"
 CPPFORT_BIN="$BUILD_DIR/src/cppfort"
 CORPUS_DIR="$PROJECT_ROOT/corpus"
-WORK_DIR="/tmp/cppfort_tests"
+WORK_DIR="$BUILD_DIR/test_work"
 
 # Timeouts
 TRANSPILE_TIMEOUT=${TRANSPILE_TIMEOUT:-15}
