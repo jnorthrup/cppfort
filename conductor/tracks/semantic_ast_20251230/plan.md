@@ -31,12 +31,12 @@
 
 ## Phase 4: Channelized Concurrency
 
-- [ ] Implement `ChannelTransfer` tracking structure
-- [ ] Connect channel ops to escape analysis
-- [ ] Enforce ownership transfer rules for send/recv operations
-- [ ] Add data race detection for channel operations
-- [ ] Test with `channel`, `send`, `recv` MLIR ops
-- [ ] Verify channel safety invariants
+- [x] Implement `ChannelTransfer` tracking structure
+- [x] Connect channel ops to escape analysis
+- [x] Enforce ownership transfer rules for send/recv operations
+- [x] Add data race detection for channel operations
+- [x] Test with `channel`, `send`, `recv` MLIR ops
+- [x] Verify channel safety invariants
 
 ## Phase 5: Unified Semantic Info
 
