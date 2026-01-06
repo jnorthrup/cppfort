@@ -1,7 +1,7 @@
 # Technology Stack
 
 ## Core Language
-- **C++23**: Primary implementation language
+- **C++26**: Primary implementation language
 - **MLIR**: Multi-Level Intermediate Representation framework
 
 ## Build System
@@ -59,7 +59,12 @@
   - Phase-based verification protocol
 
 ## Development Libraries
-- **Standard Library**: C++23 features (ranges, format, concepts, modules)
+- **Standard Library**: C++26 features (ranges, format, concepts, modules, reflection, contracts, pattern matching)
+- **std::meta**: Compile-time reflection (`std::meta::info`, type introspection)
+- **std::execution**: Structured concurrency (senders/receivers, `std::execution::schedule`)
+- **Contracts**: `[[expects]]`, `[[ensures]]`, `[[assert]]` for precondition/postcondition enforcement
+- **Pattern Matching**: `inspect` expressions for exhaustive matching
+- **std::inplace_vector**: Stack-allocated vector with reflection-driven SBO sizing
 - **Optional/Variant**: Sum type support
 - **Span**: Safe array views
 - **String_view**: Zero-copy string operations
@@ -126,7 +131,7 @@ cppfort/
 ## Build Configuration Flags
 - `CMAKE_BUILD_TYPE`: Debug (with coverage) or Release
 - `ENABLE_COVERAGE`: ON/OFF (code coverage instrumentation)
-- `CMAKE_CXX_STANDARD`: 23
+- `CMAKE_CXX_STANDARD`: 26
 - `CMAKE_CXX_COMPILER`: clang++ or g++
 - Coverage flags: `--coverage` (gcov/lcov compatible)
 
