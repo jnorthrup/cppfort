@@ -1,4 +1,5 @@
 #include "../include/safety_checker.hpp"
+#include "../include/semantic_analyzer.hpp"
 #include <iostream>
 #include <format>
 
@@ -332,7 +333,45 @@ void BorrowChecker::check(AST& ast) {
 void BorrowChecker::check_no_aliasing_violations(AST& ast) {
     // Traverse AST and check for aliasing violations
     // Rule: Cannot have multiple mutable borrows or mutable + immutable borrows simultaneously
+
     for (auto& decl : ast.declarations) {
+        // Check function parameters for aliasing
+        if (decl->kind == Declaration::Kind::Function) {
+            auto func = static_cast<FunctionDeclaration*>(decl.get());
+
+            // Track borrows in function parameters
+            int mutable_borrow_count = 0;
+            int immutable_borrow_count = 0;
+
+            for (const auto& param : func->parameters) {
+                for (auto qualifier : param.qualifiers) {
+                    OwnershipKind ownership = map_qualifier_to_ownership(qualifier);
+
+                    if (ownership == OwnershipKind::MutBorrowed) {
+                        mutable_borrow_count++;
+                    } else if (ownership == OwnershipKind::Borrowed) {
+                        immutable_borrow_count++;
+                    }
+                }
+            }
+
+            // Check for violations
+            if (mutable_borrow_count > 1) {
+                report_issue(BorrowIssue::Severity::Error,
+                           BorrowIssue::Kind::AliasingViolation,
+                           func->line,
+                           "Multiple mutable borrows detected in function parameters (count: " +
+                           std::to_string(mutable_borrow_count) + ")");
+            }
+
+            if (mutable_borrow_count >= 1 && immutable_borrow_count >= 1) {
+                report_issue(BorrowIssue::Severity::Error,
+                           BorrowIssue::Kind::AliasingViolation,
+                           func->line,
+                           "Mutable and immutable borrows coexist in function parameters");
+            }
+        }
+
         check_declaration(decl.get());
     }
 }
@@ -356,7 +395,40 @@ void BorrowChecker::check_move_invalidates_borrows(AST& ast) {
 void BorrowChecker::enforce_exclusive_mut_borrow(AST& ast) {
     // Enforce exclusive mutable borrow rule
     // Rule: Only one mutable borrow can exist at a time
+
     for (auto& decl : ast.declarations) {
+        // Check function parameters for exclusive mutable borrow
+        if (decl->kind == Declaration::Kind::Function) {
+            auto func = static_cast<FunctionDeclaration*>(decl.get());
+
+            // Count mutable borrows
+            int mutable_borrow_count = 0;
+            std::string first_mut_param_name;
+
+            for (const auto& param : func->parameters) {
+                for (auto qualifier : param.qualifiers) {
+                    OwnershipKind ownership = map_qualifier_to_ownership(qualifier);
+
+                    if (ownership == OwnershipKind::MutBorrowed) {
+                        if (mutable_borrow_count == 0) {
+                            first_mut_param_name = param.name;
+                        }
+                        mutable_borrow_count++;
+                    }
+                }
+            }
+
+            // Report violation if multiple mutable borrows found
+            if (mutable_borrow_count > 1) {
+                report_issue(BorrowIssue::Severity::Error,
+                           BorrowIssue::Kind::ExclusiveBorrowViolation,
+                           func->line,
+                           "Exclusive mutable borrow violated: " +
+                           std::to_string(mutable_borrow_count) +
+                           " mutable borrows found in function '" + func->name + "'");
+            }
+        }
+
         check_declaration(decl.get());
     }
 }
