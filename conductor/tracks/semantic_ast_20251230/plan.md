@@ -23,11 +23,11 @@
 ## Phase 3: External Memory Integration
 
 - [x] Implement `MemoryTransfer` tracking structure
-- [ ] Connect escape analysis to GPU/DMA transfers in AST
-- [ ] Add lifecycle-based optimization pass in MLIR pipeline
-- [ ] Validate DMA safety rules (no aliasing during async transfers)
-- [ ] Test with `mem_region` and `kernel` MLIR ops
-- [ ] Verify optimization eliminates unnecessary transfers
+- [x] Connect escape analysis to GPU/DMA transfers in AST
+- [x] Add lifecycle-based optimization pass in MLIR pipeline
+- [x] Validate DMA safety rules (no aliasing during async transfers)
+- [x] Test with `mem_region` and `kernel` MLIR ops
+- [x] Verify optimization eliminates unnecessary transfers
 
 ## Phase 4: Channelized Concurrency
 
