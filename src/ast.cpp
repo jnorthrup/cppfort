@@ -1,9 +1,9 @@
-// Out-of-line destructors for types that hold unique_ptrs to incomplete types.
+// Out-of-line definitions for types that hold unique_ptrs to incomplete types.
+// Note: Destructors are now inline in ast.hpp
 #include "../include/ast.hpp"
 
 namespace cpp2_transpiler {
 
-Type::~Type() = default;
-LambdaExpression::~LambdaExpression() = default;
+// Empty - all destructors are inline in ast.hpp
 
 } // namespace cpp2_transpiler

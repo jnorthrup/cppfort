@@ -19,6 +19,44 @@ std::vector<Token> Lexer::tokenize() {
     }
 
     tokens.emplace_back(TokenType::EndOfFile, "", line, column, current);
+
+    // Scan for Cpp2-specific patterns that span multiple tokens
+    // This handles patterns like:
+    // - identifier: ( ... )  -> Cpp2 function declaration
+    // - identifier: type     -> Cpp2 variable declaration with type annotation
+    for (size_t i = 0; i < tokens.size() - 2; ++i) {
+        // Pattern: identifier : ( -> Cpp2 function declaration
+        if (tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            tokens[i + 2].type == TokenType::LeftParen) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+        // Pattern: identifier : identifier/type -> Cpp2 variable declaration
+        // Skip if followed by : (which would be :: namespace access)
+        if (i < tokens.size() - 3 &&
+            tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            (tokens[i + 2].type == TokenType::Identifier ||
+             tokens[i + 2].type == TokenType::Struct ||
+             tokens[i + 2].type == TokenType::Class ||
+             tokens[i + 2].type == TokenType::Union ||
+             tokens[i + 2].type == TokenType::Enum) &&
+            tokens[i + 2].type != TokenType::Colon) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+        // Pattern: identifier : std:: -> Cpp2 variable with qualified type
+        if (i < tokens.size() - 4 &&
+            tokens[i].type == TokenType::Identifier &&
+            tokens[i + 1].type == TokenType::Colon &&
+            tokens[i + 2].type == TokenType::Identifier &&
+            tokens[i + 3].type == TokenType::DoubleColon) {
+            m_has_cpp2_syntax = true;
+            break;
+        }
+    }
+
     return tokens;
 }
 
@@ -114,7 +152,11 @@ void Lexer::scan_token() {
         }
         case '<': {
             if (match('=')) {
-                add_token(TokenType::LessThanOrEqual);
+                if (match('>')) {
+                    add_token(TokenType::Spaceship);  // <=>
+                } else {
+                    add_token(TokenType::LessThanOrEqual);
+                }
             } else if (match('<')) {
                 if (match('=')) {
                     add_token(TokenType::LeftShiftEqual);
@@ -153,6 +195,8 @@ void Lexer::scan_token() {
         case '|': {
             if (match('|')) {
                 add_token(TokenType::DoublePipe);
+            } else if (match('>')) {
+                add_token(TokenType::Pipeline);
             } else if (match('=')) {
                 add_token(TokenType::PipeEqual);
             } else {
@@ -180,8 +224,14 @@ void Lexer::scan_token() {
         case ':': {
             if (match(':')) {
                 add_token(TokenType::DoubleColon);
+            } else if (peek() == '=' && peek_next() == '=') {
+                // :== is Colon followed by DoubleEqual
+                // Don't consume the ==, just emit the colon
+                add_token(TokenType::Colon);
+                m_has_cpp2_syntax = true;  // :== is Cpp2-specific
             } else if (match('=')) {
                 add_token(TokenType::ColonEqual);
+                m_has_cpp2_syntax = true;  // := is Cpp2-specific
             } else {
                 add_token(TokenType::Colon);
             }
@@ -289,6 +339,7 @@ void Lexer::add_token(TokenType type, std::string_view lexeme) {
         case TokenType::Out:          // out parameter
         case TokenType::Move:         // move parameter
         case TokenType::Forward:      // forward parameter
+        case TokenType::Copy:         // copy parameter
         case TokenType::Inspect:      // inspect expression
         case TokenType::Underscore:   // _ wildcard/discard (when used as identifier)
             m_has_cpp2_syntax = true;
@@ -305,41 +356,201 @@ void Lexer::scan_identifier() {
     }
 
     std::string_view text = source.substr(start, current - start);
+
+    // Check for raw string literals: R"...", LR"...", uR"...", UR"...", u8R"..."
+    if (peek() == '"' && (text == "R" || text == "LR" || text == "uR" || text == "UR" || text == "u8R")) {
+        scan_raw_string();
+        return;
+    }
+
+    // Check for string literal prefixes: u", U", u8", L"
+    if (peek() == '"' && (text == "u" || text == "U" || text == "u8" || text == "L")) {
+        scan_string_with_prefix();
+        return;
+    }
+    
     TokenType type = identifier_type();
+
+    // Mark Cpp2-specific keywords
+    switch (type) {
+        case TokenType::As:
+        case TokenType::Is:
+        case TokenType::In:
+        case TokenType::Inspect:
+        case TokenType::When:
+        case TokenType::Let:
+        case TokenType::Mut:
+        case TokenType::Func:
+        case TokenType::Type:
+        case TokenType::Next:
+        case TokenType::ContractPre:
+        case TokenType::ContractPost:
+        case TokenType::Inout:
+        case TokenType::Out:
+        case TokenType::Move:
+        case TokenType::Forward:
+        case TokenType::Copy:
+        case TokenType::Suspend:
+        case TokenType::Async:
+        case TokenType::Await:
+        case TokenType::Launch:
+        case TokenType::CoroutineScope:
+        case TokenType::Channel:
+        case TokenType::Select:
+        case TokenType::ParallelFor:
+            m_has_cpp2_syntax = true;
+            break;
+        default:
+            break;
+    }
+
     add_token(type, text);
 }
 
-void Lexer::scan_number() {
-    while (is_digit(peek())) {
+void Lexer::scan_raw_string() {
+    // Called after we've seen R", LR", uR", UR", or u8R"
+    // Current position is at the opening quote
+    advance(); // consume opening quote
+    
+    // Read delimiter (if any) until we hit '('
+    std::string delimiter;
+    while (peek() != '(' && !is_at_end()) {
+        delimiter += advance();
+    }
+    
+    if (is_at_end()) {
+        add_token(TokenType::Unknown);
+        return;
+    }
+    
+    advance(); // consume opening paren
+    
+    // Now read until we find ')delimiter"'
+    std::string closing = ")" + delimiter + "\"";
+    
+    while (!is_at_end()) {
+        // Check if we've found the closing sequence
+        bool found_closing = true;
+        for (size_t i = 0; i < closing.length() && !is_at_end(); ++i) {
+            if (current + i >= source.length() || source[current + i] != closing[i]) {
+                found_closing = false;
+                break;
+            }
+        }
+        
+        if (found_closing) {
+            // Consume the closing sequence
+            for (size_t i = 0; i < closing.length(); ++i) {
+                advance();
+            }
+            break;
+        }
+        
+        if (peek() == '\n') {
+            line++;
+            column = 1;
+        }
         advance();
     }
+    
+    add_token(TokenType::StringLiteral);
+}
 
-    // Check for fractional part
-    if (peek() == '.' && is_digit(peek_next())) {
+void Lexer::scan_number() {
+    // Check for hex, binary, or octal
+    bool is_hex = false;
+    bool is_binary = false;
+    bool is_float = false;
+    
+    if (peek() == '0') {
+        if (peek_next() == 'x' || peek_next() == 'X') {
+            is_hex = true;
+            advance(); // 0
+            advance(); // x
+            while (is_hex_digit(peek()) || peek() == '\'') {
+                advance();
+            }
+        } else if (peek_next() == 'b' || peek_next() == 'B') {
+            is_binary = true;
+            advance(); // 0
+            advance(); // b
+            while (peek() == '0' || peek() == '1' || peek() == '\'') {
+                advance();
+            }
+        }
+    }
+    
+    if (!is_hex && !is_binary) {
+        // Regular decimal number with optional digit separators
+        while (is_digit(peek()) || peek() == '\'') {
+            advance();
+        }
+    }
+
+    // Check for fractional part (not for hex/binary)
+    if (!is_hex && !is_binary && peek() == '.' && is_digit(peek_next())) {
+        is_float = true;
         // Consume the decimal point
         advance();
 
-        while (is_digit(peek())) {
+        while (is_digit(peek()) || peek() == '\'') {
             advance();
         }
+    }
 
-        // Check for exponent
-        if (peek() == 'e' || peek() == 'E') {
+    // Check for exponent (not for hex/binary) - can be on int or float
+    if (!is_hex && !is_binary && (peek() == 'e' || peek() == 'E')) {
+        is_float = true;
+        advance();
+        if (peek() == '+' || peek() == '-') {
             advance();
-            if (peek() == '+' || peek() == '-') {
-                advance();
-            }
-            if (!is_digit(peek())) {
-                add_token(TokenType::Unknown);
-                return;
-            }
-            while (is_digit(peek())) {
-                advance();
-            }
+        }
+        if (!is_digit(peek())) {
+            add_token(TokenType::Unknown);
+            return;
+        }
+        while (is_digit(peek()) || peek() == '\'') {
+            advance();
+        }
+    }
+    
+    if (is_float) {
+        // Float suffix: f, F, l, L
+        if (peek() == 'f' || peek() == 'F' || peek() == 'l' || peek() == 'L') {
+            advance();
         }
 
         add_token(TokenType::FloatLiteral);
     } else {
+        // Integer suffixes: u, U, l, L, ll, LL, ul, UL, ull, ULL, etc.
+        // Also z/Z for size_t (C++23) 
+        bool has_unsigned = false;
+        bool has_long = false;
+        bool has_longlong = false;
+        bool has_size = false;
+        
+        // Can be in any order: u, l, ll, z (and combinations)
+        for (int i = 0; i < 3; i++) {
+            char c = peek();
+            if ((c == 'u' || c == 'U') && !has_unsigned) {
+                has_unsigned = true;
+                advance();
+            } else if ((c == 'l' || c == 'L') && !has_long && !has_longlong) {
+                advance();
+                if (peek() == 'l' || peek() == 'L') {
+                    has_longlong = true;
+                    advance();
+                } else {
+                    has_long = true;
+                }
+            } else if ((c == 'z' || c == 'Z') && !has_size) {
+                has_size = true;
+                advance();
+            } else {
+                break;
+            }
+        }
+        
         add_token(TokenType::IntegerLiteral);
     }
 }
@@ -365,59 +576,29 @@ void Lexer::scan_string() {
     add_token(TokenType::StringLiteral);
 }
 
-void Lexer::scan_raw_string() {
-    // Raw string format: R"delimiter(...)delimiter" or $R"delimiter(...)delimiter"
-    // Skip past the opening "
-    advance();
+void Lexer::scan_string_with_prefix() {
+    // Called after we've seen u", U", u8", or L"
+    // The prefix has already been consumed, start includes it
+    advance(); // Opening "
 
-    // Check for ( which starts the raw string content
-    if (peek() != '(') {
-        // Invalid raw string syntax
-        add_token(TokenType::Unknown);
-        return;
-    }
-    advance(); // Consume (
-
-    // Track the content
-    std::size_t content_start = current;
-
-    // Find the closing )delimiter"
-    bool found_close = false;
-    while (!is_at_end()) {
-        if (peek() == ')') {
-            // Check if this is followed by " and then the closing delimiter
-            std::size_t saved = current;
-            advance(); // Skip )
-
-            // The closing delimiter must match the opening pattern
-            // For now, just look for the closing "
-            if (peek() == '"') {
-                advance(); // Skip "
-                found_close = true;
-                break;
-            }
-
-            // Not the right closing pattern, continue searching
-            current = saved;
-        }
-
+    while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             line++;
             column = 1;
         }
+        if (peek() == '\\') {
+            advance(); // Skip escape character
+        }
         advance();
     }
 
-    if (!found_close) {
+    if (is_at_end()) {
         add_token(TokenType::Unknown);
         return;
     }
 
-    std::size_t content_end = current - 2; // -2 for )"
-    std::string_view content = source.substr(content_start, content_end - content_start);
-
-    // Add token with the raw string content
-    add_token(TokenType::StringLiteral, content);
+    advance(); // Closing quote
+    add_token(TokenType::StringLiteral);
 }
 
 void Lexer::scan_character() {
@@ -551,6 +732,10 @@ bool Lexer::is_digit(char c) const {
     return std::isdigit(static_cast<unsigned char>(c));
 }
 
+bool Lexer::is_hex_digit(char c) const {
+    return std::isxdigit(static_cast<unsigned char>(c));
+}
+
 bool Lexer::is_identifier_start(char c) const {
     return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
 }
@@ -572,19 +757,20 @@ TokenType Lexer::identifier_type() {
     std::string_view text = source.substr(start, current - start);
     static const std::unordered_map<std::string, TokenType, cpp2_transpiler::SimpleStringHash> keywords = {
         {"as", TokenType::As}, {"base", TokenType::Base}, {"break", TokenType::Break}, {"case", TokenType::Case}, {"class", TokenType::Class},
-        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"do", TokenType::Do}, {"else", TokenType::Else},
+        {"concept", TokenType::Concept}, {"const", TokenType::Const}, {"continue", TokenType::Continue}, {"decltype", TokenType::Decltype}, {"do", TokenType::Do}, {"else", TokenType::Else},
         {"enum", TokenType::Enum}, {"explicit", TokenType::Explicit}, {"final", TokenType::Final}, {"for", TokenType::For},
         {"func", TokenType::Func}, {"if", TokenType::If}, {"import", TokenType::Import}, {"in", TokenType::In},
         {"inspect", TokenType::Inspect}, {"interface", TokenType::Interface}, {"is", TokenType::Is}, {"implicit", TokenType::Implicit}, {"let", TokenType::Let},
         {"module", TokenType::Module}, {"mut", TokenType::Mut}, {"namespace", TokenType::Namespace}, {"next", TokenType::Next}, {"operator", TokenType::Operator},
-        {"private", TokenType::Private}, {"public", TokenType::Public}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
+        {"private", TokenType::Private}, {"public", TokenType::Public}, {"protected", TokenType::Protected}, {"post", TokenType::ContractPost}, {"return", TokenType::Return},
         {"requires", TokenType::Requires}, {"struct", TokenType::Struct}, {"super", TokenType::Super}, {"switch", TokenType::Switch},
-        {"this", TokenType::This}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
+        {"that", TokenType::That}, {"this", TokenType::This}, {"throw", TokenType::Throw}, {"throws", TokenType::Throws}, {"try", TokenType::Try}, {"type", TokenType::Type}, {"union", TokenType::Union},
         {"while", TokenType::While}, {"when", TokenType::When}, {"true", TokenType::True}, {"false", TokenType::False},
         {"pre", TokenType::ContractPre}, {"post", TokenType::ContractPost}, {"assert", TokenType::ContractAssert}, {"meta", TokenType::Meta},
         {"using", TokenType::Using}, {"template", TokenType::Template},
         {"virtual", TokenType::Virtual}, {"override", TokenType::Override},
-        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward},
+        {"inout", TokenType::Inout}, {"out", TokenType::Out}, {"move", TokenType::Move}, {"forward", TokenType::Forward}, {"copy", TokenType::Copy},
+        {"in_ref", TokenType::InRef}, {"forward_ref", TokenType::ForwardRef},
         // Concurrency keywords (Kotlin-style)
         {"suspend", TokenType::Suspend}, {"async", TokenType::Async}, {"await", TokenType::Await},
         {"launch", TokenType::Launch}, {"coroutineScope", TokenType::CoroutineScope},

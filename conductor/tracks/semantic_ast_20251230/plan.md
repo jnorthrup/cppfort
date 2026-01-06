@@ -7,6 +7,7 @@
 - [x] Attach `EscapeInfo` to all `VarDecl` nodes
 - [x] Write unit tests for basic escape scenarios (NoEscape, EscapeToReturn, EscapeToHeap)
 - [ ] Validate against pure2 corpus files (start with pure2-hello.cpp2)
+  NOTE: Paused - prioritizing corpus test fixes before SON work
 
 ## Phase 2: Borrowing and Ownership
 

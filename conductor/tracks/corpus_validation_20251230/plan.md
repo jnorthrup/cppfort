@@ -99,7 +99,7 @@ Systematic validation revealed actual corpus health is FAR better than previousl
   - [ ] mixed-out-destruction.cpp2
   - [ ] mixed-parameter-passing-generic-out.cpp2
   - [ ] mixed-parameter-passing-with-forward.cpp2
-  - [ ] mixed-parameter-passing.cpp2
+  - [x] mixed-parameter-passing.cpp2
   - [ ] mixed-postexpression-with-capture.cpp2
   - [ ] mixed-postfix-expression-custom-formatting.cpp2
   - [ ] mixed-string-interpolation.cpp2
