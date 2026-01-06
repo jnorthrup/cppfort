@@ -43,6 +43,67 @@ enum class ParameterQualifier {
     Implicit    // implicit - for implicit conversion operators
 };
 
+// ============================================================================
+// Semantic Analysis: Escape Analysis and Borrowing
+// ============================================================================
+
+// Escape analysis: Track where values escape local scope
+enum class EscapeKind {
+    NoEscape,          // Value stays local (stack)
+    EscapeToHeap,      // Stored in heap-allocated object
+    EscapeToReturn,    // Returned from function
+    EscapeToParam,     // Stored via pointer/reference parameter
+    EscapeToGlobal,    // Stored in global variable
+    EscapeToChannel,   // Sent through channel
+    EscapeToGPU,       // Transferred to GPU memory
+    EscapeToDMA        // Transferred via DMA buffer
+};
+
+struct EscapeInfo {
+    EscapeKind kind = EscapeKind::NoEscape;
+    std::vector<void*> escape_points;  // ASTNode* escape points (void* to avoid forward declaration)
+    bool needs_lifetime_extension = false;
+};
+
+// Ownership tracking: Rust-like ownership semantics
+enum class OwnershipKind {
+    Owned,      // Unique owner (value semantics)
+    Borrowed,   // Immutable borrow (shared reference)
+    MutBorrowed,// Mutable borrow (exclusive reference)
+    Moved       // Ownership transferred
+};
+
+// Forward declaration for LifetimeRegion
+struct LifetimeRegion;
+
+struct BorrowInfo {
+    OwnershipKind kind = OwnershipKind::Owned;
+    void* owner = nullptr;  // ASTNode* owner if borrowed (void* to avoid forward declaration)
+    std::vector<void*> active_borrows;  // ASTNode* active borrows (void* to avoid forward declaration)
+    LifetimeRegion* lifetime = nullptr;
+};
+
+// Lifetime region: Scope-based lifetime bounds
+struct LifetimeRegion {
+    void* scope_start = nullptr;  // ASTNode* (void* to avoid forward declaration)
+    void* scope_end = nullptr;    // ASTNode* (void* to avoid forward declaration)
+    std::vector<LifetimeRegion*> nested_regions;
+
+    // Check if this region outlives another region
+    bool outlives(const LifetimeRegion& other) const {
+        // Simplified implementation: a region outlives another if the other is nested within it
+        for (const auto* nested : nested_regions) {
+            if (nested == &other) {
+                return true;
+            }
+            if (nested->outlives(other)) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
 // Type system
 struct Type {
     enum class Kind {
