@@ -11,8 +11,8 @@
 
 ## Phase 2: Borrowing and Ownership
 
-- [ ] Implement `BorrowInfo` and `OwnershipKind` in include/ast.hpp
-- [ ] Add `LifetimeRegion` tracking structures
+- [x] Implement `BorrowInfo` and `OwnershipKind` in include/ast.hpp
+- [x] Add `LifetimeRegion` tracking structures
 - [ ] Implement `BorrowChecker` validation class in include/safety_checker.hpp
 - [ ] Map parameter qualifiers to ownership kinds (in→Borrowed, out→MutBorrowed, inout→MutBorrowed, move→Moved, forward→conditional)
 - [ ] Enforce aliasing rules (exclusive mutable borrow)
