@@ -10,24 +10,23 @@
 
 **Objective**: Achieve full completion-level transpilation matching cppfront reference output for all 189 corpus files in sorted order.
 
-**Current Status**: 163/189 passing (86.2%) - 2026-01-05
+**Current Status**: 165/189 passing (87.3%) - 2026-01-05
 **Error Tests** (correctly failing): 21/189 (11.1%)
-**Advanced Features Needed**: 5/189 (2.6%)
+**Advanced Features Needed**: 3/189 (1.6%)
 
 ### Status Update (2026-01-05)
 
-Implemented interpolated raw string literal support ($R"..." syntax):
-- Added InterpolatedRawStringLiteral token type
-- Lexer detects $R"..." pattern and emits special token
-- Parser creates StringInterpolationExpression for interpolated raw strings
-- Code generator converts to regular C++ strings with interpolation
+Implemented immediately-invoked function expression (IIFE) support:
+- Syntax: `(params) = return_value;(call_args)`
+- Fixed pure2-for-loop-range-with-lambda (next clauses, IIFE in range)
+- Fixed mixed-bugfix-for-ufcs-non-local (UFCS with preconditions)
 
-Remaining failures (5):
-1. mixed-bugfix-for-ufcs-non-local - UFCS with preconditions
-2. pure2-bugfix-for-unbraced-function-expression - unbraced lambda syntax
-3. pure2-for-loop-range-with-lambda - next clauses
-4. pure2-last-use - complex last-use semantics
-5. pure2-print - @print metafunction, type_of
+Remaining failures (3):
+1. pure2-bugfix-for-unbraced-function-expression - unbraced lambda syntax `(params) { body }`
+2. pure2-last-use - complex last-use semantics (1044 lines)
+3. pure2-print - @print metafunction, type_of, namespace aliases
+
+### Status Update (2026-01-05 earlier)
 
 ### Status Update (2026-01-04)
 - **172/190 files pass** (90.5% pass rate, up from documented 17%)
@@ -78,7 +77,7 @@ Remaining failures (5):
   - [x] mixed-bugfix-for-cpp2-comment-cpp1-sequence.cpp2
   - [x] mixed-bugfix-for-double-pound-else-error.cpp2
   - [x] mixed-bugfix-for-literal-as-nttp.cpp2
-  - [ ] mixed-bugfix-for-ufcs-non-local.cpp2 (BLOCKED: CPP2_UFCS_NONLOCAL macro needed)
+  - [x] mixed-bugfix-for-ufcs-non-local.cpp2
   - [ ] mixed-captures-in-expressions-and-postconditions.cpp2 (BLOCKED: postconditions, old value $, expression captures)
   - [x] mixed-default-arguments.cpp2
   - [ ] mixed-fixed-type-aliases.cpp2 (BLOCKED: CPP2_TYPEOF, namespace aliases, args struct)
@@ -170,7 +169,7 @@ Remaining failures (5):
   - [ ] pure2-defaulted-comparisons-and-final-types.cpp2
   - [ ] pure2-enum.cpp2
   - [ ] pure2-expected-is-as.cpp2
-  - [ ] pure2-for-loop-range-with-lambda.cpp2
+  - [x] pure2-for-loop-range-with-lambda.cpp2
   - [ ] pure2-forward-return-diagnostics-error.cpp2
   - [ ] pure2-forward-return.cpp2
   - [ ] pure2-function-body-reflection.cpp2
