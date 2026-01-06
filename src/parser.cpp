@@ -4983,9 +4983,28 @@ std::unique_ptr<Expression> Parser::function_expression() {
             consume(TokenType::RightBrace, "Expected '}' after function expression body");
         } else {
             // Single expression body: :(x) = x + 1
+            // Or immediately-invoked: :(x) = x;(args) - call with args
             auto expr = expression();
             auto ret_stmt = std::make_unique<ReturnStatement>(std::move(expr), previous().line);
             lambda->body.push_back(std::move(ret_stmt));
+
+            // Check for immediately-invoked function expression: ;(args)
+            // Only consume semicolon if it's followed by ( to avoid breaking regular function expressions
+            if (check(TokenType::Semicolon) && current + 1 < tokens.size() && tokens[current + 1].type == TokenType::LeftParen) {
+                match(TokenType::Semicolon);  // Consume the semicolon
+                // Parse the call arguments
+                auto call = std::make_unique<CallExpression>(std::move(lambda), previous().line);
+                consume(TokenType::LeftParen, "Expected '(' after ';' for IIFE");
+                if (!check(TokenType::RightParen)) {
+                    do {
+                        CallExpression::Argument arg;
+                        arg.expr = expression();
+                        call->arguments.push_back(std::move(arg));
+                    } while (match(TokenType::Comma));
+                }
+                consume(TokenType::RightParen, "Expected ')' after IIFE arguments");
+                return call;
+            }
         }
     } else if (check(TokenType::LeftBrace)) {
         advance(); // consume '{'
