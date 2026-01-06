@@ -326,3 +326,113 @@ class ASTNode {
 | Channel safety validation | 0% | 100% | ⏳ Pending |
 | Average corpus semantic loss | 1.0 (max) | <0.15 | ⏳ Pending |
 | pure2-hello.cpp2 loss | 1.0 | <0.05 | ⏳ Pending |
+
+---
+
+## Extended Scope: JIT Memory-Managed Front-IR Architecture (Phases 7-10)
+
+**Date Extended**: 2026-01-06
+**Objective**: Leverage cppfront's ownership semantics + C++26 reflection to build a lifetime-aware Front-IR that offloads allocation decisions to the JIT's analysis pass
+
+### 6. Scope-Inferred Arena Allocation (Phase 7)
+
+**Goal**: Automatic arena allocation for non-escaping scopes based on escape analysis
+
+**Architecture**:
+```cpp
+// Cpp2 source with implicit arena binding
+func: (data: vector<widget>) -> result = {
+    // Front-IR tags this scope → JIT allocates monotonic arena
+    // All allocations demoted from heap to arena-bump
+}
+```
+
+**Implementation**:
+- `ArenaRegion` linked to `LifetimeRegion` (scope-based memory regions)
+- JIT pass: `ArenaInferencePass` analyzes escape-annotated FIR
+- MLIR attributes: `#cpp2.arena_scope<scopeID>`, `!cpp2.arena<scopeID>`
+- Decision logic: NoEscape aggregates → arena-allocated (not heap)
+
+**Expected Outcome**: Local vectors/maps/strings use monotonic arena allocation; heap reserved for escaping values
+
+---
+
+### 7. Coroutine Frame Elision (Phase 8)
+
+**Goal**: SROA (Scalar Replacement of Aggregates) on coroutine frames when escape analysis proves non-escaping
+
+**Kotlin-style Structured Concurrency Port**:
+- `CoroutineScope` semantics → C++26 `std::execution` senders/receivers
+- `launch {}` blocks → `std::execution::schedule`
+- `async/await` → sender/receiver chains
+
+**MLIR Pass**: `CoroutineFrameSROA`
+- Detects non-escaping coroutine frames (suspended state contained within parent scope)
+- Converts heap-boxed frames → stack-pinned or arena-slotted
+- Attribute: `#cpp2.coroutine_frame<stack|arena|heap>`
+
+**Expected Outcome**: Structured concurrency coroutines avoid heap allocation; deterministic frame teardown
+
+---
+
+### 8. C++26 Integration (Phase 9)
+
+**Goal**: Synergize C++26 features with lifetime-aware Front-IR
+
+**C++26 Features Leveraged**:
+
+1. **Reflection (`std::meta`)**:
+   - Compute `std::inplace_vector<T, N>` capacity at compile time
+   - `reflection_driven_sbo_size()` utility for optimal SBO sizing
+   - Attribute: `#cpp2.reflection_sized<bytes>`
+
+2. **Contracts (`[[expects]]`, `[[ensures]]`)**:
+   - Feed preconditions into alias analysis
+   - Derive no-alias guarantees from contract annotations
+   - Add `ContractInfo` to `SemanticInfo`
+   - Attribute: `#cpp2.contract<precondition|postcondition>`
+
+3. **Pattern Matching (`inspect`)**:
+   - Exhaustive resource state tracking
+   - `ResourceState` enum: Uninitialized, Initialized, Moved, Borrowed
+   - Track state transitions through `inspect` branches
+
+**Expected Outcome**: Contracts strengthen alias analysis; reflection optimizes inplace storage; pattern matching ensures exhaustive state coverage
+
+---
+
+### 9. JIT Codegen Backend (Phase 10)
+
+**Goal**: Final JIT pass emits C++ allocators based on lifetime-aware Front-IR annotations
+
+**Analytical Pass Pipeline**:
+```
+Source → cppfront lowering → Lifetime-annotated IR →
+  Escape analysis → Region inference → JIT codegen (stack/arena/rare-heap)
+```
+
+**AllocationStrategyPass**:
+- Input: Annotated FIR with `#cpp2.arena_scope`, `!cpp2.arena<scopeID>`, `#cpp2.coroutine_frame`
+- Output: C++ code with explicit allocators
+
+**Code Generation**:
+1. **Arena allocator boilerplate**: `cpp2::monotonic_arena<scopeID>` declarations
+2. **Stack promotion**: NoEscape + bounded size → stack arrays
+3. **Heap fallback**: `EscapeToHeap` → `std::make_unique`/`std::make_shared`
+4. **Arena reset points**: Automatic cleanup at scope exit
+
+**Integration**: Extend `src/code_generator.cpp` with `generate_allocation()` method
+
+**Expected Outcome**: Programmer writes value-semantic Cpp2; JIT emits region-scoped allocations. Heap becomes the *fallback*, not the default—mirroring Kotlin/JVM escape analysis but at native speeds with deterministic teardown.
+
+---
+
+## Extended Metrics (Phases 7-10)
+
+| Metric | Before | Target | Status |
+|--------|--------|--------|--------|
+| Arena allocation coverage | 0% | >80% (NoEscape aggregates) | ⏳ Pending |
+| Coroutine frame heap elision | 0% | >60% (structured concurrency) | ⏳ Pending |
+| Reflection-driven SBO sizing | Manual | Automatic (via `std::meta`) | ⏳ Pending |
+| Contract-informed alias analysis | 0% | 100% (`[[expects]]` parsed) | ⏳ Pending |
+| Heap allocation rate (corpus avg) | Baseline | <30% (arena-first strategy) | ⏳ Pending |
