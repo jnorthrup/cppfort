@@ -1,8 +1,14 @@
 # Technology Stack
 
 ## Core Language
-- **C++26**: Primary implementation language
+- **C++23/C++2c** (Current): Clang 21.1.8 with `-std=c++2c` (`__cplusplus = 202400`)
+- **C++26** (Target): Migration path for reflection, contracts, pattern matching when compiler support arrives
 - **MLIR**: Multi-Level Intermediate Representation framework
+
+### C++ Standard Strategy
+- **Implementation**: C++23 features (ranges, concepts, coroutines, format, expected)
+- **Forward Compatibility**: Design for C++26, implement with C++23 fallbacks
+- **Migration Timeline**: Phase 9 (C++26 Integration) uses conditional compilation until features stabilize
 
 ## Build System
 - **CMake 3.25+**: Build configuration
@@ -59,15 +65,37 @@
   - Phase-based verification protocol
 
 ## Development Libraries
-- **Standard Library**: C++26 features (ranges, format, concepts, modules, reflection, contracts, pattern matching)
-- **std::meta**: Compile-time reflection (`std::meta::info`, type introspection)
-- **std::execution**: Structured concurrency (senders/receivers, `std::execution::schedule`)
-- **Contracts**: `[[expects]]`, `[[ensures]]`, `[[assert]]` for precondition/postcondition enforcement
-- **Pattern Matching**: `inspect` expressions for exhaustive matching
-- **std::inplace_vector**: Stack-allocated vector with reflection-driven SBO sizing
-- **Optional/Variant**: Sum type support
-- **Span**: Safe array views
-- **String_view**: Zero-copy string operations
+
+### Currently Available (C++23/C++2c - Clang 21.1.8)
+- ✅ **Ranges**: `std::ranges` (202406) - algorithms, views, pipelines
+- ✅ **Concepts**: `concept`, `requires` (202002) - type constraints
+- ✅ **Format**: `std::format` (202110) - type-safe string formatting
+- ✅ **Coroutines**: `co_await`, `co_yield`, `co_return` (201902) - async primitives
+- ✅ **Expected**: `std::expected<T, E>` (202211) - result type with error handling
+- ✅ **Optional/Variant**: `std::optional`, `std::variant` - sum types
+- ✅ **Span**: `std::span` - safe array views
+- ✅ **String_view**: `std::string_view` - zero-copy string operations
+
+### Planned (C++26 - Not Yet Available)
+- ⏳ **Reflection (`std::meta`)**: Compile-time type introspection
+  - **Fallback**: Template metaprogramming for SBO sizing
+  - **Use Case**: `reflection_driven_sbo_size()` for `std::inplace_vector<T, N>`
+
+- ⏳ **Contracts**: `[[expects]]`, `[[ensures]]`, `[[assert]]` for preconditions/postconditions
+  - **Fallback**: Parse custom `// [[expects]]` comments in AST
+  - **Use Case**: Feed contract annotations into alias analysis
+
+- ⏳ **Pattern Matching**: `inspect` expressions for exhaustive matching
+  - **Fallback**: C++23 `std::expected` + exhaustive `if-else` chains
+  - **Use Case**: Resource state tracking (Uninitialized, Initialized, Moved, Borrowed)
+
+- ⏳ **std::execution**: Structured concurrency (senders/receivers)
+  - **Fallback**: `std::coroutine` (available) for coroutine frame elision
+  - **Use Case**: Port Kotlin `CoroutineScope` semantics
+
+- ⏳ **std::inplace_vector**: Stack-allocated vector
+  - **Fallback**: Custom `cpp2::inplace_vector<T, N>` implementation
+  - **Use Case**: Arena-allocated containers with compile-time capacity
 
 ## Platform
 - **macOS 14.6** (Darwin 24.6.0): Development environment
@@ -84,6 +112,60 @@
 - **Lifetime Region Analysis**: Scope-based lifetime bounds
 - **Memory Transfer Tracker**: GPU/DMA transfer validation
 - **Channel Safety Validator**: Concurrency data race detection
+
+## JIT Memory-Managed Front-IR Architecture (Phases 7-10)
+
+### Feature Validation (2026-01-06)
+**Environment**: Clang 21.1.8, LLVM 21.1.8, macOS 14.6 (arm64)
+
+#### ✅ Available Now (C++23/C++2c)
+- Ranges (202406), Concepts (202002), Format (202110)
+- Coroutines (201902), Expected (202211)
+- Standard Library: optional, variant, span, string_view
+
+#### ⏳ Planned (C++26 - Not Yet Available)
+- Reflection (`std::meta`) - Feature test macro: `__cpp_static_reflection`
+- Contracts (`[[expects]]`, `[[ensures]]`) - Feature test macro: `__cpp_contracts`
+- Pattern Matching (`inspect`) - Feature test macro: `__cpp_pattern_matching`
+- `std::execution` senders/receivers - Feature test macro: `__cpp_lib_execution`
+
+### Phased Implementation Strategy
+
+**Phase 7-8: Immediate (C++23 Compatible)**
+- ✅ Arena allocation (`ArenaInferencePass`, `ArenaRegion`)
+- ✅ Coroutine frame elision (leverages `std::coroutine` - available)
+- ✅ MLIR passes (`CoroutineFrameSROA`) - no C++26 dependencies
+
+**Phase 9: Conditional (C++26 Features with Fallbacks)**
+1. **Reflection (`std::meta`)**:
+   - **Fallback**: Template metaprogramming for SBO sizing
+   - **Implementation**: `#ifdef __cpp_static_reflection` guards
+   - **Migration**: Replace templates with `std::meta` when available
+
+2. **Contracts**:
+   - **Fallback**: Parse custom `// [[expects]]` comments in AST
+   - **Implementation**: AST comment extraction → `ContractInfo` metadata
+   - **Migration**: Switch to native `[[expects]]` attribute parsing
+
+3. **Pattern Matching**:
+   - **Fallback**: C++23 `std::expected` + exhaustive `if-else` chains
+   - **Implementation**: Manual state machine for `ResourceState` tracking
+   - **Migration**: Replace with `inspect` expressions
+
+4. **std::execution**:
+   - **Fallback**: Use `std::coroutine` directly (already available)
+   - **Implementation**: Manual sender/receiver pattern implementation
+   - **Migration**: Adopt `std::execution::schedule` when standardized
+
+**Phase 10: Codegen (C++23 Compatible)**
+- ✅ `AllocationStrategyPass` (no C++26 dependencies)
+- ✅ Arena boilerplate generation (`cpp2::monotonic_arena<scopeID>`)
+- ✅ Stack/arena/heap decision logic (standard C++23)
+
+### Expected Timeline
+- **Clang 22+**: Possible experimental reflection support
+- **Clang 23+**: Possible contracts/pattern matching
+- **Migration**: Incremental replacement of fallbacks with native features
 
 ## External Dependencies
 - **third_party/cppfront**: Reference transpiler (submodule)
@@ -131,7 +213,9 @@ cppfort/
 ## Build Configuration Flags
 - `CMAKE_BUILD_TYPE`: Debug (with coverage) or Release
 - `ENABLE_COVERAGE`: ON/OFF (code coverage instrumentation)
-- `CMAKE_CXX_STANDARD`: 26
+- `CMAKE_CXX_STANDARD`: 23 (current), 26 (target when compiler support available)
+  - **Compile Flag**: `-std=c++2c` (enables C++23 + draft C++26 features)
+  - **Validation**: `__cplusplus = 202400` (C++2c draft)
 - `CMAKE_CXX_COMPILER`: clang++ or g++
 - Coverage flags: `--coverage` (gcov/lcov compatible)
 
