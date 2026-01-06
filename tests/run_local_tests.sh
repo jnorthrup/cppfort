@@ -22,17 +22,17 @@ for test_file in "$TEST_DIR"/*.cpp2; do
   fi
 
   test_name=$(basename "$test_file" .cpp2)
-  output_file="/tmp/${test_name}_output.cpp"
+  output_file="build/${test_name}_output.cpp"
 
   echo -n "Testing $test_name ... "
 
-  if timeout 1 "$CPPFORT" "$test_file" "$output_file" > /tmp/${test_name}_log.txt 2>&1; then
+  if timeout 1 "$CPPFORT" "$test_file" "$output_file" > build/${test_name}_log.txt 2>&1; then
     echo -e "${GREEN}PASS${NC}"
     ((PASSED++))
   else
     echo -e "${RED}FAIL${NC}"
     echo "  Error output:"
-    head -3 /tmp/${test_name}_log.txt | sed 's/^/    /'
+    head -3 build/${test_name}_log.txt | sed 's/^/    /'
     ((FAILED++))
   fi
 done

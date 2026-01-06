@@ -22,8 +22,109 @@ static std::string generate_template_param(const std::string& param) {
 
 // Helper to process Cpp2 string interpolation: (expr)$
 // Transforms "(x)$" into proper C++ string concatenation with type-aware conversion
-// This handles the Cpp2 string interpolation syntax
+// This handles both regular strings "..." and raw strings R"delimiter(...)delimiter"
 static std::string process_string_interpolation(const std::string& str) {
+    // Check if this is a raw string: R"delimiter(...)delimiter"
+    bool is_raw_string = false;
+    std::string delimiter;
+
+    if (str.length() >= 3 && str[0] == 'R' && str[1] == '"') {
+        // Raw string format: R"delimiter(...)delimiter"
+        is_raw_string = true;
+
+        size_t pos = 2;  // After R"
+        // Extract delimiter
+        while (pos < str.length() && str[pos] != '(') {
+            delimiter += str[pos++];
+        }
+    }
+
+    if (is_raw_string) {
+        // For raw strings (from $R"..." syntax), always convert to regular string format
+        // We need to process the content between the delimiters
+        size_t content_start = 2 + delimiter.length() + 1;  // Skip R"delimiter(
+        std::string closing = ")" + delimiter + "\"";
+
+        // Extract the raw content and convert to escaped regular string
+        std::string content;
+        size_t i = content_start;
+        while (i < str.length()) {
+            // Check if we've reached the end
+            if (i + closing.length() <= str.length()) {
+                bool is_end = true;
+                for (size_t j = 0; j < closing.length(); j++) {
+                    if (str[i + j] != closing[j]) {
+                        is_end = false;
+                        break;
+                    }
+                }
+                if (is_end) {
+                    break;
+                }
+            }
+
+            // Accumulate content
+            content += str[i++];
+        }
+
+        // Now process the content for interpolation patterns
+        // If no interpolation, return as escaped string
+        if (content.find(")$") == std::string::npos) {
+            // No interpolation, just escape and return
+            std::string result = "\"";
+            for (char c : content) {
+                if (c == '\\' || c == '"') {
+                    result += '\\';
+                }
+                result += c;
+            }
+            result += "\"";
+            return result;
+        }
+
+        // Has interpolation, process it
+        std::string result = "\"";
+        i = 0;
+        while (i < content.length()) {
+            // Look for interpolation pattern (expr)$
+            if (content[i] == '(') {
+                // Find matching )
+                size_t paren_count = 1;
+                size_t j = i + 1;
+                while (j < content.length() && paren_count > 0) {
+                    if (content[j] == '(') paren_count++;
+                    else if (content[j] == ')') paren_count--;
+                    j++;
+                }
+                // Check if ) is followed by $
+                if (j < content.length() && content[j] == '$') {
+                    // Found interpolation (expr)$
+                    std::string expr = content.substr(i + 1, j - i - 2);
+                    // Close current string, add type-aware conversion, reopen string
+                    result += "\" + (([&]() { std::ostringstream __oss; __oss << " + expr + "; return __oss.str(); })()) + \"";
+                    i = j + 1;  // Skip past the $
+                } else {
+                    // Escape and add character
+                    if (content[i] == '\\' || content[i] == '"') {
+                        result += '\\';
+                    }
+                    result += content[i];
+                    i++;
+                }
+            } else {
+                // Escape and add character
+                if (content[i] == '\\' || content[i] == '"') {
+                    result += '\\';
+                }
+                result += content[i];
+                i++;
+            }
+        }
+        result += "\"";
+        return result;
+    }
+
+    // Regular string handling
     // If string doesn't contain )$, no interpolation needed
     if (str.find(")$") == std::string::npos) {
         return str;
@@ -34,8 +135,6 @@ static std::string process_string_interpolation(const std::string& str) {
     bool in_string = false;
     size_t string_start = 0;
 
-    // Track if we're processing content inside the string quotes
-    // Look for (expr)$ patterns
     while (i < str.length()) {
         if (str[i] == '"' && (i == 0 || str[i-1] != '\\')) {
             if (!in_string) {
@@ -61,7 +160,6 @@ static std::string process_string_interpolation(const std::string& str) {
                 // Found interpolation (expr)$
                 std::string expr = str.substr(i + 1, j - i - 2);
                 // Close current string, add type-aware conversion, reopen string
-                // Use streaming with std::ostringstream for universal type support
                 result += "\" + (([&]() { std::ostringstream __oss; __oss << " + expr + "; return __oss.str(); })()) + \"";
                 i = j + 1;  // Skip past the $
             } else {

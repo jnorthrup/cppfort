@@ -57,11 +57,16 @@ compile_commands.json
 *~
 
 # Corpus and test results
-corpus_results.csv
+build/corpus_results.csv
 corpus_scan_results.txt
 test_results.csv
 scan_corpus.sh
 scan_out.txt
+COMPLETION_SUMMARY.md
+
+# ========================================================================
+# PRINCIPLE: When x.cpp2 is present, x.* files are suspect as generated artifacts
+# ========================================================================
 
 # Corpus generated files
 corpus/ast_mappings/generated/
@@ -72,6 +77,9 @@ corpus/database/
 corpus/isomorphs/
 corpus/reference_ast/
 corpus/tagged/
+
+# Test checksums (generated)
+tests/reference/*.sha256
 
 # Conductor tracks (generated)
 conductor/tracks/*/
