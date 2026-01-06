@@ -22,7 +22,7 @@
 
 ## Phase 3: External Memory Integration
 
-- [ ] Implement `MemoryTransfer` tracking structure
+- [x] Implement `MemoryTransfer` tracking structure
 - [ ] Connect escape analysis to GPU/DMA transfers in AST
 - [ ] Add lifecycle-based optimization pass in MLIR pipeline
 - [ ] Validate DMA safety rules (no aliasing during async transfers)
