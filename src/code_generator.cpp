@@ -861,26 +861,9 @@ void CodeGenerator::generate_operator_declaration(OperatorDeclaration* decl) {
             continue;
         }
 
-        std::string param_type = param->type ? generate_type(param->type.get()) : "auto";
-
-        // Handle qualifiers
-        bool is_move = false;
-        bool is_const = false;
-        for (const auto& qual : param->qualifiers) {
-            if (qual == ParameterQualifier::Move) {
-                is_move = true;
-            } else if (qual == ParameterQualifier::Out) {
-                // out parameter is passed by non-const reference
-            }
-        }
-
-        if (is_move) {
-            write(param_type + "&&");
-        } else {
-            write("const " + param_type + "&");
-        }
-
-        write(" " + param->name);
+        // Use generate_parameter_type to handle all qualifiers correctly (in/out/inout/move/forward)
+        std::string param_type_with_qualifiers = generate_parameter_type(param->type.get(), param->qualifiers);
+        write(param_type_with_qualifiers + " " + param->name);
     }
 
     write(")");
