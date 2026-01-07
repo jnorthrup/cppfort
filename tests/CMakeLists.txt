@@ -72,6 +72,7 @@ add_test_if_exists(test_variable_declaration_fir test_variable_declaration_fir.c
 add_test_if_exists(escape_analysis_pass_test escape_analysis_pass_test.cpp)
 add_test_if_exists(lex_test lex_test.cpp)
 add_test_if_exists(sccp_test sccp_test.cpp)
+add_test_if_exists(son_concurrency_analysis_test son_concurrency_analysis_test.cpp)
 add_test_if_exists(son_dialect_test son_dialect_test.cpp)
 add_test_if_exists(zero_copy_verification_test zero_copy_verification_test.cpp)
 add_test_if_exists(test_forward_ref_types test_forward_ref_types.cpp)

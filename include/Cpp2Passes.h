@@ -50,6 +50,11 @@ std::unique_ptr<Pass> createSONCSEPass();
 /// Handles loop invariant code motion, strength reduction, etc.
 std::unique_ptr<Pass> createSONLoopOptPass();
 
+/// Create concurrency analysis pass for SON
+/// Analyzes SON IR for concurrency optimizations including lock elision,
+/// memory barrier elimination, async-to-sync conversion, and parallel region detection.
+std::unique_ptr<Pass> createSONConcurrencyAnalysisPass();
+
 //===----------------------------------------------------------------------===//
 // External Memory Optimization Passes (Phase 3: Semantic AST Enhancements)
 //===----------------------------------------------------------------------===//
