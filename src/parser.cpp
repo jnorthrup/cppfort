@@ -2277,9 +2277,35 @@ std::unique_ptr<Type> Parser::type() {
             }
         }
 
-        // Check for Cpp2 const prefix: const Type
+        // Check for Cpp2 const prefix: const Type or const * const Type
         if (check(TokenType::Const)) {
             std::size_t peek_pos = current + 1;
+
+            // Check for const * const Type pattern (const pointer to const type)
+            if (peek_pos < tokens.size() && tokens[peek_pos].type == TokenType::Asterisk) {
+                match(TokenType::Const);  // Consume first const (pointer is const)
+                match(TokenType::Asterisk);  // Consume *
+
+                // Check for second const (pointee is const)
+                bool pointee_is_const = match(TokenType::Const);
+
+                // Parse the base type
+                auto pointee_base = type();
+                if (!pointee_base) {
+                    error_at_current("Expected type after 'const *'");
+                    return nullptr;
+                }
+
+                if (pointee_is_const) {
+                    pointee_base->is_const = true;
+                }
+
+                auto ptr = std::make_unique<Type>(Type::Kind::Pointer);
+                ptr->pointee = std::move(pointee_base);
+                ptr->is_const = true;  // The pointer itself is const
+                return ptr;
+            }
+
             // Check if next is a simple type or '_'
             if (peek_pos < tokens.size() &&
                 (tokens[peek_pos].type == TokenType::Identifier ||
@@ -4989,21 +5015,35 @@ std::unique_ptr<Expression> Parser::function_expression() {
             lambda->body.push_back(std::move(ret_stmt));
 
             // Check for immediately-invoked function expression: ;(args)
-            // Only consume semicolon if it's followed by ( to avoid breaking regular function expressions
-            if (check(TokenType::Semicolon) && current + 1 < tokens.size() && tokens[current + 1].type == TokenType::LeftParen) {
-                match(TokenType::Semicolon);  // Consume the semicolon
-                // Parse the call arguments
-                auto call = std::make_unique<CallExpression>(std::move(lambda), previous().line);
-                consume(TokenType::LeftParen, "Expected '(' after ';' for IIFE");
-                if (!check(TokenType::RightParen)) {
-                    do {
-                        CallExpression::Argument arg;
-                        arg.expr = expression();
-                        call->arguments.push_back(std::move(arg));
-                    } while (match(TokenType::Comma));
+            // Or optional semicolon terminator (Cpp2 allows semicolon to terminate lambda expression bodies)
+            if (check(TokenType::Semicolon)) {
+                // If semicolon is followed by '(', this is IIFE (Immediately-Invoked Function Expression)
+                if (current + 1 < tokens.size() && tokens[current + 1].type == TokenType::LeftParen) {
+                    match(TokenType::Semicolon);  // Consume the semicolon
+                    // Parse the call arguments
+                    auto call = std::make_unique<CallExpression>(std::move(lambda), previous().line);
+                    consume(TokenType::LeftParen, "Expected '(' after ';' for IIFE");
+                    if (!check(TokenType::RightParen)) {
+                        do {
+                            CallExpression::Argument arg;
+                            arg.expr = expression();
+                            call->arguments.push_back(std::move(arg));
+                        } while (match(TokenType::Comma));
+                    }
+                    consume(TokenType::RightParen, "Expected ')' after IIFE arguments");
+                    return call;
+                } else if (current + 1 < tokens.size()) {
+                    // Optional trailing semicolon ONLY in specific contexts where it's part of lambda syntax:
+                    // 1. Inside subscript: x[:() = 0;]  (semicolon before ])
+                    // 2. Inside is-expression: (:() = 0; is int)  (semicolon before 'is')
+                    TokenType next = tokens[current + 1].type;
+                    if (next == TokenType::RightBracket || next == TokenType::Is) {
+                        // This semicolon is part of the lambda syntax in subscript/is-expression context
+                        match(TokenType::Semicolon);
+                    }
+                    // Otherwise, DON'T consume - it likely belongs to surrounding statement
+                    // e.g., variable declaration: callback := :(x) = x + 1;
                 }
-                consume(TokenType::RightParen, "Expected ')' after IIFE arguments");
-                return call;
             }
         }
     } else if (check(TokenType::LeftBrace)) {
