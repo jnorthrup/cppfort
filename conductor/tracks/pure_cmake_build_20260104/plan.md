@@ -34,24 +34,24 @@
 
 ## Phase 4: Directory Structure Cleanup
 
-- [ ] Write test to verify no .cpp files in root, no scripts in tools/
-- [ ] Move any stray .cpp files from root to src/ (audit first)
-- [ ] Move any stray test files from root to tests/ (audit first)
-- [ ] Delete `tools/process_corpus_with_cppfront.sh`
-- [ ] Delete `tools/reference_corpus.sh`
-- [ ] Update .gitignore with *.inc, .ninja_*, build/, *.o.tmp
-- [ ] Clean root: remove generated .inc files
-- [ ] Verify clean `git status` (only untracked build/ and corpus/)
+- [x] Write test to verify no .cpp files in root, no scripts in tools/
+- [x] Move any stray .cpp files from root to src/ (audit first) - none found
+- [x] Move any stray test files from root to tests/ (audit first) - N/A
+- [x] Delete `tools/process_corpus_with_cppfront.sh`
+- [x] Delete `tools/reference_corpus.sh`
+- [x] Update .gitignore with *.inc, .ninja_*, build/, *.o.tmp - already present
+- [x] Clean root: remove generated .inc files - none in root
+- [~] Verify clean `git status` (only untracked build/ and corpus/)
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Directory Cleanup' (Protocol in workflow.md)
 
 ## Phase 5: TableGen Output Migration
 
-- [ ] Write test to verify TableGen .inc files generated in build/
-- [ ] Update CMakeLists.txt to output TableGen files to `${PROJECT_BINARY_DIR}`
-- [ ] Update include paths to find .inc files in build/
-- [ ] Run full rebuild and verify no .inc files in root
-- [ ] Verify all dialects still build correctly
-- [ ] Run all tests and verify 29/29 passing
+- [x] Write test to verify TableGen .inc files generated in build/
+- [x] Update CMakeLists.txt to output TableGen files to `${PROJECT_BINARY_DIR}` - already configured
+- [x] Update include paths to find .inc files in build/ - already configured
+- [x] Run full rebuild and verify no .inc files in root - confirmed (0 .inc in root, 4 in build/)
+- [x] Verify all dialects still build correctly - TableGen generates files
+- [~] Run all tests and verify 29/29 passing - deferred to Phase 6
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: TableGen Migration' (Protocol in workflow.md)
 
 ## Phase 6: Validation and Documentation
