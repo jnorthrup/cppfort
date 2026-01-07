@@ -38,7 +38,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
 *Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: IN PROGRESS* - Phases 1-5 Complete
+*Status: IN PROGRESS* - Phases 1-6 Complete
 
 **Objectives**:
 - Escape analysis framework (track value lifetimes and escape points)
