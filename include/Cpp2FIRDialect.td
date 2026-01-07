@@ -19,6 +19,29 @@ def Cpp2FIR_Dialect : Dialect {
 class Cpp2FIR_Op<string mnemonic, list<Trait> traits = []> :
     Op<Cpp2FIR_Dialect, mnemonic, traits>;
 
+// ============================================================================
+// Escape Analysis Attributes (Phase 3: External Memory Integration)
+// ============================================================================
+
+// Escape kind enum for escape analysis annotations
+def Cpp2FIR_EscapeKindAttr : StrEnumAttr<"EscapeKind", 
+    "Escape analysis result for SSA values", [
+  StrEnumAttrCase<"no_escape">,   // Value stays local (stack) - transfer can be eliminated
+  StrEnumAttrCase<"heap">,        // Stored in heap-allocated object
+  StrEnumAttrCase<"return">,      // Returned from function
+  StrEnumAttrCase<"param">,       // Stored via pointer/reference parameter  
+  StrEnumAttrCase<"global">,      // Stored in global variable
+  StrEnumAttrCase<"channel">,     // Sent through channel
+  StrEnumAttrCase<"gpu">,         // Transferred to GPU memory - transfer required
+  StrEnumAttrCase<"dma">          // Transferred via DMA buffer - transfer required
+]> {
+  let cppNamespace = "::mlir::cpp2fir";
+}
+
+// Attribute for annotating operations with escape information
+// Usage: cpp2fir.add %a, %b {escape = "no_escape"} : i32 -> i32
+// The transfer elimination pass uses this to determine if transfers are needed
+
 // Basic Operations
 
 def Cpp2FIR_FuncOp : Cpp2FIR_Op<"func", [

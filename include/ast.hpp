@@ -127,6 +127,226 @@ struct MemoryTransfer {
     MemoryTransfer() = default;
 };
 
+// Channelized Concurrency: Track ownership transfer through channel operations (Phase 4)
+struct ChannelTransfer {
+    EscapeKind escape_kind = EscapeKind::EscapeToChannel;
+    void* send_point = nullptr;                     // ASTNode* where send occurs
+    void* recv_point = nullptr;                     // ASTNode* where recv occurs (may be unknown)
+    OwnershipKind ownership_transfer = OwnershipKind::Moved;  // Default: move semantics
+    LifetimeRegion channel_lifetime;                // Lifetime bounds for the channel
+    std::string channel_name;                       // Channel identifier
+    std::string value_type;                         // Type being transferred
+    bool is_buffered = false;                       // Buffered vs unbuffered channel
+    std::size_t buffer_size = 0;                    // Buffer capacity (0 for unbuffered)
+    bool transfer_complete = false;                 // Whether recv has matched send
+    
+    ChannelTransfer() = default;
+    ChannelTransfer(std::string name, std::string type, bool buffered = false, std::size_t buf_size = 0)
+        : channel_name(std::move(name)), value_type(std::move(type)), 
+          is_buffered(buffered), buffer_size(buf_size) {}
+};
+
+// ============================================================================
+// Safety Contract (for contract annotations) - Phase 5
+// ============================================================================
+
+struct SafetyContract {
+    enum class Kind {
+        Precondition,   // [[expects: condition]]
+        Postcondition,  // [[ensures: condition]]
+        Assertion,      // [[assert: condition]]
+        Invariant       // Type invariant
+    };
+    
+    Kind kind;
+    std::string condition;      // The condition expression as string
+    std::string message;        // Optional message
+    bool is_audit = false;      // Audit-level contract (may be expensive)
+    
+    SafetyContract() = default;
+    SafetyContract(Kind k, std::string cond, std::string msg = "")
+        : kind(k), condition(std::move(cond)), message(std::move(msg)) {}
+};
+
+// ============================================================================
+// Kernel Launch Context (for GPU operations) - Phase 5
+// ============================================================================
+
+struct KernelLaunch {
+    std::string kernel_name;
+    std::string grid_dims;      // e.g., "256,256"
+    std::string block_dims;     // e.g., "32"
+    std::string memory_policy;  // "coherent", "streaming", "private"
+    bool is_active = false;
+    
+    KernelLaunch() = default;
+};
+
+// ============================================================================
+// Unified Semantic Info - Phase 5: Single representation for all semantics
+// ============================================================================
+
+struct SemanticInfo {
+    // Ownership and borrowing
+    BorrowInfo borrow;
+    
+    // Escape analysis
+    EscapeInfo escape;
+    
+    // Memory location
+    std::optional<MemoryRegion> memory_region;
+    std::optional<MemoryTransfer> active_transfer;
+    
+    // Concurrency
+    std::optional<ChannelTransfer> channel_transfer;
+    std::optional<KernelLaunch> kernel_context;
+    
+    // Lifetime bounds
+    LifetimeRegion lifetime;
+    std::vector<LifetimeRegion*> must_outlive;
+    
+    // Safety contracts
+    std::vector<SafetyContract> contracts;
+    
+    // Constructors
+    SemanticInfo() = default;
+    
+    /// Returns true if this semantic info indicates safe operation
+    bool is_safe() const {
+        // Not safe if moved (use-after-move)
+        if (borrow.kind == OwnershipKind::Moved) {
+            return false;
+        }
+        // Not safe if mutable borrow with existing borrows (aliasing)
+        if (borrow.kind == OwnershipKind::MutBorrowed && 
+            !borrow.active_borrows.empty()) {
+            return false;
+        }
+        // Async transfers need NoEscape for safety
+        if (active_transfer && active_transfer->is_async) {
+            return escape.kind == EscapeKind::NoEscape;
+        }
+        return true;
+    }
+    
+    /// Returns true if this value can be optimized away
+    bool can_optimize_away() const {
+        // Cannot optimize away if escapes to external memory
+        if (escape.kind == EscapeKind::EscapeToGPU ||
+            escape.kind == EscapeKind::EscapeToDMA ||
+            escape.kind == EscapeKind::EscapeToChannel) {
+            return false;
+        }
+        // Can optimize away if NoEscape
+        if (escape.kind == EscapeKind::NoEscape) {
+            return true;
+        }
+        // Can optimize if no transfers and owned with no borrows
+        if (!active_transfer && !channel_transfer) {
+            if (borrow.kind == OwnershipKind::Owned && 
+                borrow.active_borrows.empty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /// Returns human-readable explanation of semantics
+    std::string explain_semantics() const {
+        std::string result;
+        
+        // Ownership
+        switch (borrow.kind) {
+            case OwnershipKind::Owned: result += "Owned"; break;
+            case OwnershipKind::Borrowed: result += "Borrowed"; break;
+            case OwnershipKind::MutBorrowed: result += "MutBorrowed"; break;
+            case OwnershipKind::Moved: result += "Moved"; break;
+        }
+        
+        // Escape
+        result += " | ";
+        switch (escape.kind) {
+            case EscapeKind::NoEscape: result += "NoEscape"; break;
+            case EscapeKind::EscapeToHeap: result += "EscapeToHeap"; break;
+            case EscapeKind::EscapeToReturn: result += "EscapeToReturn"; break;
+            case EscapeKind::EscapeToParam: result += "EscapeToParam"; break;
+            case EscapeKind::EscapeToGlobal: result += "EscapeToGlobal"; break;
+            case EscapeKind::EscapeToChannel: result += "EscapeToChannel"; break;
+            case EscapeKind::EscapeToGPU: result += "EscapeToGPU"; break;
+            case EscapeKind::EscapeToDMA: result += "EscapeToDMA"; break;
+        }
+        
+        // Memory region (uses string name, not enum)
+        if (memory_region) {
+            result += " | Region[" + memory_region->name + "]";
+            if (memory_region->is_device_memory) {
+                result += "(device)";
+            }
+        }
+        
+        // Concurrency
+        if (channel_transfer) {
+            result += " | Channel[" + channel_transfer->channel_name + "]";
+        }
+        if (kernel_context && kernel_context->is_active) {
+            result += " | GPU[" + kernel_context->kernel_name + "]";
+        }
+        
+        // Safety
+        if (!is_safe()) {
+            result += " | UNSAFE";
+        }
+        
+        return result;
+    }
+    
+    /// Generate MLIR attributes for this semantic info
+    std::string to_mlir_attributes() const {
+        std::string attrs;
+        
+        // Escape kind attribute
+        attrs += "escape_kind = #cpp2fir.escape<";
+        switch (escape.kind) {
+            case EscapeKind::NoEscape: attrs += "no_escape"; break;
+            case EscapeKind::EscapeToHeap: attrs += "heap"; break;
+            case EscapeKind::EscapeToReturn: attrs += "return"; break;
+            case EscapeKind::EscapeToParam: attrs += "param"; break;
+            case EscapeKind::EscapeToGlobal: attrs += "global"; break;
+            case EscapeKind::EscapeToChannel: attrs += "channel"; break;
+            case EscapeKind::EscapeToGPU: attrs += "gpu"; break;
+            case EscapeKind::EscapeToDMA: attrs += "dma"; break;
+        }
+        attrs += ">";
+        
+        // Memory region if present (uses string name)
+        if (memory_region) {
+            attrs += ", memory_region = \"" + memory_region->name + "\"";
+            if (memory_region->is_device_memory) {
+                attrs += ", is_device = true";
+            }
+        }
+        
+        // Ownership
+        attrs += ", ownership = \"";
+        switch (borrow.kind) {
+            case OwnershipKind::Owned: attrs += "owned"; break;
+            case OwnershipKind::Borrowed: attrs += "borrowed"; break;
+            case OwnershipKind::MutBorrowed: attrs += "mut_borrowed"; break;
+            case OwnershipKind::Moved: attrs += "moved"; break;
+        }
+        attrs += "\"";
+        
+        // Transfer state (MemoryTransfer doesn't have .kind - uses escape_kind)
+        if (active_transfer) {
+            if (active_transfer->is_async) {
+                attrs += ", async_transfer = true";
+            }
+        }
+        
+        return attrs;
+    }
+};
+
 // Type system
 struct Type {
     enum class Kind {
@@ -929,6 +1149,10 @@ struct Declaration {
 
     // Markdown blocks attached to this declaration (CAS-linked modules)
     std::vector<MarkdownBlockAttr> markdown_blocks;
+    
+    // Unified semantic information (Phase 5) - consolidated ownership, escape,
+    // memory, concurrency, lifetime, and contract information
+    std::unique_ptr<SemanticInfo> semantic_info;
 
     Declaration(Kind k, std::string n, std::size_t l)
         : kind(k), line(l), name(std::move(n)) {}
@@ -960,6 +1184,9 @@ struct VariableDeclaration : Declaration {
     // Escape analysis integration (Phase 3: External Memory)
     std::unique_ptr<EscapeInfo> escape_info;      // Escape analysis results
     std::unique_ptr<MemoryTransfer> memory_transfer;  // GPU/DMA transfer tracking
+    
+    // Channelized concurrency integration (Phase 4)
+    std::unique_ptr<ChannelTransfer> channel_transfer;  // Channel send/recv tracking
 
     VariableDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Variable, std::move(n), l) {}

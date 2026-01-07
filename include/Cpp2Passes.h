@@ -51,6 +51,21 @@ std::unique_ptr<Pass> createSONCSEPass();
 std::unique_ptr<Pass> createSONLoopOptPass();
 
 //===----------------------------------------------------------------------===//
+// External Memory Optimization Passes (Phase 3: Semantic AST Enhancements)
+//===----------------------------------------------------------------------===//
+
+/// Create transfer elimination pass for FIR dialect
+/// Eliminates unnecessary GPU/DMA transfers based on escape analysis annotations.
+/// Variables with NoEscape kind don't need transfers; only values that escape
+/// to GPU or DMA require actual memory transfers.
+std::unique_ptr<Pass> createFIRTransferEliminationPass();
+
+/// Create DMA safety validation pass for FIR dialect
+/// Validates that no aliasing occurs during async DMA transfers.
+/// Ensures memory safety for concurrent DMA operations.
+std::unique_ptr<Pass> createFIRDMASafetyPass();
+
+//===----------------------------------------------------------------------===//
 // Pass Registration
 //===----------------------------------------------------------------------===//
 
