@@ -75,6 +75,16 @@ std::unique_ptr<Pass> createFIRDMASafetyPass();
 std::unique_ptr<Pass> createFIRArenaInferencePass();
 
 //===----------------------------------------------------------------------===//
+// Coroutine Frame Elision Passes (Phase 8: Semantic AST Enhancements)
+//===----------------------------------------------------------------------===//
+
+/// Create coroutine frame SROA pass for FIR dialect
+/// Detects non-escaping coroutine frames and converts heap allocations
+/// to stack or arena allocations. Analyzes coroutine containment graphs
+/// to determine if a coroutine's lifetime is bounded by its parent scope.
+std::unique_ptr<Pass> createFIRCoroutineFrameSROAPass();
+
+//===----------------------------------------------------------------------===//
 // Pass Registration
 //===----------------------------------------------------------------------===//
 

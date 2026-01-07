@@ -56,7 +56,8 @@ enum class EscapeKind {
     EscapeToGlobal,    // Stored in global variable
     EscapeToChannel,   // Sent through channel
     EscapeToGPU,       // Transferred to GPU memory
-    EscapeToDMA        // Transferred via DMA buffer
+    EscapeToDMA,       // Transferred via DMA buffer
+    EscapeToCoroutineFrame  // Captured by coroutine frame (Phase 8)
 };
 
 struct EscapeInfo {
@@ -190,10 +191,46 @@ struct KernelLaunch {
 struct ArenaRegion {
     std::size_t scope_id = 0;
     LifetimeRegion* associated_lifetime = nullptr;
-    
+
     ArenaRegion() = default;
-    ArenaRegion(std::size_t id, LifetimeRegion* life) 
+    ArenaRegion(std::size_t id, LifetimeRegion* life)
         : scope_id(id), associated_lifetime(life) {}
+};
+
+// ============================================================================
+// Coroutine Frame Analysis - Phase 8: Coroutine Frame Elision
+// ============================================================================
+
+// Coroutine frame allocation strategy
+enum class CoroutineFrameStrategy {
+    Stack,       // Frame lives on stack (non-escaping coroutine)
+    Arena,       // Frame in arena-slabotted memory
+    Heap         // Frame on heap (escaping coroutine, default C++ behavior)
+};
+
+// Coroutine containment: Track parent-child coroutine relationships
+struct CoroutineContainmentGraph {
+    void* parent_coroutine = nullptr;   // ASTNode* of parent (void* to avoid forward decl)
+    std::vector<void*> child_coroutines; // ASTNode* of children
+
+    // Check if this coroutine's frame is contained within parent lifetime
+    bool is_contained() const {
+        // A coroutine is contained if all its captured variables
+        // do not outlive the parent scope
+        return !child_coroutines.empty() || parent_coroutine != nullptr;
+    }
+
+    CoroutineContainmentGraph() = default;
+};
+
+// Coroutine frame metadata
+struct CoroutineFrame {
+    std::size_t frame_size_bytes = 0;
+    CoroutineFrameStrategy strategy = CoroutineFrameStrategy::Heap;
+    std::vector<void*> captured_vars;  // VariableDeclaration* captured by coroutine
+    CoroutineContainmentGraph* containment = nullptr;
+
+    CoroutineFrame() = default;
 };
 
 struct SemanticInfo {
@@ -213,6 +250,9 @@ struct SemanticInfo {
     
     // Arena allocation (Phase 7)
     std::optional<ArenaRegion> arena;
+
+    // Coroutine frame (Phase 8)
+    std::optional<CoroutineFrame> coroutine_frame;
 
     // Lifetime bounds
     LifetimeRegion lifetime;
@@ -287,6 +327,7 @@ struct SemanticInfo {
             case EscapeKind::EscapeToChannel: result += "EscapeToChannel"; break;
             case EscapeKind::EscapeToGPU: result += "EscapeToGPU"; break;
             case EscapeKind::EscapeToDMA: result += "EscapeToDMA"; break;
+            case EscapeKind::EscapeToCoroutineFrame: result += "EscapeToCoroutineFrame"; break;
         }
         
         // Memory region (uses string name, not enum)
@@ -309,7 +350,18 @@ struct SemanticInfo {
             if (arena) {
                 result += " | Arena[" + std::to_string(arena->scope_id) + "]";
             }
-            
+
+            // Coroutine frame
+            if (coroutine_frame) {
+                result += " | CoroutineFrame[";
+                switch (coroutine_frame->strategy) {
+                    case CoroutineFrameStrategy::Stack: result += "stack"; break;
+                    case CoroutineFrameStrategy::Arena: result += "arena"; break;
+                    case CoroutineFrameStrategy::Heap: result += "heap"; break;
+                }
+                result += "]";
+            }
+
                 // Safety
             
                 if (!is_safe()) {
@@ -336,6 +388,7 @@ struct SemanticInfo {
             case EscapeKind::EscapeToChannel: attrs += "channel"; break;
             case EscapeKind::EscapeToGPU: attrs += "gpu"; break;
             case EscapeKind::EscapeToDMA: attrs += "dma"; break;
+            case EscapeKind::EscapeToCoroutineFrame: attrs += "coroutine_frame"; break;
         }
         attrs += ">";
         
@@ -368,7 +421,18 @@ struct SemanticInfo {
             if (arena) {
                 attrs += ", arena_scope = " + std::to_string(arena->scope_id);
             }
-            
+
+            // Coroutine frame strategy
+            if (coroutine_frame) {
+                attrs += ", coroutine_frame = \"";
+                switch (coroutine_frame->strategy) {
+                    case CoroutineFrameStrategy::Stack: attrs += "stack"; break;
+                    case CoroutineFrameStrategy::Arena: attrs += "arena"; break;
+                    case CoroutineFrameStrategy::Heap: attrs += "heap"; break;
+                }
+                attrs += "\"";
+            }
+
             return attrs;
         }};
 
