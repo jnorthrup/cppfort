@@ -374,6 +374,24 @@ void CodeGenerator::write_includes() {
     write_line("    inline auto make_args(int argc, char** argv) -> args_t { return { argc, const_cast<char const* const*>(argv) }; }");
     write_line("} // namespace cpp2");
     write_line("");
+
+    // Write any dynamically-added includes
+    for (const auto& include : includes) {
+        write_line(include);
+    }
+    if (!includes.empty()) {
+        write_line("");
+    }
+}
+
+void CodeGenerator::add_include(const std::string& header) {
+    // Check if already included
+    for (const auto& inc : includes) {
+        if (inc == header) {
+            return;
+        }
+    }
+    includes.push_back(header);
 }
 
 void CodeGenerator::generate_markdown_module_stubs(const std::vector<MarkdownBlockAttr>& blocks) {
@@ -2889,6 +2907,117 @@ bool CodeGenerator::needs_nodiscard(FunctionDeclaration* func) {
         return false;
     }
     return func->return_type && func->return_type->name != "void";
+}
+
+// ============================================================================
+// Allocation Strategy Generation (Phase 10: JIT Codegen Backend)
+// ============================================================================
+
+CodeGenerator::AllocationStrategy CodeGenerator::determine_allocation_strategy(VariableDeclaration* decl) {
+    // Check if variable has semantic info with arena annotation
+    if (decl->semantic_info && decl->semantic_info->arena) {
+        return AllocationStrategy::Arena;
+    }
+
+    // Check if variable has semantic info with coroutine frame
+    if (decl->semantic_info && decl->semantic_info->coroutine_frame) {
+        switch (decl->semantic_info->coroutine_frame->strategy) {
+            case CoroutineFrameStrategy::Stack:
+                return AllocationStrategy::Stack;
+            case CoroutineFrameStrategy::Arena:
+                return AllocationStrategy::Arena;
+            case CoroutineFrameStrategy::Heap:
+                return AllocationStrategy::Heap;
+        }
+    }
+
+    // Check escape analysis
+    if (decl->escape_info) {
+        switch (decl->escape_info->kind) {
+            case EscapeKind::NoEscape: {
+                // NoEscape values can use stack if small, arena if large
+                // Check type size (heuristic: aggregates > 256 bytes go to arena)
+                if (decl->type) {
+                    const std::string& type_name = decl->type->name;
+                    // Use find() to match template instantiations (e.g., std::vector<int>)
+                    if (type_name.find("std::vector") != std::string::npos ||
+                        type_name.find("std::map") != std::string::npos ||
+                        type_name.find("std::string") != std::string::npos ||
+                        type_name.find("std::deque") != std::string::npos ||
+                        type_name.find("std::list") != std::string::npos ||
+                        type_name.find("std::set") != std::string::npos) {
+                        return AllocationStrategy::Arena;
+                    }
+                }
+                return AllocationStrategy::Stack;
+            }
+            case EscapeKind::EscapeToHeap:
+            case EscapeKind::EscapeToReturn:
+            case EscapeKind::EscapeToParam:
+            case EscapeKind::EscapeToGlobal:
+            case EscapeKind::EscapeToChannel:
+            case EscapeKind::EscapeToGPU:
+            case EscapeKind::EscapeToDMA:
+            case EscapeKind::EscapeToCoroutineFrame:
+                // Escaping values need heap allocation
+                return AllocationStrategy::Heap;
+        }
+    }
+
+    // Default: stack allocation for locals
+    return AllocationStrategy::Stack;
+}
+
+std::string CodeGenerator::generate_allocation(VariableDeclaration* decl, const std::string& type_name, const std::string& init_expr) {
+    AllocationStrategy strategy = determine_allocation_strategy(decl);
+
+    switch (strategy) {
+        case AllocationStrategy::Stack:
+            return generate_stack_allocation(type_name, init_expr);
+        case AllocationStrategy::Arena:
+            if (decl->semantic_info && decl->semantic_info->arena) {
+                return generate_arena_allocation(type_name, init_expr, decl->semantic_info->arena->scope_id);
+            }
+            // Fallback to heap if no arena scope
+            return generate_heap_allocation(type_name, init_expr);
+        case AllocationStrategy::Heap:
+            return generate_heap_allocation(type_name, init_expr);
+    }
+
+    return generate_stack_allocation(type_name, init_expr);
+}
+
+std::string CodeGenerator::generate_stack_allocation(const std::string& type_name, const std::string& init_expr) {
+    // Direct stack allocation
+    return type_name + " " + init_expr;
+}
+
+std::string CodeGenerator::generate_arena_allocation(const std::string& type_name, const std::string& init_expr, std::size_t scope_id) {
+    // Arena allocation using placement new
+    // Emit: auto <var> = cpp2::arena_alloc<type_name>(arena<scope_id>, <init>);
+    add_include("cpp2/arena.hpp");
+    return "cpp2::arena_alloc<" + type_name + ">(cpp2::arena<" + std::to_string(scope_id) + ">(), " + init_expr + ")";
+}
+
+std::string CodeGenerator::generate_heap_allocation(const std::string& type_name, const std::string& init_expr) {
+    // Heap allocation using std::make_unique
+    add_include("<memory>");
+    return "std::make_unique<" + type_name + ">(" + init_expr + ")";
+}
+
+void CodeGenerator::generate_arena_boilerplate(std::size_t scope_id) {
+    // Emit arena declaration at function entry
+    // using ArenaType = cpp2::monotonic_arena<scope_id>;
+    // ArenaType arena<scope_id>;
+    add_include("cpp2/arena.hpp");
+    write_line("using Arena_" + std::to_string(scope_id) + " = cpp2::monotonic_arena<" + std::to_string(scope_id) + ">;");
+    write_line("Arena_" + std::to_string(scope_id) + " arena_" + std::to_string(scope_id) + ";");
+}
+
+void CodeGenerator::generate_arena_reset(std::size_t scope_id) {
+    // Emit arena reset at scope exit
+    // arena_<scope_id>.reset();
+    write_line("arena_" + std::to_string(scope_id) + ".reset();");
 }
 
 } // namespace cpp2_transpiler
