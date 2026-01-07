@@ -15,6 +15,7 @@ function(add_test_if_exists test_name file_name)
 endfunction()
 
 # Add all existing tests
+add_test_if_exists(arena_inference_test arena_inference_test.cpp)
 add_test_if_exists(benchmark_combinators benchmark_combinators.cpp)
 add_test_if_exists(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
 add_test_if_exists(bytebuffer_test bytebuffer_test.cpp)

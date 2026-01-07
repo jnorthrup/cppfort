@@ -66,6 +66,15 @@ std::unique_ptr<Pass> createFIRTransferEliminationPass();
 std::unique_ptr<Pass> createFIRDMASafetyPass();
 
 //===----------------------------------------------------------------------===//
+// JIT Memory Optimization Passes (Phase 7: Semantic AST Enhancements)
+//===----------------------------------------------------------------------===//
+
+/// Create arena inference pass for FIR dialect
+/// Aggregates NoEscape allocations into scope-based arenas.
+/// Assigns arena IDs to scopes and variables.
+std::unique_ptr<Pass> createFIRArenaInferencePass();
+
+//===----------------------------------------------------------------------===//
 // Pass Registration
 //===----------------------------------------------------------------------===//
 

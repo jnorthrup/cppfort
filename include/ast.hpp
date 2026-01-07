@@ -186,6 +186,16 @@ struct KernelLaunch {
 // Unified Semantic Info - Phase 5: Single representation for all semantics
 // ============================================================================
 
+// Arena Region: JIT memory management scope (Phase 7)
+struct ArenaRegion {
+    std::size_t scope_id = 0;
+    LifetimeRegion* associated_lifetime = nullptr;
+    
+    ArenaRegion() = default;
+    ArenaRegion(std::size_t id, LifetimeRegion* life) 
+        : scope_id(id), associated_lifetime(life) {}
+};
+
 struct SemanticInfo {
     // Ownership and borrowing
     BorrowInfo borrow;
@@ -201,6 +211,9 @@ struct SemanticInfo {
     std::optional<ChannelTransfer> channel_transfer;
     std::optional<KernelLaunch> kernel_context;
     
+    // Arena allocation (Phase 7)
+    std::optional<ArenaRegion> arena;
+
     // Lifetime bounds
     LifetimeRegion lifetime;
     std::vector<LifetimeRegion*> must_outlive;
@@ -288,14 +301,22 @@ struct SemanticInfo {
         if (channel_transfer) {
             result += " | Channel[" + channel_transfer->channel_name + "]";
         }
-        if (kernel_context && kernel_context->is_active) {
-            result += " | GPU[" + kernel_context->kernel_name + "]";
-        }
+            if (kernel_context && kernel_context->is_active) {
+                result += " | GPU[" + kernel_context->kernel_name + "]";
+            }
         
-        // Safety
-        if (!is_safe()) {
-            result += " | UNSAFE";
-        }
+            // Arena
+            if (arena) {
+                result += " | Arena[" + std::to_string(arena->scope_id) + "]";
+            }
+            
+                // Safety
+            
+                if (!is_safe()) {
+            
+                    result += " | UNSAFE";
+            
+                }
         
         return result;
     }
@@ -336,16 +357,20 @@ struct SemanticInfo {
         }
         attrs += "\"";
         
-        // Transfer state (MemoryTransfer doesn't have .kind - uses escape_kind)
-        if (active_transfer) {
-            if (active_transfer->is_async) {
-                attrs += ", async_transfer = true";
+            // Transfer state (MemoryTransfer doesn't have .kind - uses escape_kind)
+            if (active_transfer) {
+                if (active_transfer->is_async) {
+                    attrs += ", async_transfer = true";
+                }
             }
-        }
         
-        return attrs;
-    }
-};
+            // Arena scope
+            if (arena) {
+                attrs += ", arena_scope = " + std::to_string(arena->scope_id);
+            }
+            
+            return attrs;
+        }};
 
 // Type system
 struct Type {
@@ -815,6 +840,7 @@ struct DeclarationStatement;
 
 struct BlockStatement : Statement {
     std::vector<std::unique_ptr<Statement>> statements;
+    std::optional<std::size_t> arena_scope_id;
 
     BlockStatement(std::size_t l) : Statement(Kind::Block, l) {}
 };

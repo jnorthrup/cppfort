@@ -372,4 +372,4 @@ Icon
 .fuse_hidden*
 .directory
 .Trash-*
-.nfs*
+.nfs*logs/
