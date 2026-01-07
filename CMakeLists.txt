@@ -87,6 +87,8 @@ include_directories(${MLIR_INCLUDE_DIRS})
 # tree (e.g., Cpp2Ops*.inc) are found by includes like "Cpp2Ops.h.inc".
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
+# TableGen generates .inc files in PROJECT_BINARY_DIR (build/)
+include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 # TableGen for Cpp2 dialect
