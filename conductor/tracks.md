@@ -172,7 +172,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Pure CMake Build System with Brew LLVM/MLIR for All Components
+## [~] Track: Pure CMake Build System with Brew LLVM/MLIR for All Components
 *Link: [./conductor/tracks/pure_cmake_build_20260104/](./conductor/tracks/pure_cmake_build_20260104/)*
 
 ---
