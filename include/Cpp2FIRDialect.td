@@ -38,9 +38,40 @@ def Cpp2FIR_EscapeKindAttr : StrEnumAttr<"EscapeKind",
   let cppNamespace = "::mlir::cpp2fir";
 }
 
+// Arena allocation attributes (Phase 7)
+def Cpp2FIR_ArenaScopeAttr : AttrDef<Cpp2FIR_Dialect, "ArenaScope"> {
+  let mnemonic = "arena_scope";
+  let summary = "JIT arena allocation scope ID";
+  let parameters = (ins "int64_t":$scopeId);
+  let assemblyFormat = "`<` $scopeId `>`";
+}
+
+def Cpp2FIR_ArenaType : TypeDef<Cpp2FIR_Dialect, "Arena"> {
+  let mnemonic = "arena";
+  let summary = "Arena-allocated reference type";
+  let parameters = (ins "int64_t":$scopeId, "Type":$pointeeType);
+  let assemblyFormat = "`<` $scopeId `,` $pointeeType `>`";
+}
+
 // Attribute for annotating operations with escape information
 // Usage: cpp2fir.add %a, %b {escape = "no_escape"} : i32 -> i32
 // The transfer elimination pass uses this to determine if transfers are needed
+
+def Cpp2FIR_VarOp : Cpp2FIR_Op<"var"> {
+  let summary = "Local variable declaration";
+  let description = [{
+    Represents a local variable declaration. Stores the initial value
+    and metadata like name, escape kind, and arena allocation scope.
+  }];
+  let arguments = (ins 
+    Variadic<AnyType>:$initializer,
+    OptionalAttr<StrAttr>:$sym_name,
+    OptionalAttr<Cpp2FIR_EscapeKindAttr>:$escape,
+    OptionalAttr<Cpp2FIR_ArenaScopeAttr>:$arena_scope
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "($initializer^ `:` type($initializer))? attr-dict `->` type($result)";
+}
 
 // Basic Operations
 

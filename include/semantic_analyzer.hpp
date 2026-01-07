@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 #include <vector>
 #include <memory>
 #include <optional>
@@ -55,6 +56,12 @@ public:
     }
 
     std::shared_ptr<Scope> parent() const { return parent_scope; }
+
+    void for_each_local_symbol(const std::function<void(Symbol*)>& callback) {
+        for (const auto& [name, symbol] : symbols) {
+            callback(symbol.get());
+        }
+    }
 
 private:
     std::unordered_map<std::string, std::unique_ptr<Symbol>> symbols;
@@ -151,6 +158,10 @@ private:
     // Contract checking
     void check_contract(ContractExpression* contract);
     void check_function_contracts(FunctionDeclaration* func);
+
+    // Phase 7: Arena allocation
+    void analyze_scope_for_arena(Scope* scope, BlockStatement* block);
+    std::size_t next_arena_id = 1;
 
     // Template handling
     void check_template_parameters(TemplateStatement* tmpl);

@@ -183,6 +183,7 @@ void SemanticAnalyzer::check_statement(Statement* stmt) {
             for (auto& s : block->statements) {
                 check_statement(s.get());
             }
+            analyze_scope_for_arena(current_scope.get(), block);
             pop_scope();
             break;
         }
@@ -931,6 +932,52 @@ void SemanticAnalyzer::check_channel_select_expression(ChannelSelectExpression* 
     // Check default case if present
     if (expr->default_case) {
         check_expression(expr->default_case.get());
+    }
+}
+
+// ============================================================================
+// Arena Allocation Analysis (Phase 7)
+// ============================================================================
+
+void SemanticAnalyzer::analyze_scope_for_arena(Scope* scope, BlockStatement* block) {
+    if (!scope || !block) return;
+
+    // Identify arena candidates: variables in this scope that are NoEscape aggregates
+    std::vector<VariableDeclaration*> arena_candidates;
+
+    scope->for_each_local_symbol([&](Symbol* sym) {
+        if (sym->kind == Symbol::Kind::Variable) {
+            auto var = dynamic_cast<VariableDeclaration*>(sym->declaration);
+            // Must have escape info (computed in check_variable_usage or later)
+            // Note: Escape analysis typically runs *after* basic checking.
+            // If check_variable_usage populates escape_info immediately, we are good.
+            // Currently, escape analysis pass is separate?
+            // "Add escape analysis pass in src/semantic_analyzer.cpp after type checking"
+            // If it runs in a second pass, this function should be called then.
+            // Assuming we are integrating this into the main traversal or a subsequent pass.
+            // For now, we check if escape_info exists.
+            
+            if (var && var->escape_info && var->escape_info->kind == EscapeKind::NoEscape) {
+                // Check if type needs allocation (dynamic/aggregate)
+                if (var->type && (var->type->kind == Type::Kind::UserDefined || 
+                                  var->type->name == "std::string" || 
+                                  var->type->name == "std::vector")) {
+                    arena_candidates.push_back(var);
+                }
+            }
+        }
+    });
+
+    if (!arena_candidates.empty()) {
+        std::size_t arena_id = next_arena_id++;
+        block->arena_scope_id = arena_id;
+        
+        for (auto* var : arena_candidates) {
+            if (!var->semantic_info) {
+                var->semantic_info = std::make_unique<SemanticInfo>();
+            }
+            var->semantic_info->arena = ArenaRegion(arena_id, nullptr);
+        }
     }
 }
 
