@@ -9,16 +9,17 @@
 - [x] Verify all 29 CTest suites still pass with `ninja -C build test` (verified 21 tests: 6+11+4 arena/allocation/cpp26 contracts tests pass; combinator_laws_test blocked by pre-existing syntax bugs)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: CMakeLists.txt Recovery' (Protocol in workflow.md) [checkpoint: 63e6916]
 
-## Phase 2: Cppfront Build Integration
+## Phase 2: Cppfront Build Integration [complete]
 
 - [x] Write test to verify cppfront binary built with correct compiler
 - [x] Add CMake ExternalProject or custom target for cppfront rebuild
 - [x] Configure target to use `/opt/homebrew/opt/llvm/bin/clang++`
 - [x] Set output path to `build/bin/cppfront`
-- [~] Add dependency from corpus targets to cppfront build
-- [~] Verify `ninja -C build cppfront` produces working binary
-- [ ] Verify cppfront binary uses Homebrew libc++ with `otool -L`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Cppfront Integration' (Protocol in workflow.md)
+- [x] Add dependency from corpus targets to cppfront build
+- [x] Verify `ninja -C build cppfront` produces working binary
+- [x] Verify cppfront binary uses Homebrew libc++ with `otool -L`
+- [x] Fix cppfront to use -O0 for valid corpus AST measurements
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Cppfront Integration' (Protocol in workflow.md)
 
 ## Phase 3: Corpus Processing CMake Targets
 

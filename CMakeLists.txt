@@ -135,10 +135,12 @@ target_include_directories(cppfront PRIVATE
 target_compile_features(cppfront PRIVATE cxx_std_23)
 
 # Ensure cppfront uses Homebrew Clang and libc++
+# Force -O0 for AST determinism in corpus comparisons
 if(APPLE)
     target_compile_options(cppfront PRIVATE
         -stdlib=libc++
         -Wno-date-time
+        -O0
     )
     target_link_options(cppfront PRIVATE
         -stdlib=libc++
