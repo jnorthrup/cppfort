@@ -957,6 +957,10 @@ struct VariableDeclaration : Declaration {
     bool requires_definite_assignment = false;    // Requires 'out' semantics
     bool is_definite_last_use = false;            // Marked for move optimization
 
+    // Escape analysis integration (Phase 3: External Memory)
+    std::unique_ptr<EscapeInfo> escape_info;      // Escape analysis results
+    std::unique_ptr<MemoryTransfer> memory_transfer;  // GPU/DMA transfer tracking
+
     VariableDeclaration(std::string n, std::size_t l)
         : Declaration(Kind::Variable, std::move(n), l) {}
 };
