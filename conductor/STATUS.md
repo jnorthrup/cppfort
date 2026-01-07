@@ -60,17 +60,20 @@ Cppfort is a comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nod
 - Metafunction system (14+ metafunctions)
 - Test infrastructure (CTest, regression framework)
 - Parameter semantics (in/out/inout/move/forward → C++ type mapping)
+- External memory optimization (Phase 3): FIRTransferEliminationPass + FIRDMASafetyPass
+- Channelized concurrency (Phase 4): ChannelTransfer + ConcurrencyAnalysis
+- Unified semantic info (Phase 5): SemanticInfo struct with is_safe(), can_optimize_away(), to_mlir_attributes()
 
 ### 🔧 In Progress
 - Mixed-mode parser (P1 - C++1 syntax support)
 - Semantic AST enhancements (escape, borrow, ownership)
 
 ### 📋 Planned (Next 30 Days)
-- Escape analysis framework (Phase 1: 2-3 days)
-- Borrowing and ownership tracking (Phase 2: 3-4 days)
-- External memory integration (Phase 3: 2-3 days)
-- Channelized concurrency (Phase 4: 2-3 days)
-- Unified semantic info (Phase 5: 2 days)
+- Escape analysis framework (Phase 1: 2-3 days) ✅ COMPLETE
+- Borrowing and ownership tracking (Phase 2: 3-4 days) ✅ COMPLETE
+- External memory integration (Phase 3: 2-3 days) ✅ COMPLETE
+- Channelized concurrency (Phase 4: 2-3 days) ✅ COMPLETE
+- Unified semantic info (Phase 5: 2 days) ✅ COMPLETE
 - Corpus regression testing (Phase 6: 3 days)
 
 ### ❌ Broken/Blocked

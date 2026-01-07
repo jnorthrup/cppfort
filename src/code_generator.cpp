@@ -2791,19 +2791,41 @@ std::string CodeGenerator::generate_type(Type* type) {
             }
             return result;
         }
-        case Type::Kind::Pointer:
+        case Type::Kind::Pointer: {
             // Special case: pointer to function type needs special C++ syntax
             if (type->pointee && type->pointee->kind == Type::Kind::FunctionType) {
                 // Convert function type pointer: need "return_type(*)(params)"
                 std::string func_cpp = convert_function_type_to_cpp(type->pointee->name);
-                // func_cpp is "return_type(params)", need to insert (*) 
+                // func_cpp is "return_type(params)", need to insert (*)
                 auto paren_pos = func_cpp.find('(');
                 if (paren_pos != std::string::npos) {
-                    return func_cpp.substr(0, paren_pos) + "(*)" + func_cpp.substr(paren_pos);
+                    std::string result = func_cpp.substr(0, paren_pos) + "(*)" + func_cpp.substr(paren_pos);
+                    if (type->is_const) {
+                        result += " const";
+                    }
+                    return result;
                 }
                 return func_cpp + "*";
             }
-            return generate_type(type->pointee.get()) + "*";
+
+            // Generate pointee type (may include const)
+            std::string pointee_type = generate_type(type->pointee.get());
+
+            // Add const to pointee if needed
+            if (type->pointee && type->pointee->is_const) {
+                pointee_type += " const";
+            }
+
+            // Add pointer
+            std::string result = pointee_type + "*";
+
+            // Add const to pointer itself if needed
+            if (type->is_const) {
+                result += " const";
+            }
+
+            return result;
+        }
         case Type::Kind::Reference:
             return generate_type(type->pointee.get()) + "&";
         case Type::Kind::Auto:

@@ -3,6 +3,8 @@
 #include "ast.hpp"
 #include <vector>
 #include <memory>
+#include <map>
+#include <string>
 
 namespace cpp2_transpiler {
 
@@ -124,6 +126,66 @@ private:
 
     void report_issue(BorrowIssue::Severity severity, BorrowIssue::Kind kind,
                      std::size_t line, const std::string& message);
+};
+
+// ============================================================================
+// Concurrency Analysis: Channel safety and data race detection (Phase 4)
+// ============================================================================
+
+/// Result of data race detection
+struct DataRaceInfo {
+    bool has_race = false;
+    std::string description;
+    std::vector<std::string> conflicting_operations;
+};
+
+/// Channel operation tracking for analysis
+struct ChannelOperation {
+    enum class Kind { Send, Recv, TrySend, TryRecv, Close };
+    Kind kind;
+    std::string channel_name;
+    std::string variable_name;
+    OwnershipKind ownership;
+    std::size_t line = 0;
+    std::size_t thread_id = 0;  // Simulated thread ID for data race detection
+};
+
+/// Channel safety analysis results
+struct ChannelSafetyResult {
+    bool is_safe = true;
+    std::vector<std::string> violations;
+    std::vector<std::string> warnings;
+};
+
+class ConcurrencyAnalysis {
+public:
+    ConcurrencyAnalysis() = default;
+
+    // Track channel transfers per channel
+    std::map<std::string, std::vector<ChannelTransfer>> channel_escapes;
+    std::vector<ChannelOperation> operations;
+    
+    // Register channel operations
+    void register_send(const std::string& channel, const std::string& var,
+                       OwnershipKind ownership, std::size_t thread_id = 0);
+    void register_recv(const std::string& channel, const std::string& var,
+                       std::size_t thread_id = 0);
+    void register_close(const std::string& channel, std::size_t thread_id = 0);
+
+    // Verification methods
+    DataRaceInfo check_no_data_race() const;
+    bool check_channel_lifetime_bounds() const;
+    ChannelSafetyResult check_send_ownership_transfer() const;
+    
+    // Optimization
+    std::size_t eliminate_redundant_sends() const;
+    std::size_t batch_channel_transfers() const;
+
+    // Query operations per channel
+    std::vector<ChannelOperation> get_operations_for_channel(const std::string& channel) const;
+    
+    // Clear state
+    void clear() { channel_escapes.clear(); operations.clear(); }
 };
 
 } // namespace cpp2_transpiler

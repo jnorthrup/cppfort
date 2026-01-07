@@ -534,4 +534,177 @@ void BorrowChecker::report_issue(BorrowIssue::Severity severity, BorrowIssue::Ki
     issues.emplace_back(severity, kind, line, message);
 }
 
+// ============================================================================
+// Concurrency Analysis Implementation (Phase 4)
+// ============================================================================
+
+void ConcurrencyAnalysis::register_send(const std::string& channel, const std::string& var,
+                                         OwnershipKind ownership, std::size_t thread_id) {
+    ChannelOperation op;
+    op.kind = ChannelOperation::Kind::Send;
+    op.channel_name = channel;
+    op.variable_name = var;
+    op.ownership = ownership;
+    op.thread_id = thread_id;
+    operations.push_back(op);
+    
+    // Track escape to channel
+    ChannelTransfer transfer(channel, "");
+    transfer.ownership_transfer = ownership;
+    channel_escapes[channel].push_back(transfer);
+}
+
+void ConcurrencyAnalysis::register_recv(const std::string& channel, const std::string& var,
+                                         std::size_t thread_id) {
+    ChannelOperation op;
+    op.kind = ChannelOperation::Kind::Recv;
+    op.channel_name = channel;
+    op.variable_name = var;
+    op.ownership = OwnershipKind::Owned;  // Receiver becomes owner
+    op.thread_id = thread_id;
+    operations.push_back(op);
+}
+
+void ConcurrencyAnalysis::register_close(const std::string& channel, std::size_t thread_id) {
+    ChannelOperation op;
+    op.kind = ChannelOperation::Kind::Close;
+    op.channel_name = channel;
+    op.thread_id = thread_id;
+    operations.push_back(op);
+}
+
+DataRaceInfo ConcurrencyAnalysis::check_no_data_race() const {
+    DataRaceInfo result;
+    
+    // Check for concurrent sends to same channel from different threads
+    std::map<std::string, std::vector<ChannelOperation>> sends_by_channel;
+    
+    for (const auto& op : operations) {
+        if (op.kind == ChannelOperation::Kind::Send) {
+            sends_by_channel[op.channel_name].push_back(op);
+        }
+    }
+    
+    // Multiple sends from different threads = potential race
+    for (const auto& [channel, sends] : sends_by_channel) {
+        std::map<std::size_t, int> thread_sends;
+        for (const auto& send : sends) {
+            thread_sends[send.thread_id]++;
+        }
+        if (thread_sends.size() > 1) {
+            result.has_race = true;
+            result.description = "Concurrent sends to channel '" + channel + 
+                                 "' from multiple threads without synchronization";
+            for (const auto& send : sends) {
+                result.conflicting_operations.push_back(
+                    "send to " + send.channel_name + " from thread " + 
+                    std::to_string(send.thread_id));
+            }
+        }
+    }
+    
+    return result;
+}
+
+bool ConcurrencyAnalysis::check_channel_lifetime_bounds() const {
+    // Channel must outlive all operations on it
+    // Simplified: check no operations occur after close
+    std::map<std::string, bool> channel_closed;
+    
+    for (const auto& op : operations) {
+        if (op.kind == ChannelOperation::Kind::Close) {
+            channel_closed[op.channel_name] = true;
+        } else if (channel_closed[op.channel_name]) {
+            // Operation on closed channel
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+ChannelSafetyResult ConcurrencyAnalysis::check_send_ownership_transfer() const {
+    ChannelSafetyResult result;
+    
+    // Track moved variables
+    std::map<std::string, bool> var_moved;
+    
+    for (const auto& op : operations) {
+        if (op.kind == ChannelOperation::Kind::Send) {
+            if (op.ownership == OwnershipKind::Moved) {
+                // Check if variable was already moved
+                if (var_moved[op.variable_name]) {
+                    result.is_safe = false;
+                    result.violations.push_back(
+                        "Use after move: variable '" + op.variable_name + 
+                        "' was already moved before send to channel '" + 
+                        op.channel_name + "'");
+                }
+                var_moved[op.variable_name] = true;
+            } else if (op.ownership == OwnershipKind::Borrowed) {
+                // Check if variable was moved before borrow
+                if (var_moved[op.variable_name]) {
+                    result.is_safe = false;
+                    result.violations.push_back(
+                        "Borrow after move: variable '" + op.variable_name + 
+                        "' was moved before borrow-send to channel '" +
+                        op.channel_name + "'");
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+
+std::size_t ConcurrencyAnalysis::eliminate_redundant_sends() const {
+    // Look for consecutive sends of same value to same channel
+    std::size_t eliminated = 0;
+    std::map<std::string, std::string> last_sent;
+    
+    for (const auto& op : operations) {
+        if (op.kind == ChannelOperation::Kind::Send) {
+            std::string key = op.channel_name;
+            if (last_sent.count(key) && last_sent[key] == op.variable_name) {
+                // Same value sent twice in a row - redundant
+                eliminated++;
+            }
+            last_sent[key] = op.variable_name;
+        }
+    }
+    
+    return eliminated;
+}
+
+std::size_t ConcurrencyAnalysis::batch_channel_transfers() const {
+    // Count sends that could be batched (same channel, same thread)
+    std::map<std::pair<std::string, std::size_t>, std::size_t> sends_per_channel_thread;
+    
+    for (const auto& op : operations) {
+        if (op.kind == ChannelOperation::Kind::Send) {
+            sends_per_channel_thread[{op.channel_name, op.thread_id}]++;
+        }
+    }
+    
+    std::size_t batchable = 0;
+    for (const auto& [key, count] : sends_per_channel_thread) {
+        if (count > 1) {
+            batchable += count - 1;  // All but one can be batched
+        }
+    }
+    
+    return batchable;
+}
+
+std::vector<ChannelOperation> ConcurrencyAnalysis::get_operations_for_channel(
+    const std::string& channel) const {
+    std::vector<ChannelOperation> result;
+    for (const auto& op : operations) {
+        if (op.channel_name == channel) {
+            result.push_back(op);
+        }
+    }
+    return result;
+}
+
 } // namespace cpp2_transpiler

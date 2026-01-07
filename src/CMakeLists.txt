@@ -17,6 +17,7 @@ add_library(Cpp2Transpiler
     # crdt_patch.cpp  # Disabled: requires MLIR
     # diagnostic_collector.cpp  # Disabled: requires MLIR
     # FIRSCCPPass.cpp  # Disabled: requires MLIR
+    # FIRTransferEliminationPass.cpp  # Disabled: requires MLIR (Phase 3: External Memory)
     # LoopToKernel.cpp  # Disabled: requires MLIR
     # markdown_hash.cpp  # Disabled: requires MLIR
     # SCCPPass.cpp  # Disabled: requires MLIR
