@@ -180,13 +180,10 @@ with open('$loss_json') as f:
 done
 
 # Calculate average
-avg_loss=$(echo "$total_loss / ($processed - $failed)" | bc -l)
-
-echo
-echo "=== Summary ==="
-echo "Total processed: $processed"
-echo "Failed: $failed"
-echo "Average Semantic Loss: $avg_loss"
-echo "Results saved to: $RESULTS_FILE"
+if [[ -f "$PROJECT_ROOT/tools/summarize_loss.py" ]]; then
+    python3 "$PROJECT_ROOT/tools/summarize_loss.py" "$RESULTS_FILE"
+else
+    echo "Results saved to: $RESULTS_FILE"
+fi
 
 exit 0
