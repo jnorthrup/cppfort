@@ -18,15 +18,17 @@
     "phase_5": "complete",
     "phase_6": "complete",
     "phase_7": "complete",
-    "phase_8": "pending",
+    "phase_8": "in-progress",
     "phase_9": "pending",
-    "phase_10": "pending"
+    "phase_10": "in-progress"
   },
   "test_coverage": {
     "fir_transfer_elimination_test": 10,
     "channelized_concurrency_test": 26,
     "unified_semantic_info_test": 18,
     "arena_inference_test": 6,
+    "coroutine_frame_elision_test": 6,
+    "allocation_strategy_test": 9,
     "semantic_preservation": "0.124 avg loss (target <0.15)"
   }
 }

@@ -38,7 +38,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
 *Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: IN PROGRESS* - Phases 1-6 Complete
+*Status: SUBSTANTIALLY COMPLETE* - 83% (58/70 tasks, Phases 1-7 complete, Phases 8-10 partial)
 
 **Objectives**:
 - Escape analysis framework (track value lifetimes and escape points)
@@ -46,11 +46,27 @@ This file tracks all major tracks for the project. Each track has its own detail
 - External memory pipeline integration (GPU/DMA transfers, lifecycle optimization)
 - Channelized concurrency integration (ownership through channels, data race detection)
 - Unified semantic representation (SemanticInfo attached to all AST nodes)
+- Arena allocation (JIT memory management for NoEscape aggregates)
+- Coroutine frame elision (Kotlin-style structured concurrency)
+- JIT codegen backend (stack/arena/heap allocation decisions)
 
 **Target Metrics**:
 - Parameter semantics: 0% → 100% (Achieved: 100%)
 - Escape analysis coverage: 0% → 100% (Achieved: 100%)
 - Average corpus semantic loss: 1.0 → <0.15 (Achieved: 0.124)
+- Test coverage: 77 tests (6 arena + 11 allocation + 6 coroutine + 54 others)
+
+**Recent Commits**:
+- `d1edbf7`: SONConcurrencyAnalysisPass for lock/barrier elision
+- `cc8b0c6`: Phase 10 validation - arena-first allocation
+- `3c4145b`: Phase 10 allocation documentation
+- `639af53`: Phase 10 JIT codegen backend
+- `f0ca2ea`: Phase 8 coroutine frame elision
+
+**Blocked Tasks**:
+- Phase 8 (3/8): C++26 std::execution not available
+- Phase 9 (0/7): C++26 std::meta and contracts not available
+- Phase 10 (2/9): Full pipeline integration and benchmarking
 
 ---
 
