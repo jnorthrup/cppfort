@@ -433,6 +433,31 @@ struct SemanticInfo {
                 attrs += "\"";
             }
 
+            // C++26 contracts (Phase 9)
+            if (!contracts.empty()) {
+                attrs += ", contracts = [";
+                for (size_t i = 0; i < contracts.size(); ++i) {
+                    if (i > 0) attrs += ", ";
+                    attrs += "#cpp2.contract<";
+                    switch (contracts[i].kind) {
+                        case SafetyContract::Kind::Precondition:
+                            attrs += "precondition";
+                            break;
+                        case SafetyContract::Kind::Postcondition:
+                            attrs += "postcondition";
+                            break;
+                        case SafetyContract::Kind::Assertion:
+                            attrs += "assertion";
+                            break;
+                        case SafetyContract::Kind::Invariant:
+                            attrs += "invariant";
+                            break;
+                    }
+                    attrs += ">";
+                }
+                attrs += "]";
+            }
+
             return attrs;
         }};
 

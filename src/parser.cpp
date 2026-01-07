@@ -1199,7 +1199,7 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
     func->template_parameters = std::move(template_params);
     func->is_constexpr = is_compile_time;  // '==' means compile-time function
     func->is_forward_return = is_forward_return;  // forward return type
-    
+
     // Store named return parameters
     for (auto& nr : named_returns) {
         FunctionDeclaration::NamedReturn named_ret;
@@ -1207,6 +1207,38 @@ std::unique_ptr<Declaration> Parser::function_declaration() {
         named_ret.type = std::move(nr.type);
         named_ret.default_value = std::move(nr.default_value);
         func->named_returns.push_back(std::move(named_ret));
+    }
+
+    // Attach contracts to SemanticInfo (Phase 9: C++26 Integration)
+    // Contracts provide no-alias guarantees and strengthen alias analysis
+    if (!contracts.empty()) {
+        // Initialize semantic_info if not already present
+        if (!func->semantic_info) {
+            func->semantic_info = std::make_unique<SemanticInfo>();
+        }
+        for (auto& c : contracts) {
+            SafetyContract contract;
+            switch (c->kind) {
+                case ContractExpression::ContractKind::Pre:
+                    contract.kind = SafetyContract::Kind::Precondition;
+                    break;
+                case ContractExpression::ContractKind::Post:
+                    contract.kind = SafetyContract::Kind::Postcondition;
+                    break;
+                case ContractExpression::ContractKind::Assert:
+                    contract.kind = SafetyContract::Kind::Assertion;
+                    break;
+            }
+            // Convert expression to string (simplified - in production would serialize AST)
+            if (c->condition) {
+                // For now, store a placeholder condition string
+                contract.condition = "<contract_condition>";
+            }
+            if (c->message.has_value()) {
+                contract.message = c->message.value();
+            }
+            func->semantic_info->contracts.push_back(std::move(contract));
+        }
     }
 
     return func;
@@ -5237,6 +5269,7 @@ InspectStatement::Pattern Parser::pattern() {
 std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
     std::vector<std::unique_ptr<ContractExpression>> contracts;
 
+    // Parse Cpp2 contract syntax: pre, post, assert
     while (match({TokenType::ContractPre, TokenType::ContractPost, TokenType::ContractAssert})) {
         Token contract_type = previous();
         ContractExpression::ContractKind kind;
@@ -5287,6 +5320,41 @@ std::vector<std::unique_ptr<ContractExpression>> Parser::parse_contracts() {
             Token msg = consume(TokenType::StringLiteral, "Expected string message");
             contract->message = std::string(msg.lexeme);
         }
+
+        contracts.push_back(std::move(contract));
+    }
+
+    // Parse C++26 contract attribute syntax: [[expects]], [[ensures]], [[assert]]
+    while (match({TokenType::AttributeExpect, TokenType::AttributeEnsure, TokenType::AttributeAssert})) {
+        Token contract_type = previous();
+        ContractExpression::ContractKind kind;
+
+        if (contract_type.type == TokenType::AttributeExpect) {
+            kind = ContractExpression::ContractKind::Pre;
+        } else if (contract_type.type == TokenType::AttributeEnsure) {
+            kind = ContractExpression::ContractKind::Post;
+        } else {
+            kind = ContractExpression::ContractKind::Assert;
+        }
+
+        // C++26 attribute contract syntax: [[expects: condition]] or [[expects condition]]
+        std::unique_ptr<Expression> condition;
+        std::string message;
+
+        if (match(TokenType::Colon)) {
+            // [[expects: condition]]
+            condition = expression();
+        } else {
+            // [[expects condition]] - parse expression until ]]
+            condition = expression();
+        }
+
+        auto contract = std::make_unique<ContractExpression>(kind, std::move(condition), contract_type.line);
+        if (!message.empty()) {
+            contract->message = std::move(message);
+        }
+
+        consume(TokenType::DoubleRightBracket, "Expected ']]' after C++26 contract attribute");
 
         contracts.push_back(std::move(contract));
     }

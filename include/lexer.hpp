@@ -186,6 +186,13 @@ enum class TokenType : uint8_t {
 
     // Markdown blocks for CAS-linked modules
     MarkdownBlock,   // markdown block with embedded content
+
+    // C++26 contract attributes
+    DoubleLeftBracket,  // [[
+    DoubleRightBracket, // ]]
+    AttributeExpect,    // expects (in [[expects]])
+    AttributeEnsure,    // ensures (in [[ensures]])
+    AttributeAssert,    // assert (in [[assert]])
 };
 
 struct Token {
@@ -243,6 +250,7 @@ private:
     void scan_block_comment();
     void scan_markdown_block();
     void scan_preprocessor();
+    void scan_cpp26_attribute();
 
     bool is_digit(char c) const;
     bool is_hex_digit(char c) const;
