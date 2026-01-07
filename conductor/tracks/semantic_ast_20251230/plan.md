@@ -79,17 +79,35 @@
 
 ## Phase 7: Scope-Inferred Arena Allocation (JIT Memory Management)
 
-- [ ] Design `ArenaRegion` tracking structure linked to `LifetimeRegion`
-- [ ] Implement scope-level escape analysis aggregation (determine arena-eligible scopes)
-- [ ] Add arena allocation hints to MLIR FIR operations
-  - New attribute: `#cpp2.arena_scope<scopeID>`
-- [ ] Implement JIT analysis pass: `ArenaInferencePass` in MLIR pipeline
-  - Input: Escape-annotated FIR
-  - Output: Scope-tagged operations with arena/stack/heap decisions
-- [ ] Add MLIR type attribute: `!cpp2.arena<scopeID>` for arena-allocated values
-- [ ] Write unit tests for arena inference on nested scopes
-- [ ] Validate with Cpp2 functions containing local aggregates (vector, map, string)
-- [ ] Verify arena allocation eliminates heap allocs for NoEscape aggregates
+- [x] Design `ArenaRegion` tracking structure linked to `LifetimeRegion`
+  - ArenaRegion struct in ast.hpp with scope_id and associated_lifetime
+  - Integrated into SemanticInfo as std::optional<ArenaRegion> arena
+- [x] Implement scope-level escape analysis aggregation (determine arena-eligible scopes)
+  - analyze_scope_for_arena() in semantic_analyzer.cpp
+  - Criteria: NoEscape + aggregate type (vector, map, string)
+  - Small primitives excluded (use stack instead)
+- [x] Add arena allocation hints to MLIR FIR operations
+  - Cpp2FIR_ArenaScopeAttr defined in Cpp2FIRDialect.td
+  - arena_scope attribute with scope ID integer
+- [x] Implement JIT analysis pass: `ArenaInferencePass` in MLIR pipeline
+  - FIRArenaInferencePass in src/FIRArenaInferencePass.cpp
+  - Walks functions, identifies NoEscape aggregates, assigns arena IDs
+  - Statistics reporting: scopes created, allocations tagged, heap kept
+- [x] Add MLIR type attribute: `!cpp2.arena<scopeID>` for arena-allocated values
+  - Cpp2FIR_ArenaType defined in Cpp2FIRDialect.td
+  - allocation_strategy attribute: "arena", "stack", "heap"
+- [x] Write unit tests for arena inference on nested scopes
+  - 6 tests in arena_inference_test.cpp:
+    - test_simple_arena: Basic NoEscape vector gets arena ID
+    - test_nested_arena: Nested scopes get distinct IDs
+    - test_escaping_value_no_arena: EscapeToReturn excluded
+    - test_primitive_no_arena: Small primitives use stack
+    - test_string_arena: std::string gets arena
+    - test_mixed_scope_allocation: Mixed escapes handled correctly
+- [x] Validate with Cpp2 functions containing local aggregates (vector, map, string)
+  - All standard library containers (vector, map, string, array, deque, list, set) detected
+- [x] Verify arena allocation eliminates heap allocs for NoEscape aggregates
+  - NoEscape aggregates → arena, escaping → heap
 
 ## Phase 8: Coroutine Frame Elision (Kotlin-style Structured Concurrency)
 
