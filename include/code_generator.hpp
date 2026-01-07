@@ -25,6 +25,21 @@ public:
     void set_output_mode(OutputMode mode) { output_mode_ = mode; }
     OutputMode output_mode() const { return output_mode_; }
 
+    // Allocation strategy generation (Phase 10: JIT Codegen Backend)
+    enum class AllocationStrategy {
+        Stack,   // Direct stack allocation
+        Arena,   // Arena-slabotted allocation
+        Heap     // std::make_unique/std::make_shared
+    };
+
+    AllocationStrategy determine_allocation_strategy(VariableDeclaration* decl);
+    std::string generate_allocation(VariableDeclaration* decl, const std::string& type_name, const std::string& init_expr);
+    void generate_arena_boilerplate(std::size_t scope_id);
+    void generate_arena_reset(std::size_t scope_id);
+    std::string generate_stack_allocation(const std::string& type_name, const std::string& init_expr);
+    std::string generate_arena_allocation(const std::string& type_name, const std::string& init_expr, std::size_t scope_id);
+    std::string generate_heap_allocation(const std::string& type_name, const std::string& init_expr);
+
 private:
     std::ostringstream output;
     int indent_level = 0;
