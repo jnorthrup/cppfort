@@ -204,6 +204,72 @@ void test_generate_arena_alloc() {
     }
 }
 
+void test_arena_first_not_heap_default() {
+    std::cout << "Running test_arena_first_not_heap_default...\n";
+
+    // Verify that NoEscape aggregates default to arena, NOT heap
+    // Heap should only be used as a fallback for escaping values
+    auto var = std::make_unique<VariableDeclaration>("data", 1);
+    var->type = std::make_unique<Type>(Type::Kind::UserDefined);
+    var->type->name = "std::vector<int>";
+    var->escape_info = std::make_unique<EscapeInfo>();
+    var->escape_info->kind = EscapeKind::NoEscape;  // NoEscape
+
+    CodeGenerator gen;
+    auto strategy = gen.determine_allocation_strategy(var.get());
+
+    if (strategy == CodeGenerator::AllocationStrategy::Arena) {
+        std::cout << "  PASS: NoEscape aggregate defaults to arena (not heap)\n";
+    } else if (strategy == CodeGenerator::AllocationStrategy::Heap) {
+        std::cerr << "  FAIL: NoEscape aggregate should use arena, not heap!\n";
+        std::cerr << "        Heap must be fallback for escaping values only\n";
+        exit(1);
+    } else {
+        std::cerr << "  FAIL: Unexpected strategy: " << (int)strategy << "\n";
+        exit(1);
+    }
+}
+
+void test_heap_only_for_escaping() {
+    std::cout << "Running test_heap_only_for_escaping...\n";
+
+    // Verify heap is ONLY used for escaping values
+    // Test all escape kinds that should result in heap
+    std::vector<EscapeKind> escaping_kinds = {
+        EscapeKind::EscapeToHeap,
+        EscapeKind::EscapeToReturn,
+        EscapeKind::EscapeToParam,
+        EscapeKind::EscapeToGlobal,
+        EscapeKind::EscapeToChannel,
+        EscapeKind::EscapeToGPU,
+        EscapeKind::EscapeToDMA,
+        EscapeKind::EscapeToCoroutineFrame
+    };
+
+    CodeGenerator gen;
+    int heap_count = 0;
+
+    for (auto escape_kind : escaping_kinds) {
+        auto var = std::make_unique<VariableDeclaration>("escaper", 1);
+        var->type = std::make_unique<Type>(Type::Kind::UserDefined);
+        var->type->name = "std::string";
+        var->escape_info = std::make_unique<EscapeInfo>();
+        var->escape_info->kind = escape_kind;
+
+        auto strategy = gen.determine_allocation_strategy(var.get());
+        if (strategy == CodeGenerator::AllocationStrategy::Heap) {
+            heap_count++;
+        }
+    }
+
+    if (static_cast<std::size_t>(heap_count) == escaping_kinds.size()) {
+        std::cout << "  PASS: All " << heap_count << " escaping kinds use heap\n";
+    } else {
+        std::cerr << "  FAIL: Only " << heap_count << "/" << escaping_kinds.size() << " escaping kinds use heap\n";
+        exit(1);
+    }
+}
+
 int main() {
     try {
         test_stack_allocation_small_primitive();
@@ -215,9 +281,11 @@ int main() {
         test_generate_stack_alloc();
         test_generate_heap_alloc();
         test_generate_arena_alloc();
+        test_arena_first_not_heap_default();
+        test_heap_only_for_escaping();
 
         std::cout << "\n========================================\n";
-        std::cout << "✅ All 9 allocation strategy tests passed!\n";
+        std::cout << "✅ All 11 allocation strategy tests passed!\n";
         std::cout << "========================================\n";
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
