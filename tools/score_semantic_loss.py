@@ -54,7 +54,7 @@ class SemanticLossScorer:
             self.reference.get("tagged_isomorphs", [])
         )
         cand_signatures = self._build_signature_map(
-            self.candidate.get("isomorphs", [])
+            self.candidate.get("tagged_isomorphs", [])
         )
 
         # Compute distances

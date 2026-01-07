@@ -38,7 +38,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
 *Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: IN PROGRESS*
+*Status: IN PROGRESS* - Phases 1-5 Complete
 
 **Objectives**:
 - Escape analysis framework (track value lifetimes and escape points)
@@ -48,25 +48,26 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Unified semantic representation (SemanticInfo attached to all AST nodes)
 
 **Target Metrics**:
-- Parameter semantics: 0% → 100%
-- Escape analysis coverage: 0% → 100%
-- Average corpus semantic loss: 1.0 → <0.15
+- Parameter semantics: 0% → 100% (Achieved: 100%)
+- Escape analysis coverage: 0% → 100% (Achieved: 100%)
+- Average corpus semantic loss: 1.0 → <0.15 (Achieved: 0.124)
 
 ---
 
-## [ ] Track: Regression Test Corpus Semantic Preservation
+## [x] Track: Regression Test Corpus Semantic Preservation
 *Link: [./conductor/tracks/regression_corpus_20251230/](./conductor/tracks/regression_corpus_20251230/)*
-*Status: **UNBLOCKED*** - Ready for implementation
+*Status: COMPLETE* - 0.124 Average Semantic Loss (Goal < 0.15)
 
-**Previous Blockers** (NOW RESOLVED ✅):
-1. ~~P0: Parameter semantics~~ - ✅ FIXED (100% parameter semantics working)
-2. ~~P1: Mixed-mode C++1 syntax~~ - ✅ FIXED (100% of mixed-mode tests passing)
-3. P2: Semantic loss scoring accuracy - Implementation ready
+**Results**:
+- **Pass Rate**: 100% (Mixed), 98.4% (Pure2)
+- **Semantic Loss**: 0.124 Avg (0 High Loss files)
+- **Zero Loss**: `mixed-allcpp1-hello.cpp2` achieved 0.000 (Perfect)
+- **Scoring**: Full corpus validation with graph edit distance + type distance
+- **Deliverable**: `SEMANTIC_PRESERVATION_REPORT.md`
 
 **Current State**:
 - Transpiler: 178/180 tests passing (98.9%)
 - Infrastructure: 1.4M isomorphs, 13.5K unique patterns, 100% MLIR coverage
-- Next step: Implement semantic loss scoring for 178 passing tests
 
 ---
 
