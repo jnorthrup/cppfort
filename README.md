@@ -60,6 +60,64 @@ python3 tools/inference/validate_against_dialect.py \
   -d include/Cpp2Dialect.td
 ```
 
+## Building
+
+### Prerequisites
+
+```bash
+# macOS (Homebrew LLVM)
+brew install llvm ninja cmake
+
+# Set LLVM in PATH (add to ~/.zshrc or ~/.bashrc)
+export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+```
+
+### Build Commands
+
+```bash
+# Configure with CMake (Homebrew LLVM, Ninja)
+cmake -B build -G Ninja .
+
+# Build main targets
+ninja -C build cppfort              # Main transpiler executable
+ninja -C build Cpp2Transpiler       # Transpiler library
+ninja -C build cppfront             # Cpp2 transpiler (from cppfront)
+
+# Build and run tests
+ninja -C build test                 # Run all CTest suites
+./build/tests/cpp26_contracts_test  # Run specific test
+
+# Corpus processing (requires cppfront)
+ninja -C build corpus_transpile     # Transpile .cpp2 → .cpp
+ninja -C build corpus_ast           # Generate AST dumps
+ninja -C build corpus_reference     # Combined transpile + AST
+
+# Clean build
+rm -rf build && cmake -B build -G Ninja . && ninja -C build
+```
+
+### CMake Targets
+
+| Target | Description |
+|--------|-------------|
+| `cppfort` | Main transpiler executable |
+| `Cpp2Transpiler` | Transpiler library |
+| `cppfront` | Cpp2 reference transpiler |
+| `corpus_transpile` | Transpile 189 .cpp2 files |
+| `corpus_ast` | Generate AST dumps |
+| `corpus_reference` | Combined corpus processing |
+| `test` | Run all test suites |
+
+### Running the Transpiler
+
+```bash
+# Transpile a Cpp2 file
+./build/src/cppfort input.cpp2 -o output.cpp
+
+# Generate MLIR
+./build/src/cppfort input.cpp2 --emit-mlir -o output.mlir
+```
+
 ## Project Status
 
 ### Completed
@@ -113,11 +171,11 @@ C++ Source (.cpp2)
 
 ## Dependencies
 
-- **LLVM/MLIR**: 17.0+ (for dialect and TableGen)
-- **Clang**: 17.0+ (for AST parsing)
-- **Python**: 3.10+ with libclang bindings
-- **CMake**: 3.20+ (for build system)
+- **LLVM/MLIR**: 21.1+ (Homebrew LLVM on macOS)
+- **Clang**: 21.1+ (from Homebrew LLVM)
+- **CMake**: 3.28+ (for build system)
 - **Ninja**: (recommended build tool)
+- **Python**: 3.10+ with libclang bindings (for mapping tools)
 
 ## References
 

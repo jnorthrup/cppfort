@@ -11,9 +11,27 @@
 - **Migration Timeline**: Phase 9 (C++26 Integration) uses conditional compilation until features stabilize
 
 ## Build System
-- **CMake 3.25+**: Build configuration
-- **Ninja**: Fast parallel builds
+- **CMake 3.28+**: Build configuration with Homebrew LLVM integration
+- **Ninja**: Fast parallel builds (recommended)
 - **CTest**: Test execution framework
+
+### CMake Targets
+
+| Target | Type | Description |
+|--------|------|-------------|
+| `cppfort` | Executable | Main Cpp2 transpiler with MLIR pipeline |
+| `Cpp2Transpiler` | Static Library | Transpiler core library |
+| `cppfront` | Executable | Reference Cpp2 transpiler (from cppfront submodule) |
+| `corpus_transpile` | Custom Target | Transpile 189 .cpp2 → .cpp files |
+| `corpus_ast` | Custom Target | Generate Clang AST dumps from .cpp files |
+| `corpus_reference` | Custom Target | Combined corpus processing (transpile + AST) |
+| `test` | CTest | Run all test suites |
+
+### Build Configuration
+- **Homebrew LLVM**: `/opt/homebrew/opt/llvm` on macOS
+- **libc++**: Homebrew's libc++ (not system SDK)
+- **TableGen**: MLIR dialect code generation to `build/`
+- **Output Directory**: `build/` (all artifacts, no generated files in root)
 
 ## Compilers & Toolchains
 - **Clang 21.1.8** (LLVM/Homebrew): Primary C++ compiler, AST analysis
@@ -30,11 +48,15 @@
 - **mlir-opt**: MLIR optimization pipeline runner
 
 ## Testing & Analysis
-- **CTest**: Test framework (29 test suites, 24 passing)
-- **lcov 2.4**: Code coverage measurement
+- **CTest**: Test framework (21+ test suites verified passing)
+  - `cpp26_contracts_test`: C++26 contract attribute parsing (4 tests)
+  - `arena_inference_test`: Arena allocation inference (6 tests)
+  - `allocation_strategy_test`: Allocation strategy verification (11 tests)
+- **Integration Tests**: `test_cmake_integration.cpp` (10 build system tests)
+- **lcov**: Code coverage measurement
 - **genhtml**: Coverage report generation
-- **LLVM gcov 17.0.0**: Coverage data collection
-- **timeout (15s)**: Test execution time limit enforcement
+- **LLVM gcov**: Coverage data collection
+- **timeout**: Test execution time limit enforcement
 
 ## Regression Testing Infrastructure
 - **Corpus**: 189 .cpp2 files from cppfront regression suite

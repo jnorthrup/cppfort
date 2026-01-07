@@ -58,9 +58,12 @@
 
 - [x] Write integration test validating full build pipeline (10/10 tests passed)
 - [x] Run full clean build: `rm -rf build && cmake -B build -G Ninja && ninja -C build`
-- [ ] Run corpus processing: `ninja -C build corpus_reference` (awaiting cppfront build)
+- [ ] Run corpus processing: `ninja -C build corpus_reference` (awaiting cppfront build - 40+ min with -O3)
 - [ ] Verify corpus output matches previous reference (diff check)
 - [x] Run all CTest suites: `ninja -C build test` (21/21 tests verified)
-- [ ] Document new build commands in README.md
-- [ ] Update tech-stack.md with CMake target descriptions
+- [x] Document new build commands in README.md
+- [x] Update tech-stack.md with CMake target descriptions
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Validation' (Protocol in workflow.md)
+
+**Note**: cppfront compilation with -O3 takes 30-60 minutes due to heavy template code.
+Future builds should use -O0 for faster compilation.
