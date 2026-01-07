@@ -2988,21 +2988,20 @@ std::string CodeGenerator::generate_allocation(VariableDeclaration* decl, const 
 }
 
 std::string CodeGenerator::generate_stack_allocation(const std::string& type_name, const std::string& init_expr) {
-    // Direct stack allocation
-    return type_name + " " + init_expr;
+    // Direct stack allocation - fastest, no overhead
+    return type_name + " " + init_expr + "  // Allocation: stack (NoEscape local)";
 }
 
 std::string CodeGenerator::generate_arena_allocation(const std::string& type_name, const std::string& init_expr, std::size_t scope_id) {
-    // Arena allocation using placement new
-    // Emit: auto <var> = cpp2::arena_alloc<type_name>(arena<scope_id>, <init>);
+    // Arena allocation using monotonic arena - fast bulk deallocation
     add_include("cpp2/arena.hpp");
-    return "cpp2::arena_alloc<" + type_name + ">(cpp2::arena<" + std::to_string(scope_id) + ">(), " + init_expr + ")";
+    return "cpp2::arena_alloc<" + type_name + ">(cpp2::arena<" + std::to_string(scope_id) + ">(), " + init_expr + ")  // Allocation: arena scope " + std::to_string(scope_id) + " (NoEscape aggregate)";
 }
 
 std::string CodeGenerator::generate_heap_allocation(const std::string& type_name, const std::string& init_expr) {
-    // Heap allocation using std::make_unique
+    // Heap allocation using std::make_unique - for escaping values
     add_include("<memory>");
-    return "std::make_unique<" + type_name + ">(" + init_expr + ")";
+    return "std::make_unique<" + type_name + ">(" + init_expr + ")  // Allocation: heap (escaping value)";
 }
 
 void CodeGenerator::generate_arena_boilerplate(std::size_t scope_id) {
@@ -3010,6 +3009,7 @@ void CodeGenerator::generate_arena_boilerplate(std::size_t scope_id) {
     // using ArenaType = cpp2::monotonic_arena<scope_id>;
     // ArenaType arena<scope_id>;
     add_include("cpp2/arena.hpp");
+    write_line("// JIT Allocation: Arena scope " + std::to_string(scope_id) + " for NoEscape aggregates");
     write_line("using Arena_" + std::to_string(scope_id) + " = cpp2::monotonic_arena<" + std::to_string(scope_id) + ">;");
     write_line("Arena_" + std::to_string(scope_id) + " arena_" + std::to_string(scope_id) + ";");
 }
@@ -3017,7 +3017,7 @@ void CodeGenerator::generate_arena_boilerplate(std::size_t scope_id) {
 void CodeGenerator::generate_arena_reset(std::size_t scope_id) {
     // Emit arena reset at scope exit
     // arena_<scope_id>.reset();
-    write_line("arena_" + std::to_string(scope_id) + ".reset();");
+    write_line("arena_" + std::to_string(scope_id) + ".reset();  // JIT: Bulk deallocate arena scope " + std::to_string(scope_id));
 }
 
 } // namespace cpp2_transpiler
