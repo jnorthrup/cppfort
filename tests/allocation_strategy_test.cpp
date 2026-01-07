@@ -148,7 +148,9 @@ void test_generate_stack_alloc() {
     CodeGenerator gen;
     std::string alloc = gen.generate_allocation(var.get(), "int", "x(42)");
 
-    if (alloc.find("int") != std::string::npos && alloc.find("x(42)") != std::string::npos) {
+    if (alloc.find("int") != std::string::npos &&
+        alloc.find("x(42)") != std::string::npos &&
+        alloc.find("// Allocation: stack") != std::string::npos) {
         std::cout << "  PASS: Stack allocation generated: " << alloc << "\n";
     } else {
         std::cerr << "  FAIL: Unexpected stack allocation: " << alloc << "\n";
@@ -169,7 +171,8 @@ void test_generate_heap_alloc() {
     std::string alloc = gen.generate_allocation(var.get(), "std::vector<int>", "{}");
 
     if (alloc.find("std::make_unique") != std::string::npos &&
-        alloc.find("std::vector") != std::string::npos) {
+        alloc.find("std::vector") != std::string::npos &&
+        alloc.find("// Allocation: heap") != std::string::npos) {
         std::cout << "  PASS: Heap allocation generated: " << alloc << "\n";
     } else {
         std::cerr << "  FAIL: Unexpected heap allocation: " << alloc << "\n";
@@ -192,7 +195,8 @@ void test_generate_arena_alloc() {
     std::string alloc = gen.generate_allocation(var.get(), "std::vector<int>", "{}");
 
     if (alloc.find("arena_alloc") != std::string::npos &&
-        alloc.find("arena<1>") != std::string::npos) {
+        alloc.find("arena<1>") != std::string::npos &&
+        alloc.find("// Allocation: arena scope 1") != std::string::npos) {
         std::cout << "  PASS: Arena allocation generated: " << alloc << "\n";
     } else {
         std::cerr << "  FAIL: Unexpected arena allocation: " << alloc << "\n";
