@@ -16,7 +16,9 @@ endfunction()
 
 # Add all existing tests
 add_test_if_exists(arena_inference_test arena_inference_test.cpp)
+add_test_if_exists(end_to_end_arena_codegen_test end_to_end_arena_codegen_test.cpp)
 add_test_if_exists(allocation_strategy_test allocation_strategy_test.cpp)
+add_test_if_exists(benchmark_allocation_performance benchmark_allocation_performance.cpp)
 add_test_if_exists(coroutine_frame_elision_test coroutine_frame_elision_test.cpp)
 add_test_if_exists(benchmark_combinators benchmark_combinators.cpp)
 add_test_if_exists(benchmark_sccp_standalone benchmark_sccp_standalone.cpp)
