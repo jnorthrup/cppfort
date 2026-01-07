@@ -46,6 +46,8 @@
 - **Isomorph Extraction**: 1.4M patterns extracted, 13.5K unique
 - **MLIR Tagging**: 100% coverage with region type mapping
 - **Semantic Loss Scoring**: Graph edit distance, type distance, operation distance
+  - **Average Loss**: 0.124 (vs Target < 0.15)
+  - **Pass Rate**: 98.4% pure2, 100% mixed
 
 ## Analysis Tools (Python 3)
 - `tools/extract_ast_isomorphs.py`: Clang AST → graph pattern extraction
@@ -55,6 +57,7 @@
 - `tools/aggregate_corpus_scores.py`: Corpus-wide metric aggregation
 - `tools/generate_ast_mappings.py`: Batch AST dump generation
 - `tools/process_corpus_with_cppfront.sh`: Corpus transpilation automation
+- `tools/score_corpus_semantics.sh`: Automated scoring pipeline
 
 ## Version Control & Workflow
 - **Git**: Source control
@@ -225,3 +228,5 @@ cppfort/
 - Build time: ~2 minutes (full rebuild with Ninja -j8)
 - Corpus size: 189 files, 10GB AST data, 1.4M isomorphs
 - Unique patterns: 13,545 (deduplication ratio 1.0%)
+- Average Semantic Loss: 0.124 (Goal < 0.15)
+- Regression Pass Rate: 98.4% (pure2), 100% (mixed)
