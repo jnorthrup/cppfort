@@ -119,6 +119,105 @@ add_public_tablegen_target(Cpp2SONOpsIncGen)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+# Cppfront build integration
+# Build cppfront from third_party/cppfront with Homebrew Clang
+set(CPPFRONT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/source")
+set(CPPFRONT_BINARY_DIR "${CMAKE_BINARY_DIR}/bin")
+
+add_executable(cppfront
+    "${CPPFRONT_SOURCE_DIR}/cppfront.cpp"
+)
+
+target_include_directories(cppfront PRIVATE
+    "${CPPFRONT_SOURCE_DIR}"
+)
+
+target_compile_features(cppfront PRIVATE cxx_std_23)
+
+# Ensure cppfront uses Homebrew Clang and libc++
+if(APPLE)
+    target_compile_options(cppfront PRIVATE
+        -stdlib=libc++
+        -Wno-date-time
+    )
+    target_link_options(cppfront PRIVATE
+        -stdlib=libc++
+        -L${HOMEBREW_LLVM_LIB}/c++
+        -L${HOMEBREW_LLVM_LIB}/unwind
+        -lunwind
+    )
+    set_target_properties(cppfront PROPERTIES
+        OUTPUT_NAME "cppfront"
+        RUNTIME_OUTPUT_DIRECTORY "${CPPFRONT_BINARY_DIR}"
+    )
+endif()
+
+# Custom target to build cppfront (for use with ninja)
+add_custom_target(cppfront_build DEPENDS cppfront)
+
+# Corpus processing targets
+# Find all .cpp2 files in cppfront regression-tests
+file(GLOB_RECURSE CPP2_FILES
+    "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests/*.cpp2"
+)
+
+set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
+set(CORPUS_REFERENCE_DIR "${CMAKE_SOURCE_DIR}/corpus/reference")
+file(MAKE_DIRECTORY ${CORPUS_OUTPUT_DIR})
+
+# Create custom commands for each .cpp2 file
+foreach(cpp2_file ${CPP2_FILES})
+    get_filename_component(base_name ${cpp2_file} NAME_WE)
+    set(output_cpp ${CORPUS_OUTPUT_DIR}/${base_name}.cpp)
+    set(output_ast ${CORPUS_OUTPUT_DIR}/${base_name}.ast)
+
+    # Custom command to transpile .cpp2 to .cpp
+    add_custom_command(
+        OUTPUT ${output_cpp}
+        COMMAND cppfront
+            ${cpp2_file}
+            -o ${output_cpp}
+        DEPENDS cppfront
+        COMMENT "Transpiling ${base_name}.cpp2"
+        VERBATIM
+    )
+
+    # Custom command to generate AST dump from .cpp
+    add_custom_command(
+        OUTPUT ${output_ast}
+        COMMAND ${CMAKE_CXX_COMPILER}
+            -Xclang -ast-dump
+            -fsyntax-only
+            -std=c++23
+            ${output_cpp}
+        > ${output_ast}
+        DEPENDS ${output_cpp}
+        COMMENT "Generating AST for ${base_name}.cpp"
+        VERBATIM
+    )
+
+    list(APPEND CORPUS_CPP_OUTPUTS ${output_cpp})
+    list(APPEND CORPUS_AST_OUTPUTS ${output_ast})
+endforeach()
+
+# corpus_transpile target: transpile all .cpp2 files
+add_custom_target(corpus_transpile
+    DEPENDS ${CORPUS_CPP_OUTPUTS}
+    COMMENT "Corpus transpilation complete"
+)
+
+# corpus_ast target: generate AST dumps
+add_custom_target(corpus_ast
+    DEPENDS ${CORPUS_AST_OUTPUTS}
+    COMMENT "Corpus AST generation complete"
+)
+
+# corpus_reference target: transpile + AST
+add_custom_target(corpus_reference
+    DEPENDS corpus_transpile corpus_ast
+    COMMENT "Corpus reference generation complete"
+)
+
 # Subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
