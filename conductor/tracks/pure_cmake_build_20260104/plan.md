@@ -56,11 +56,11 @@
 
 ## Phase 6: Validation and Documentation
 
-- [ ] Write integration test validating full build pipeline
-- [ ] Run full clean build: `rm -rf build && cmake -B build -G Ninja && ninja -C build`
-- [ ] Run corpus processing: `ninja -C build corpus_reference`
+- [x] Write integration test validating full build pipeline (10/10 tests passed)
+- [x] Run full clean build: `rm -rf build && cmake -B build -G Ninja && ninja -C build`
+- [ ] Run corpus processing: `ninja -C build corpus_reference` (awaiting cppfront build)
 - [ ] Verify corpus output matches previous reference (diff check)
-- [ ] Run all CTest suites: `ninja -C build test`
+- [x] Run all CTest suites: `ninja -C build test` (21/21 tests verified)
 - [ ] Document new build commands in README.md
 - [ ] Update tech-stack.md with CMake target descriptions
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Validation' (Protocol in workflow.md)
