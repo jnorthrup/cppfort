@@ -104,6 +104,29 @@ struct LifetimeRegion {
     }
 };
 
+// External Memory: Memory region tracking for GPU/DMA transfers
+struct MemoryRegion {
+    std::string name;              // Region identifier (e.g., "gpu_global", "host", "gpu_shared")
+    std::size_t size_bytes = 0;    // Region size in bytes
+    bool is_device_memory = false; // True for GPU/DMA, false for host
+
+    MemoryRegion() = default;
+    MemoryRegion(std::string n, std::size_t size, bool is_device)
+        : name(std::move(n)), size_bytes(size), is_device_memory(is_device) {}
+};
+
+// External Memory: Track GPU/DMA transfers with escape analysis integration
+struct MemoryTransfer {
+    EscapeKind escape_kind = EscapeKind::NoEscape;
+    MemoryRegion* source_region = nullptr;
+    MemoryRegion* dest_region = nullptr;
+    bool is_async = false;                          // True for DMA transfers
+    std::vector<void*> transferred_vars;            // VarDecl* (void* to avoid forward declaration)
+    LifetimeRegion transfer_lifetime;               // Lifetime bounds for the transfer
+
+    MemoryTransfer() = default;
+};
+
 // Type system
 struct Type {
     enum class Kind {
