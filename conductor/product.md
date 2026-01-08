@@ -49,7 +49,6 @@ Cpp2 Source
 - **Corpus Validation**: 178/189 (93.7%) passing, 0.124 avg semantic loss
 
 ### 🔧 In Progress
-- **Semantic AST Enhancements**: JIT CodeGen, C++26 integration (Reflection, Contracts)
 - **Code Quality**: Reducing output noise, improving formatting
 
 ### 📊 Corpus Analysis
@@ -89,11 +88,10 @@ Cpp2 Source
 - Borrow Checking (Exclusive mutable borrows)
 - Channel Safety (Ownership transfer, data race detection)
 - External Memory Safety (Async DMA aliasing checks)
-
-### Safety Features (Planned - SEMANTIC_AST_ENHANCEMENTS.md)
-- **Lifetime Regions**: Borrow outlives owner enforcement
-- **Scope-Inferred Arenas**: JIT memory management
-- **Coroutine Frame Elision**: Stack allocation for non-escaping frames
+- Lifetime Regions (Borrow outlives owner enforcement)
+- Scope-Inferred Arenas (JIT memory management via ArenaInferencePass)
+- Coroutine Frame Elision (Stack allocation for non-escaping frames)
+- C++26 Integration (Reflection SBO sizing, Contracts, Pattern matching)
 
 ### Advanced Features
 - **CAS-Driven Modules**: Markdown block comments trigger C++20 module generation

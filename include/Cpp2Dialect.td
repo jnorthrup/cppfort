@@ -225,7 +225,7 @@ def Cpp2_VarOp : Cpp2_Op<"var"> {
   }];
   let arguments = (ins StrAttr:$name, OptionalAttr<AnyAttr>:$init);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$name (`,` $init^)? attr-dict `:` type($result)";
+  let assemblyFormat = "$name attr-dict `:` type($result)";
 }
 
 def Cpp2_CallOp : Cpp2_Op<"call"> {
@@ -248,21 +248,21 @@ def Cpp2_BinOpOp : Cpp2_Op<"binop", [Pure]> {
   }];
   let arguments = (ins StrAttr:$op, AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
-  let assemblyFormat = "$op $lhs `,` $rhs attr-dict `:` type($result)";
+  let assemblyFormat = "$op $lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)";
   let hasFolder = 1;
 }
 
-def Cpp2_ForOp : Cpp2_Op<"for", [DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
-  let summary = "For loop with init, condition, increment";
-  let description = [{
-    Represents C-style for loop: for(init; cond; inc) { body }
-    Maps from Clang ForStmt AST nodes.
-  }];
-  let arguments = (ins Optional<AnyType>:$init, I1:$cond, Optional<AnyType>:$inc);
-  let regions = (region SizedRegion<1>:$body);
-  let results = (outs Variadic<AnyType>:$results);
-  let assemblyFormat = "(`init` $init^)? `cond` $cond (`inc` $inc^)? $body attr-dict `:` type($results)";
-}
+// def Cpp2_ForOp : Cpp2_Op<"for", [DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
+//   let summary = "For loop with init, condition, increment";
+//   let description = [{
+//     Represents C-style for loop: for(init; cond; inc) { body }
+//     Maps from Clang ForStmt AST nodes.
+//   }];
+//   let arguments = (ins Optional<AnyType>:$init, I1:$cond, Optional<AnyType>:$inc);
+//   let regions = (region SizedRegion<1>:$body);
+//   let results = (outs Variadic<AnyType>:$results);
+//   let assemblyFormat = "(`init` $init^)? `cond` $cond (`inc` $inc^)? $body attr-dict `:` type($results)";
+// }
 
 def Cpp2_WhileOp : Cpp2_Op<"while", [DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
   let summary = "While loop with condition";

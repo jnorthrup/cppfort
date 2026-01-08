@@ -84,6 +84,12 @@ void MetafunctionProcessor::register_builtin_metafunctions() {
         {},
         [this](TypeDeclaration* type_decl) { process_hashable(type_decl); }
     };
+
+    metafunctions["print"] = {
+        "print",
+        {},
+        [this](TypeDeclaration* type_decl) { process_print(type_decl); }
+    };
 }
 
 void MetafunctionProcessor::process_value(TypeDeclaration* type_decl) {
@@ -167,6 +173,22 @@ void MetafunctionProcessor::process_struct(TypeDeclaration* type_decl) {
 void MetafunctionProcessor::process_hashable(TypeDeclaration* type_decl) {
     // Generate hash function
     generate_hash_function(type_decl);
+}
+
+void MetafunctionProcessor::process_print(TypeDeclaration* type_decl) {
+    // Generate to_string member for @print
+    auto to_string_func = std::make_unique<FunctionDeclaration>("to_string", 0);
+    to_string_func->return_type = std::make_unique<Type>(Type::Kind::UserDefined);
+    to_string_func->return_type->name = "std::string";
+    to_string_func->is_virtual = false;
+    
+    // Add 'this' parameter as 'in'
+    FunctionDeclaration::Parameter this_param;
+    this_param.name = "this";
+    this_param.qualifiers.push_back(ParameterQualifier::In);
+    to_string_func->parameters.push_back(std::move(this_param));
+
+    add_member_to_type(type_decl, std::move(to_string_func));
 }
 
 void MetafunctionProcessor::generate_comparison_operators(TypeDeclaration* type_decl) {

@@ -36,40 +36,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
-*Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: SUBSTANTIALLY COMPLETE* - 83% (58/70 tasks, Phases 1-7 complete, Phases 8-10 partial)
-
-**Objectives**:
-- Escape analysis framework (track value lifetimes and escape points)
-- Borrowing and ownership tracking (Rust-like semantics)
-- External memory pipeline integration (GPU/DMA transfers, lifecycle optimization)
-- Channelized concurrency integration (ownership through channels, data race detection)
-- Unified semantic representation (SemanticInfo attached to all AST nodes)
-- Arena allocation (JIT memory management for NoEscape aggregates)
-- Coroutine frame elision (Kotlin-style structured concurrency)
-- JIT codegen backend (stack/arena/heap allocation decisions)
-
-**Target Metrics**:
-- Parameter semantics: 0% → 100% (Achieved: 100%)
-- Escape analysis coverage: 0% → 100% (Achieved: 100%)
-- Average corpus semantic loss: 1.0 → <0.15 (Achieved: 0.124)
-- Test coverage: 77 tests (6 arena + 11 allocation + 6 coroutine + 54 others)
-
-**Recent Commits**:
-- `d1edbf7`: SONConcurrencyAnalysisPass for lock/barrier elision
-- `cc8b0c6`: Phase 10 validation - arena-first allocation
-- `3c4145b`: Phase 10 allocation documentation
-- `639af53`: Phase 10 JIT codegen backend
-- `f0ca2ea`: Phase 8 coroutine frame elision
-
-**Blocked Tasks**:
-- Phase 8 (3/8): C++26 std::execution not available
-- Phase 9 (0/7): C++26 std::meta and contracts not available
-- Phase 10 (2/9): Full pipeline integration and benchmarking
-
----
-
 ## [x] Track: Regression Test Corpus Semantic Preservation
 *Link: [./conductor/tracks/regression_corpus_20251230/](./conductor/tracks/regression_corpus_20251230/)*
 *Status: COMPLETE* - 0.124 Average Semantic Loss (Goal < 0.15)
@@ -230,11 +196,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 9*
+*Total Tracks: 8*
 *Completed: 8*
 *In Progress: 0*
 *Active: 0*
-*Planned: 1*
+*Planned: 0*
 *Blocked: 0*
 *New: 0*
 

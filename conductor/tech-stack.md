@@ -100,27 +100,25 @@
 - ✅ **Optional/Variant**: `std::optional`, `std::variant` - sum types
 - ✅ **Span**: `std::span` - safe array views
 - ✅ **String_view**: `std::string_view` - zero-copy string operations
+- ✅ **Reflection-driven SBO sizing**: `cpp2::reflection_sbo_size<T>()` with template metaprogramming fallback
+- ✅ **Contracts parsing**: C++26 `[[expects]]` attribute parsing with AST integration
+- ✅ **Pattern matching state tracking**: `ResourceState` enum with exhaustive matching
+
+### Implemented (C++23 Fallbacks)
+- ✅ **Reflection SBO**: Template metaprogramming fallback (`cpp2::reflection_sbo.hpp`)
+  - **Migration**: Replace with `std::meta` when `__cpp_static_reflection` is available
+- ✅ **Contracts**: AST-based parsing (`cpp26_contracts_test.cpp`)
+  - **Migration**: Switch to native `[[expects]]` attribute parsing when available
+- ✅ **Pattern Matching**: C++23 switch-based exhaustive matching (`ResourceState` enum)
+  - **Migration**: Replace with `inspect` expressions when `__cpp_pattern_matching` is available
+- ✅ **std::inplace_vector**: Custom `cpp2::inplace_vector<T, N>` implementation
+  - **SBO sizing**: Automatic capacity via `sbo_capacity<T>()`
+  - **Tests**: `reflection_sbo_test.cpp`, `inplace_vector_codegen_test.cpp`
 
 ### Planned (C++26 - Not Yet Available)
-- ⏳ **Reflection (`std::meta`)**: Compile-time type introspection
-  - **Fallback**: Template metaprogramming for SBO sizing
-  - **Use Case**: `reflection_driven_sbo_size()` for `std::inplace_vector<T, N>`
-
-- ⏳ **Contracts**: `[[expects]]`, `[[ensures]]`, `[[assert]]` for preconditions/postconditions
-  - **Fallback**: Parse custom `// [[expects]]` comments in AST
-  - **Use Case**: Feed contract annotations into alias analysis
-
-- ⏳ **Pattern Matching**: `inspect` expressions for exhaustive matching
-  - **Fallback**: C++23 `std::expected` + exhaustive `if-else` chains
-  - **Use Case**: Resource state tracking (Uninitialized, Initialized, Moved, Borrowed)
-
 - ⏳ **std::execution**: Structured concurrency (senders/receivers)
   - **Fallback**: `std::coroutine` (available) for coroutine frame elision
   - **Use Case**: Port Kotlin `CoroutineScope` semantics
-
-- ⏳ **std::inplace_vector**: Stack-allocated vector
-  - **Fallback**: Custom `cpp2::inplace_vector<T, N>` implementation
-  - **Use Case**: Arena-allocated containers with compile-time capacity
 
 ## Platform
 - **macOS 14.6** (Darwin 24.6.0): Development environment

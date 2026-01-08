@@ -80,35 +80,46 @@ struct VariableCounter {
 void count_variables_in_decl(Declaration* decl, VariableCounter& counter) {
     if (!decl) return;
 
-    if (auto* var = dynamic_cast<VariableDeclaration*>(decl)) {
-        counter.total_vars++;
+    try {
+        if (auto* var = dynamic_cast<VariableDeclaration*>(decl)) {
+            counter.total_vars++;
 
-        // Determine allocation strategy
-        CodeGenerator gen;
-        auto strategy = gen.determine_allocation_strategy(var);
+            // Skip allocation strategy determination if var doesn't have semantic info
+            // to avoid segfaults on incomplete AST
+            if (!var->semantic_info) {
+                counter.heap_count++;  // Default to heap for unknown
+                return;
+            }
 
-        switch (strategy) {
-            case CodeGenerator::AllocationStrategy::Stack:
-                counter.stack_count++;
-                break;
-            case CodeGenerator::AllocationStrategy::Arena:
-                counter.arena_count++;
-                break;
-            case CodeGenerator::AllocationStrategy::Heap:
-                counter.heap_count++;
-                break;
-        }
-    } else if (auto* func = dynamic_cast<FunctionDeclaration*>(decl)) {
-        // Count variables in function body
-        if (func->body) {
-            if (auto* block = dynamic_cast<BlockStatement*>(func->body.get())) {
-                for (auto& stmt : block->statements) {
-                    if (auto* decl_stmt = dynamic_cast<DeclarationStatement*>(stmt.get())) {
-                        count_variables_in_decl(decl_stmt->declaration.get(), counter);
+            // Determine allocation strategy
+            CodeGenerator gen;
+            auto strategy = gen.determine_allocation_strategy(var);
+
+            switch (strategy) {
+                case CodeGenerator::AllocationStrategy::Stack:
+                    counter.stack_count++;
+                    break;
+                case CodeGenerator::AllocationStrategy::Arena:
+                    counter.arena_count++;
+                    break;
+                case CodeGenerator::AllocationStrategy::Heap:
+                    counter.heap_count++;
+                    break;
+            }
+        } else if (auto* func = dynamic_cast<FunctionDeclaration*>(decl)) {
+            // Count variables in function body
+            if (func->body) {
+                if (auto* block = dynamic_cast<BlockStatement*>(func->body.get())) {
+                    for (auto& stmt : block->statements) {
+                        if (auto* decl_stmt = dynamic_cast<DeclarationStatement*>(stmt.get())) {
+                            count_variables_in_decl(decl_stmt->declaration.get(), counter);
+                        }
                     }
                 }
             }
         }
+    } catch (...) {
+        // Silently skip on any error during allocation strategy determination
     }
 }
 

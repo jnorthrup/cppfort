@@ -214,10 +214,9 @@ struct CoroutineContainmentGraph {
     std::vector<void*> child_coroutines; // ASTNode* of children
 
     // Check if this coroutine's frame is contained within parent lifetime
+    // A coroutine is contained if it has a parent coroutine scope
     bool is_contained() const {
-        // A coroutine is contained if all its captured variables
-        // do not outlive the parent scope
-        return !child_coroutines.empty() || parent_coroutine != nullptr;
+        return parent_coroutine != nullptr;
     }
 
     CoroutineContainmentGraph() = default;

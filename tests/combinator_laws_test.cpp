@@ -103,8 +103,8 @@ template<typename A, typename B, typename C>
 }
 
 [[nodiscard]] auto generate_test_data(size_t seed, size_t length) -> std::string {
-    std::mt19937 gen = seed;
-    std::uniform_int_distribution<int> dist = {32, 126};
+    std::mt19937 gen(static_cast<std::mt19937::result_type>(seed));
+    std::uniform_int_distribution<int> dist(32, 126);
     std::string result = {};
     result.reserve(length);
     auto i = 0;
@@ -233,7 +233,7 @@ auto test_skip_take_ordering() -> void {
     cpp2::ByteBuffer buf = {std::data(data), std::size(data)};
     auto result = cpp2::combinators::take(cpp2::combinators::skip(buf, 3), 4);
     auto v = collect_chars(result);
-    std::vector<char> expected = {''', ''', ''', '''};
+    std::vector<char> expected = {'3', '4', '5', '6'};
     std::cout << "  PASS\n";
 }
 
@@ -282,7 +282,7 @@ auto test_filter_conjunction() -> void {
     cpp2::ByteBuffer buf2 = {std::data(data), std::size(data)};
     auto combined = cpp2::combinators::from(buf2) | cpp2::combinators::curried::filter(p_combined);
     auto combined_result = collect_chars(combined);
-    std::vector<char> expected = {''', ''', ''', '''};
+    std::vector<char> expected = {'A', 'B', 'C', 'D'};
     std::cout << "  PASS\n";
 }
 
@@ -290,7 +290,7 @@ auto test_fold_monoid_associativity() -> void {
     std::cout << "test_fold_monoid_associativity\n";
     std::string data = "12345";
     cpp2::ByteBuffer buf = {std::data(data), std::size(data)};
-    auto sum = cpp2::combinators::reduce_from(buf).fold(0, [&](int acc, char c) -> int { return acc + c - '''; });
+    auto sum = cpp2::combinators::reduce_from(buf).fold(0, [&](int acc, char c) -> int { return acc + c - '0'; });
     std::cout << "  PASS\n";
 }
 
@@ -318,7 +318,7 @@ auto test_pipeline_associativity() -> void {
     cpp2::ByteBuffer buf = {std::data(data), std::size(data)};
     auto result1 = cpp2::combinators::from(buf) | cpp2::combinators::curried::skip(2) | cpp2::combinators::curried::take(5) | cpp2::combinators::curried::map([&](char c) -> char { return static_cast<char>(std::toupper(c)); });
     auto v1 = collect_chars(result1);
-    std::vector<char> expected = {''', ''', ''', ''', '''};
+    std::vector<char> expected = {'C', 'D', 'E', 'F', 'G'};
     std::cout << "  PASS\n";
 }
 

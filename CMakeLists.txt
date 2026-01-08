@@ -27,6 +27,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Modular build options for incremental refactoring
+option(CPPFORT_USE_MODULAR_BUILD "Use modular library structure (for refactoring)" OFF)
+option(CPPFORT_ENABLE_MLIR "Enable MLIR integration (requires LLVM/MLIR)" ON)
+
 # macOS: Homebrew LLVM libc++ configuration
 if(APPLE)
   set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")

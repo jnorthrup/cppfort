@@ -1,6 +1,6 @@
 # CMakeLists.txt for cppfort transpiler
 
-# Main transpiler library
+# Main transpiler library (monolithic - default)
 add_library(Cpp2Transpiler
     lexer.cpp
     parser.cpp
@@ -12,6 +12,7 @@ add_library(Cpp2Transpiler
     contract_processor.cpp
     markdown_hash.cpp
     # ast_to_fir.cpp  # Disabled: requires MLIR
+    ast_to_fir_stub.cpp  # shim: minimal AST->FIR definitions when full MLIR conversion is disabled
     # clang_ast_reverse.cpp  # Disabled: requires Clang
     # ConvertFIRToSON.cpp  # Disabled: requires MLIR
     # crdt_patch.cpp  # Disabled: requires MLIR
@@ -24,7 +25,7 @@ add_library(Cpp2Transpiler
     # semantic_hash.cpp  # Disabled: requires MLIR
     # son_serialization.cpp  # Disabled: requires MLIR
     # Cpp2ConcurrencyDialect.cpp  # Disabled: requires MLIR
-    # Cpp2FIRDialect.cpp  # Disabled: requires MLIR
+    Cpp2FIRDialect.cpp  # Build FIR dialect implementation
     # Cpp2SONDialect.cpp  # Disabled: requires MLIR
 )
 
@@ -33,12 +34,36 @@ target_include_directories(Cpp2Transpiler PUBLIC
     ${CMAKE_BINARY_DIR}
 )
 
-# target_link_libraries(Cpp2Transpiler PUBLIC
-#     MLIRIR
-#     MLIRSupport
-#     LLVMCore
-# )
+target_link_libraries(Cpp2Transpiler PUBLIC
+    MLIRIR
+    MLIRSupport
+    LLVMCore
+    MLIRFuncDialect
+    MLIRFuncTransforms
+    MLIRTransforms
+    MLIRSCFDialect
+)
 
 # cppfort executable
 add_executable(cppfort main.cpp)
 target_link_libraries(cppfort PRIVATE Cpp2Transpiler)
+
+# ============================================================================
+# Modular Emitter Libraries (Phase 2: Incremental Extraction)
+# Build when CPPFORT_USE_MODULAR_BUILD=ON
+# ============================================================================
+if(CPPFORT_USE_MODULAR_BUILD)
+    # TypeEmitter - Core type generation
+    add_library(CppfortTypeEmitter
+        codegen/type_emitter.cpp
+    )
+    target_include_directories(CppfortTypeEmitter PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+    )
+    target_link_libraries(CppfortTypeEmitter PUBLIC Cpp2Transpiler)
+
+    # Future: Add ExpressionEmitter, StatementEmitter, DeclarationEmitter
+    # as they are extracted
+endif()
+

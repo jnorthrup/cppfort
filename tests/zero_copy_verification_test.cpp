@@ -87,7 +87,8 @@ auto test_take_iterator_zero_copy() -> void {
     
     // Verify we're reading from original memory by checking pointer arithmetic
     auto it = result.begin();
-    assert(&(*it) == original_ptr || *it == '0');
+    // Iterator yields chars; just verify first element is '0' (avoid taking address of prvalue)
+    assert(*it == '0');
     
     // Verify iteration doesn't allocate - we just read existing memory
     int count = 0;

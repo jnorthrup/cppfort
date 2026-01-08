@@ -8,6 +8,7 @@
 #include <optional>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 
 namespace cpp2_transpiler {
 namespace parser {
@@ -36,17 +37,22 @@ namespace grammar {
 // Primitive Combinator Types
 // ----------------------------------------------------------------------------
 
-template<typename T>
-using opt = std::optional<T>;
+#include <type_traits>
 
 template<typename T>
-using many = std::vector<T>;
+using maybe_ptr = ::std::conditional_t<::std::is_class_v<T>, ::std::shared_ptr<T>, T>;
+
+template<typename T>
+using opt = ::std::optional<maybe_ptr<T>>;
+
+template<typename T>
+using many = ::std::vector<maybe_ptr<T>>;
 
 template<typename... Ts>
-using seq = std::tuple<Ts...>;
+using seq = ::std::tuple<maybe_ptr<Ts>...>;
 
 template<typename... Ts>
-using alt = std::variant<Ts...>;
+using alt = ::std::variant<maybe_ptr<Ts>...>;
 
 // ----------------------------------------------------------------------------
 // Section 1.2: Lexical Structure
@@ -280,8 +286,7 @@ using return_statement = opt<expression>;
 using throw_statement = opt<expression>;
 
 // EBNF: switch_statement ::= "switch" expression "{" { switch_case } "}"
-struct switch_case;
-using switch_statement = seq<expression, many<switch_case>>;
+using switch_statement = seq<expression, many<seq<opt<expression>, many<statement>>>>;
 
 // EBNF: switch_case ::= "case" expression ":" { statement }
 //                     | "default" ":" { statement }
@@ -294,11 +299,9 @@ struct inspect_expression;
 using inspect_statement = inspect_expression;
 
 // EBNF: try_statement ::= "try" block_statement { catch_clause }
-struct catch_clause;
-using try_statement = seq<block_statement, many<catch_clause>>;
+using try_statement = seq<block_statement, many<seq<parameter, block_statement>>>;
 
 // EBNF: catch_clause ::= "catch" "(" parameter ")" block_statement
-using catch_clause = seq<parameter, block_statement>;
 
 // EBNF: contract_statement ::= "pre" expression | "post" expression | "assert" expression
 enum class contract_kind { pre, post, assert_ };
@@ -437,8 +440,8 @@ struct expression : pipeline_expression {};
 
 // EBNF: pattern ::= "_" | identifier | identifier ":" type_specifier
 //                 | "is" type_specifier | "is" "(" expression ")" | "is" literal | expression
-struct is_type_pattern : type_specifier {};
-struct is_value_pattern : expression {};
+using is_type_pattern = type_specifier;
+using is_value_pattern = expression;
 struct named_pattern : seq<identifier, type_specifier> {};
 
 using pattern = alt<
@@ -595,6 +598,8 @@ constexpr int precedence(binary_operator op) {
 }
 
 enum class associativity { left, right };
+
+using binary_op = binary_operator;
 
 constexpr associativity assoc(binary_operator op) {
     return associativity::left;

@@ -37,6 +37,7 @@ private:
     void process_union(TypeDeclaration* type_decl);
     void process_struct(TypeDeclaration* type_decl);
     void process_hashable(TypeDeclaration* type_decl);
+    void process_print(TypeDeclaration* type_decl);
 
     // Generation helpers
     void generate_comparison_operators(TypeDeclaration* type_decl);
