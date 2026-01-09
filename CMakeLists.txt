@@ -119,6 +119,10 @@ mlir_tablegen(Cpp2SONOps.h.inc -gen-op-decls)
 mlir_tablegen(Cpp2SONOps.cpp.inc -gen-op-defs)
 mlir_tablegen(Cpp2SONOpsDialect.h.inc -gen-dialect-decls -dialect=sond)
 mlir_tablegen(Cpp2SONOpsDialect.cpp.inc -gen-dialect-defs -dialect=sond)
+mlir_tablegen(Cpp2SONOpsTypes.h.inc -gen-typedef-decls -dialect=sond)
+mlir_tablegen(Cpp2SONOpsTypes.cpp.inc -gen-typedef-defs -dialect=sond)
+mlir_tablegen(Cpp2SONOpsAttrDefs.h.inc -gen-attrdef-decls -dialect=sond)
+mlir_tablegen(Cpp2SONOpsAttrDefs.cpp.inc -gen-attrdef-defs -dialect=sond)
 add_public_tablegen_target(Cpp2SONOpsIncGen)
 
 # Package configuration

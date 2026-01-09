@@ -26,7 +26,12 @@ add_library(Cpp2Transpiler
     # son_serialization.cpp  # Disabled: requires MLIR
     # Cpp2ConcurrencyDialect.cpp  # Disabled: requires MLIR
     Cpp2FIRDialect.cpp  # Build FIR dialect implementation
-    # Cpp2SONDialect.cpp  # Disabled: requires MLIR
+    Cpp2SONDialect.cpp  # Build SON dialect implementation
+    # Generated SON dialect implementations
+    ${CMAKE_BINARY_DIR}/Cpp2SONOpsDialect.cpp.inc
+    ${CMAKE_BINARY_DIR}/Cpp2SONOps.cpp.inc
+    ${CMAKE_BINARY_DIR}/Cpp2SONOpsTypes.cpp.inc
+    ${CMAKE_BINARY_DIR}/Cpp2SONOpsAttrDefs.cpp.inc
 )
 
 target_include_directories(Cpp2Transpiler PUBLIC

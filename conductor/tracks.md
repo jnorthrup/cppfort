@@ -206,7 +206,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Java Memory Model Integration for Cpp2 SON Dialect
+## [~] Track: Java Memory Model Integration for Cpp2 SON Dialect
 *Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
 *Status: NEW - Mandatory JMM implementation through MLIR dispatch-level analysis*
 

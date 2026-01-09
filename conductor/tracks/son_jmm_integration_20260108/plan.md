@@ -2,11 +2,11 @@
 
 ## Phase 1: SON Dialect JMM Extensions
 
-- [ ] Define memory order attributes in Cpp2SON dialect
-  - [ ] Add `jmm_happens_before` attribute to Cpp2SON.td
-  - [ ] Add `jmm_volatile` attribute (SC semantics)
-  - [ ] Add `jmm_final_field` attribute (freeze semantics)
-  - [ ] Add `jmm_visibility` attribute (thread-local vs shared)
+- [x] Define memory order attributes in Cpp2SON dialect
+  - [x] Add `jmm_happens_before` attribute to Cpp2SON.td
+  - [x] Add `jmm_volatile` attribute (SC semantics)
+  - [x] Add `jmm_final_field` attribute (freeze semantics)
+  - [x] Add `jmm_visibility` attribute (thread-local vs shared)
 - [ ] Extend SON operations with JMM metadata support
   - [ ] Attach memory requirements to load/store ops
   - [ ] Annotate concurrent operations (send, recv, spawn, await)

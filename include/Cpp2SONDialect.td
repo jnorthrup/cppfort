@@ -101,12 +101,82 @@ def SON_TupleTypeDef : Cpp2SON_Type<"Tuple", "tuple"> {
 def SON_FieldAttr : AttrDef<Cpp2SON_Dialect, "Field"> {
   let mnemonic = "field";
   let summary = "Struct field descriptor";
-  let parameters = (ins 
+  let parameters = (ins
     StringRefParameter<>:$name,
     "Type":$type,
     DefaultValuedParameter<"int64_t", "0">:$alias
   );
   let assemblyFormat = "`<` $name `:` $type (`,` `alias` `=` $alias^)? `>`";
+}
+
+//===----------------------------------------------------------------------===//
+// Java Memory Model (JMM) Attributes
+//===----------------------------------------------------------------------===//
+
+// JMM happens-before relationship attribute
+def SON_JMMHappensBeforeAttr : AttrDef<Cpp2SON_Dialect, "JMMHappensBefore"> {
+  let mnemonic = "jmm_happens_before";
+  let summary = "JMM happens-before edge between operations";
+  let description = [{
+    Establishes a happens-before relationship for Java Memory Model compliance.
+    Used to enforce memory ordering guarantees in concurrent operations.
+
+    Maps to C++ memory_order_acquire/release for synchronization.
+  }];
+  let parameters = (ins
+    ArrayRefParameter<"StringRef">:$predecessors,
+    DefaultValuedParameter<"bool", "false">:$is_transitive
+  );
+  let assemblyFormat = "`<` $predecessors (`,` `transitive` `=` $is_transitive^)? `>`";
+}
+
+// JMM volatile attribute (sequential consistency)
+def SON_JMMVolatileAttr : AttrDef<Cpp2SON_Dialect, "JMMVolatile"> {
+  let mnemonic = "jmm_volatile";
+  let summary = "JMM volatile (sequential consistency) marker";
+  let description = [{
+    Marks an operation as requiring sequential consistency semantics.
+    Per Java Memory Model, volatile reads/writes have SC total ordering.
+
+    Maps to C++ memory_order_seq_cst.
+  }];
+  let parameters = (ins
+    DefaultValuedParameter<"bool", "true">:$is_volatile
+  );
+  let assemblyFormat = "`<` $is_volatile `>`";
+}
+
+// JMM final field freeze attribute
+def SON_JMMFinalFieldAttr : AttrDef<Cpp2SON_Dialect, "JMMFinalField"> {
+  let mnemonic = "jmm_final_field";
+  let summary = "JMM final field freeze marker";
+  let description = [{
+    Marks a field as final, requiring freeze semantics.
+    Final fields must be safely published before object becomes visible.
+
+    Maps to C++ atomic_thread_fence(memory_order_release) after constructor.
+  }];
+  let parameters = (ins
+    StringRefParameter<>:$constructor_op,
+    DefaultValuedParameter<"bool", "false">:$is_frozen
+  );
+  let assemblyFormat = "`<` `ctor` `=` $constructor_op (`,` `frozen` `=` $is_frozen^)? `>`";
+}
+
+// JMM visibility attribute (thread-local vs shared)
+def SON_JMMVisibilityAttr : AttrDef<Cpp2SON_Dialect, "JMMVisibility"> {
+  let mnemonic = "jmm_visibility";
+  let summary = "JMM memory visibility (thread-local or shared)";
+  let description = [{
+    Tracks whether a value is thread-local or shared across threads.
+    Shared values require atomic operations and memory barriers.
+
+    Maps to: std::atomic<T> for shared, plain T for thread-local.
+  }];
+  let parameters = (ins
+    StringRefParameter<>:$visibility_kind  // "thread_local" or "shared"
+  );
+  let assemblyFormat = "`<` $visibility_kind `>`";
 }
 
 // Type constraint for control flow
