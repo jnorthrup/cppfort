@@ -104,9 +104,13 @@ struct TokenParser {
     }
 };
 
-// Factory for token parsers
+// Forward declare Proto for factory functions
+template<typename P> struct Proto;
+template<typename P> constexpr auto lift(P p);
+
+// Factory for token parsers (returns Proto for operator compatibility)
 constexpr auto token(cpp2_transpiler::TokenType type) {
-    return TokenParser{type};
+    return lift(TokenParser{type});
 }
 
 // ============================================================================
@@ -131,10 +135,11 @@ struct LexemeParser {
     }
 };
 
-// Factory for lexeme parsers
+// Factory for lexeme parsers (returns Proto for operator compatibility)
 constexpr auto lexeme(cpp2_transpiler::TokenType type, std::string_view lex) {
-    return LexemeParser{type, lex};
+    return lift(LexemeParser{type, lex});
 }
+
 
 // ============================================================================
 // Keyword Parser
