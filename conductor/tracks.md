@@ -204,3 +204,43 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Blocked: 0*
 *New: 0*
 
+---
+
+## [ ] Track: Java Memory Model Integration for Cpp2 SON Dialect
+*Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
+*Status: NEW - Mandatory JMM implementation through MLIR dispatch-level analysis*
+
+**Objective:** Implement Java Memory Model guarantees in Cpp2 via SON dialect dispatch analysis
+
+**JMM Requirements:**
+- Happens-before relationships (memory_order_acquire/release)
+- Volatile semantics (sequential consistency)
+- Final field safety (freeze semantics)
+- Memory visibility guarantees (std::atomic)
+
+**Architecture:**
+```
+Cpp2 Source → Transpiler → SON Dialect → Dispatch Analysis → Emitter → C++
+                                              ↓
+                                 JMM Requirements (Target-Aware)
+```
+
+**Phases:**
+1. SON Dialect JMM Extensions (attributes, metadata)
+2. Dispatch Analysis Pass (target capability queries, memory order selection)
+3. Emitter Integration (std::atomic emission, fences)
+4. Validation and Documentation (litmus tests, performance benchmarks)
+5. Integration Testing (regression, concurrency safety)
+
+**Mandatory:** All concurrent operations MUST provide JMM-level guarantees
+
+---
+
+*Total Tracks: 9*
+*Completed: 8*
+*In Progress: 0*
+*Active: 0*
+*Planned: 1*
+*Blocked: 0*
+*New: 0*
+

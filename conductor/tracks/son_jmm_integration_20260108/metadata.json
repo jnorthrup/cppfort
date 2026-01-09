@@ -1,0 +1,8 @@
+{
+  "track_id": "son_jmm_integration_20260108",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-08T00:00:00Z",
+  "updated_at": "2026-01-08T00:00:00Z",
+  "description": "Java Memory Model (JMM) integration through MLIR dispatch-level analysis for Cpp2 SON dialect - mandatory implementation for concurrent operations"
+}
