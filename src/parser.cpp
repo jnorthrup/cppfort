@@ -1,480 +1,428 @@
 // ============================================================================
-// Cpp2 Parser - Direct EBNF Translation
+// Cpp2 Parser - bbcursive-style approach
 // ============================================================================
-// Source: grammar/cpp2.ebnf → spirit combinators
-// Uses Lazy<> for forward-declared recursive rules
+// All parsers: bool parse(Stream&) - advance stream on success, restore on fail
+// No complex Result types, no template explosion
 
 #include "parser.hpp"
-#include "combinators/ebnf.hpp"
-#include "combinators/spirit.hpp"
+#include "core/tokens.hpp"
 #include "ast.hpp"
+#include <span>
+#include <functional>
+#include <string_view>
 
 namespace cpp2_transpiler {
 
-using namespace cpp2::parser::spirit;
-namespace ebnf = cpp2::combinators::ebnf;
-using TT = TokenType;
-using TS = TokenStream;
-
 // ============================================================================
-// Forward-declared rules (Lazy for recursion)
+// Stream - mutable position, like ByteBuffer
 // ============================================================================
 
-static ebnf::Lazy<Token, TS> expression;
-static ebnf::Lazy<Token, TS> statement;
-static ebnf::Lazy<Token, TS> type_specifier;
-static ebnf::Lazy<Token, TS> declaration;
-static ebnf::Lazy<Token, TS> block_statement;
+struct Stream {
+    std::span<const Token> tokens;
+    size_t pos = 0;
+    
+    bool empty() const { return pos >= tokens.size(); }
+    const Token& peek() const { return tokens[pos]; }
+    void advance() { if (!empty()) ++pos; }
+    size_t position() const { return pos; }
+    void restore(size_t p) { pos = p; }
+};
 
 // ============================================================================
-// LEXICAL - Keywords  
+// Rule - type-erased parser, stores std::function<bool(Stream&)>
 // ============================================================================
 
-inline const auto KW_AS = token(TT::As);
-inline const auto KW_ASSERT = token(TT::Assert);
-inline const auto KW_AUTO = token(TT::Auto);
-inline const auto KW_AWAIT = token(TT::Await);
-inline const auto KW_BREAK = token(TT::Break);
-inline const auto KW_CASE = token(TT::Case);
-inline const auto KW_CATCH = token(TT::Catch);
-inline const auto KW_CONCEPT = token(TT::Concept);
-inline const auto KW_CONST = token(TT::Const);
-inline const auto KW_CONTINUE = token(TT::Continue);
-inline const auto KW_COPY = token(TT::Copy);
-inline const auto KW_DEFAULT = token(TT::Default);
-inline const auto KW_DO = token(TT::Do);
-inline const auto KW_ELSE = token(TT::Else);
-inline const auto KW_FALSE = token(TT::False);
-inline const auto KW_FINAL = token(TT::Final);
-inline const auto KW_FOR = token(TT::For);
-inline const auto KW_FORWARD = token(TT::Forward);
-inline const auto KW_FUNC = token(TT::Func);
-inline const auto KW_IF = token(TT::If);
-inline const auto KW_IMPLICIT = token(TT::Implicit);
-inline const auto KW_IMPORT = token(TT::Import);
-inline const auto KW_IN = token(TT::In);
-inline const auto KW_INOUT = token(TT::Inout);
-inline const auto KW_INSPECT = token(TT::Inspect);
-inline const auto KW_IS = token(TT::Is);
-inline const auto KW_LET = token(TT::Let);
-inline const auto KW_MOVE = token(TT::Move);
-inline const auto KW_NAMESPACE = token(TT::Namespace);
-inline const auto KW_NOEXCEPT = token(TT::Noexcept);
-inline const auto KW_OPERATOR = token(TT::Operator);
-inline const auto KW_OUT = token(TT::Out);
-inline const auto KW_OVERRIDE = token(TT::Override);
-inline const auto KW_POST = token(TT::Post);
-inline const auto KW_PRE = token(TT::Pre);
-inline const auto KW_PRIVATE = token(TT::Private);
-inline const auto KW_PROTECTED = token(TT::Protected);
-inline const auto KW_PUBLIC = token(TT::Public);
-inline const auto KW_REQUIRES = token(TT::Requires);
-inline const auto KW_RETURN = token(TT::Return);
-inline const auto KW_SWITCH = token(TT::Switch);
-inline const auto KW_TEMPLATE = token(TT::Template);
-inline const auto KW_THAT = token(TT::That);
-inline const auto KW_THIS = token(TT::This);
-inline const auto KW_THROW = token(TT::Throw);
-inline const auto KW_THROWS = token(TT::Throws);
-inline const auto KW_TRUE = token(TT::True);
-inline const auto KW_TRY = token(TT::Try);
-inline const auto KW_TYPE = token(TT::Type);
-inline const auto KW_USING = token(TT::Using);
-inline const auto KW_VIRTUAL = token(TT::Virtual);
-inline const auto KW_WHILE = token(TT::While);
+using ParseFn = std::function<bool(Stream&)>;
+
+struct Rule {
+    ParseFn fn;
+    
+    bool parse(Stream& s) const { return fn ? fn(s) : false; }
+    void set(ParseFn f) { fn = std::move(f); }
+    
+    // Convenience operator
+    bool operator()(Stream& s) const { return parse(s); }
+};
 
 // ============================================================================
-// LEXICAL - Punctuation
+// Combinators - all return ParseFn
 // ============================================================================
 
-inline const auto LPAREN = token(TT::LeftParen);
-inline const auto RPAREN = token(TT::RightParen);
-inline const auto LBRACE = token(TT::LeftBrace);
-inline const auto RBRACE = token(TT::RightBrace);
-inline const auto LBRACKET = token(TT::LeftBracket);
-inline const auto RBRACKET = token(TT::RightBracket);
-inline const auto LT = token(TT::LessThan);
-inline const auto GT = token(TT::GreaterThan);
-inline const auto COLON = token(TT::Colon);
-inline const auto SEMICOLON = token(TT::Semicolon);
-inline const auto COMMA = token(TT::Comma);
-inline const auto DOT = token(TT::Dot);
-inline const auto ARROW = token(TT::Arrow);
-inline const auto EQUAL = token(TT::Equal);
-inline const auto DOUBLE_EQUAL = token(TT::DoubleEqual);
-inline const auto COLON_EQUAL = token(TT::ColonEqual);
-inline const auto DOUBLE_COLON = token(TT::DoubleColon);
-inline const auto AT = token(TT::At);
-inline const auto ELLIPSIS = token(TT::Ellipsis);
-inline const auto UNDERSCORE = token(TT::Underscore);
-inline const auto PLUS = token(TT::Plus);
-inline const auto MINUS = token(TT::Minus);
-inline const auto STAR = token(TT::Asterisk);
-inline const auto SLASH = token(TT::Slash);
-inline const auto PERCENT = token(TT::Percent);
-inline const auto AMP = token(TT::Ampersand);
-inline const auto PIPE = token(TT::Pipe);
-inline const auto CARET = token(TT::Caret);
-inline const auto TILDE = token(TT::Tilde);
-inline const auto BANG = token(TT::Bang);
-inline const auto QUESTION = token(TT::Question);
-inline const auto DOUBLE_AMP = token(TT::DoubleAmp);
-inline const auto DOUBLE_PIPE = token(TT::DoublePipe);
+// Terminal: match specific token type
+inline ParseFn tok(TokenType type) {
+    return [type](Stream& s) -> bool {
+        if (s.empty() || s.peek().type != type) return false;
+        s.advance();
+        return true;
+    };
+}
+
+// Terminal: match identifier with specific lexeme (keyword)
+inline ParseFn kw(std::string_view lexeme) {
+    return [lexeme](Stream& s) -> bool {
+        if (s.empty() || s.peek().type != TokenType::Identifier || s.peek().lexeme != lexeme) return false;
+        s.advance();
+        return true;
+    };
+}
+
+// seq: a >> b (sequence)
+template<typename... Ps>
+inline ParseFn seq(Ps... ps) {
+    return [=](Stream& s) -> bool {
+        auto start = s.position();
+        bool ok = (ps(s) && ...);
+        if (!ok) s.restore(start);
+        return ok;
+    };
+}
+
+// alt: a | b (alternative with backtrack)
+template<typename... Ps>
+inline ParseFn alt(Ps... ps) {
+    return [=](Stream& s) -> bool {
+        return (ps(s) || ...);
+    };
+}
+
+// opt: -p (optional)
+inline ParseFn opt(ParseFn p) {
+    return [p](Stream& s) -> bool {
+        p(s);  // Try but always succeed
+        return true;
+    };
+}
+
+// many: *p (zero or more)
+inline ParseFn many(ParseFn p) {
+    return [p](Stream& s) -> bool {
+        while (p(s)) {}
+        return true;
+    };
+}
+
+// some: +p (one or more)
+inline ParseFn some(ParseFn p) {
+    return [p](Stream& s) -> bool {
+        if (!p(s)) return false;
+        while (p(s)) {}
+        return true;
+    };
+}
+
+// ref: lazy reference to Rule (for recursion)
+inline ParseFn ref(Rule& r) {
+    return [&r](Stream& s) -> bool { return r.parse(s); };
+}
 
 // ============================================================================
-// LEXICAL - Identifiers & Literals
+// Forward-declared rules for recursion
 // ============================================================================
 
-inline const auto IDENTIFIER = token(TT::Identifier);
-inline const auto INTEGER_LIT = token(TT::IntegerLiteral);
-inline const auto FLOAT_LIT = token(TT::FloatLiteral);
-inline const auto STRING_LIT = token(TT::StringLiteral);
-inline const auto CHAR_LIT = token(TT::CharacterLiteral);
-inline const auto END_OF_FILE = token(TT::EndOfFile);
+static Rule expression;
+static Rule statement;
+static Rule type_specifier;
+static Rule decl_rule;
+static Rule block_statement;
+static Rule param_list;
+static Rule template_params;
+static Rule template_args;
 
 // ============================================================================
-// TOP LEVEL (line 54-69)
-// ============================================================================
-
-// access_specifier = "public" | "private" | "protected"
-inline const auto access_specifier = KW_PUBLIC | KW_PRIVATE | KW_PROTECTED;
-
-// ============================================================================
-// UNIFIED DECLARATION SYNTAX (line 73-95)
-// ============================================================================
-
-// identifier_like = IDENTIFIER | CONTEXTUAL_KEYWORD | "_"
-inline const auto identifier_like = IDENTIFIER | KW_IN | KW_OUT | KW_INOUT | KW_COPY | 
-                                     KW_MOVE | KW_FORWARD | KW_FUNC | KW_TYPE | 
-                                     KW_NAMESPACE | UNDERSCORE;
-
-// ============================================================================  
-// TEMPLATE PARAMETERS (line 120-143)
-// ============================================================================
-
-// template_param_name = IDENTIFIER | "_"
-inline const auto template_param_name = IDENTIFIER | UNDERSCORE;
-
-// type_constraint = type_specifier | "_" | "type"
-inline const auto type_constraint = type_specifier | UNDERSCORE | KW_TYPE;
-
-// template_param = template_param_name [ "..." ] [ ":" type_constraint ] [ "=" default_value ]
-inline const auto template_param = template_param_name >> -ELLIPSIS >> -(COLON >> type_constraint) >> -(EQUAL >> expression);
-
-// template_param_list = template_param { "," template_param } [ "," ]
-inline const auto template_param_list = template_param >> *(COMMA >> template_param) >> -COMMA;
-
-// template_params = "<" [ template_param_list ] ">"
-inline const auto template_params = LT >> -template_param_list >> GT;
-
-// template_args = "<" [ template_arg_list ] ">"
-inline const auto template_args = LT >> -(expression >> *(COMMA >> expression)) >> GT;
-
-// ============================================================================
-// FUNCTIONS (line 144-191)
-// ============================================================================
-
-// param_qualifier = "in" | "copy" | "inout" | "out" | "move" | "forward" | "virtual" | "override" | "implicit"
-inline const auto param_qualifier = KW_IN | KW_COPY | KW_INOUT | KW_OUT | KW_MOVE | 
-                                     KW_FORWARD | KW_VIRTUAL | KW_OVERRIDE | KW_IMPLICIT;
-
-// param_name = IDENTIFIER | "this" | "that" | "_" | CONTEXTUAL_KEYWORD
-inline const auto param_name = IDENTIFIER | KW_THIS | KW_THAT | UNDERSCORE;
-
-// parameter = { param_qualifier } param_name [ "..." ] [ ":" type_specifier ] [ "=" expression ]
-inline const auto parameter = *param_qualifier >> param_name >> -ELLIPSIS >> -(COLON >> type_specifier) >> -(EQUAL >> expression);
-
-// param_list = "(" [ parameter_list ] ")"
-inline const auto param_list = LPAREN >> -(parameter >> *(COMMA >> parameter) >> -COMMA) >> RPAREN;
-
-// throws_spec = "throws" | "noexcept"
-inline const auto throws_spec = KW_THROWS | KW_NOEXCEPT;
-
-// return_modifier = "forward" | "move"
-inline const auto return_modifier = KW_FORWARD | KW_MOVE;
-
-// return_type = [ return_modifier ] type_specifier | "(" named_return_list ")"
-inline const auto return_type = (-return_modifier >> type_specifier) | (LPAREN >> (IDENTIFIER >> COLON >> type_specifier >> *(COMMA >> IDENTIFIER >> COLON >> type_specifier)) >> RPAREN);
-
-// return_spec = "->" return_type | "=:" type_specifier
-inline const auto return_spec = (ARROW >> return_type) | (token(TT::ColonEqual) >> type_specifier);
-
-// requires_clause = "requires" requires_expression
-inline const auto requires_clause = KW_REQUIRES >> expression;
-
-// contract_clause = ( "pre" | "post" | "assert" ) [ "<" IDENTIFIER ">" ] ( ":" expression | "(" expression [ "," STRING_LITERAL ] ")" )
-inline const auto contract_clause = (KW_PRE | KW_POST | KW_ASSERT) >> -(LT >> IDENTIFIER >> GT) >> 
-                                     ((COLON >> expression) | (LPAREN >> expression >> -(COMMA >> STRING_LIT) >> RPAREN));
-
-// contracts = { contract_clause }
-inline const auto contracts = *contract_clause;
-
-// function_body = "=" expression ";" | "==" expression ";" | "=" block_statement | block_statement | ";"
-inline const auto function_body = (EQUAL >> expression >> SEMICOLON) | 
-                                   (DOUBLE_EQUAL >> expression >> SEMICOLON) | 
-                                   (EQUAL >> block_statement) | 
-                                   block_statement | 
-                                   SEMICOLON;
-
-// func_signature = [ template_params ] param_list [ throws_spec ] [ return_spec ] [ requires_clause ] [ contracts ]
-inline const auto func_signature = -template_params >> param_list >> -throws_spec >> -return_spec >> -requires_clause >> contracts;
-
-// ============================================================================
-// TYPES (line 193-208)
-// ============================================================================
-
-// metafunction = "@" IDENTIFIER [ template_args ]
-inline const auto metafunction = AT >> IDENTIFIER >> -template_args;
-
-// type_body = "=" "{" { type_member } "}" [ ";" ]
-inline const auto type_body = EQUAL >> LBRACE >> *declaration >> RBRACE >> -SEMICOLON;
-
-// type_alias = "==" type_specifier ";" | "=" type_specifier ";"
-inline const auto type_alias = (DOUBLE_EQUAL >> type_specifier >> SEMICOLON) | (EQUAL >> type_specifier >> SEMICOLON);
-
-// type_body_or_alias = type_alias | type_body
-inline const auto type_body_or_alias = type_alias | type_body;
-
-// ============================================================================
-// NAMESPACES (line 229-235)
-// ============================================================================
-
-// qualified_name = IDENTIFIER { "::" IDENTIFIER }
-inline const auto qualified_name = IDENTIFIER >> *(DOUBLE_COLON >> IDENTIFIER);
-
-// namespace_alias = "==" qualified_name ";"
-inline const auto namespace_alias = DOUBLE_EQUAL >> qualified_name >> SEMICOLON;
-
-// namespace_body = [ "=" ] "{" { declaration } "}"
-inline const auto namespace_body = -EQUAL >> LBRACE >> *declaration >> RBRACE;
-
-// ============================================================================
-// USING & IMPORT (line 237-249)
-// ============================================================================
-
-// using_alias = IDENTIFIER "=" qualified_name ";"
-inline const auto using_alias = IDENTIFIER >> EQUAL >> qualified_name >> SEMICOLON;
-
-// using_path = qualified_name ";"
-inline const auto using_path = qualified_name >> SEMICOLON;
-
-// using_namespace = "namespace" IDENTIFIER ";"
-inline const auto using_namespace = KW_NAMESPACE >> IDENTIFIER >> SEMICOLON;
-
-// using_declaration = "using" ( using_alias | using_path | using_namespace )
-inline const auto using_declaration = KW_USING >> (using_alias | using_path | using_namespace);
-
-// import_declaration = "import" IDENTIFIER ";"
-inline const auto import_declaration = KW_IMPORT >> IDENTIFIER >> SEMICOLON;
-
-// ============================================================================
-// KEYWORD DECLARATIONS (line 98-118)
-// ============================================================================
-
-// let_declaration = ( "let" | "const" ) IDENTIFIER [ ":" type_specifier ] initializer ";"
-inline const auto let_declaration = (KW_LET | KW_CONST) >> IDENTIFIER >> -(COLON >> type_specifier) >> (EQUAL | DOUBLE_EQUAL) >> expression >> SEMICOLON;
-
-// func_declaration = "func" IDENTIFIER [ ":" ] func_signature function_body
-inline const auto func_declaration = KW_FUNC >> IDENTIFIER >> -COLON >> func_signature >> function_body;
-
-// type_declaration_kw = "type" IDENTIFIER [ template_params ] [ requires_clause ] type_body
-inline const auto type_declaration_kw = KW_TYPE >> IDENTIFIER >> -template_params >> -requires_clause >> type_body;
-
-// namespace_declaration_kw = "namespace" IDENTIFIER ( namespace_alias | namespace_body )
-inline const auto namespace_declaration_kw = KW_NAMESPACE >> IDENTIFIER >> (namespace_alias | namespace_body);
-
-// ============================================================================
-// UNIFIED SUFFIX (line 82-95)
-// ============================================================================
-
-// function_suffix = func_signature function_body
-inline const auto function_suffix = func_signature >> function_body;
-
-// type_suffix = { metafunction } ( "type" | "concept" ) [ template_params ] [ requires_clause ] type_body_or_alias
-inline const auto type_suffix = *metafunction >> (KW_TYPE | KW_CONCEPT) >> -template_params >> -requires_clause >> type_body_or_alias;
-
-// namespace_suffix = "namespace" ( namespace_alias | namespace_body )
-inline const auto namespace_suffix = KW_NAMESPACE >> (namespace_alias | namespace_body);
-
-// variable_suffix = [ template_params ] type_specifier [ initializer ] ";"
-inline const auto variable_suffix = -template_params >> type_specifier >> -((EQUAL | DOUBLE_EQUAL) >> expression) >> SEMICOLON;
-
-// declaration_suffix = function_suffix | type_suffix | namespace_suffix | variable_suffix
-inline const auto declaration_suffix = function_suffix | type_suffix | namespace_suffix | variable_suffix;
-
-// unified_declaration = identifier_like ":" declaration_suffix | identifier_like ":=" expression ";"
-inline const auto unified_declaration = (identifier_like >> COLON >> declaration_suffix) | 
-                                         (identifier_like >> COLON_EQUAL >> expression >> SEMICOLON);
-
-// ============================================================================
-// STATEMENTS (line 251-273)
-// ============================================================================
-
-// return_statement = "return" [ expression ] ";"
-inline const auto return_statement = KW_RETURN >> -expression >> SEMICOLON;
-
-// break_statement = "break" [ IDENTIFIER ] ";"
-inline const auto break_statement = KW_BREAK >> -IDENTIFIER >> SEMICOLON;
-
-// continue_statement = "continue" [ IDENTIFIER ] ";"
-inline const auto continue_statement = KW_CONTINUE >> -IDENTIFIER >> SEMICOLON;
-
-// throw_statement = "throw" [ expression ] ";"
-inline const auto throw_statement = KW_THROW >> -expression >> SEMICOLON;
-
-// catch_clause = "catch" "(" [ catch_param ] ")" block_statement
-inline const auto catch_clause = KW_CATCH >> LPAREN >> -(type_specifier >> -IDENTIFIER) >> RPAREN >> block_statement;
-
-// try_statement = "try" block_statement { catch_clause }
-inline const auto try_statement = KW_TRY >> block_statement >> *catch_clause;
-
-// if_statement = "if" expression block_statement [ "else" ( block_statement | if_statement ) ]
-inline const auto if_statement = KW_IF >> expression >> block_statement >> -(KW_ELSE >> (block_statement | statement));
-
-// while_statement = "while" expression block_statement
-inline const auto while_statement = KW_WHILE >> expression >> block_statement;
-
-// do_while_statement = "do" block_statement "while" expression ";"
-inline const auto do_while_statement = KW_DO >> block_statement >> KW_WHILE >> expression >> SEMICOLON;
-
-// for_statement = "for" expression "do" "(" parameter ")" block_statement
-inline const auto for_statement = KW_FOR >> expression >> KW_DO >> LPAREN >> parameter >> RPAREN >> block_statement;
-
-// switch_case = "case" expression ":" statement | "default" ":" statement
-inline const auto switch_case = (KW_CASE >> expression >> COLON >> statement) | (KW_DEFAULT >> COLON >> statement);
-
-// switch_statement = "switch" expression "{" { switch_case } "}"
-inline const auto switch_statement = KW_SWITCH >> expression >> LBRACE >> *switch_case >> RBRACE;
-
-// contract_statement = ( "assert" | "pre" | "post" ) expression ";"
-inline const auto contract_statement = (KW_ASSERT | KW_PRE | KW_POST) >> expression >> SEMICOLON;
-
-// expression_statement = expression ";"
-inline const auto expression_statement = expression >> SEMICOLON;
-
-// local_declaration = IDENTIFIER ":" type_specifier [ initializer ] ";" | IDENTIFIER ":=" expression ";"
-inline const auto local_declaration = (IDENTIFIER >> COLON >> type_specifier >> -((EQUAL | DOUBLE_EQUAL) >> expression) >> SEMICOLON) |
-                                       (IDENTIFIER >> COLON_EQUAL >> expression >> SEMICOLON);
-
-// ============================================================================
-// EXPRESSIONS (line 371-487) - Precedence hierarchy
-// ============================================================================
-
-// literal = "true" | "false" | INTEGER_LITERAL | FLOAT_LITERAL | STRING_LITERAL | CHAR_LITERAL
-inline const auto literal = KW_TRUE | KW_FALSE | INTEGER_LIT | FLOAT_LIT | STRING_LIT | CHAR_LIT;
-
-// primary_expression
-inline const auto primary_expression = literal | 
-                                        (DOUBLE_COLON >> qualified_name) |
-                                        qualified_name |
-                                        KW_THIS | KW_THAT | UNDERSCORE |
-                                        (LPAREN >> expression >> RPAREN) |
-                                        (LBRACKET >> -(expression >> *(COMMA >> expression)) >> RBRACKET);
-
-// postfix operators  
-inline const auto call_op = LPAREN >> -(expression >> *(COMMA >> expression)) >> RPAREN;
-inline const auto member_op = DOT >> IDENTIFIER;
-inline const auto subscript_op = LBRACKET >> expression >> RBRACKET;
-inline const auto postfix_op = call_op | member_op | subscript_op | token(TT::PlusPlus) | token(TT::MinusMinus);
-
-// postfix_expression = primary_expression { postfix_op }
-inline const auto postfix_expression = primary_expression >> *postfix_op;
-
-// prefix operators
-inline const auto prefix_op = PLUS | MINUS | BANG | TILDE | token(TT::PlusPlus) | token(TT::MinusMinus) | AMP | STAR;
-
-// prefix_expression = { prefix_op } postfix_expression
-inline const auto prefix_expression = *prefix_op >> postfix_expression;
-
-// multiplicative_expression = prefix_expression { ( "*" | "/" | "%" ) prefix_expression }
-inline const auto multiplicative_expression = prefix_expression >> *((STAR | SLASH | PERCENT) >> prefix_expression);
-
-// additive_expression = multiplicative_expression { ( "+" | "-" ) multiplicative_expression }
-inline const auto additive_expression = multiplicative_expression >> *((PLUS | MINUS) >> multiplicative_expression);
-
-// comparison_expression = additive_expression { ( "<" | ">" | "<=" | ">=" ) additive_expression }
-inline const auto comparison_expression = additive_expression >> *((LT | GT | token(TT::LessEqual) | token(TT::GreaterEqual)) >> additive_expression);
-
-// equality_expression = comparison_expression { ( "==" | "!=" ) comparison_expression }
-inline const auto equality_expression = comparison_expression >> *((DOUBLE_EQUAL | token(TT::NotEqual)) >> comparison_expression);
-
-// bitwise_and_expression = equality_expression { "&" equality_expression }
-inline const auto bitwise_and_expression = equality_expression >> *(AMP >> equality_expression);
-
-// bitwise_xor_expression = bitwise_and_expression { "^" bitwise_and_expression }
-inline const auto bitwise_xor_expression = bitwise_and_expression >> *(CARET >> bitwise_and_expression);
-
-// bitwise_or_expression = bitwise_xor_expression { "|" bitwise_xor_expression }
-inline const auto bitwise_or_expression = bitwise_xor_expression >> *(PIPE >> bitwise_xor_expression);
-
-// logical_and_expression = bitwise_or_expression { "&&" bitwise_or_expression }
-inline const auto logical_and_expression = bitwise_or_expression >> *(DOUBLE_AMP >> bitwise_or_expression);
-
-// logical_or_expression = logical_and_expression { "||" logical_and_expression }
-inline const auto logical_or_expression = logical_and_expression >> *(DOUBLE_PIPE >> logical_and_expression);
-
-// ternary_expression = logical_or_expression [ "?" expression ":" ternary_expression ]
-inline const auto ternary_expression = logical_or_expression >> -(QUESTION >> expression >> COLON >> logical_or_expression);
-
-// assignment_op = "=" | "+=" | "-=" | "*=" | "/=" | "%="
-inline const auto assignment_op = EQUAL | token(TT::PlusEqual) | token(TT::MinusEqual) | token(TT::StarEqual) | token(TT::SlashEqual);
-
-// assignment_expression = ternary_expression [ assignment_op assignment_expression ]
-inline const auto assignment_expression = ternary_expression >> -(assignment_op >> expression);
-
-// ============================================================================
-// TYPE SPECIFIERS (line 586-613)
-// ============================================================================
-
-// basic_type = IDENTIFIER | "auto" | "_" | "type"
-inline const auto basic_type = IDENTIFIER | KW_AUTO | UNDERSCORE | KW_TYPE;
-
-// qualified_type = basic_type [ template_args ] { "::" IDENTIFIER [ template_args ] } { "*" | "&" }
-inline const auto qualified_type = basic_type >> -template_args >> *(DOUBLE_COLON >> IDENTIFIER >> -template_args) >> *(STAR | AMP);
-
-// type_spec_impl = qualified_type | "const" type_specifier | "*" type_specifier
-inline const auto type_spec_impl = qualified_type | (KW_CONST >> type_specifier) | (STAR >> -KW_CONST >> type_specifier);
-
-// ============================================================================
-// TOP-LEVEL PRODUCTION RULES
-// ============================================================================
-
-// declaration_body
-inline const auto declaration_body = unified_declaration | func_declaration | type_declaration_kw | 
-                                      namespace_declaration_kw | using_declaration | import_declaration | 
-                                      let_declaration | statement;
-
-// declaration = [ access_specifier ] declaration_body
-inline const auto declaration_rule = -access_specifier >> declaration_body;
-
-// statement rule
-inline const auto statement_rule = block_statement | if_statement | while_statement | for_statement |
-                                    do_while_statement | switch_statement | try_statement |
-                                    return_statement | break_statement | continue_statement | 
-                                    throw_statement | contract_statement |
-                                    local_declaration | expression_statement | SEMICOLON;
-
-// block_statement = "{" { statement } "}"
-inline const auto block_impl = LBRACE >> *statement >> RBRACE;
-
-// translation_unit = { declaration } EOF
-inline const auto translation_unit = *declaration >> END_OF_FILE;
-
-// ============================================================================
-// Initialize Lazy Rules
+// Grammar initialization
 // ============================================================================
 
 static bool g_init = false;
 
-inline void init_grammar() {
+void init_grammar() {
     if (g_init) return;
     g_init = true;
     
-    expression.parser_fn = [](TS in) { return assignment_expression.parse(in); };
-    statement.parser_fn = [](TS in) { return statement_rule.parse(in); };
-    type_specifier.parser_fn = [](TS in) { return type_spec_impl.parse(in); };
-    declaration.parser_fn = [](TS in) { return declaration_rule.parse(in); };
-    block_statement.parser_fn = [](TS in) { return block_impl.parse(in); };
+    using TT = TokenType;
+    
+    // Keywords
+    auto FUNC = tok(TT::Func);
+    auto TYPE = tok(TT::Type);
+    auto NAMESPACE = tok(TT::Namespace);
+    auto LET = tok(TT::Let);
+    auto CONST = tok(TT::Const);
+    auto RETURN = tok(TT::Return);
+    auto IF = tok(TT::If);
+    auto ELSE = tok(TT::Else);
+    auto WHILE = tok(TT::While);
+    auto FOR = tok(TT::For);
+    auto DO = tok(TT::Do);
+    auto BREAK = tok(TT::Break);
+    auto CONTINUE = tok(TT::Continue);
+    auto SWITCH = tok(TT::Switch);
+    auto CASE = tok(TT::Case);
+    auto DEFAULT = tok(TT::Default);
+    auto TRY = tok(TT::Try);
+    auto CATCH = tok(TT::Catch);
+    auto THROW = tok(TT::Throw);
+    auto THROWS = tok(TT::Throws);
+    auto NOEXCEPT = tok(TT::Noexcept);
+    auto REQUIRES = tok(TT::Requires);
+    auto PUBLIC = tok(TT::Public);
+    auto PRIVATE = tok(TT::Private);
+    auto PROTECTED = tok(TT::Protected);
+    auto VIRTUAL = tok(TT::Virtual);
+    auto OVERRIDE = tok(TT::Override);
+    auto IMPLICIT = tok(TT::Implicit);
+    auto THIS = tok(TT::This);
+    auto THAT = tok(TT::That);
+    auto IN = tok(TT::In);
+    auto TRUE = tok(TT::True);
+    auto FALSE = tok(TT::False);
+    auto AUTO = tok(TT::Auto);
+    auto CONCEPT = tok(TT::Concept);
+    auto AS = tok(TT::As);
+    auto IS = tok(TT::Is);
+    auto FINAL = tok(TT::Final);
+    auto IMPORT = tok(TT::Import);
+    
+    // Contextual keywords
+    auto COPY = kw("copy");
+    auto MOVE = kw("move");
+    auto FORWARD = kw("forward");
+    auto INOUT = kw("inout");
+    auto OUT = kw("out");
+    auto PRE = kw("pre");
+    auto POST = kw("post");
+    auto ASSERT = kw("assert");
+    auto USING = kw("using");
+    auto TEMPLATE = kw("template");
+    auto AWAIT = kw("await");
+    
+    // Punctuation
+    auto LPAREN = tok(TT::LeftParen);
+    auto RPAREN = tok(TT::RightParen);
+    auto LBRACE = tok(TT::LeftBrace);
+    auto RBRACE = tok(TT::RightBrace);
+    auto LBRACKET = tok(TT::LeftBracket);
+    auto RBRACKET = tok(TT::RightBracket);
+    auto LT = tok(TT::LessThan);
+    auto GT = tok(TT::GreaterThan);
+    auto COLON = tok(TT::Colon);
+    auto SEMICOLON = tok(TT::Semicolon);
+    auto COMMA = tok(TT::Comma);
+    auto DOT = tok(TT::Dot);
+    auto ARROW = tok(TT::Arrow);
+    auto EQUAL = tok(TT::Equal);
+    auto DOUBLE_EQUAL = tok(TT::DoubleEqual);
+    auto COLON_EQUAL = tok(TT::ColonEqual);
+    auto DOUBLE_COLON = tok(TT::DoubleColon);
+    auto AT = tok(TT::At);
+    auto ELLIPSIS = tok(TT::Ellipsis);
+    auto UNDERSCORE = tok(TT::Underscore);
+    auto PLUS = tok(TT::Plus);
+    auto MINUS = tok(TT::Minus);
+    auto STAR = tok(TT::Asterisk);
+    auto SLASH = tok(TT::Slash);
+    auto PERCENT = tok(TT::Percent);
+    auto AMP = tok(TT::Ampersand);
+    auto PIPE = tok(TT::Pipe);
+    auto QUESTION = tok(TT::Question);
+    auto DOUBLE_AMP = tok(TT::DoubleAmpersand);
+    auto DOUBLE_PIPE = tok(TT::DoublePipe);
+    auto BANG = tok(TT::Exclamation);
+    auto TILDE = tok(TT::Tilde);
+    
+    // Identifiers & Literals
+    auto IDENTIFIER = tok(TT::Identifier);
+    auto INTEGER_LIT = tok(TT::IntegerLiteral);
+    auto FLOAT_LIT = tok(TT::FloatLiteral);
+    auto STRING_LIT = tok(TT::StringLiteral);
+    auto CHAR_LIT = tok(TT::CharacterLiteral);
+    auto END_OF_FILE = tok(TT::EndOfFile);
+    
+    // ========================================================================
+    // Grammar Rules
+    // ========================================================================
+    
+    // access_specifier = "public" | "private" | "protected"
+    auto access_specifier = alt(PUBLIC, PRIVATE, PROTECTED);
+    
+    // identifier_like
+    auto identifier_like = alt(IDENTIFIER, IN, COPY, MOVE, FORWARD, FUNC, TYPE, NAMESPACE, UNDERSCORE, OUT, INOUT);
+    
+    // param_qualifier = in | copy | inout | out | move | forward | virtual | override | implicit
+    auto param_qualifier = alt(IN, COPY, INOUT, OUT, MOVE, FORWARD, VIRTUAL, OVERRIDE, IMPLICIT);
+    
+    // param_name = IDENTIFIER | "this" | "that" | "_"
+    auto param_name = alt(IDENTIFIER, THIS, THAT, UNDERSCORE);
+    
+    // throws_spec = "throws" | "noexcept"
+    auto throws_spec = alt(THROWS, NOEXCEPT);
+    
+    // literal = true | false | int | float | string | char
+    auto literal = alt(TRUE, FALSE, INTEGER_LIT, FLOAT_LIT, STRING_LIT, CHAR_LIT);
+    
+    // template_params = '<' ids '>'
+    template_params.set(seq(LT, opt(seq(IDENTIFIER, many(seq(COMMA, IDENTIFIER)))), GT));
+    
+    // template_args = '<' exprs '>'
+    template_args.set(seq(LT, opt(seq(ref(expression), many(seq(COMMA, ref(expression))))), GT));
+    
+    // type_specifier
+    type_specifier.set(seq(
+        alt(IDENTIFIER, AUTO, UNDERSCORE, TYPE),
+        opt(ref(template_args)),
+        many(seq(DOUBLE_COLON, IDENTIFIER, opt(ref(template_args)))),
+        many(alt(STAR, AMP))
+    ));
+    
+    // parameter = { qualifier } name [ ... ] [ : type ] [ = expr ]
+    auto parameter = seq(
+        many(param_qualifier),
+        param_name,
+        opt(ELLIPSIS),
+        opt(seq(COLON, ref(type_specifier))),
+        opt(seq(EQUAL, ref(expression)))
+    );
+    
+    // param_list = '(' [ parameters ] ')'
+    param_list.set(seq(LPAREN, opt(seq(parameter, many(seq(COMMA, parameter)), opt(COMMA))), RPAREN));
+    
+    // return_spec = '->' type
+    auto return_spec = seq(ARROW, opt(alt(FORWARD, MOVE)), ref(type_specifier));
+    
+    // requires_clause = 'requires' expression
+    auto requires_clause = seq(REQUIRES, ref(expression));
+    
+    // contracts
+    auto contracts = many(seq(alt(PRE, POST, ASSERT), alt(seq(COLON, ref(expression)), seq(LPAREN, ref(expression), RPAREN))));
+    
+    // function_body
+    auto function_body = alt(
+        seq(EQUAL, ref(expression), SEMICOLON),
+        seq(DOUBLE_EQUAL, ref(expression), SEMICOLON),
+        seq(EQUAL, ref(block_statement)),
+        ref(block_statement),
+        SEMICOLON
+    );
+    
+    // func_signature
+    auto func_signature = seq(
+        opt(ref(template_params)),
+        ref(param_list),
+        opt(throws_spec),
+        opt(return_spec),
+        opt(requires_clause),
+        contracts
+    );
+    
+    // block_statement = '{' { statement } '}'
+    block_statement.set(seq(LBRACE, many(ref(statement)), RBRACE));
+    
+    // type_body
+    auto type_body = seq(EQUAL, LBRACE, many(ref(decl_rule)), RBRACE, opt(SEMICOLON));
+    
+    // namespace_body
+    auto namespace_body = seq(opt(EQUAL), LBRACE, many(ref(decl_rule)), RBRACE);
+    
+    // ========================================================================
+    // Expressions
+    // ========================================================================
+    
+    // qualified_name
+    auto qualified_name = seq(IDENTIFIER, many(seq(DOUBLE_COLON, IDENTIFIER)));
+    
+    // primary_expression
+    auto primary_expression = alt(
+        literal,
+        seq(opt(DOUBLE_COLON), qualified_name),
+        THIS, THAT, UNDERSCORE,
+        seq(LPAREN, ref(expression), RPAREN),
+        seq(LBRACKET, opt(seq(ref(expression), many(seq(COMMA, ref(expression))))), RBRACKET)
+    );
+    
+    // postfix_expression
+    auto call_op = seq(LPAREN, opt(seq(ref(expression), many(seq(COMMA, ref(expression))))), RPAREN);
+    auto member_op = seq(DOT, IDENTIFIER);
+    auto subscript_op = seq(LBRACKET, ref(expression), RBRACKET);
+    auto postfix_op = alt(call_op, member_op, subscript_op, tok(TT::PlusPlus), tok(TT::MinusMinus));
+    auto postfix_expression = seq(primary_expression, many(postfix_op));
+    
+    // prefix_expression
+    auto prefix_op = alt(PLUS, MINUS, BANG, TILDE, tok(TT::PlusPlus), tok(TT::MinusMinus), AMP, STAR);
+    auto prefix_expression = seq(many(prefix_op), postfix_expression);
+    
+    // Binary expressions (flattened precedence for simplicity)
+    auto mult_op = alt(STAR, SLASH, PERCENT);
+    auto add_op = alt(PLUS, MINUS);
+    auto cmp_op = alt(LT, GT, tok(TT::LessThanOrEqual), tok(TT::GreaterThanOrEqual));
+    auto eq_op = alt(DOUBLE_EQUAL, tok(TT::NotEqual));
+    auto assign_op = alt(EQUAL, tok(TT::PlusEqual), tok(TT::MinusEqual), tok(TT::AsteriskEqual), tok(TT::SlashEqual));
+    
+    auto mult_expr = seq(prefix_expression, many(seq(mult_op, prefix_expression)));
+    auto add_expr = seq(mult_expr, many(seq(add_op, mult_expr)));
+    auto cmp_expr = seq(add_expr, many(seq(cmp_op, add_expr)));
+    auto eq_expr = seq(cmp_expr, many(seq(eq_op, cmp_expr)));
+    auto and_expr = seq(eq_expr, many(seq(DOUBLE_AMP, eq_expr)));
+    auto or_expr = seq(and_expr, many(seq(DOUBLE_PIPE, and_expr)));
+    auto ternary_expr = seq(or_expr, opt(seq(QUESTION, ref(expression), COLON, or_expr)));
+    auto assign_expr = seq(ternary_expr, opt(seq(assign_op, ref(expression))));
+    
+    expression.set(assign_expr);
+    
+    // ========================================================================
+    // Statements
+    // ========================================================================
+    
+    auto return_stmt = seq(RETURN, opt(ref(expression)), SEMICOLON);
+    auto break_stmt = seq(BREAK, opt(IDENTIFIER), SEMICOLON);
+    auto continue_stmt = seq(CONTINUE, opt(IDENTIFIER), SEMICOLON);
+    auto throw_stmt = seq(THROW, opt(ref(expression)), SEMICOLON);
+    auto if_stmt = seq(IF, ref(expression), ref(block_statement), opt(seq(ELSE, alt(ref(block_statement), ref(statement)))));
+    auto while_stmt = seq(WHILE, ref(expression), ref(block_statement));
+    auto do_stmt = seq(DO, ref(block_statement), WHILE, ref(expression), SEMICOLON);
+    auto for_stmt = seq(FOR, ref(expression), DO, LPAREN, parameter, RPAREN, ref(block_statement));
+    auto switch_case = alt(seq(CASE, ref(expression), COLON, ref(statement)), seq(DEFAULT, COLON, ref(statement)));
+    auto switch_stmt = seq(SWITCH, ref(expression), LBRACE, many(switch_case), RBRACE);
+    auto try_stmt = seq(TRY, ref(block_statement), many(seq(CATCH, LPAREN, opt(seq(ref(type_specifier), opt(IDENTIFIER))), RPAREN, ref(block_statement))));
+    auto contract_stmt = seq(alt(ASSERT, PRE, POST), ref(expression), SEMICOLON);
+    auto expr_stmt = seq(ref(expression), SEMICOLON);
+    auto local_decl = alt(
+        seq(IDENTIFIER, COLON, ref(type_specifier), opt(seq(alt(EQUAL, DOUBLE_EQUAL), ref(expression))), SEMICOLON),
+        seq(IDENTIFIER, COLON_EQUAL, ref(expression), SEMICOLON)
+    );
+    
+    statement.set(alt(
+        ref(block_statement), if_stmt, while_stmt, for_stmt, do_stmt, switch_stmt, try_stmt,
+        return_stmt, break_stmt, continue_stmt, throw_stmt, contract_stmt, local_decl, expr_stmt, SEMICOLON
+    ));
+    
+    // ========================================================================
+    // Declarations
+    // ========================================================================
+    
+    auto let_decl = seq(alt(LET, CONST), IDENTIFIER, opt(seq(COLON, ref(type_specifier))), alt(EQUAL, DOUBLE_EQUAL), ref(expression), SEMICOLON);
+    auto func_decl = seq(FUNC, IDENTIFIER, opt(COLON), func_signature, function_body);
+    auto type_decl = seq(TYPE, IDENTIFIER, opt(ref(template_params)), opt(requires_clause), type_body);
+    auto namespace_decl = seq(NAMESPACE, IDENTIFIER, alt(seq(DOUBLE_EQUAL, qualified_name, SEMICOLON), namespace_body));
+    auto import_decl = seq(IMPORT, IDENTIFIER, SEMICOLON);
+    auto using_decl = seq(USING, alt(
+        seq(NAMESPACE, IDENTIFIER, SEMICOLON),
+        seq(IDENTIFIER, EQUAL, qualified_name, SEMICOLON),
+        seq(qualified_name, SEMICOLON)
+    ));
+    
+    // Unified declarations
+    auto unified_func = seq(func_signature, function_body);
+    auto unified_type = seq(many(seq(AT, IDENTIFIER, opt(ref(template_args)))), alt(TYPE, CONCEPT),
+                            opt(ref(template_params)), opt(requires_clause),
+                            alt(seq(DOUBLE_EQUAL, ref(type_specifier), SEMICOLON),
+                                seq(EQUAL, ref(type_specifier), SEMICOLON), type_body));
+    auto unified_ns = seq(NAMESPACE, alt(seq(DOUBLE_EQUAL, qualified_name, SEMICOLON), namespace_body));
+    auto unified_var = seq(ref(type_specifier), opt(seq(alt(EQUAL, DOUBLE_EQUAL), ref(expression))), SEMICOLON);
+    auto unified_decl = seq(identifier_like, COLON, opt(ref(template_params)), alt(unified_func, unified_type, unified_ns, unified_var));
+    auto auto_decl = seq(identifier_like, COLON_EQUAL, ref(expression), SEMICOLON);
+    
+    decl_rule.set(seq(
+        opt(access_specifier),
+        alt(func_decl, type_decl, namespace_decl, using_decl, import_decl, let_decl, unified_decl, auto_decl, ref(statement))
+    ));
 }
 
 // ============================================================================
@@ -487,11 +435,14 @@ Parser::Parser(std::span<Token> tokens) : tokens(tokens) {
 
 std::unique_ptr<AST> Parser::parse() {
     auto ast = std::make_unique<AST>();
-    TS stream(std::span<const Token>(tokens.data(), tokens.size()));
+    Stream s{std::span<const Token>(tokens.data(), tokens.size())};
     
-    auto result = translation_unit.parse(stream);
-    if (!result.success()) {
-        error_count++;
+    // Parse translation_unit = { declaration } EOF
+    while (!s.empty() && s.peek().type != TokenType::EndOfFile) {
+        if (!decl_rule.parse(s)) {
+            error_count++;
+            s.advance();  // Skip bad token
+        }
     }
     
     return ast;

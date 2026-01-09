@@ -104,9 +104,34 @@ struct TokenParser {
     }
 };
 
-// Forward declare Proto for factory functions
-template<typename P> struct Proto;
-template<typename P> constexpr auto lift(P p);
+// ============================================================================
+// Proto Wrapper (from operators.hpp pattern)
+// ============================================================================
+// Wraps parsers to provide Spirit-like operator syntax
+// MUST be defined before factory functions that return Proto<>
+
+template<typename P>
+struct Proto {
+    P parser;
+    
+    template<typename Input>
+    constexpr auto parse(Input input) const {
+        return parser.parse(input);
+    }
+    
+    // Transform: p[f] - semantic action
+    template<typename F>
+    constexpr auto operator[](F f) const {
+        auto m = ebnf::map(parser, std::move(f));
+        return Proto<decltype(m)>{std::move(m)};
+    }
+};
+
+// Lift any parser into Proto wrapper
+template<typename P>
+constexpr auto lift(P p) {
+    return Proto<P>{std::move(p)};
+}
 
 // Factory for token parsers (returns Proto for operator compatibility)
 constexpr auto token(cpp2_transpiler::TokenType type) {
@@ -140,7 +165,6 @@ constexpr auto lexeme(cpp2_transpiler::TokenType type, std::string_view lex) {
     return lift(LexemeParser{type, lex});
 }
 
-
 // ============================================================================
 // Keyword Parser
 // ============================================================================
@@ -148,52 +172,27 @@ constexpr auto lexeme(cpp2_transpiler::TokenType type, std::string_view lex) {
 
 constexpr auto keyword(std::string_view kw) {
     // Keywords use Identifier type with specific lexeme
-    return LexemeParser{cpp2_transpiler::TokenType::Identifier, kw};
+    return lift(LexemeParser{cpp2_transpiler::TokenType::Identifier, kw});
 }
 
-// ============================================================================
-// Proto Wrapper (from operators.hpp pattern)
-// ============================================================================
-// Wraps parsers to provide Spirit-like operator syntax
-
-template<typename P>
-struct Proto {
-    P parser;
-    
-    template<typename Input>
-    constexpr auto parse(Input input) const {
-        return parser.parse(input);
-    }
-    
-    // Transform: p[f] - semantic action
-    template<typename F>
-    constexpr auto operator[](F f) const {
-        auto m = ebnf::map(parser, std::move(f));
-        return Proto<decltype(m)>{std::move(m)};
-    }
-};
-
-// Lift any parser into Proto wrapper
-template<typename P>
-constexpr auto lift(P p) {
-    return Proto<P>{std::move(p)};
-}
 
 // ============================================================================
 // Operator Overloads (Proto → Proto)
 // ============================================================================
 
-// Sequence: a >> b
+// Sequence: a >> b (result discarded to std::monostate for type uniformity)
 template<typename L, typename R>
 constexpr auto operator>>(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::seq(std::move(l.parser), std::move(r.parser)));
+    return lift(ebnf::discard(ebnf::seq(std::move(l.parser), std::move(r.parser))));
 }
 
-// Alternative: a | b
+
+// Alternative: a | b (both sides discarded to std::monostate for type compatibility)
 template<typename L, typename R>
 constexpr auto operator|(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::alt(std::move(l.parser), std::move(r.parser)));
+    return lift(ebnf::alt(ebnf::discard(std::move(l.parser)), ebnf::discard(std::move(r.parser))));
 }
+
 
 // List: a % b (sep_by)
 template<typename L, typename R>

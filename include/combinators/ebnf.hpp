@@ -650,6 +650,57 @@ constexpr auto fix(F factory) {
 }
 
 // ---------------------------------------------------------------------------
+// Level 9: Discard - Drops parsed value, returns std::monostate
+// ---------------------------------------------------------------------------
+// This is crucial for making alternatives work when parsers return different types
+
+template<typename P>
+struct Discard {
+    P parser;
+    
+    template<typename Input>
+    constexpr auto parse(Input input) const {
+        auto r = parser.parse(input);
+        if (r.success()) {
+            return Result<std::monostate, Input>::ok(std::monostate{}, r.remaining());
+        }
+        return Result<std::monostate, Input>::fail(input);
+    }
+};
+
+template<typename P>
+constexpr auto discard(P p) { return Discard<P>{std::move(p)}; }
+
+// ---------------------------------------------------------------------------
+// Level 10: Rule - Type-erased parser for recursive grammars
+// ---------------------------------------------------------------------------
+// Stores any parser via std::function, always returns std::monostate
+
+template<typename Input>
+struct Rule {
+    std::function<Result<std::monostate, Input>(Input)> parser_fn;
+    
+    auto parse(Input input) const -> Result<std::monostate, Input> {
+        if (!parser_fn) {
+            return Result<std::monostate, Input>::fail(input, "Rule not initialized");
+        }
+        return parser_fn(input);
+    }
+    
+    template<typename P>
+    void set(P&& parser) {
+        parser_fn = [p = std::forward<P>(parser)](Input input) -> Result<std::monostate, Input> {
+            auto result = p.parse(input);
+            if (result.success()) {
+                return Result<std::monostate, Input>::ok(std::monostate{}, result.remaining());
+            }
+            return Result<std::monostate, Input>::fail(input);
+        };
+    }
+};
+
+
+// ---------------------------------------------------------------------------
 // EBNF DSL Helpers
 // ---------------------------------------------------------------------------
 
