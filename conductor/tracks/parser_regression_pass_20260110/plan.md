@@ -74,28 +74,28 @@
 
 ## Phase 4: Function Declarations & Bodies
 
-- [ ] Task: Parse function declarations
-  - [ ] Write test: `name: () -> int = { return 42; }` parses
-  - [ ] Write test: `func: (x: int) -> void = { }` parses
-  - [ ] Write test: Expression body `f: () = expr;` parses
-  - [ ] Implement: Ensure `FunctionSuffix` captures params, return, body
-  - [ ] Test: Function structure in AST
+- [x] Task: Parse function declarations
+  - [x] Write test: `name: () -> int = { return 42; }` parses
+  - [x] Write test: `func: (x: int) -> void = { }` parses
+  - [x] Write test: Expression body `f: () = expr;` parses
+  - [x] Implement: Ensure `FunctionSuffix` captures params, return, body
+  - [x] Test: Function structure in AST
 
-- [ ] Task: Emit function declarations
-  - [ ] Write test: `name: () -> int` emits `auto name() -> int`
-  - [ ] Write test: Block body emits correctly with braces
-  - [ ] Write test: Expression body emits `return expr;`
-  - [ ] Implement: Fix `emit_function()` for all function forms
-  - [ ] Test: Generated functions compile
+- [x] Task: Emit function declarations
+  - [x] Write test: `name: () -> int` emits `auto name() -> int`
+  - [x] Write test: Block body emits correctly with braces
+  - [x] Write test: Expression body emits `return expr;`
+  - [x] Implement: Fix `emit_function()` for all function forms
+  - [x] Test: Generated functions compile
 
-- [ ] Task: Handle main function special case
-  - [ ] Write test: `main: () -> int` emits `int main()`
-  - [ ] Implement: Special case for `main` in emitter
-  - [ ] Test: main() signature is correct
+- [x] Task: Handle main function special case
+  - [x] Write test: `main: () -> int` emits `int main()`
+  - [x] Implement: Special case for `main` in emitter
+  - [x] Test: main() signature is correct
 
-- [ ] Task: Run regression tests on functions
-  - [ ] Test: All function tests pass
-  - [ ] Measure: Count passing tests before/after
+- [x] Task: Run regression tests on functions
+  - [x] Test: All function tests pass
+  - [x] Measure: Count passing tests before/after
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 

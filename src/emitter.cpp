@@ -110,7 +110,7 @@ private:
 
     void emit_function(const std::string& name, const Node& suffix) {
         // Extract return type (if any) and parameters
-        std::string return_type = "void";
+        std::string return_type = "auto";
         std::string params;
         const Node* body = nullptr;
 
