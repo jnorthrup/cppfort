@@ -72,7 +72,7 @@
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Function Declarations & Bodies
+## Phase 4: Function Declarations & Bodies [checkpoint: 8f68ecd]
 
 - [x] Task: Parse function declarations
   - [x] Write test: `name: () -> int = { return 42; }` parses
