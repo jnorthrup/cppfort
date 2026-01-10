@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 get_filename_component(TESTS_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
 
 # Function to add test if file exists
+# All tests run in build directory to prevent polluting source tree
 function(add_test_if_exists test_name file_name)
     if(EXISTS "${TESTS_DIR}/${file_name}")
         add_executable(${test_name} ${file_name})
@@ -13,7 +14,9 @@ function(add_test_if_exists test_name file_name)
             ${CMAKE_SOURCE_DIR}/include
             ${CMAKE_BINARY_DIR}
         )
-        add_test(NAME ${test_name} COMMAND ${test_name})
+        add_test(NAME ${test_name} COMMAND ${test_name}
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        )
     endif()
 endfunction()
 
