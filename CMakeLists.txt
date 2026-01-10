@@ -147,11 +147,18 @@ target_compile_features(cppfront PRIVATE cxx_std_23)
 
 # Ensure cppfront uses Homebrew Clang and libc++
 # Force -O0 for AST determinism in corpus comparisons
+# Increase template instantiation depth for Clang 21
 if(APPLE)
     target_compile_options(cppfront PRIVATE
         -stdlib=libc++
         -Wno-date-time
         -O0
+        -ftemplate-depth=2048
+        -ftemplate-backtrace-limit=0
+        -ferror-limit=10
+        -Wno-error
+        -Wno-unused-parameter
+        -Wno-unused-variable
     )
     target_link_options(cppfront PRIVATE
         -stdlib=libc++
