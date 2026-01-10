@@ -706,14 +706,22 @@ def Cpp2SON_LoadOp : Cpp2SON_Op<"load"> {
     - _name is the field name, _alias is memory alias
     - compute() checks ptr type and memory type
     - idealize() handles load-after-store, load-after-new
+
+    JMM Support:
+    - jmm_happens_before: Enforce happens-before ordering
+    - jmm_volatile: Sequential consistency for volatile loads
+    - jmm_visibility: Thread-local or shared access
   }];
-  let arguments = (ins 
+  let arguments = (ins
     AnyType:$mem,
     AnyType:$ptr,
     Optional<Index>:$offset,
     StrAttr:$name,
     I32Attr:$alias,
-    TypeAttr:$declared_type
+    TypeAttr:$declared_type,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVolatileAttr>:$jmm_volatile,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
   );
   let results = (outs AnyType:$result);
   let assemblyFormat = "$mem `[` $ptr (`+` $offset^)? `]` `as` $name attr-dict `:` type($mem) `,` type($ptr) `->` type($result)";
@@ -728,8 +736,14 @@ def Cpp2SON_StoreOp : Cpp2SON_Op<"store"> {
     - _init flag for initializing writes (allow null)
     - compute() returns TypeMem with alias and value type
     - idealize() handles store-after-store elimination
+
+    JMM Support:
+    - jmm_happens_before: Enforce happens-before ordering
+    - jmm_volatile: Sequential consistency for volatile stores
+    - jmm_visibility: Thread-local or shared access
+    - jmm_final_field: Final field freeze semantics
   }];
-  let arguments = (ins 
+  let arguments = (ins
     AnyType:$mem,
     AnyType:$ptr,
     Optional<Index>:$offset,
@@ -737,7 +751,11 @@ def Cpp2SON_StoreOp : Cpp2SON_Op<"store"> {
     StrAttr:$name,
     I32Attr:$alias,
     TypeAttr:$declared_type,
-    UnitAttr:$init
+    UnitAttr:$init,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVolatileAttr>:$jmm_volatile,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility,
+    OptionalAttr<SON_JMMFinalFieldAttr>:$jmm_final_field
   );
   let results = (outs AnyType:$result);
   let assemblyFormat = "$mem `[` $ptr (`+` $offset^)? `]` `as` $name `=` $value attr-dict `:` type($mem) `,` type($ptr) `,` type($value) `->` type($result)";
@@ -748,11 +766,17 @@ def Cpp2SON_NewOp : Cpp2SON_Op<"new"> {
   let description = [{
     Allocate a new object on the heap.
     Returns control, memory, and pointer to new object.
+
+    JMM Support:
+    - jmm_final_field: Mark object as having final fields requiring freeze
+    - jmm_visibility: Thread-local or shared allocation
   }];
-  let arguments = (ins 
+  let arguments = (ins
     AnyType:$ctrl,
     AnyType:$mem,
-    TypeAttr:$allocated_type
+    TypeAttr:$allocated_type,
+    OptionalAttr<SON_JMMFinalFieldAttr>:$jmm_final_field,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
   );
   let results = (outs AnyType:$out_ctrl, AnyType:$out_mem, AnyType:$ptr);
   let assemblyFormat = "$ctrl `:` type($ctrl) `,` $mem `:` type($mem) `:` $allocated_type attr-dict `->` type($out_ctrl) `,` type($out_mem) `,` type($ptr)";
@@ -861,4 +885,121 @@ def Cpp2SON_CalleeSaveOp : Cpp2SON_Op<"callee_save"> {
   let arguments = (ins AnyType:$input, I32Attr:$reg);
   let results = (outs AnyType:$result);
   let assemblyFormat = "$input `reg` $reg attr-dict `:` type($input) `->` type($result)";
+}
+
+//===----------------------------------------------------------------------===//
+// Constructor and Object Lifecycle
+//===----------------------------------------------------------------------===//
+
+def Cpp2SON_ConstructorEndOp : Cpp2SON_Op<"constructor_end"> {
+  let summary = "Constructor completion boundary - final field freeze point";
+  let description = [{
+    Marks the end of a constructor, establishing the freeze point for final fields.
+    Per JMM, a release fence must be emitted after constructor completion
+    to ensure final fields are visible to other threads before the object
+    reference becomes accessible.
+
+    JMM Support:
+    - jmm_final_field: Required - specifies which constructor completed
+    - jmm_happens_before: Establishes ordering with object publication
+  }];
+  let arguments = (ins
+    AnyType:$ctrl,
+    AnyType:$mem,
+    AnyType:$object_ptr,
+    SON_JMMFinalFieldAttr:$jmm_final_field,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before
+  );
+  let results = (outs AnyType:$out_ctrl, AnyType:$out_mem);
+  let assemblyFormat = "$object_ptr `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($object_ptr) `->` type($out_ctrl) `,` type($out_mem)";
+}
+
+//===----------------------------------------------------------------------===//
+// Concurrency Operations (Channel, Spawn, Await)
+//===----------------------------------------------------------------------===//
+
+def Cpp2SON_SendOp : Cpp2SON_Op<"send"> {
+  let summary = "Channel send operation - transfer ownership";
+  let description = [{
+    Send a value through a channel, transferring ownership.
+    Implements Kotlin-style channel semantics for Cpp2.
+
+    JMM Support:
+    - jmm_happens_before: Establish happens-before edge with receive
+    - jmm_visibility: Always shared (channel operations are concurrent)
+  }];
+  let arguments = (ins
+    AnyType:$ctrl,
+    AnyType:$mem,
+    AnyType:$channel,
+    AnyType:$value,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
+  );
+  let results = (outs AnyType:$out_ctrl, AnyType:$out_mem);
+  let assemblyFormat = "`send` $channel `,` $value `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($channel) `,` type($value) `->` type($out_ctrl) `,` type($out_mem)";
+}
+
+def Cpp2SON_RecvOp : Cpp2SON_Op<"recv"> {
+  let summary = "Channel receive operation - acquire ownership";
+  let description = [{
+    Receive a value from a channel, acquiring ownership.
+    Blocks until a value is available or channel is closed.
+
+    JMM Support:
+    - jmm_happens_before: Establish happens-before edge with send
+    - jmm_visibility: Always shared (channel operations are concurrent)
+  }];
+  let arguments = (ins
+    AnyType:$ctrl,
+    AnyType:$mem,
+    AnyType:$channel,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
+  );
+  let results = (outs AnyType:$out_ctrl, AnyType:$out_mem, AnyType:$value);
+  let assemblyFormat = "`recv` $channel `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($channel) `->` type($out_ctrl) `,` type($out_mem) `,` type($value)";
+}
+
+def Cpp2SON_SpawnOp : Cpp2SON_Op<"spawn"> {
+  let summary = "Spawn concurrent task - create new thread/coroutine";
+  let description = [{
+    Spawn a new concurrent task (thread or coroutine).
+    Returns a handle for synchronization (join/await).
+
+    JMM Support:
+    - jmm_happens_before: Parent spawns, then child starts
+    - jmm_visibility: Shared (task runs concurrently)
+  }];
+  let arguments = (ins
+    AnyType:$ctrl,
+    AnyType:$mem,
+    AnyType:$task_fn,
+    Variadic<AnyType>:$args,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
+  );
+  let results = (outs AnyType:$out_ctrl, AnyType:$out_mem, AnyType:$task_handle);
+  let assemblyFormat = "$task_fn `(` $args `)` `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($task_fn) `,` type($args) `->` type($out_ctrl) `,` type($out_mem) `,` type($task_handle)";
+}
+
+def Cpp2SON_AwaitOp : Cpp2SON_Op<"await"> {
+  let summary = "Await task completion - synchronization point";
+  let description = [{
+    Wait for a spawned task to complete and retrieve its result.
+    Establishes happens-before relationship with task completion.
+
+    JMM Support:
+    - jmm_happens_before: Task completes before await returns
+    - jmm_visibility: Shared (synchronizes with spawned task)
+  }];
+  let arguments = (ins
+    AnyType:$ctrl,
+    AnyType:$mem,
+    AnyType:$task_handle,
+    OptionalAttr<SON_JMMHappensBeforeAttr>:$jmm_happens_before,
+    OptionalAttr<SON_JMMVisibilityAttr>:$jmm_visibility
+  );
+  let results = (outs AnyType:$out_ctrl, AnyType:$out_mem, AnyType:$result);
+  let assemblyFormat = "$task_handle `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($task_handle) `->` type($out_ctrl) `,` type($out_mem) `,` type($result)";
 }

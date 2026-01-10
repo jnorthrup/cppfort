@@ -206,9 +206,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Java Memory Model Integration for Cpp2 SON Dialect
+## [~] Track: Java Memory Model Integration for Cpp2 SON Dialect
 *Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
-*Status: PLANNED - Not started*
+*Status: IN PROGRESS*
 
 **Objective:** Implement Java Memory Model guarantees in Cpp2 via SON dialect dispatch analysis
 
