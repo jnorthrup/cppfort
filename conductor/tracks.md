@@ -206,8 +206,21 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Java Memory Model Integration for Cpp2 SON Dialect
+## [-] Track: Java Memory Model Integration for Cpp2 SON Dialect
 *Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
+*Status: BLOCKED (2026-01-10)* - Phase 1 implementation complete, testing blocked by SON dialect disabled in build (LLVM 21 FieldParser issue)
+
+**Completed:**
+- JMM attributes defined in Cpp2SONDialect.td
+- JMM metadata attached to LoadOp, StoreOp, NewOp, ConstructorEndOp, SendOp, RecvOp, SpawnOp, AwaitOp
+- JMM constraint verification implemented (Cpp2SONJMMVerification.cpp)
+
+**Blocker:** Cpp2SONDialect.cpp disabled in src/CMakeLists.txt - requires LLVM 21 FieldParser fix to enable testing
+
+---
+
+## [~] Track: Parser Regression Test Pass - Fix EBNF & Emitter for Full Cpp2 Support
+*Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
 *Status: IN PROGRESS*
 
 **Objective:** Implement Java Memory Model guarantees in Cpp2 via SON dialect dispatch analysis
@@ -263,12 +276,36 @@ Cpp2 Source → Transpiler → SON Dialect → Dispatch Analysis → Emitter →
 
 ---
 
-*Total Tracks: 11*
+## [~] Track: Parser Regression Test Pass - Fix EBNF & Emitter for Full Cpp2 Support
+*Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
+*Status: IN PROGRESS*
+
+**Objective:** Fix cppfort parser and emitter to pass all cppfront regression tests with complete Cpp2 EBNF grammar support
+
+**Scope:**
+- Fix unified declarations (`name: type = init`)
+- Fix parameter qualifiers (`inout`, `out`, `move`, `forward`)
+- Fix function declarations and bodies
+- Fix Pratt expression parser
+- Fix all statement types
+- Remove C++1 passthrough bypass
+- Create tests for Advanced Cpp2 features (contracts, pattern matching, metafunctions, string interpolation, UFCS, templates, type system)
+- Back-annotate Clang AST semantics into parse graph
+- Use AST loss from corpus as validation metric
+
+**Acceptance Criteria:**
+- All 159 cppfront regression tests pass
+- Generated C++ is functionally equivalent to cppfront output
+- Performance: completes in under 5 minutes
+
+---
+
+*Total Tracks: 12*
 *Completed: 8*
 *In Progress: 0*
 *Active: 0*
 *Suspended: 1*
-*Planned: 2*
+*Planned: 3*
 *Blocked: 0*
 *New: 0*
 

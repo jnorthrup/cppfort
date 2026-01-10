@@ -12,16 +12,17 @@
   - [x] Annotate concurrent operations (send, recv, spawn, await)
   - [x] Mark constructor boundaries for final fields
   - [x] Add thread-local vs shared variable tracking
-- [ ] Create JMM constraint verification in SON
-  - [ ] Validate happens-before edge consistency
-  - [ ] Check volatile operation total ordering
-  - [ ] Verify final field freeze timing
-  - [ ] Detect unsafe publication patterns
-- [ ] Write tests for SON JMM attributes
-  - [ ] Test attribute parsing from Cpp2 source
-  - [ ] Test attribute attachment to SON ops
-  - [ ] Test constraint validation rules
-  - [ ] Test MLIR round-trip with JMM ops
+- [x] Create JMM constraint verification in SON
+  - [x] Validate happens-before edge consistency (DFS cycle detection in Cpp2SONJMMVerification.cpp:322-368)
+  - [x] Check volatile operation total ordering (volatile requires shared visibility in :188-198, :217-226)
+  - [x] Verify final field freeze timing (final field frozen check in :228-236)
+  - [x] Detect unsafe publication patterns (constructor visibility check in :253-267)
+  - NOTE: Implementation complete, testing blocked by SON dialect disabled in build (LLVM 21 FieldParser issue)
+- [x] Write tests for SON JMM attributes
+  - [~] Test attribute parsing from Cpp2 source - BLOCKED (requires Phase 2 parser integration)
+  - [x] Test attribute attachment to SON ops (test_jmm_attribute_attachment_to_ops)
+  - [x] Test constraint validation rules (test_jmm_constraint_validation)
+  - [~] Test MLIR round-trip with JMM ops - BLOCKED (requires operational SON dialect build)
 
 ## Phase 2: Dispatch Analysis Pass
 

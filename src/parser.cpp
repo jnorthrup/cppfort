@@ -38,16 +38,16 @@ struct Tok {
 // ============================================================================
 
 struct Ops {
-    static constexpr auto prefix     = lit("+") | "-" | "!" | "~" | "++" | "--" | "&" | "*" | "call";
-    static constexpr auto postfix_op = lit("++") | "--" | "*" | "&";
-    static constexpr auto assign     = lit("=") | "+=" | "-=" | "*=" | "/=" | "%=";
-    static constexpr auto mul        = lit("*") | "/" | "%";
-    static constexpr auto add        = lit("+") | "-";
-    static constexpr auto shift      = lit("<<") | ">>";
-    static constexpr auto cmp        = lit("<") | ">" | "<=" | ">=" | "<=>";
-    static constexpr auto eq         = lit("==") | "!=";
-    static constexpr auto param_qual = lit("in") | "out" | "inout" | "copy" | "move" | "forward";
-    static constexpr auto access     = lit("public") | "private" | "protected";
+    static constexpr auto prefix     = "+"_l | "-" | "!" | "~" | "++" | "--" | "&" | "*" | "call";
+    static constexpr auto postfix_op = "++"_l | "--" | "*" | "&";
+    static constexpr auto assign     = "="_l | "+=" | "-=" | "*=" | "/=" | "%=";
+    static constexpr auto mul        = "*"_l | "/" | "%";
+    static constexpr auto add        = "+"_l | "-";
+    static constexpr auto shift      = "<<"_l | ">>";
+    static constexpr auto cmp        = "<"_l | ">" | "<=" | ">=" | "<=>";
+    static constexpr auto eq         = "=="_l | "!=";
+    static constexpr auto param_qual = "in"_l | "out" | "inout" | "copy" | "move" | "forward";
+    static constexpr auto access     = "public"_l | "private" | "protected";
 };
 
 // ============================================================================
@@ -476,7 +476,7 @@ inline auto& statement()        {
 }
 
 // Parameters
-inline auto& parameter()        { static auto r = (*Ops::param_qual >> Rules::identifier_like >> -(lit(":") >> type_specifier()) >> -(lit("=") >> expr_parser())) % with_node(NodeKind::Parameter); return r; }
+inline auto& parameter()        { static auto r = (*(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >> (Rules::identifier_like % with_node(NodeKind::Identifier)) >> -(lit(":") >> type_specifier()) >> -(lit("=") >> expr_parser())) % with_node(NodeKind::Parameter); return r; }
 inline auto& param_list()       { static auto r = (lit("(") >> -(parameter() % ",") >> ")") % with_node(NodeKind::ParamList); return r; }
 
 // Declarations
@@ -525,7 +525,17 @@ inline auto& decl_suffix()      {
 }
 inline auto& unified_decl()     { static auto r = (Rules::identifier_like >> ((":="_l >> expr_parser() >> ";") | (lit(":") >> decl_suffix()))) % with_node(NodeKind::UnifiedDeclaration); return r; }
 inline auto& declaration()      { static auto r = (-Ops::access >> unified_decl()) % with_node(NodeKind::Declaration); return r; }
-inline auto& translation_unit() { static auto r = *declaration() >> Tok::END; return r; }
+// Preprocessor directive (skip during parse - preserve in output via token positions)
+inline auto& preprocessor_directive() {
+    static auto r = tok(TT::Hash) % with_node(NodeKind::Preprocessor);
+    return r;
+}
+
+// Translation unit: skip preprocessor directives, parse declarations
+inline auto& translation_unit() {
+    static auto r = *(preprocessor_directive() | declaration()) >> Tok::END;
+    return r;
+}
 
 // ============================================================================
 // Recursive Parse Functions

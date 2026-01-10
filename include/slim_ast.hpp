@@ -23,7 +23,7 @@ enum class NodeKind : uint8_t {
     // Terminals
     Identifier,
     Literal,
-    
+
     // Expressions (precedence climbing)
     GroupedExpression,
     PrimaryExpression,
@@ -51,13 +51,13 @@ enum class NodeKind : uint8_t {
     AssignmentOp,
     AssignmentExpression,
     Expression,
-    
+
     // Types
     BasicType,
     TemplateArgs,
     QualifiedType,
     TypeSpecifier,
-    
+
     // Statements
     BlockStatement,
     ReturnStatement,
@@ -66,12 +66,12 @@ enum class NodeKind : uint8_t {
     ForStatement,
     ExpressionStatement,
     Statement,
-    
+
     // Parameters
     ParamQualifier,
     Parameter,
     ParamList,
-    
+
     // Declarations
     ReturnSpec,
     FunctionBody,
@@ -85,10 +85,13 @@ enum class NodeKind : uint8_t {
     UnifiedDeclaration,
     AccessSpecifier,
     Declaration,
-    
+
+    // Preprocessor directives (#include, #define, etc.)
+    Preprocessor,
+
     // Top-level
     TranslationUnit,
-    
+
     COUNT_  // Sentinel for array sizing
 };
 
@@ -118,6 +121,7 @@ inline constexpr const char* names[] = {
     "ComparisonExpression", "EqualityExpression", "BitwiseAndExpression",
     "BitwiseXorExpression", "BitwiseOrExpression", "LogicalAndExpression",
     "LogicalOrExpression", "TernaryExpression", "PipelineExpression",
+    "BinaryOp", "RangeExpression",
     "AssignmentOp", "AssignmentExpression", "Expression",
     "BasicType", "TemplateArgs", "QualifiedType", "TypeSpecifier",
     "BlockStatement", "ReturnStatement", "IfStatement", "WhileStatement",
@@ -126,6 +130,7 @@ inline constexpr const char* names[] = {
     "ReturnSpec", "FunctionBody", "FunctionSuffix", "VariableSuffix",
     "TypeBody", "TypeSuffix", "NamespaceBody", "NamespaceSuffix",
     "DeclarationSuffix", "UnifiedDeclaration", "AccessSpecifier", "Declaration",
+    "Preprocessor",
     "TranslationUnit"
 };
 

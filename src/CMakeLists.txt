@@ -1,9 +1,28 @@
 # CMakeLists.txt for cppfort transpiler
 
-# Main transpiler library (monolithic - default)
+# ============================================================================
+# SLIM PARSER TARGET (no MLIR dependencies)
+# ============================================================================
+add_library(Cpp2SlimParser
+    lexer.cpp
+    parser.cpp
+    emitter.cpp
+)
+
+target_include_directories(Cpp2SlimParser PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# cppfort executable (slim parser version)
+add_executable(cppfort main.cpp)
+target_link_libraries(cppfort PRIVATE Cpp2SlimParser)
+
+# Main transpiler library (monolithic - default, MLIR-dependent)
 add_library(Cpp2Transpiler
     lexer.cpp
     parser.cpp
+    emitter.cpp
     ast.cpp
     semantic_analyzer.cpp
     code_generator.cpp
@@ -12,7 +31,7 @@ add_library(Cpp2Transpiler
     contract_processor.cpp
     markdown_hash.cpp
     # ast_to_fir.cpp  # Disabled: requires MLIR
-    ast_to_fir_stub.cpp  # shim: minimal AST->FIR definitions when full MLIR conversion is disabled
+    # ast_to_fir_stub.cpp  # Disabled: requires generated TableGen files
     # clang_ast_reverse.cpp  # Disabled: requires Clang
     # ConvertFIRToSON.cpp  # Disabled: requires MLIR
     # crdt_patch.cpp  # Disabled: requires MLIR
@@ -48,10 +67,6 @@ target_link_libraries(Cpp2Transpiler PUBLIC
     MLIRTransforms
     MLIRSCFDialect
 )
-
-# cppfort executable
-add_executable(cppfort main.cpp)
-target_link_libraries(cppfort PRIVATE Cpp2Transpiler)
 
 # ============================================================================
 # Modular Emitter Libraries (Phase 2: Incremental Extraction)

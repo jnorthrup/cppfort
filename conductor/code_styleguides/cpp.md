@@ -2,6 +2,54 @@
 
 Compositional code golf. Expressions dominate Y-axis. Line-by-line fluency.
 
+## Corpus Testing with cppfront
+
+When testing with cppfront corpus files (`third_party/cppfront/regression-tests/*.cpp2`):
+
+### Preprocessing Requirement
+
+All `.cpp2` corpus files must be processed with a **single gsed pass** to remove import directives and `#line` noise before compilation:
+
+```bash
+# In CMakeLists.txt: add corpus preprocessing target
+find "${REGRESSION_DIR}" -name '*.cpp2' -exec gsed -i \
+  -e '/^#include "cpp2util.h"/d' \
+  -e '/^#line /d' \
+  {} \;
+```
+
+**Rationale:** cppfront generates `#include "cpp2util.h"` and `#line` directives that:
+1. Reference headers not in the compiler's include path
+2. Embed absolute file paths breaking build reproducibility
+3. Cause spurious test failures unrelated to actual code generation quality
+
+The gsed pass strips these artifacts, enabling pure syntax/semantic validation of generated C++23 code.
+
+### Anti-Cheating: Corpus Provenance
+
+**CRITICAL: LLM cheating epidemic protection.** All test runners MUST enforce corpus integrity:
+
+1. **Reset cppfront repo** before tests:
+   ```bash
+   cd third_party/cppfront
+   git reset --hard HEAD
+   git clean -fdx
+   ```
+
+2. **Compute baseline SHA256** of all corpus files before testing:
+   ```bash
+   find regression-tests -name '*.cpp2' -type f | sort | xargs shasum -a 256 > baseline.txt
+   ```
+
+3. **Verify SHA256 unchanged** after tests complete:
+   ```bash
+   shasum -a 256 -c baseline.txt --quiet
+   ```
+
+4. **Fail immediately** if checksums differ - report "CHEATING DETECTED"
+
+**Why this matters:** LLMs can modify test inputs to make broken code pass. SHA256 provenance ensures test integrity by detecting any tampering with corpus files during test execution.
+
 ## Core
 
 ```

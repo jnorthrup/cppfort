@@ -21,10 +21,3 @@ sccp_comparison_folding_tests 0 0
 sccp_float_special_tests 0 0
 sccp_range_analysis_tests 0 0
 ---
-fir_sccp_pass_test
-sccp_arithmetic_operations_tests
-sccp_logical_operations_tests
-sccp_lattice_tests
-sccp_comparison_folding_tests
-sccp_float_special_tests
-sccp_range_analysis_tests

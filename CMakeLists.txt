@@ -207,6 +207,10 @@ foreach(cpp2_file ${CPP2_FILES_FILTERED})
         COMMAND cppfront
             ${cpp2_file}
             -o ${output_cpp}
+        COMMAND gsed -i
+            -e /^#include "cpp2util.h"/d
+            -e /^#line /d
+            ${output_cpp}
         DEPENDS cppfront
         COMMENT "Transpiling ${base_name}.cpp2"
         VERBATIM

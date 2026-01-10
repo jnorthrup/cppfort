@@ -97,5 +97,14 @@ add_test_if_exists(codegen_extraction_test codegen_extraction_test.cpp)
 # Annotation-based semantic action tests
 add_test_if_exists(annotated_grammar_test annotated_grammar_test.cpp)
 
+# Parser regression track tests
+add_test_if_exists(test_preprocessor_parsing test_preprocessor_parsing.cpp)
+add_test_if_exists(test_passthrough_bypass test_passthrough_bypass.cpp)
+add_test_if_exists(test_variable_declarations test_variable_declarations.cpp)
+add_test_if_exists(test_variable_emission test_variable_emission.cpp)
+
+# Parser test infrastructure
+add_test_if_exists(parser_test_harness parser/test_harness.cpp)
+
 # Enable testing
 enable_testing()
