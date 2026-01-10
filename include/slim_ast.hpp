@@ -9,7 +9,8 @@
 #include <cstdint>
 #include <span>
 #include <vector>
-#include <string_view>
+#include <string>
+#include <iostream>
 #include "core/tokens.hpp"
 
 namespace cpp2::ast {
@@ -159,14 +160,19 @@ constexpr bool is_type(NodeKind k) {
 // AST Node (Flyweight)
 // ============================================================================
 // Each node is a tagged span into the token array.
-// Children are indices into the node arena.
+// Children are linked via first_child -> next_sibling indices.
 
 struct Node {
     NodeKind kind;
     uint32_t token_start;   // First token index
     uint32_t token_end;     // Past-end token index
-    uint32_t child_start;   // First child index in arena
-    uint32_t child_count;   // Number of children
+    
+    // Topology (Left-Child Right-Sibling)
+    uint32_t first_child = UINT32_MAX; 
+    uint32_t next_sibling = UINT32_MAX;
+    
+    // Metadata (optional, but maintained for convenience)
+    uint32_t child_count = 0; 
     
     constexpr bool has_children() const { return child_count > 0; }
     constexpr std::size_t token_count() const { return token_end - token_start; }
@@ -185,11 +191,6 @@ struct ParseTree {
     const Node& operator[](uint32_t idx) const { return nodes[idx]; }
     Node& operator[](uint32_t idx) { return nodes[idx]; }
     
-    // Get children of a node
-    std::span<const Node> children(const Node& n) const {
-        return {nodes.data() + n.child_start, n.child_count};
-    }
-    
     // Get tokens for a node
     std::span<const cpp2_transpiler::Token> node_tokens(const Node& n) const {
         return tokens.subspan(n.token_start, n.token_end - n.token_start);
@@ -203,48 +204,172 @@ struct ParseTree {
 };
 
 // ============================================================================
-// Builder (Constructs ParseTree from Features)
+// Tree Builder (Thread-Local State)
 // ============================================================================
 
 class TreeBuilder {
+    struct StackFrame {
+        uint32_t node_idx;
+        uint32_t last_child_idx;
+    };
+
     std::vector<Node> nodes_;
-    std::vector<uint32_t> stack_;  // Parent node indices
-    
+    std::vector<StackFrame> stack_;
+
 public:
-    // Start a new node, push onto stack
+    struct Checkpoint { std::size_t nodes_size; std::size_t stack_size; };
+
     void begin(NodeKind kind, uint32_t token_pos) {
         uint32_t idx = static_cast<uint32_t>(nodes_.size());
-        nodes_.push_back({kind, token_pos, token_pos, 0, 0});
-        stack_.push_back(idx);
+        nodes_.push_back({kind, token_pos, token_pos, UINT32_MAX, UINT32_MAX, 0});
+        stack_.push_back({idx, UINT32_MAX}); 
     }
     
-    // End current node, pop from stack, link to parent
     void end(uint32_t token_pos) {
         if (stack_.empty()) return;
         
-        uint32_t idx = stack_.back();
+        StackFrame frame = stack_.back();
         stack_.pop_back();
         
-        nodes_[idx].token_end = token_pos;
+        uint32_t current_idx = frame.node_idx;
+        if (current_idx < nodes_.size()) {
+            nodes_[current_idx].token_end = token_pos;
+        }
         
-        // Link as child of parent
+        // Link to parent
         if (!stack_.empty()) {
-            uint32_t parent = stack_.back();
-            if (nodes_[parent].child_count == 0) {
-                nodes_[parent].child_start = idx;
+            StackFrame& parent_frame = stack_.back();
+            uint32_t parent_idx = parent_frame.node_idx;
+            
+            if (parent_frame.last_child_idx == UINT32_MAX) {
+                nodes_[parent_idx].first_child = current_idx;
+            } else {
+                nodes_[parent_frame.last_child_idx].next_sibling = current_idx;
             }
-            nodes_[parent].child_count++;
+            
+            parent_frame.last_child_idx = current_idx;
+            nodes_[parent_idx].child_count++;
         }
     }
     
-    // Finalize and return tree
+    void start_infix(NodeKind kind, uint32_t token_pos) {
+        if (stack_.empty()) {
+            begin(kind, token_pos);
+            return;
+        }
+
+        StackFrame& parent_frame = stack_.back();
+        uint32_t parent_idx = parent_frame.node_idx;
+
+        if (nodes_[parent_idx].child_count == 0 || parent_frame.last_child_idx == UINT32_MAX) {
+            begin(kind, token_pos);
+            return;
+        }
+
+        // LHS is the last added child
+        uint32_t lhs_idx = parent_frame.last_child_idx;
+        
+        // Create Infix node
+        uint32_t infix_idx = static_cast<uint32_t>(nodes_.size());
+        nodes_.push_back({kind, nodes_[lhs_idx].token_start, token_pos, lhs_idx, UINT32_MAX, 1});
+        
+        // Relink Parent
+        if (nodes_[parent_idx].first_child == lhs_idx) {
+            nodes_[parent_idx].first_child = infix_idx;
+        } else {
+            // Traverse to find node pointing to LHS
+            uint32_t prev = nodes_[parent_idx].first_child;
+            while (prev != UINT32_MAX && nodes_[prev].next_sibling != lhs_idx) {
+                prev = nodes_[prev].next_sibling;
+            }
+            if (prev != UINT32_MAX) {
+                nodes_[prev].next_sibling = infix_idx;
+            }
+        }
+        
+        // Update Parent state
+        parent_frame.last_child_idx = infix_idx;
+        // Child count stays same (1 replaced by 1)
+        
+        // LHS state update
+        nodes_[lhs_idx].next_sibling = UINT32_MAX; 
+        
+        // Push Infix to stack
+        stack_.push_back({infix_idx, lhs_idx}); // Infix already has LHS as child
+    }
+
     ParseTree finish(std::span<const cpp2_transpiler::Token> tokens) {
         ParseTree tree;
         tree.nodes = std::move(nodes_);
         tree.tokens = tokens;
-        tree.root = tree.nodes.empty() ? 0 : 0;  // First node is root
+        tree.root = 0;
         return tree;
+    }
+
+    [[nodiscard]] Checkpoint checkpoint() const { return {nodes_.size(), stack_.size()}; }
+    
+    void restore(const Checkpoint& cp) {
+        nodes_.resize(cp.nodes_size);
+        stack_.resize(cp.stack_size);
+        // Fixup dangling pointers in the restored stack frame if needed
+        if (!stack_.empty()) {
+            StackFrame& frame = stack_.back();
+            uint32_t last = frame.last_child_idx;
+            if (last != UINT32_MAX) {
+                if (last >= nodes_.size()) {
+                    // Last child was erased. We need to find the new last child.
+                    // Or if we can't find it, traverse?
+                    // This is complex. For now assume basic restore works for failure atoms.
+                    // If we restored, we lose the knowledge of previous sibling?
+                    // Ideally check point also saves the `last_child_idx`.
+                    // It does (via stack resize restoring old frames).
+                    // BUT: The node pointed to by `last_child_idx` MUST exist.
+                    // If `nodes_` was resized, and `last_child_idx` < `cp.nodes_size`, we are good.
+                    // If `last_child_idx` >= `cp.nodes_size`, that's impossible because the frame was saved WHEN `nodes_size` was smaller (or equal).
+                    // Frame is from the past. Nodes it refers to must be from the past (smaller indices).
+                    // So `last_child_idx` is strictly < `nodes_.size()`.
+                    // So the node exists.
+                    // However, `nodes_[last].next_sibling` might point to a node that was just deleted.
+                    nodes_[last].next_sibling = UINT32_MAX;
+                } else {
+                     nodes_[last].next_sibling = UINT32_MAX;
+                }
+            } else {
+                // No children. Reset first child?
+                 if (frame.node_idx < nodes_.size()) {
+                    nodes_[frame.node_idx].first_child = UINT32_MAX;
+                    nodes_[frame.node_idx].child_count = 0;
+                 }
+            }
+        }
     }
 };
 
+
 } // namespace cpp2::ast
+
+// ============================================================================
+// Tree Building Primitives (Shared between Parser and Combinators)
+// ============================================================================
+
+namespace cpp2::ast {
+
+inline thread_local TreeBuilder g_builder;
+
+inline void begin(NodeKind k, std::size_t pos) { 
+    g_builder.begin(k, static_cast<uint32_t>(pos)); 
+}
+
+inline void end(std::size_t pos) { 
+    g_builder.end(static_cast<uint32_t>(pos)); 
+}
+
+inline void start_infix(NodeKind k, std::size_t pos) {
+    g_builder.start_infix(k, static_cast<uint32_t>(pos));
+}
+
+inline auto tree_checkpoint() { return g_builder.checkpoint(); }
+inline void tree_restore(const TreeBuilder::Checkpoint& cp) { g_builder.restore(cp); }
+
+} // namespace cpp2::ast
+

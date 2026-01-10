@@ -206,9 +206,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Java Memory Model Integration for Cpp2 SON Dialect
+## [ ] Track: Java Memory Model Integration for Cpp2 SON Dialect
 *Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
-*Status: NEW - Mandatory JMM implementation through MLIR dispatch-level analysis*
+*Status: PLANNED - Not started*
 
 **Objective:** Implement Java Memory Model guarantees in Cpp2 via SON dialect dispatch analysis
 
@@ -236,11 +236,39 @@ Cpp2 Source → Transpiler → SON Dialect → Dispatch Analysis → Emitter →
 
 ---
 
-*Total Tracks: 9*
+## [-] Track: Fix Compile-Time Memory Leak in Spirit Combinators
+*Link: [./conductor/tracks/spirit_parser_compilefix_20250109/](./conductor/tracks/spirit_parser_compilefix_20250109/)*
+*Status: SUSPENDED (2026-01-09) - Diverges from closing existing test coverage and loss reduction work*
+
+**Progress at suspension:**
+- Phase 1: Refactor rules.hpp - COMPLETE
+- Phase 2: Parser Integration - COMPLETE
+- Phase 3: Regression Corpus Validation - Partial (3/7 tasks)
+- Phase 4: Cleanup - Not started
+
+---
+
+## [ ] Track: Annotation-Based Semantic Actions for Parser
+*Link: [./conductor/tracks/semantic_actions_20260109/](./conductor/tracks/semantic_actions_20260109/)*
+*Status: PLANNED - Not started*
+
+**Objective:** Add annotation-based semantic idioms to existing parser (Spirit combinators + Pratt parser for 17 precedence levels) mapping to Clang AST
+
+**Phases:**
+1. Annotation infrastructure (`with_node`, `with_binary`, `ast_node`)
+2. Annotate grammar rules (statements, declarations)
+3. Annotate Pratt parser expressions (17 precedence levels)
+4. Template and type system annotations
+5. Corpus validation (target: 98.9% pass, ≤0.124 loss)
+
+---
+
+*Total Tracks: 11*
 *Completed: 8*
 *In Progress: 0*
 *Active: 0*
-*Planned: 1*
+*Suspended: 1*
+*Planned: 2*
 *Blocked: 0*
 *New: 0*
 

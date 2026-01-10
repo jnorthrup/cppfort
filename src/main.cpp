@@ -6,7 +6,7 @@
 #include <cstring>
 
 #include "lexer.hpp"
-#include "parser.hpp"
+#include "combinator_parser.hpp"
 #include "semantic_analyzer.hpp"
 #include "code_generator.hpp"
 #include "safety_checker.hpp"
@@ -96,12 +96,12 @@ int main(int argc, char* argv[]) {
             return 0;
         }
 
-        cpp2_transpiler::Parser parser(tokens);
-        auto ast = parser.parse();
+        // Use new combinator parser with slim AST
+        auto ast = cpp2::parser::parse_to_ast(tokens);
 
-        // Abort if parsing had errors - continuing with incomplete AST causes segfaults
-        if (parser.had_errors()) {
-            std::cerr << "Error: Parsing failed with " << parser.error_count << " error(s)\n";
+        // Check for empty AST (parse failure)
+        if (!ast || ast->declarations.empty()) {
+            std::cerr << "Error: Parsing failed - no declarations found\n";
             return 1;
         }
 

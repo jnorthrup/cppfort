@@ -11,9 +11,12 @@
 #include <csignal>
 #include <csetjmp>
 
-// Include the parser and lexer
+// Include the lexer and new combinator parser
 #include "lexer.hpp"
-#include "parser.hpp"
+#include "slim_ast.hpp"
+
+// Pull in the combinator parser implementation
+#include "../src/parser.cpp"
 
 using namespace cpp2_transpiler;
 
@@ -53,10 +56,13 @@ bool parse_code(const std::string& code, std::string& error_msg) {
         try {
             Lexer lexer(code);
             auto tokens = lexer.tokenize();
-            Parser parser(tokens);
-            auto ast = parser.parse();
-            // Check if AST is valid (non-null with declarations)
-            result = ast != nullptr && !ast->declarations.empty();
+            
+            // Use the new combinator parser
+            auto tree = cpp2::parser::parse(tokens);
+            
+            // Check if parse tree has a valid root with children
+            result = tree.root < tree.nodes.size() && 
+                     tree.nodes[tree.root].child_count > 0;
         } catch (const std::exception& e) {
             error_msg = e.what();
             result = false;

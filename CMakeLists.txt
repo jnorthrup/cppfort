@@ -136,6 +136,7 @@ set(CPPFRONT_BINARY_DIR "${CMAKE_BINARY_DIR}/bin")
 
 add_executable(cppfront
     "${CPPFRONT_SOURCE_DIR}/cppfront.cpp"
+        src/parser.cpp
 )
 
 target_include_directories(cppfront PRIVATE

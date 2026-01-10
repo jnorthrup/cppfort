@@ -202,7 +202,7 @@ struct Token {
     std::size_t column;
     std::size_t position;
 
-    Token(TokenType t, std::string_view lex, std::size_t l, std::size_t c, std::size_t p)
+    constexpr Token(TokenType t, std::string_view lex, std::size_t l, std::size_t c, std::size_t p)
         : type(t), lexeme(lex), line(l), column(c), position(p) {}
 };
 

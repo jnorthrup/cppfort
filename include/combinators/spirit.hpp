@@ -16,6 +16,7 @@
 
 #include "ebnf.hpp"
 #include "../lexer.hpp"
+#include "../slim_ast.hpp"
 #include <span>
 
 namespace cpp2::parser::spirit {
@@ -38,14 +39,18 @@ struct TokenStream {
     [[nodiscard]] constexpr bool empty() const {
         return pos >= tokens.size() || tokens[pos].type == TT::EndOfFile;
     }
-    [[nodiscard]] constexpr const cpp2_transpiler::Token& peek() const {
-        return pos < tokens.size() ? tokens[pos] : tokens.back();
+    [[nodiscard]] constexpr const cpp2_transpiler::Token& peek(std::size_t offset = 0) const {
+        return (pos + offset) < tokens.size() ? tokens[pos + offset] : tokens.back();
     }
     constexpr cpp2_transpiler::Token advance() {
         return pos < tokens.size() ? tokens[pos++] : tokens.back();
     }
     constexpr auto begin() const { return tokens.begin() + static_cast<std::ptrdiff_t>(pos); }
     constexpr auto end() const { return tokens.end(); }
+    // Return new stream with position advanced by 1 (immutable style for Pratt parser)
+    [[nodiscard]] constexpr TokenStream next() const {
+        return TokenStream{tokens, pos + 1};
+    }
 };
 
 // ============================================================================
@@ -55,6 +60,15 @@ struct TokenStream {
 struct TokenParser {
     TT expected;
     constexpr auto parse(TokenStream input) const -> ebnf::Result<cpp2_transpiler::Token, TokenStream> {
+        // Special handling for EndOfFile: input.empty() is true for EndOfFile, 
+        // preventing standard check from working.
+        if (expected == TT::EndOfFile) {
+             if (input.peek().type == TT::EndOfFile) { 
+                 return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(input.peek(), input.next());
+             }
+             return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
+        }
+
         if (input.empty() || input.peek().type != expected)
             return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
         return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(input.advance(), input);
@@ -174,5 +188,102 @@ constexpr auto operator-(Proto<L> l, Proto<R> r) {
     return lift(ebnf::seq_right(ebnf::not_followed_by(r.parser), l.parser));
 }
 
+
+// ============================================================================
+// Semantic Actions
+// ============================================================================
+
+struct NodeAnnotation { cpp2::ast::NodeKind kind; };
+struct BinaryAnnotation { cpp2::ast::NodeKind kind; };
+struct PrefixAnnotation { cpp2::ast::NodeKind kind; };
+struct PostfixAnnotation { cpp2::ast::NodeKind kind; };
+template<typename T> struct TypeHint {};
+
+constexpr auto with_node(cpp2::ast::NodeKind k) { return NodeAnnotation{k}; }
+constexpr auto with_binary(cpp2::ast::NodeKind k) { return BinaryAnnotation{k}; }
+constexpr auto with_prefix(cpp2::ast::NodeKind k) { return PrefixAnnotation{k}; }
+constexpr auto with_postfix(cpp2::ast::NodeKind k) { return PostfixAnnotation{k}; }
+template<typename T> constexpr auto ast_node() { return TypeHint<T>{}; }
+
+// Annotated Parser (Wraps P with begin/end)
+template<typename P>
+struct AnnotatedParser {
+    P parser;
+    cpp2::ast::NodeKind kind;
+
+    constexpr auto parse(TokenStream input) const {
+        auto cp = cpp2::ast::tree_checkpoint();
+        auto start_pos = input.pos;
+        
+        cpp2::ast::begin(kind, start_pos);
+        
+        auto res = parser.parse(input);
+        
+        if (res.success()) {
+            cpp2::ast::end(res.remaining().pos);
+            return res;
+        } else {
+            cpp2::ast::tree_restore(cp);
+            return res;
+        }
+    }
+};
+
+// Binary Annotated Parser (Uses start_infix)
+template<typename P>
+struct BinaryAnnotatedParser {
+    P parser;
+    cpp2::ast::NodeKind kind;
+
+    constexpr auto parse(TokenStream input) const {
+        auto cp = cpp2::ast::tree_checkpoint();
+        auto start_pos = input.pos;
+        
+        // Use start_infix to adopt previous sibling as Lhs
+        cpp2::ast::start_infix(kind, start_pos);
+        
+        auto res = parser.parse(input);
+        
+        if (res.success()) {
+            cpp2::ast::end(res.remaining().pos);
+            return res;
+        } else {
+            cpp2::ast::tree_restore(cp);
+            return res;
+        }
+    }
+};
+
+// Operator % Overloads for Annotations
+
+template<typename P>
+constexpr auto operator%(Proto<P> p, NodeAnnotation a) {
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
+}
+
+template<typename P>
+constexpr auto operator%(Proto<P> p, BinaryAnnotation a) {
+    return lift(BinaryAnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
+}
+
+template<typename P>
+constexpr auto operator%(Proto<P> p, PrefixAnnotation a) {
+    // Prefix currently maps to standard annotation (begin/end)
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
+}
+
+template<typename P>
+constexpr auto operator%(Proto<P> p, PostfixAnnotation a) {
+    // Postfix currently maps to standard annotation (begin/end)
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
+}
+
+// Ignore Type Hints for now (preserving P)
+template<typename P, typename T>
+constexpr auto operator%(Proto<P> p, TypeHint<T>) {
+    return p;
+}
+
 } // namespace cpp2::parser::spirit
+
  
