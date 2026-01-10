@@ -101,29 +101,29 @@
 
 ## Phase 5: Expressions (Pratt Parser)
 
-- [~] Task: Verify Pratt parser handles all operators
+- [x] Task: Verify Pratt parser handles all operators
   - [x] Write test: Binary operators `+ - * / %` parse correctly
   - [x] Write test: Comparison `< > <= >= == != <=>` parse correctly
   - [x] Write test: Logical `&& || !` parse correctly
   - [x] Write test: Assignment `= += -=` parse correctly
-  - [ ] Test: Expression AST structure is correct
+  - [x] Test: Expression AST structure is correct
 
-- [ ] Task: Parse complex expressions
-  - [ ] Write test: Function calls `f(x, y)` parse
-  - [ ] Write test: Member access `obj.method()` parses
-  - [ ] Write test: Subscript `arr[i]` parses
-  - [ ] Write test: Ternary `cond ? a : b` parses
-  - [ ] Test: Complex expressions in AST
+- [x] Task: Parse complex expressions
+  - [x] Write test: Function calls `f(x, y)` parse
+  - [x] Write test: Member access `obj.method()` parses
+  - [x] Write test: Subscript `arr[i]` parses
+  - [x] Write test: Ternary `cond ? a : b` parses
+  - [x] Test: Complex expressions in AST
 
-- [ ] Task: Emit expressions
-  - [ ] Write test: Binary operations emit correctly
-  - [ ] Write test: Function calls emit correctly
-  - [ ] Implement: `emit_expression()` handles all expression types
-  - [ ] Test: Expressions compile
+- [x] Task: Emit expressions
+  - [x] Write test: Binary operations emit correctly
+  - [x] Write test: Function calls emit correctly
+  - [x] Implement: `emit_expression()` handles all expression types
+  - [x] Test: Expressions compile
 
-- [ ] Task: Run regression tests on expressions
-  - [ ] Test: Expression-heavy tests pass
-  - [ ] Measure: Count passing tests before/after
+- [x] Task: Run regression tests on expressions
+  - [x] Test: Expression-heavy tests pass
+  - [x] Measure: Count passing tests before/after
 
 - [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
