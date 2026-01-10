@@ -181,12 +181,22 @@ file(GLOB_RECURSE CPP2_FILES
     "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests/*.cpp2"
 )
 
+# Filter out error tests (files ending with -error.cpp2)
+# These tests are expected to fail compilation
+set(CPP2_FILES_FILTERED "")
+foreach(cpp2_file ${CPP2_FILES})
+    get_filename_component(base_name ${cpp2_file} NAME_WE)
+    if(NOT base_name MATCHES "-error$")
+        list(APPEND CPP2_FILES_FILTERED ${cpp2_file})
+    endif()
+endforeach()
+
 set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
 set(CORPUS_REFERENCE_DIR "${CMAKE_SOURCE_DIR}/corpus/reference")
 file(MAKE_DIRECTORY ${CORPUS_OUTPUT_DIR})
 
-# Create custom commands for each .cpp2 file
-foreach(cpp2_file ${CPP2_FILES})
+# Create custom commands for each .cpp2 file (excluding error tests)
+foreach(cpp2_file ${CPP2_FILES_FILTERED})
     get_filename_component(base_name ${cpp2_file} NAME_WE)
     set(output_cpp ${CORPUS_OUTPUT_DIR}/${base_name}.cpp)
     set(output_ast ${CORPUS_OUTPUT_DIR}/${base_name}.ast)
