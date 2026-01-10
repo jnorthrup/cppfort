@@ -141,7 +141,8 @@ inline int get_prec(std::string_view op) {
     if (op == "<<" || op == ">>") return SHIFT;
     if (op == "+" || op == "-") return ADD;
     if (op == "*" || op == "/" || op == "%") return MUL;
-    if (op == "..") return CMP;  // Range operators
+    // Range operators: .., ..<, ..=
+    if (op == ".." || op == "..<" || op == "..=") return CMP;
     return NONE;
 }
 
@@ -377,7 +378,10 @@ auto parse_pratt(TokenStream input, int min_prec) -> ebnf::Result<std::monostate
         int next_min = (prec == ASSIGN) ? prec : prec + 1;
 
         // Build binary expression node based on operator
+        // Build binary expression node based on operator
         NodeKind kind;
+        NodeKind op_kind = NodeKind::BinaryOp; // Default operator kind
+
         if (tok.lexeme == "||") kind = NodeKind::LogicalOrExpression;
         else if (tok.lexeme == "&&") kind = NodeKind::LogicalAndExpression;
         else if (tok.lexeme == "|") kind = NodeKind::BitwiseOrExpression;
@@ -390,10 +394,18 @@ auto parse_pratt(TokenStream input, int min_prec) -> ebnf::Result<std::monostate
         else if (tok.lexeme == "+" || tok.lexeme == "-") kind = NodeKind::AdditiveExpression;
         else if (tok.lexeme == "*" || tok.lexeme == "/" || tok.lexeme == "%") kind = NodeKind::MultiplicativeExpression;
         else if (tok.lexeme == "|>") kind = NodeKind::PipelineExpression;
-        else kind = NodeKind::AssignmentExpression;  // Default for assignment ops
+        else if (tok.lexeme == ".." || tok.lexeme == "..<" || tok.lexeme == "..=") kind = NodeKind::RangeExpression;
+        else {
+            kind = NodeKind::AssignmentExpression;  // Default for assignment ops
+            op_kind = NodeKind::AssignmentOp;
+        }
 
         g_builder.start_infix(kind, input.pos);
+        
+        // Emit formal Operator node
+        begin(op_kind, input.pos);
         input = input.next(); // consume operator
+        end(input.pos);
 
         auto rhs = parse_pratt(input, next_min);
         if (!rhs.success()) return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -476,7 +488,13 @@ inline auto& func_body()        {
     return r; 
 }
 inline auto& func_suffix()      { static auto r = (param_list() >> -return_spec() >> func_body()) % with_node(NodeKind::FunctionSuffix); return r; }
-inline auto& var_suffix()       { static auto r = (type_specifier() >> -(lit("=") >> expr_parser()) >> ";") % with_node(NodeKind::VariableSuffix); return r; }
+inline auto& var_suffix()       { 
+    static auto r = (
+          (type_specifier() >> -(lit("=") >> expr_parser()) >> ";") 
+        | (lit("=") >> expr_parser() >> ";")
+    ) % with_node(NodeKind::VariableSuffix); 
+    return r; 
+}
 inline auto& type_body()        { static auto r = (lit("=") >> "{" >> *decl_parser() >> "}") % with_node(NodeKind::TypeBody); return r; }
 inline auto& type_suffix()      { static auto r = (lit("type") >> -type_body()) % with_node(NodeKind::TypeSuffix); return r; }
 inline auto& ns_body()          { static auto r = (-lit("=") >> "{" >> *decl_parser() >> "}") % with_node(NodeKind::NamespaceBody); return r; }

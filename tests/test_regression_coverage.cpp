@@ -14,9 +14,7 @@
 // Include the lexer and new combinator parser
 #include "lexer.hpp"
 #include "slim_ast.hpp"
-
-// Pull in the combinator parser implementation
-#include "../src/parser.cpp"
+#include "combinator_parser.hpp"
 
 using namespace cpp2_transpiler;
 

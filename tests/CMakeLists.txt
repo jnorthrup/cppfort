@@ -94,5 +94,8 @@ add_test_if_exists(test_forward_ref_types test_forward_ref_types.cpp)
 add_test_if_exists(parser_extraction_test parser_extraction_test.cpp)
 add_test_if_exists(codegen_extraction_test codegen_extraction_test.cpp)
 
+# Annotation-based semantic action tests
+add_test_if_exists(annotated_grammar_test annotated_grammar_test.cpp)
+
 # Enable testing
 enable_testing()

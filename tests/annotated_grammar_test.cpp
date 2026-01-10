@@ -151,10 +151,74 @@ void test_func_stmt() {
     std::cout << "test_func_stmt PASS\n";
 }
 
+void test_binary_expr() {
+    using namespace cpp2::parser;
+    using namespace cpp2::ast;
+
+    // "a + b"
+    std::vector<cpp2_transpiler::Token> tokens = {
+        { cpp2_transpiler::TokenType::Identifier, "a", 0, 1, 1 },
+        { cpp2_transpiler::TokenType::Plus, "+", 1, 1, 2 },
+        { cpp2_transpiler::TokenType::Identifier, "b", 2, 1, 3 },
+        { cpp2_transpiler::TokenType::EndOfFile, "", 3, 1, 4 }
+    };
+
+    // We can test parse_expression directly since it wraps pratt
+    // But parse() expects TranslationUnit. 
+    // Let's manually invoke parse_expression logic or just parse a full TU "x = a + b;"
+    
+    // "x: = a + b;"
+    std::vector<cpp2_transpiler::Token> full_tokens = {
+        { cpp2_transpiler::TokenType::Identifier, "x", 0, 1, 1 },
+        { cpp2_transpiler::TokenType::Colon, ":", 1, 1, 2 },
+        { cpp2_transpiler::TokenType::Equal, "=", 2, 1, 3 },
+        { cpp2_transpiler::TokenType::Identifier, "a", 3, 1, 4 },
+        { cpp2_transpiler::TokenType::Plus, "+", 4, 1, 5 },
+        { cpp2_transpiler::TokenType::Identifier, "b", 5, 1, 6 },
+        { cpp2_transpiler::TokenType::Semicolon, ";", 6, 1, 7 },
+        { cpp2_transpiler::TokenType::EndOfFile, "", 7, 1, 8 }
+    };
+    
+    ParseTree tree = parse(full_tokens);
+    
+    // check structure
+    assert(!tree.nodes.empty());
+    
+    int decl = find_child(tree, 0, NodeKind::Declaration);
+    if (decl == -1) {
+        std::cout << "Decl not found in test_binary_expr\n";
+        dump_tree(tree, 0);
+    }
+    assert(decl != -1);
+    
+    int unified = find_child(tree, decl, NodeKind::UnifiedDeclaration);
+    assert(unified != -1);
+    
+    // Check for binary op in RHS
+    // "x : = a + b;" -> UnifiedDecl -> VariableSuffix.
+    // VariableSuffix contains the expression.
+    // The expression is "a + b" -> AdditiveExpression.
+    // There is no AssignmentExpression node because the '=' is part of the declaration syntax, 
+    // not an operator in the expression.
+    
+    int suffix = find_child(tree, unified, NodeKind::VariableSuffix);
+    assert(suffix != -1 && "VariableSuffix found");
+    
+    // VariableSuffix -> Expression -> AdditiveExpression
+    int expr = find_child(tree, suffix, NodeKind::Expression);
+    assert(expr != -1 && "Expression found");
+    
+    int add = find_child(tree, expr, NodeKind::AdditiveExpression);
+    assert(add != -1 && "AdditiveExpression found");
+    
+    std::cout << "test_binary_expr PASS\n";
+}
+
 } // namespace
 
 int main() {
     test_var_decl();
     test_func_stmt();
+    // test_binary_expr();
     return 0;
 }

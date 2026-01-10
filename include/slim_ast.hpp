@@ -46,6 +46,8 @@ enum class NodeKind : uint8_t {
     LogicalOrExpression,
     TernaryExpression,
     PipelineExpression,
+    BinaryOp,
+    RangeExpression,
     AssignmentOp,
     AssignmentExpression,
     Expression,
@@ -200,6 +202,56 @@ struct ParseTree {
     std::string_view lexeme(const Node& n) const {
         if (n.token_count() == 1) return tokens[n.token_start].lexeme;
         return {};
+    }
+    
+    // ============================================================================
+    // Children Iterator (LCRS traversal)
+    // ============================================================================
+    
+    class ChildIterator {
+        const ParseTree* tree_;
+        uint32_t current_;
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = const Node&;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const Node*;
+        using reference = const Node&;
+        
+        ChildIterator(const ParseTree* tree, uint32_t idx) : tree_(tree), current_(idx) {}
+        
+        reference operator*() const { return tree_->nodes[current_]; }
+        pointer operator->() const { return &tree_->nodes[current_]; }
+        
+        ChildIterator& operator++() {
+            current_ = tree_->nodes[current_].next_sibling;
+            return *this;
+        }
+        
+        ChildIterator operator++(int) {
+            ChildIterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+        
+        bool operator==(const ChildIterator& other) const { return current_ == other.current_; }
+        bool operator!=(const ChildIterator& other) const { return current_ != other.current_; }
+    };
+    
+    class ChildRange {
+        const ParseTree* tree_;
+        uint32_t first_;
+    public:
+        ChildRange(const ParseTree* tree, uint32_t first) : tree_(tree), first_(first) {}
+        
+        ChildIterator begin() const { return ChildIterator(tree_, first_); }
+        ChildIterator end() const { return ChildIterator(tree_, UINT32_MAX); }
+        bool empty() const { return first_ == UINT32_MAX; }
+    };
+    
+    // Get children of a node as iterable range
+    ChildRange children(const Node& n) const {
+        return ChildRange(this, n.first_child);
     }
 };
 
