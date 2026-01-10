@@ -13,8 +13,22 @@ using namespace cpp2_transpiler;
 void check_emit(const std::string& input, const std::string& expected_contains, const char* test_name) {
     cpp2_transpiler::Lexer lexer(input);
     auto tokens = lexer.tokenize();
+    
+    // Print tokens for debugging
+    std::cout << "Tokens for " << test_name << ":\n";
+    for (const auto& token : tokens) {
+        std::cout << "  " << (int)token.type << " '" << token.lexeme << "'\n";
+    }
+
     auto tree = cpp2::parser::parse(tokens);
     
+    // Print tree for debugging
+    std::cout << "Tree for " << test_name << ":\n";
+    for (size_t i = 0; i < tree.nodes.size(); ++i) {
+        const auto& node = tree.nodes[i];
+        std::cout << "  Node " << i << ": " << cpp2::ast::meta::name(node.kind) << " '" << tree.lexeme(node) << "'\n";
+    }
+
     std::string output = generate_from_tree(tree, tokens);
     
     // Simple contains check

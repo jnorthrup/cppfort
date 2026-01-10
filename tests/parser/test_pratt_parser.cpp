@@ -13,8 +13,7 @@
 #include "slim_ast.hpp"
 
 // Include implementations
-#include "../../src/lexer.cpp"
-#include "../../src/parser.cpp"
+#include "combinator_parser.hpp"
 
 namespace test_pratt {
 
@@ -270,18 +269,13 @@ void test_assignment() {
     auto tokens = lexer.tokenize();
     auto tree = cpp2::parser::parse(tokens);
     
-    // Find AssignmentExpression
-    // Outer: x += ...
-    const Node* outer = nullptr;
-    // We need to be careful to find the *first* (outer) assignment.
-    // In AST nodes vector, children usually come after parent? Or before?
-    // TreeBuilder pushes children then parent.
-    // So parent is later in the vector.
-    // We should search from back or find the one that spans the whole statement.
+    print_tree(tree);
     
-    for (auto it = tree.nodes.rbegin(); it != tree.nodes.rend(); ++it) {
-        if (it->kind == NodeKind::AssignmentExpression) {
-            outer = &(*it);
+    // Find AssignmentExpression
+    const Node* outer = nullptr;
+    for (const auto& node : tree.nodes) {
+        if (node.kind == NodeKind::AssignmentExpression && get_text(tree, node) == "x+=y=z") {
+            outer = &node;
             break;
         }
     }

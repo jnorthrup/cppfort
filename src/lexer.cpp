@@ -481,18 +481,16 @@ void Lexer::scan_number() {
     bool is_binary = false;
     bool is_float = false;
     
-    if (peek() == '0') {
-        if (peek_next() == 'x' || peek_next() == 'X') {
+    if (source[start] == '0') {
+        if (peek() == 'x' || peek() == 'X') {
             is_hex = true;
-            advance(); // 0
-            advance(); // x
+            advance(); // x/X
             while (is_hex_digit(peek()) || peek() == '\'') {
                 advance();
             }
-        } else if (peek_next() == 'b' || peek_next() == 'B') {
+        } else if (peek() == 'b' || peek() == 'B') {
             is_binary = true;
-            advance(); // 0
-            advance(); // b
+            advance(); // b/B
             while (peek() == '0' || peek() == '1' || peek() == '\'') {
                 advance();
             }

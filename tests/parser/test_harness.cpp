@@ -9,7 +9,7 @@
 
 #include "lexer.hpp"
 #include "slim_ast.hpp"
-#include "../../src/parser.cpp"
+#include "combinator_parser.hpp"
 
 namespace test_harness {
 

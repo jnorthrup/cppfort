@@ -300,12 +300,13 @@ public:
             
             if (parent_frame.last_child_idx == UINT32_MAX) {
                 nodes_[parent_idx].first_child = current_idx;
-            } else {
+                parent_frame.last_child_idx = current_idx;
+                nodes_[parent_idx].child_count++;
+            } else if (parent_frame.last_child_idx != current_idx) {
                 nodes_[parent_frame.last_child_idx].next_sibling = current_idx;
+                parent_frame.last_child_idx = current_idx;
+                nodes_[parent_idx].child_count++;
             }
-            
-            parent_frame.last_child_idx = current_idx;
-            nodes_[parent_idx].child_count++;
         }
     }
     
