@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <span>
 #include <string_view>
 #include <cstring>
