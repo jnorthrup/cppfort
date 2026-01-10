@@ -138,6 +138,12 @@ Desktop.ini
 debug.log
 *.out
 
+# TEST OUTPUT FILES - NEVER COMMIT THESE
+test_output*.txt
+*.txt.test
+test*.txt
+**/test_output.txt
+
 # Binary executables and libraries
 cppfort
 cppfort-opt

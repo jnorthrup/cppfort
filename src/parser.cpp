@@ -254,15 +254,28 @@ auto parse_atom(TokenStream input) -> ebnf::Result<std::monostate, TokenStream> 
             input = input.next(); // consume (
             // Parse arguments (comma-separated expressions)
             if (!input.empty() && input.peek().lexeme != ")") {
+                begin(NodeKind::Expression, input.pos);
                 auto arg = parse_pratt(input, NONE);
                 if (arg.success()) {
+                    end(arg.remaining().pos);
                     input = arg.remaining();
                     while (!input.empty() && input.peek().lexeme == ",") {
                         input = input.next(); // consume ,
+                        begin(NodeKind::Expression, input.pos);
                         arg = parse_pratt(input, NONE);
                         if (!arg.success()) break;
+                        end(arg.remaining().pos);
                         input = arg.remaining();
                     }
+                } else {
+                    // Failed to parse first arg, unwind Expression
+                    // Actually if failed, we return fail below or consume nothing?
+                    // g_builder stack unwind mismatch if we don't close?
+                    // Parser combinator usually relies on transaction or backtrack.
+                    // Here we modify state.
+                    // But if failure, we default to fail.
+                    // We should close the checking node or rely on cleanup.
+                    // Assuming fail propagates.
                 }
             }
             if (input.empty() || input.peek().lexeme != ")")

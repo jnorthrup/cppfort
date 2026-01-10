@@ -278,7 +278,19 @@ private:
             emit_indent();
             out_ << "}\n";
         } else if (n.kind == NodeKind::ExpressionStatement) {
-            out_ << node_text(n) << "\n";
+            // Remove trailing semicolon if present in node_text to avoid double semicolon
+            // Actually, we should call emit_expression for consistency
+            // But node_text might include the semicolon if it was parsed as ExpressionStatement
+            // Let's rely on emit_expression + ";"
+            for (const auto& child : tree_.children(n)) {
+                if (meta::is_expression(child.kind)) {
+                    emit_expression(child);
+                    out_ << ";\n";
+                    return;
+                }
+            }
+            // Fallback
+             out_ << node_text(n) << "\n";
         } else if (n.kind == NodeKind::Statement) {
             // Generic statement - check children
             for (const auto& child : tree_.children(n)) {
@@ -357,7 +369,7 @@ private:
     void emit_local_var(const Node& n) {
         std::string name = std::string(token_text(n.token_start));
         std::string type = "auto";
-        std::string init;
+        const Node* init_expr = nullptr;
 
         // Check for children
         for (const auto& child : tree_.children(n)) {
@@ -367,7 +379,7 @@ private:
                     if (grandchild.kind == NodeKind::TypeSpecifier || grandchild.kind == NodeKind::BasicType) {
                         type = node_text(grandchild);
                     } else if (meta::is_expression(grandchild.kind)) {
-                        init = node_text(grandchild);
+                        init_expr = &grandchild;
                     }
                 }
             } else if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
@@ -375,13 +387,14 @@ private:
                 type = node_text(child);
             } else if (meta::is_expression(child.kind)) {
                 // Direct expression child means := deduction
-                init = node_text(child);
+                init_expr = &child;
             }
         }
 
         out_ << type << " " << name;
-        if (!init.empty()) {
-            out_ << " = " << init;
+        if (init_expr) {
+            out_ << " = ";
+            emit_expression(*init_expr);
         }
         out_ << ";\n";
     }
@@ -391,7 +404,7 @@ private:
         emit_indent();
         
         std::string type = "auto";
-        std::string init;
+        const Node* init_expr = nullptr;
         
         // Suffix might be VariableSuffix, or UnifiedDeclaration logic might have passed the suffix node
         // But emit_unified_decl passes the child node.
@@ -402,7 +415,7 @@ private:
                  if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
                     type = node_text(child);
                 } else if (meta::is_expression(child.kind)) {
-                    init = node_text(child);
+                    init_expr = &child;
                 }
             }
         } else {
@@ -411,14 +424,15 @@ private:
                  if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
                     type = node_text(child);
                 } else if (meta::is_expression(child.kind)) {
-                    init = node_text(child);
+                    init_expr = &child;
                 }
             }
         }
         
         out_ << type << " " << name;
-        if (!init.empty()) {
-             out_ << " = " << init;
+        if (init_expr) {
+             out_ << " = ";
+             emit_expression(*init_expr);
         }
         out_ << ";\n";
     }
@@ -427,6 +441,84 @@ private:
         out_ << "struct " << name << " {\n";
         out_ << "    // TODO: type body\n";
         out_ << "};\n\n";
+    }
+
+    bool is_infix_expression(NodeKind k) const {
+        using K = NodeKind;
+        if (k < K::MultiplicativeExpression || k > K::AssignmentExpression) return false;
+        return k != K::TernaryExpression && 
+               k != K::PipelineExpression && 
+               k != K::RangeExpression && 
+               k != K::AssignmentOp;
+    }
+
+    void emit_expression(const Node& n) {
+        if (n.kind == NodeKind::Literal || n.kind == NodeKind::Identifier) {
+            out_ << node_text(n);
+        } else if (n.kind == NodeKind::Expression) {
+            for (const auto& child : tree_.children(n)) {
+                emit_expression(child);
+            }
+        } else if (is_infix_expression(n.kind)) {
+            bool first = true;
+            for (const auto& child : tree_.children(n)) {
+                if (child.kind == NodeKind::BinaryOp || 
+                    child.kind == NodeKind::AssignmentOp || 
+                    (child.token_start < child.token_end && is_operator(token_text(child.token_start)))) {
+                    
+                    out_ << " " << node_text(child) << " ";
+                } else {
+                    emit_expression(child);
+                }
+            }
+
+        } else if (n.kind == NodeKind::CallOp) { // If we are recursing or node kind is CallOp
+             out_ << "(";
+             bool first = true;
+             for (const auto& child : tree_.children(n)) {
+                 if (!first) out_ << ", ";
+                 emit_expression(child);
+                 first = false;
+             }
+             out_ << ")";
+        } else if (n.kind == NodeKind::MemberOp) {
+            out_ << node_text(n);
+        } else if (n.kind == NodeKind::SubscriptOp) {
+            out_ << "[";
+            for (const auto& child : tree_.children(n)) {
+                emit_expression(child);
+            }
+            out_ << "]";
+        } else if (n.kind == NodeKind::TernaryExpression) {
+             out_ << " ? ";
+             int i = 0;
+             for (const auto& child : tree_.children(n)) {
+                 if (i == 1) out_ << " : ";
+                 emit_expression(child);
+                 i++;
+             }
+        } else if (n.kind == NodeKind::GroupedExpression) {
+             out_ << "(";
+             for (const auto& child : tree_.children(n)) {
+                 emit_expression(child);
+             }
+             out_ << ")";
+        } else if (n.kind == NodeKind::PrefixExpression) {
+             for (const auto& child : tree_.children(n)) {
+                if (child.kind == NodeKind::PrefixOp) {
+                    out_ << node_text(child);
+                } else {
+                    emit_expression(child);
+                }
+            }
+        } else {
+             // Fallback
+             out_ << node_text(n);
+        }
+    }
+
+    bool is_operator(std::string_view s) const {
+        return s.find_first_not_of("+-*/%&|^<>=!~") == std::string_view::npos || s == "and" || s == "or" || s == "not";
     }
 
     void emit_namespace(const std::string& name, const Node& suffix) {

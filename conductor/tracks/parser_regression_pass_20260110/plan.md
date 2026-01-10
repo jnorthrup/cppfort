@@ -101,11 +101,11 @@
 
 ## Phase 5: Expressions (Pratt Parser)
 
-- [ ] Task: Verify Pratt parser handles all operators
-  - [ ] Write test: Binary operators `+ - * / %` parse correctly
-  - [ ] Write test: Comparison `< > <= >= == != <=>` parse correctly
-  - [ ] Write test: Logical `&& || !` parse correctly
-  - [ ] Write test: Assignment `= += -=` parse correctly
+- [~] Task: Verify Pratt parser handles all operators
+  - [x] Write test: Binary operators `+ - * / %` parse correctly
+  - [x] Write test: Comparison `< > <= >= == != <=>` parse correctly
+  - [x] Write test: Logical `&& || !` parse correctly
+  - [x] Write test: Assignment `= += -=` parse correctly
   - [ ] Test: Expression AST structure is correct
 
 - [ ] Task: Parse complex expressions

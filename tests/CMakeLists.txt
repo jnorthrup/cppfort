@@ -102,6 +102,8 @@ add_test_if_exists(test_preprocessor_parsing test_preprocessor_parsing.cpp)
 add_test_if_exists(test_passthrough_bypass test_passthrough_bypass.cpp)
 add_test_if_exists(test_variable_declarations test_variable_declarations.cpp)
 add_test_if_exists(test_variable_emission test_variable_emission.cpp)
+add_test_if_exists(test_complex_expressions parser/test_complex_expressions.cpp)
+add_test_if_exists(test_pratt_parser parser/test_pratt_parser.cpp)
 
 # Parser test infrastructure
 add_test_if_exists(parser_test_harness parser/test_harness.cpp)
