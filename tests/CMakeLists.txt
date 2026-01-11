@@ -91,7 +91,7 @@ add_test_if_exists(test_parameter_qualifier_lexing test_parameter_qualifier_lexi
 # test_parameter_qualifier_parsing depends on deleted parser.hpp
 # add_test_if_exists(test_parameter_qualifier_parsing test_parameter_qualifier_parsing.cpp)
 # test_regression_coverage depends on deleted parser.hpp
-# add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
+add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
 # add_test_if_exists(test_scope_tree_fir test_scope_tree_fir.cpp)
 # test_son_canonicalization disabled - depends on SON dialect implementation not linked (LLVM 21 issue)
 # add_test_if_exists(test_son_canonicalization test_son_canonicalization.cpp)
