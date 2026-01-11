@@ -449,11 +449,17 @@ inline auto& assert_stmt() { static auto r = (lit("assert") | "pre" | "post") >>
 inline auto& if_stmt() { static auto r = (lit("if") >> expr_parser() >> (block_stmt() | stmt_parser()) >> -(lit("else") >> (block_stmt() | stmt_parser()))) % with_node(NodeKind::IfStatement); return r; }
 inline auto& while_stmt() { static auto r = (lit("while") >> expr_parser() >> block_stmt()) % with_node(NodeKind::WhileStatement); return r; }
 inline auto& do_while_stmt() { static auto r = lit("do") >> block_stmt() >> "while" >> expr_parser() >> ";"; return r; }
-inline auto& for_range_stmt() { 
+inline auto& for_range_stmt() {
     // Cpp2: for 0 ..< 10 do (i) { body }
     // OR: for items do (item) { body }
-    static auto r = (lit("for") >> expr_parser() >> "do" >> "(" >> Rules::identifier_like >> ")" >> block_stmt()) % with_node(NodeKind::ForStatement);
-    return r; 
+    static auto r = (lit("for") >> expr_parser() >> "do" >> "(" >> (Rules::identifier_like % with_node(NodeKind::Identifier)) >> ")" >> block_stmt()) % with_node(NodeKind::ForStatement);
+    return r;
+}
+
+// C++1 style: for (x : items) { }
+inline auto& for_cpp1_range_stmt() {
+    static auto r = (lit("for") >> "(" >> (Rules::identifier_like % with_node(NodeKind::Identifier)) >> ":" >> expr_parser() >> ")" >> block_stmt()) % with_node(NodeKind::ForStatement);
+    return r;
 }
 
 // Try-catch
@@ -481,11 +487,11 @@ inline auto& local_var_decl()   { static auto r = (Rules::identifier_like >> (
 inline auto& expr_stmt()        { static auto r = (expr_parser() >> ";") % with_node(NodeKind::ExpressionStatement); return r; }
 
 // Statement alternatives
-inline auto& statement()        { 
-    static auto r = (block_stmt() | if_stmt() | while_stmt() | do_while_stmt() | for_range_stmt() | 
-                    try_stmt() | return_stmt() | break_stmt() | continue_stmt() | next_stmt() | 
-                    throw_stmt() | assert_stmt() | local_var_decl() | expr_stmt() | lit(";")) % with_node(NodeKind::Statement); 
-    return r; 
+inline auto& statement()        {
+    static auto r = (block_stmt() | if_stmt() | while_stmt() | do_while_stmt() | for_range_stmt() | for_cpp1_range_stmt() |
+                    try_stmt() | return_stmt() | break_stmt() | continue_stmt() | next_stmt() |
+                    throw_stmt() | assert_stmt() | local_var_decl() | expr_stmt() | lit(";")) % with_node(NodeKind::Statement);
+    return r;
 }
 
 // Parameters

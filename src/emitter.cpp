@@ -343,17 +343,19 @@ private:
 
     void emit_for(const Node& n) {
         // Cpp2 for: for items do (item) { body }
-        // Emit as: for (auto item : items) { body }
+        // C++1 for: for (item : items) { body }
+        // Both emit as: for (auto item : items) { body }
         std::string items, var;
         const Node* body = nullptr;
 
         for (const auto& child : tree_.children(n)) {
             if (child.kind == NodeKind::BlockStatement) {
                 body = &child;
-            } else if (child.kind == NodeKind::Identifier || 
+            } else if (child.kind == NodeKind::Identifier ||
                        (child.kind == NodeKind::Parameter && var.empty())) {
                 var = node_text(child);
-            } else if (items.empty() && child.kind != NodeKind::BlockStatement) {
+            } else if (meta::is_expression(child.kind) && items.empty()) {
+                // Only use expression nodes for items (skip keywords, punctuation)
                 items = node_text(child);
             }
         }

@@ -219,35 +219,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Parser Regression Test Pass - Fix EBNF & Emitter for Full Cpp2 Support
-*Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
-*Status: IN PROGRESS*
-
-**Objective:** Implement Java Memory Model guarantees in Cpp2 via SON dialect dispatch analysis
-
-**JMM Requirements:**
-- Happens-before relationships (memory_order_acquire/release)
-- Volatile semantics (sequential consistency)
-- Final field safety (freeze semantics)
-- Memory visibility guarantees (std::atomic)
-
-**Architecture:**
-```
-Cpp2 Source → Transpiler → SON Dialect → Dispatch Analysis → Emitter → C++
-                                              ↓
-                                 JMM Requirements (Target-Aware)
-```
-
-**Phases:**
-1. SON Dialect JMM Extensions (attributes, metadata)
-2. Dispatch Analysis Pass (target capability queries, memory order selection)
-3. Emitter Integration (std::atomic emission, fences)
-4. Validation and Documentation (litmus tests, performance benchmarks)
-5. Integration Testing (regression, concurrency safety)
-
-**Mandatory:** All concurrent operations MUST provide JMM-level guarantees
-
----
 
 ## [-] Track: Fix Compile-Time Memory Leak in Spirit Combinators
 *Link: [./conductor/tracks/spirit_parser_compilefix_20250109/](./conductor/tracks/spirit_parser_compilefix_20250109/)*
