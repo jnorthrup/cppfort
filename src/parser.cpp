@@ -2,7 +2,6 @@
 #include "slim_ast.hpp"
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 namespace cpp2::parser {
 namespace { // Internal linkage
@@ -113,7 +112,11 @@ enum Prec : int {
 };
 
 inline int get_prec(std::string_view op) {
-  static const std::unordered_map<std::string, int> prec = {
+  struct Entry {
+    std::string_view op;
+    int prec;
+  };
+  static constexpr Entry map[] = {
       {",", COMMA},   {"=", ASSIGN},  {"+=", ASSIGN}, {"-=", ASSIGN},
       {"*=", ASSIGN}, {"/=", ASSIGN}, {"%=", ASSIGN}, {"|>", PIPELINE},
       {"||", LOR},    {"&&", LAND},   {"|", BOR},     {"^", BXOR},
@@ -122,8 +125,11 @@ inline int get_prec(std::string_view op) {
       {"<<", SHIFT},  {">>", SHIFT},  {"+", ADD},     {"-", ADD},
       {"*", MUL},     {"/", MUL},     {"%", MUL},     {"..", CMP},
       {"..<", CMP},   {"..=", CMP}};
-  auto it = prec.find(std::string(op));
-  return it != prec.end() ? it->second : NONE;
+  for (const auto &e : map) {
+    if (e.op == op)
+      return e.prec;
+  }
+  return NONE;
 }
 
 inline bool is_binop(const cpp2_transpiler::Token &t) {
@@ -309,7 +315,11 @@ auto parse_pratt(TokenStream input, int min_prec)
     NodeKind kind = NodeKind::AssignmentExpression;
     NodeKind op_kind = NodeKind::AssignmentOp;
 
-    static const std::unordered_map<std::string_view, NodeKind> binop_kinds = {
+    struct BinOpEntry {
+      std::string_view op;
+      NodeKind kind;
+    };
+    static constexpr BinOpEntry binop_entries[] = {
         {"||", NodeKind::LogicalOrExpression},
         {"&&", NodeKind::LogicalAndExpression},
         {"|", NodeKind::BitwiseOrExpression},
@@ -334,10 +344,12 @@ auto parse_pratt(TokenStream input, int min_prec)
         {"..<", NodeKind::RangeExpression},
         {"..=", NodeKind::RangeExpression}};
 
-    auto it = binop_kinds.find(tok.lexeme);
-    if (it != binop_kinds.end()) {
-      kind = it->second;
-      op_kind = NodeKind::BinaryOp;
+    for (const auto &e : binop_entries) {
+      if (e.op == tok.lexeme) {
+        kind = e.kind;
+        op_kind = NodeKind::BinaryOp;
+        break;
+      }
     }
 
     g_builder.start_infix(kind, input.pos);
@@ -617,9 +629,23 @@ inline auto &unified_decl() {
                   with_node(NodeKind::UnifiedDeclaration);
   return r;
 }
+inline auto &cpp1_function_decl() {
+  // C++1: auto name(params) -> return_type { body }
+  // Create custom FunctionBody node for C++1 syntax (no leading '=')
+  static auto r = (lit("auto") >>
+                   (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
+                   (param_list() >>
+                    -return_spec() >>
+                    ((lit("=") >> (block_stmt() | (expr_parser() >> ";"))) |
+                     block_stmt() | (expr_parser() >> ";")) %
+                    with_node(NodeKind::FunctionBody)) %
+                  with_node(NodeKind::FunctionSuffix)) %
+                  with_node(NodeKind::UnifiedDeclaration);
+  return r;
+}
 inline auto &declaration() {
-  static auto r =
-      (-Ops::access >> unified_decl()) % with_node(NodeKind::Declaration);
+  static auto r = (-Ops::access >> (unified_decl() | cpp1_function_decl())) %
+                  with_node(NodeKind::Declaration);
   return r;
 }
 inline auto &preprocessor_directive() {

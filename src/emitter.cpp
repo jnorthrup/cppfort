@@ -62,13 +62,34 @@ private:
         for (const auto& child : tree_.children(n)) {
             if (child.kind == NodeKind::UnifiedDeclaration) {
                 emit_unified_decl(child);
+            } else if (child.kind == NodeKind::FunctionSuffix) {
+                // C++1 function declaration: auto name() -> type { body }
+                // Find the identifier name from inside the FunctionSuffix
+                std::string name = "unknown";
+                for (const auto& grandchild : tree_.children(child)) {
+                    if (grandchild.kind == NodeKind::Identifier) {
+                        name = node_text(grandchild);
+                        break;
+                    }
+                }
+                emit_function(name, child);
             }
         }
     }
 
     void emit_unified_decl(const Node& n) {
-        // Extract name from first token
-        std::string name = std::string(token_text(n.token_start));
+        // Try to find identifier name from children first (for C++1 functions)
+        std::string name;
+        for (const auto& child : tree_.children(n)) {
+            if (child.kind == NodeKind::Identifier) {
+                name = node_text(child);
+                break;
+            }
+        }
+        // Fallback to first token for Cpp2 declarations
+        if (name.empty()) {
+            name = std::string(token_text(n.token_start));
+        }
 
         // Check for function suffix vs variable suffix
         for (const auto& child : tree_.children(n)) {
@@ -124,8 +145,8 @@ private:
             }
         }
 
-        // Handle main function specially
-        if (name == "main") {
+        // Handle main function specially (only for Cpp2 syntax without explicit return)
+        if (name == "main" && return_type == "auto") {
             out_ << "int main(int argc, char* argv[]) {\n";
         } else {
             out_ << "auto " << name << "(" << params << ") -> " << return_type << " {\n";
