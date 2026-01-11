@@ -271,12 +271,26 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 12*
+## [ ] Track: Back-Inferring C++1 to C++2 Semantic Equivalence
+*Link: [./conductor/tracks/cpp1_cpp2_back_inference_20260110/](./conductor/tracks/cpp1_cpp2_back_inference_20260110/)*
+*Status: PLANNED*
+
+**Objective**: Triangulate C++1 → C++2 semantic equivalence using clang, cppfront, and sea of nodes to achieve a semantic loss target of < 0.15.
+
+**Approach**:
+1. Generate Reference AST from cppfront transpilation.
+2. Generate Candidate AST from clang parsing.
+3. Extract Isomorphs and Tag MLIR Regions.
+4. Compare and Score Semantic Loss.
+
+---
+
+*Total Tracks: 13*
 *Completed: 8*
 *In Progress: 0*
 *Active: 0*
 *Suspended: 1*
-*Planned: 3*
+*Planned: 4*
 *Blocked: 0*
 *New: 0*
 
