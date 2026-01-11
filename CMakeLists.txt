@@ -1,13 +1,24 @@
 cmake_minimum_required(VERSION 3.28)
 
-# macOS: Use Homebrew LLVM exclusively (must be before project())
-if(APPLE)
-  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
-  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang")
-  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++")
-endif()
-
 project(cppfort LANGUAGES C CXX VERSION 1.0.0)
+
+# ============================================================================
+# Platform-specific toolchain setup
+# ============================================================================
+if(APPLE)
+  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm" CACHE PATH "Homebrew LLVM installation")
+  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "Clang compiler")
+  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "Clang++ compiler")
+  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
+
+  # Use Homebrew's libc++ before SDK paths
+  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
+  add_compile_options(-stdlib=libc++)
+  add_link_options(-stdlib=libc++ -L${HOMEBREW_LLVM_LIB}/c++ -L${HOMEBREW_LLVM_LIB}/unwind -lunwind)
+
+  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
+  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
+endif()
 
 # Set cache directory for generated files
 set(CACHE_DIR "${CMAKE_SOURCE_DIR}/build" CACHE PATH "Directory for generated cache files")
@@ -25,28 +36,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
-endif()
-
-# Modular build options for incremental refactoring
-option(CPPFORT_USE_MODULAR_BUILD "Use modular library structure (for refactoring)" OFF)
-option(CPPFORT_ENABLE_MLIR "Enable MLIR integration (requires LLVM/MLIR)" ON)
-
-# macOS: Homebrew LLVM libc++ configuration
-if(APPLE)
-  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
-
-  # Use Homebrew's libc++ (before SDK paths)
-  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
-  add_compile_options(-stdlib=libc++)
-
-  # Link Homebrew's libc++ and libunwind
-  add_link_options(-stdlib=libc++)
-  add_link_options(-L${HOMEBREW_LLVM_LIB}/c++)
-  add_link_options(-L${HOMEBREW_LLVM_LIB}/unwind)
-  add_link_options(-lunwind)
-
-  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
-  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
 endif()
 
 # Compiler options
@@ -95,35 +84,33 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/include)
 
-# TableGen for Cpp2 dialect
-set(LLVM_TARGET_DEFINITIONS include/Cpp2Dialect.td)
-mlir_tablegen(Cpp2Ops.h.inc -gen-op-decls)
-mlir_tablegen(Cpp2Ops.cpp.inc -gen-op-defs)
-mlir_tablegen(Cpp2OpsDialect.h.inc -gen-dialect-decls -dialect=cpp2)
-mlir_tablegen(Cpp2OpsDialect.cpp.inc -gen-dialect-defs -dialect=cpp2)
-mlir_tablegen(Cpp2OpsTypes.h.inc -gen-typedef-decls -dialect=cpp2)
-mlir_tablegen(Cpp2OpsTypes.cpp.inc -gen-typedef-defs -dialect=cpp2)
-add_public_tablegen_target(Cpp2OpsIncGen)
+# ============================================================================
+# MLIR Dialect TableGen
+# ============================================================================
+foreach(DIALECT_SPEC "Cpp2Ops;include/Cpp2Dialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc" "Cpp2FIROps;include/Cpp2FIRDialect.td;cpp2fir;" "Cpp2SONOps;include/Cpp2SONDialect.td;sond;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
+  list(GET DIALECT_SPEC 0 DIALECT_NAME)
+  list(GET DIALECT_SPEC 1 TD_FILE)
+  list(GET DIALECT_SPEC 2 DIALECT_NS)
+  list(SUBLIST DIALECT_SPEC 3 -1 EXTRA_TYPES)
 
-# TableGen for Cpp2FIR dialect
-set(LLVM_TARGET_DEFINITIONS include/Cpp2FIRDialect.td)
-mlir_tablegen(Cpp2FIROps.h.inc -gen-op-decls)
-mlir_tablegen(Cpp2FIROps.cpp.inc -gen-op-defs)
-mlir_tablegen(Cpp2FIROpsDialect.h.inc -gen-dialect-decls -dialect=cpp2fir)
-mlir_tablegen(Cpp2FIROpsDialect.cpp.inc -gen-dialect-defs -dialect=cpp2fir)
-add_public_tablegen_target(Cpp2FIROpsIncGen)
-
-# TableGen for Cpp2SON dialect
-set(LLVM_TARGET_DEFINITIONS include/Cpp2SONDialect.td)
-mlir_tablegen(Cpp2SONOps.h.inc -gen-op-decls)
-mlir_tablegen(Cpp2SONOps.cpp.inc -gen-op-defs)
-mlir_tablegen(Cpp2SONOpsDialect.h.inc -gen-dialect-decls -dialect=sond)
-mlir_tablegen(Cpp2SONOpsDialect.cpp.inc -gen-dialect-defs -dialect=sond)
-mlir_tablegen(Cpp2SONOpsTypes.h.inc -gen-typedef-decls -dialect=sond)
-mlir_tablegen(Cpp2SONOpsTypes.cpp.inc -gen-typedef-defs -dialect=sond)
-mlir_tablegen(Cpp2SONOpsAttrDefs.h.inc -gen-attrdef-decls -dialect=sond)
-mlir_tablegen(Cpp2SONOpsAttrDefs.cpp.inc -gen-attrdef-defs -dialect=sond)
-add_public_tablegen_target(Cpp2SONOpsIncGen)
+  set(LLVM_TARGET_DEFINITIONS ${TD_FILE})
+  mlir_tablegen(${DIALECT_NAME}Ops.h.inc -gen-op-decls)
+  mlir_tablegen(${DIALECT_NAME}Ops.cpp.inc -gen-op-defs)
+  mlir_tablegen(${DIALECT_NAME}OpsDialect.h.inc -gen-dialect-decls -dialect=${DIALECT_NS})
+  mlir_tablegen(${DIALECT_NAME}OpsDialect.cpp.inc -gen-dialect-defs -dialect=${DIALECT_NS})
+  foreach(TYPE ${EXTRA_TYPES})
+    if(TYPE MATCHES "h\\.inc$")
+      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-decls -dialect=${DIALECT_NS})
+    elseif(TYPE MATCHES "\\.cpp\\.inc$")
+      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-defs -dialect=${DIALECT_NS})
+    elseif(TYPE MATCHES "AttrDefs\\.h\\.inc$")
+      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-decls -dialect=${DIALECT_NS})
+    elseif(TYPE MATCHES "AttrDefs\\.cpp\\.inc$")
+      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-defs -dialect=${DIALECT_NS})
+    endif()
+  endforeach()
+  add_public_tablegen_target(${DIALECT_NAME}IncGen)
+endforeach()
 
 # Package configuration
 include(GNUInstallDirs)
@@ -175,82 +162,31 @@ endif()
 # Custom target to build cppfront (for use with ninja)
 add_custom_target(cppfront_build DEPENDS cppfront)
 
-# Corpus processing targets
-# Find all .cpp2 files in cppfront regression-tests
-file(GLOB_RECURSE CPP2_FILES
-    "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests/*.cpp2"
-)
-
-# Filter out error tests (files ending with -error.cpp2)
-# These tests are expected to fail compilation
-set(CPP2_FILES_FILTERED "")
-foreach(cpp2_file ${CPP2_FILES})
-    get_filename_component(base_name ${cpp2_file} NAME_WE)
-    if(NOT base_name MATCHES "-error$")
-        list(APPEND CPP2_FILES_FILTERED ${cpp2_file})
-    endif()
-endforeach()
-
+# Corpus processing
+set(CPP2_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests")
 set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
-set(CORPUS_REFERENCE_DIR "${CMAKE_SOURCE_DIR}/corpus/reference")
 file(MAKE_DIRECTORY ${CORPUS_OUTPUT_DIR})
 
-# Create custom commands for each .cpp2 file (excluding error tests)
-foreach(cpp2_file ${CPP2_FILES_FILTERED})
-    get_filename_component(base_name ${cpp2_file} NAME_WE)
-    set(output_cpp ${CORPUS_OUTPUT_DIR}/${base_name}.cpp)
-    set(output_ast ${CORPUS_OUTPUT_DIR}/${base_name}.ast)
+file(GLOB_RECURSE CPP2_FILES "${CPP2_DIR}/*.cpp2")
+list(FILTER CPP2_FILES EXCLUDE REGEX "-error\\.cpp2$")
 
-    # Custom command to transpile .cpp2 to .cpp
-    add_custom_command(
-        OUTPUT ${output_cpp}
-        COMMAND cppfront
-            ${cpp2_file}
-            -o ${output_cpp}
-        COMMAND gsed -i
-            -e /^#include "cpp2util.h"/d
-            -e /^#line /d
-            ${output_cpp}
-        DEPENDS cppfront
-        COMMENT "Transpiling ${base_name}.cpp2"
-        VERBATIM
-    )
+foreach(cpp2_file ${CPP2_FILES})
+  get_filename_component(base_name ${cpp2_file} NAME_WE)
+  set(output_cpp "${CORPUS_OUTPUT_DIR}/${base_name}.cpp")
+  set(output_ast "${CORPUS_OUTPUT_DIR}/${base_name}.ast")
 
-    # Custom command to generate AST dump from .cpp
-    add_custom_command(
-        OUTPUT ${output_ast}
-        COMMAND ${CMAKE_CXX_COMPILER}
-            -Xclang -ast-dump
-            -fsyntax-only
-            -std=c++23
-            ${output_cpp}
-        > ${output_ast}
-        DEPENDS ${output_cpp}
-        COMMENT "Generating AST for ${base_name}.cpp"
-        VERBATIM
-    )
-
-    list(APPEND CORPUS_CPP_OUTPUTS ${output_cpp})
-    list(APPEND CORPUS_AST_OUTPUTS ${output_ast})
+  add_custom_command(
+    OUTPUT ${output_cpp} ${output_ast}
+    COMMAND cppfront ${cpp2_file} -o ${output_cpp}
+    COMMAND gsed -i -e /^#include "cpp2util.h"/d -e /^#line /d ${output_cpp}
+    COMMAND ${CMAKE_CXX_COMPILER} -Xclang -ast-dump -fsyntax-only -std=c++23 ${output_cpp} > ${output_ast}
+    DEPENDS cppfront
+    COMMENT "Corpus: ${base_name}"
+  )
+  list(APPEND CORPUS_OUTPUTS ${output_cpp} ${output_ast})
 endforeach()
 
-# corpus_transpile target: transpile all .cpp2 files
-add_custom_target(corpus_transpile
-    DEPENDS ${CORPUS_CPP_OUTPUTS}
-    COMMENT "Corpus transpilation complete"
-)
-
-# corpus_ast target: generate AST dumps
-add_custom_target(corpus_ast
-    DEPENDS ${CORPUS_AST_OUTPUTS}
-    COMMENT "Corpus AST generation complete"
-)
-
-# corpus_reference target: transpile + AST
-add_custom_target(corpus_reference
-    DEPENDS corpus_transpile corpus_ast
-    COMMENT "Corpus reference generation complete"
-)
+add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 
 # Subdirectories
 add_subdirectory(src)
