@@ -494,7 +494,7 @@ private:
     out_ << type << " " << name;
     if (init_expr) {
       out_ << " = ";
-      emit_expression(*init_expr);
+      emit_initializer(*init_expr);
     }
     out_ << ";\n";
   }
@@ -536,9 +536,24 @@ private:
     out_ << type << " " << name;
     if (init_expr) {
       out_ << " = ";
-      emit_expression(*init_expr);
+      emit_initializer(*init_expr);
     }
     out_ << ";\n";
+  }
+
+  // Emit an initializer expression, converting (a,b,c) tuple syntax to {a,b,c}
+  void emit_initializer(const Node &n) {
+    std::string text = trim(node_text(n));
+    // Check if it's a parenthesized expression with commas (tuple initializer)
+    if (!text.empty() && text.front() == '(' && text.back() == ')' &&
+        text.find(',') != std::string::npos) {
+      // Replace outer () with {} for brace initialization
+      // Text is like "(1, 2, 3)" -> "{1, 2, 3}"
+      out_ << "{" << text.substr(1, text.length() - 2) << "}";
+      return;
+    }
+    // Default: emit as regular expression
+    emit_expression(n);
   }
 
   void emit_type(const std::string &name, const Node & /*suffix*/) {
