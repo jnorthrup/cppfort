@@ -155,15 +155,29 @@
 
 ## Phase 7: Full Regression Suite
 
-- [ ] Task: Run all cppfront regression tests
-  - [ ] Execute: `./ckmake regression`
-  - [ ] Analyze: Which tests still fail
+- [~] Task: Run all cppfront regression tests
+  - [x] Execute: `./ckmake regression-fort` (2026-01-16)
+  - [x] Analyze: Which tests still fail
+    - **Initial Results**: 50/159 passed (31.4%)
+    - **After ScopeOp fix**: 54/159 passed (33.9%) - 4 tests fixed
+    - **Transpile failures**: ~50 files
+    - **Compile failures**: ~55 files
+    - **Fixed Bug**: `std::` now correctly emitted (was `std.`)
+    - **Parser gaps**: Contracts, regex, advanced features incomplete
 
-- [ ] Task: Fix remaining failures incrementally
-  - [ ] For each failing test:
-    - [ ] Write reproduction test
-    - [ ] Fix parser or emitter
-    - [ ] Verify fix
+- [~] Task: Fix remaining failures incrementally
+  - [x] Fix `ckmake` binary path and stderr redirection
+  - [x] Fix `_` wildcard and `is_expression` baseline
+  - [x] Fix scope resolution operator emission (`::` vs `.`)
+    - [x] Implement: Added `ScopeOp` handler to emitter (line 653-672)
+    - [x] Test: `std::cout` → `std::cout` now correct
+    - Note: `mixed-hello.cpp2` still fails due to function ordering (forward decl needed)
+  - [ ] Fix basic type mapping and pointer/reference emission
+    - [ ] Write test: `i32` -> `int`, `*void` -> `void*`
+    - [ ] Implement: `map_type` helper in emitter
+    - [ ] Implement: Fix `emit_type_spec` for pointers/references
+    - [ ] Test: `test_parameter_emission.cpp` passes
+  - [ ] Analyze: `pure2-ufcs` chaining and member adoption
   - [ ] Test: All 159 tests pass
 
 - [ ] Task: Performance verification
