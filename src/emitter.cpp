@@ -476,7 +476,7 @@ private:
         for (const auto &grandchild : tree_.children(child)) {
           if (grandchild.kind == NodeKind::TypeSpecifier ||
               grandchild.kind == NodeKind::BasicType) {
-            type = node_text(grandchild);
+            type = format_type(grandchild);
           } else if (meta::is_expression(grandchild.kind)) {
             init_expr = &grandchild;
           }
@@ -484,7 +484,7 @@ private:
       } else if (child.kind == NodeKind::TypeSpecifier ||
                  child.kind == NodeKind::BasicType) {
         // Handle direct type specifier (parser quirk/bug workaround)
-        type = node_text(child);
+        type = format_type(child);
       } else if (meta::is_expression(child.kind)) {
         // Direct expression child means := deduction
         init_expr = &child;
