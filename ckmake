@@ -12,7 +12,7 @@ BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build_clean}"
 CPPFRONT_DIR="$PROJECT_ROOT/third_party/cppfront"
 CPPFRONT_SRC="$CPPFRONT_DIR/source/cppfront.cpp"
 CPPFRONT_BIN="$BUILD_DIR/bin/cppfront"
-CPPFORT_BIN="${BUILD_DIR}/bin/cppfort"
+CPPFORT_BIN="${PROJECT_ROOT}/build/src/cppfort"
 CORPUS_DIR="$PROJECT_ROOT/corpus"
 WORK_DIR="$BUILD_DIR/test_work"
 
@@ -203,7 +203,11 @@ checkout_corpus_clean() {
 }
 
 run_regression_tests() {
-    log_section "Running cppfront regression tests"
+    local transpiler="${1:-$CPPFRONT_BIN}"
+    local name_suffix=""
+    [ "$transpiler" = "$CPPFORT_BIN" ] && name_suffix="-fort"
+
+    log_section "Running cppfront regression tests using $(basename "$transpiler")$name_suffix"
 
     if [ ! -d "$REGRESSION_DIR" ]; then
         log_error "Regression tests not found: $REGRESSION_DIR"
@@ -239,14 +243,21 @@ run_regression_tests() {
         status="FAIL" stage=""
 
         # Stage 1: Transpile
-        if timeout "$TIMEOUT_COMPILE" "$CPPFRONT_BIN" "$cpp2file" -o "$cppfile" 2>/dev/null; then
+        local transpile_cmd=""
+        if [ "$transpiler" = "$CPPFORT_BIN" ]; then
+            transpile_cmd="timeout $TIMEOUT_COMPILE $transpiler $cpp2file $cppfile"
+        else
+            transpile_cmd="timeout $TIMEOUT_COMPILE $transpiler $cpp2file -o $cppfile"
+        fi
+
+        if eval "$transpile_cmd" 2> "$WORK_DIR/${name}_transpile.log"; then
             stage="transpile"
 
             # Stage 2: Preprocess generated cpp (remove cpp2util.h and #line noise)
             gsed -i -e '/^#include "cpp2util.h"/d' -e '/^#line /d' "$cppfile" 2>/dev/null || true
 
-            # Stage 3: Compile (syntax-only check)
-            if timeout "$TIMEOUT_COMPILE" "$CXX" -std=c++23 -fsyntax-only "$cppfile" 2>/dev/null; then
+            # Stage 3: Compile (syntax-only check) - include cppfort headers for runtime support
+            if timeout "$TIMEOUT_COMPILE" "$CXX" -std=c++23 -I"$PROJECT_ROOT/include" -fsyntax-only "$cppfile" 2>/dev/null; then
                 stage="compile"
                 status="PASS"
                 log_ok "$name"
@@ -530,7 +541,8 @@ Commands:
     build-cppfort   Build cppfort (new parser via CMake)
     update      Pull latest hsutter/cppfront version
     test        Run all tests (regression, passthrough, corpus)
-    regression  Run regression tests only
+    regression  Run regression tests only (using cppfront)
+    regression-fort Run regression tests using cppfort (new parser)
     passthrough Run passthrough tests only
     corpus      Run corpus tests only
     compare     Comparative tests: cppfront vs cppfort (regression tests)
@@ -574,7 +586,10 @@ main() {
             run_all_tests
             ;;
         regression)
-            run_regression_tests
+            run_regression_tests "$CPPFRONT_BIN"
+            ;;
+        regression-fort)
+            run_regression_tests "$CPPFORT_BIN"
             ;;
         passthrough)
             run_passthrough_tests

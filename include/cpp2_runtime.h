@@ -158,6 +158,39 @@ namespace impl {
 }
 
 // ============================================================================
+//  UFCS (Unified Function Call Syntax) support
+//  Transforms obj.func(args...) to func(obj, args...) for free functions
+// ============================================================================
+
+namespace detail {
+    // Helper to detect if member function exists
+    template<typename T, typename = void>
+    struct has_member_impl : std::false_type {};
+    
+    // SFINAE helper for member function detection
+    template<typename... Args>
+    struct always_false : std::false_type {};
+}
+
+// CPP2_UFCS macro - try member call first, then free function
+// Usage: CPP2_UFCS(funcname)(obj, args...)
+// This expands to a lambda that tries member then free function
+#define CPP2_UFCS(FUNCNAME) \
+    [](auto&& obj, auto&&... args) -> decltype(auto) { \
+        if constexpr (requires { std::forward<decltype(obj)>(obj).FUNCNAME(std::forward<decltype(args)>(args)...); }) { \
+            return std::forward<decltype(obj)>(obj).FUNCNAME(std::forward<decltype(args)>(args)...); \
+        } else { \
+            return FUNCNAME(std::forward<decltype(obj)>(obj), std::forward<decltype(args)>(args)...); \
+        } \
+    }
+
+// Nonmember UFCS - always calls free function (for cases where we know it's not a member)
+#define CPP2_UFCS_NONMEMBER(FUNCNAME) \
+    [](auto&& obj, auto&&... args) -> decltype(auto) { \
+        return FUNCNAME(std::forward<decltype(obj)>(obj), std::forward<decltype(args)>(args)...); \
+    }
+
+// ============================================================================
 //  main() argument handling: main(args)
 // ============================================================================
 

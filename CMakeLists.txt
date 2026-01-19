@@ -11,9 +11,17 @@ if(APPLE)
   set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "Clang++ compiler")
   set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
 
-  # Use Homebrew's libc++ before SDK paths
-  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
-  add_compile_options(-stdlib=libc++)
+  # Use stable MacOSX.sdk to avoid header conflicts with newer beta SDKs
+  set(MACOS_SDK_PATH "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+  if(EXISTS "${MACOS_SDK_PATH}")
+    set(CMAKE_SYSROOT "${MACOS_SDK_PATH}")
+  endif()
+
+  # Use Homebrew's libc++ exclusively - add system include path explicitly
+  # Note: CMake's include_directories(SYSTEM ...) needs CMAKE_INCLUDE_SYSTEM_FLAG_CXX
+  set(LIBCXX_INCLUDE_DIR "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
+  include_directories(BEFORE SYSTEM "${LIBCXX_INCLUDE_DIR}")
+  add_compile_options(-stdlib=libc++ -isystem${LIBCXX_INCLUDE_DIR})
   add_link_options(-stdlib=libc++ -L${HOMEBREW_LLVM_LIB}/c++ -L${HOMEBREW_LLVM_LIB}/unwind -lunwind)
 
   set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
