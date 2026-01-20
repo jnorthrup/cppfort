@@ -243,10 +243,20 @@ private:
       }
     }
 
-    // Check for named return type like (i:int)
+    // Check for multi-return or single named return type
+    auto multi_returns = parse_named_return_fields(return_type);
     std::string named_return_type = extract_named_return_type(return_type);
-    if (!named_return_type.empty()) {
-      // Emit type alias: using funcname_ret = type;
+    
+    if (!multi_returns.empty()) {
+      // Multi-return: emit struct definition
+      out_ << "struct " << name << "_ret {\n";
+      for (const auto &[field_name, field_type] : multi_returns) {
+        out_ << "    " << field_type << " " << field_name << ";\n";
+      }
+      out_ << "};\n";
+      return_type = name + "_ret";
+    } else if (!named_return_type.empty()) {
+      // Single named return: emit type alias
       out_ << "using " << name << "_ret = " << named_return_type << ";\n";
       return_type = name + "_ret";
     }
@@ -356,9 +366,15 @@ private:
       }
     }
 
-    // Check for named return type like (i:int) - extract both name and type
+    // Check for multi-return or single named return
+    auto multi_returns = parse_named_return_fields(return_type);
     auto [named_ret_var, named_ret_type] = extract_named_return_info(return_type);
-    if (!named_ret_type.empty()) {
+    
+    if (!multi_returns.empty()) {
+      // Multi-return: use struct as return type
+      return_type = name + "_ret";
+    } else if (!named_ret_type.empty()) {
+      // Single named return: use type alias
       return_type = name + "_ret";
     }
 
@@ -378,7 +394,7 @@ private:
 
     ++indent_;
     if (body)
-      emit_function_body(*body, named_ret_var, named_ret_type);
+      emit_function_body(*body, named_ret_var, named_ret_type, multi_returns);
     --indent_;
 
     out_ << "}\n\n";
@@ -498,7 +514,7 @@ private:
   // Check if return type is a named return like (i:int) and extract the type
   // Returns empty string if not a named return
   std::string extract_named_return_type(const std::string &return_spec) {
-    // Pattern: (name:type) or ( name : type )
+    // Pattern: (name:type) or ( name : type ) or (n1:t1, n2:t2, ...)
     std::string s = return_spec;
     // Trim whitespace
     while (!s.empty() && std::isspace(s.front())) s.erase(0, 1);
@@ -515,6 +531,12 @@ private:
     if (colon_pos == std::string::npos)
       return "";
     
+    // Check if there are multiple named returns (contains comma)
+    if (s.find(',') != std::string::npos) {
+      // Multiple named returns - return a placeholder indicating struct needed
+      return "__MULTI_RETURN__";
+    }
+    
     // Extract type after colon
     std::string type_part = s.substr(colon_pos + 1);
     // Trim whitespace
@@ -524,8 +546,74 @@ private:
     return type_part.empty() ? "" : type_part;
   }
 
+  // Parse named return fields from format like "n1:t1, n2:t2"
+  // Returns vector of {name, type} pairs
+  std::vector<std::pair<std::string, std::string>> parse_named_return_fields(const std::string &return_spec) {
+    std::vector<std::pair<std::string, std::string>> fields;
+    std::string s = return_spec;
+    
+    // Trim whitespace
+    while (!s.empty() && std::isspace(s.front())) s.erase(0, 1);
+    while (!s.empty() && std::isspace(s.back())) s.pop_back();
+    
+    if (s.empty() || s.front() != '(' || s.back() != ')') 
+      return fields;
+    
+    // Remove outer parens
+    s = s.substr(1, s.length() - 2);
+    
+    // Split by comma
+    std::vector<std::string> parts;
+    size_t start = 0;
+    int paren_depth = 0;
+    int angle_depth = 0;
+    for (size_t i = 0; i <= s.length(); ++i) {
+      if (i == s.length() || (s[i] == ',' && paren_depth == 0 && angle_depth == 0)) {
+        if (i > start) {
+          parts.push_back(s.substr(start, i - start));
+        }
+        start = i + 1;
+      } else if (s[i] == '(') {
+        paren_depth++;
+      } else if (s[i] == ')') {
+        paren_depth--;
+      } else if (s[i] == '<') {
+        angle_depth++;
+      } else if (s[i] == '>') {
+        angle_depth--;
+      }
+    }
+    
+    // Parse each part as "name:type"
+    for (const auto &part : parts) {
+      auto colon_pos = part.find(':');
+      if (colon_pos == std::string::npos) continue;
+      
+      std::string name = part.substr(0, colon_pos);
+      std::string type = part.substr(colon_pos + 1);
+      
+      // Trim whitespace
+      while (!name.empty() && std::isspace(name.front())) name.erase(0, 1);
+      while (!name.empty() && std::isspace(name.back())) name.pop_back();
+      while (!type.empty() && std::isspace(type.front())) type.erase(0, 1);
+      while (!type.empty() && std::isspace(type.back())) type.pop_back();
+      
+      if (!name.empty() && !type.empty()) {
+        fields.push_back({name, type});
+      }
+    }
+    
+    // Only return non-empty for multi-return case (2+ fields)
+    // Single named returns are handled by extract_named_return_info
+    if (fields.size() < 2) {
+      return {};
+    }
+    
+    return fields;
+  }
+
   // Extract both name and type from named return like (i:int)
-  // Returns {name, type} pair, or {"", ""} if not a named return
+  // Returns {name, type} pair, or {"", ""} if not a named return or if multiple
   std::pair<std::string, std::string> extract_named_return_info(const std::string &return_spec) {
     std::string s = return_spec;
     // Trim whitespace
@@ -537,6 +625,20 @@ private:
     
     // Remove outer parens
     s = s.substr(1, s.length() - 2);
+    
+    // Check if multiple returns (contains comma at top level)
+    int paren_depth = 0;
+    int angle_depth = 0;
+    for (char c : s) {
+      if (c == ',' && paren_depth == 0 && angle_depth == 0) {
+        // Multiple named returns - handled separately
+        return {"", ""};
+      }
+      if (c == '(') paren_depth++;
+      if (c == ')') paren_depth--;
+      if (c == '<') angle_depth++;
+      if (c == '>') angle_depth--;
+    }
     
     // Find the colon
     auto colon_pos = s.find(':');
@@ -563,39 +665,83 @@ private:
     return {name_part, type_part};
   }
 
-  void emit_function_body(const Node &n, const std::string &named_ret_var = "", const std::string &named_ret_type = "") {
-    // If we have a named return variable, declare it at the top
-    if (!named_ret_var.empty() && !named_ret_type.empty()) {
+  void emit_function_body(const Node &n, const std::string &named_ret_var = "", const std::string &named_ret_type = "", 
+                          const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
+    // If we have multiple named return variables, declare them all at the top
+    if (!multi_returns.empty()) {
+      for (const auto &[name, type] : multi_returns) {
+        emit_indent();
+        out_ << type << " " << name << ";\n";
+      }
+    }
+    // If we have a single named return variable, declare it at the top
+    else if (!named_ret_var.empty() && !named_ret_type.empty()) {
       emit_indent();
       out_ << named_ret_type << " " << named_ret_var << ";\n";
     }
     
+    bool ends_with_return = false;
     for (const auto &child : tree_.children(n)) {
       if (child.kind == NodeKind::BlockStatement) {
-        emit_block(child, named_ret_var);
+        ends_with_return = block_ends_with_return(child);
+        emit_block(child, named_ret_var, multi_returns);
       } else {
         // Expression body: = expr;
         emit_indent();
         out_ << "return " << node_text(child) << ";\n";
+        return; // Expression body already has a return
       }
     }
     
-    // If we have a named return variable and no explicit return at end, add one
-    if (!named_ret_var.empty()) {
-      // Check if the last statement was a return
-      // For now, always emit return at end for named returns
-      // (cppfront uses std::move on the return variable)
-      // Note: this might duplicate return, but is safe
+    // Add implicit return at end for named return values (only if not already returning)
+    if (!ends_with_return) {
+      if (!multi_returns.empty()) {
+        emit_indent();
+        out_ << "return {";
+        for (size_t i = 0; i < multi_returns.size(); ++i) {
+          if (i > 0) out_ << ", ";
+          out_ << "std::move(" << multi_returns[i].first << ")";
+        }
+        out_ << "};\n";
+      } else if (!named_ret_var.empty()) {
+        emit_indent();
+        out_ << "return std::move(" << named_ret_var << ");\n";
+      }
     }
   }
-
-  void emit_block(const Node &n, const std::string &named_ret_var = "") {
+  
+  // Check if a block ends with a return statement
+  bool block_ends_with_return(const Node &n) {
+    const Node *last_stmt = nullptr;
     for (const auto &child : tree_.children(n)) {
-      emit_statement(child, named_ret_var);
+      last_stmt = &child;
+    }
+    if (!last_stmt) return false;
+    
+    // Direct return statement
+    if (last_stmt->kind == NodeKind::ReturnStatement) {
+      return true;
+    }
+    // Statement wrapper - check inside
+    if (last_stmt->kind == NodeKind::Statement) {
+      for (const auto &child : tree_.children(*last_stmt)) {
+        if (child.kind == NodeKind::ReturnStatement) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void emit_block(const Node &n, const std::string &named_ret_var = "",
+                  const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
+    for (const auto &child : tree_.children(n)) {
+      emit_statement(child, named_ret_var, multi_returns);
     }
   }
 
-  void emit_statement(const Node &n, const std::string &named_ret_var = "") {
+  void emit_statement(const Node &n, const std::string &named_ret_var = "",
+                      const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     emit_indent();
 
     if (n.kind == NodeKind::ReturnStatement) {
@@ -605,21 +751,30 @@ private:
         out_ << " " << node_text(child);
         has_value = true;
       }
-      // If we have a named return var and no explicit return value, return the var
-      if (!has_value && !named_ret_var.empty()) {
+      // For multi-returns with no value, emit struct constructor
+      if (!has_value && !multi_returns.empty()) {
+        out_ << " {";
+        for (size_t i = 0; i < multi_returns.size(); ++i) {
+          if (i > 0) out_ << ", ";
+          out_ << multi_returns[i].first;
+        }
+        out_ << "}";
+      }
+      // For single named return with no value, return the var
+      else if (!has_value && !named_ret_var.empty()) {
         out_ << " " << named_ret_var;
       }
       out_ << ";\n";
     } else if (n.kind == NodeKind::IfStatement) {
-      emit_if(n, named_ret_var);
+      emit_if(n, named_ret_var, multi_returns);
     } else if (n.kind == NodeKind::WhileStatement) {
-      emit_while(n, named_ret_var);
+      emit_while(n, named_ret_var, multi_returns);
     } else if (n.kind == NodeKind::ForStatement) {
-      emit_for(n, named_ret_var);
+      emit_for(n, named_ret_var, multi_returns);
     } else if (n.kind == NodeKind::BlockStatement) {
       out_ << "{\n";
       ++indent_;
-      emit_block(n, named_ret_var);
+      emit_block(n, named_ret_var, multi_returns);
       --indent_;
       emit_indent();
       out_ << "}\n";
@@ -650,7 +805,8 @@ private:
     }
   }
 
-  void emit_if(const Node &n, const std::string &named_ret_var = "") {
+  void emit_if(const Node &n, const std::string &named_ret_var = "",
+               const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     out_ << "if (";
     bool first = true;
     for (const auto &child : tree_.children(n)) {
@@ -661,7 +817,7 @@ private:
       } else if (child.kind == NodeKind::BlockStatement) {
         out_ << ") {\n";
         ++indent_;
-        emit_block(child, named_ret_var);
+        emit_block(child, named_ret_var, multi_returns);
         --indent_;
         emit_indent();
         out_ << "}";
@@ -670,7 +826,8 @@ private:
     out_ << "\n";
   }
 
-  void emit_while(const Node &n, const std::string &named_ret_var = "") {
+  void emit_while(const Node &n, const std::string &named_ret_var = "",
+                  const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     out_ << "while (";
     bool first = true;
     for (const auto &child : tree_.children(n)) {
@@ -680,7 +837,7 @@ private:
       } else if (child.kind == NodeKind::BlockStatement) {
         out_ << ") {\n";
         ++indent_;
-        emit_block(child, named_ret_var);
+        emit_block(child, named_ret_var, multi_returns);
         --indent_;
         emit_indent();
         out_ << "} \n";
@@ -688,7 +845,8 @@ private:
     }
   }
 
-  void emit_for(const Node &n, const std::string &named_ret_var = "") {
+  void emit_for(const Node &n, const std::string &named_ret_var = "",
+                const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     // Cpp2 for: for items do (item) { body }
     // C++1 for: for (item : items) { body }
     // Both emit as: for (auto item : items) { body }
@@ -710,7 +868,7 @@ private:
     out_ << "for (auto " << var << " : " << items << ") {\n";
     ++indent_;
     if (body)
-      emit_block(*body, named_ret_var);
+      emit_block(*body, named_ret_var, multi_returns);
     --indent_;
     emit_indent();
     out_ << "}\n";
