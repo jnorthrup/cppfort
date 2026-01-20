@@ -25,6 +25,15 @@ class TreeEmitter {
     return "";
   }
 
+  // Check if a node's token range contains a specific token text
+  bool node_contains_token(const Node &n, std::string_view target) const {
+    for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size(); ++i) {
+      if (tokens_[i].lexeme == target)
+        return true;
+    }
+    return false;
+  }
+
   std::string node_text(const Node &n) const {
     std::string result;
     for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size();
@@ -72,6 +81,31 @@ class TreeEmitter {
     return std::string(s.substr(first, last - first + 1));
   }
 
+  // Check if a function body contains a return statement with a value
+  bool function_has_return_value(const Node &suffix) const {
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::FunctionBody) {
+        return body_has_return_value(child);
+      }
+    }
+    return false;
+  }
+
+  bool body_has_return_value(const Node &n) const {
+    // Check if any token in the body is a 'return' followed by something other than ';'
+    for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size(); ++i) {
+      if (tokens_[i].lexeme == "return") {
+        // Check if there's a value after return (not just "return;")
+        if (i + 1 < n.token_end && i + 1 < tokens_.size()) {
+          if (tokens_[i + 1].lexeme != ";") {
+            return true;  // Has a return value
+          }
+        }
+      }
+    }
+    return false;  // No return with value found -> returns void
+  }
+
   std::string format_type(const Node &n) const {
     std::string text = trim(node_text(n));
     // Simple heuristic: move leading * and & to the end
@@ -102,21 +136,55 @@ public:
 
     const auto &root = tree_[tree_.root];
     
-    // First pass: emit forward declarations for all functions
+    // First pass: emit forward declarations for functions and types
     for (const auto &child : tree_.children(root)) {
       emit_forward_declaration(child);
     }
     out_ << "\n";
     
-    // Second pass: emit full definitions
+    // Second pass: emit type definitions (before functions that use them)
     for (const auto &child : tree_.children(root)) {
-      emit_declaration(child);
+      emit_type_definition(child);
+    }
+    
+    // Third pass: emit function definitions and other declarations
+    for (const auto &child : tree_.children(root)) {
+      emit_non_type_declaration(child);
     }
 
     return out_.str();
   }
 
 private:
+  // Check if a declaration is a type definition
+  bool is_type_declaration(const Node &n) const {
+    if (n.kind != NodeKind::Declaration)
+      return false;
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::UnifiedDeclaration) {
+        for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::TypeSuffix)
+            return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Emit only type definitions
+  void emit_type_definition(const Node &n) {
+    if (!is_type_declaration(n))
+      return;
+    emit_declaration(n);
+  }
+
+  // Emit declarations that are NOT type definitions
+  void emit_non_type_declaration(const Node &n) {
+    if (is_type_declaration(n))
+      return;
+    emit_declaration(n);
+  }
+
   // Emit forward declaration for a function (just the signature, no body)
   void emit_forward_declaration(const Node &n) {
     if (n.kind != NodeKind::Declaration)
@@ -141,7 +209,16 @@ private:
       name = std::string(token_text(n.token_start));
     }
 
-    // Only emit forward decls for functions
+    // Check for type suffix (struct/class forward declaration)
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::TypeSuffix) {
+        // Emit forward declaration for the type
+        out_ << "class " << name << ";\n";
+        return;
+      }
+    }
+
+    // Check for function suffix (function forward declaration)
     for (const auto &child : tree_.children(n)) {
       if (child.kind == NodeKind::FunctionSuffix) {
         emit_function_forward(name, child);
@@ -166,10 +243,24 @@ private:
       }
     }
 
-    // Skip forward declarations for functions with deduced return type (auto)
-    // C++ doesn't allow forward-declaring functions with deduced return types
-    if (return_type == "auto")
-      return;
+    // Check for named return type like (i:int)
+    std::string named_return_type = extract_named_return_type(return_type);
+    if (!named_return_type.empty()) {
+      // Emit type alias: using funcname_ret = type;
+      out_ << "using " << name << "_ret = " << named_return_type << ";\n";
+      return_type = name + "_ret";
+    }
+
+    // For deduced return types, check if function returns void (no return value)
+    // C++ allows forward-declaring void functions even without explicit return type
+    if (return_type == "auto") {
+      if (!function_has_return_value(suffix)) {
+        return_type = "void";
+      } else {
+        // Has a return value but type is deduced - can't forward declare in C++
+        return;
+      }
+    }
 
     out_ << "auto " << name << "(" << params << ") -> " << return_type << ";\n";
   }
@@ -265,6 +356,17 @@ private:
       }
     }
 
+    // Check for named return type like (i:int) - extract both name and type
+    auto [named_ret_var, named_ret_type] = extract_named_return_info(return_type);
+    if (!named_ret_type.empty()) {
+      return_type = name + "_ret";
+    }
+
+    // Infer void return type when there's no explicit return type and no return value
+    if (return_type == "auto" && !function_has_return_value(suffix)) {
+      return_type = "void";
+    }
+
     // Handle main function specially (only for Cpp2 syntax without explicit
     // return)
     if (name == "main" && return_type == "auto") {
@@ -276,7 +378,7 @@ private:
 
     ++indent_;
     if (body)
-      emit_function_body(*body);
+      emit_function_body(*body, named_ret_var, named_ret_type);
     --indent_;
 
     out_ << "}\n\n";
@@ -392,44 +494,132 @@ private:
     }
     return "auto";
   }
+  
+  // Check if return type is a named return like (i:int) and extract the type
+  // Returns empty string if not a named return
+  std::string extract_named_return_type(const std::string &return_spec) {
+    // Pattern: (name:type) or ( name : type )
+    std::string s = return_spec;
+    // Trim whitespace
+    while (!s.empty() && std::isspace(s.front())) s.erase(0, 1);
+    while (!s.empty() && std::isspace(s.back())) s.pop_back();
+    
+    if (s.empty() || s.front() != '(' || s.back() != ')') 
+      return "";
+    
+    // Remove outer parens
+    s = s.substr(1, s.length() - 2);
+    
+    // Find the colon
+    auto colon_pos = s.find(':');
+    if (colon_pos == std::string::npos)
+      return "";
+    
+    // Extract type after colon
+    std::string type_part = s.substr(colon_pos + 1);
+    // Trim whitespace
+    while (!type_part.empty() && std::isspace(type_part.front())) 
+      type_part.erase(0, 1);
+    
+    return type_part.empty() ? "" : type_part;
+  }
 
-  void emit_function_body(const Node &n) {
+  // Extract both name and type from named return like (i:int)
+  // Returns {name, type} pair, or {"", ""} if not a named return
+  std::pair<std::string, std::string> extract_named_return_info(const std::string &return_spec) {
+    std::string s = return_spec;
+    // Trim whitespace
+    while (!s.empty() && std::isspace(s.front())) s.erase(0, 1);
+    while (!s.empty() && std::isspace(s.back())) s.pop_back();
+    
+    if (s.empty() || s.front() != '(' || s.back() != ')') 
+      return {"", ""};
+    
+    // Remove outer parens
+    s = s.substr(1, s.length() - 2);
+    
+    // Find the colon
+    auto colon_pos = s.find(':');
+    if (colon_pos == std::string::npos)
+      return {"", ""};
+    
+    // Extract name before colon
+    std::string name_part = s.substr(0, colon_pos);
+    // Trim whitespace
+    while (!name_part.empty() && std::isspace(name_part.front())) 
+      name_part.erase(0, 1);
+    while (!name_part.empty() && std::isspace(name_part.back())) 
+      name_part.pop_back();
+    
+    // Extract type after colon
+    std::string type_part = s.substr(colon_pos + 1);
+    // Trim whitespace
+    while (!type_part.empty() && std::isspace(type_part.front())) 
+      type_part.erase(0, 1);
+    
+    if (name_part.empty() || type_part.empty())
+      return {"", ""};
+    
+    return {name_part, type_part};
+  }
+
+  void emit_function_body(const Node &n, const std::string &named_ret_var = "", const std::string &named_ret_type = "") {
+    // If we have a named return variable, declare it at the top
+    if (!named_ret_var.empty() && !named_ret_type.empty()) {
+      emit_indent();
+      out_ << named_ret_type << " " << named_ret_var << ";\n";
+    }
+    
     for (const auto &child : tree_.children(n)) {
       if (child.kind == NodeKind::BlockStatement) {
-        emit_block(child);
+        emit_block(child, named_ret_var);
       } else {
         // Expression body: = expr;
         emit_indent();
         out_ << "return " << node_text(child) << ";\n";
       }
     }
-  }
-
-  void emit_block(const Node &n) {
-    for (const auto &child : tree_.children(n)) {
-      emit_statement(child);
+    
+    // If we have a named return variable and no explicit return at end, add one
+    if (!named_ret_var.empty()) {
+      // Check if the last statement was a return
+      // For now, always emit return at end for named returns
+      // (cppfront uses std::move on the return variable)
+      // Note: this might duplicate return, but is safe
     }
   }
 
-  void emit_statement(const Node &n) {
+  void emit_block(const Node &n, const std::string &named_ret_var = "") {
+    for (const auto &child : tree_.children(n)) {
+      emit_statement(child, named_ret_var);
+    }
+  }
+
+  void emit_statement(const Node &n, const std::string &named_ret_var = "") {
     emit_indent();
 
     if (n.kind == NodeKind::ReturnStatement) {
       out_ << "return";
+      bool has_value = false;
       for (const auto &child : tree_.children(n)) {
         out_ << " " << node_text(child);
+        has_value = true;
+      }
+      // If we have a named return var and no explicit return value, return the var
+      if (!has_value && !named_ret_var.empty()) {
+        out_ << " " << named_ret_var;
       }
       out_ << ";\n";
     } else if (n.kind == NodeKind::IfStatement) {
-      emit_if(n);
+      emit_if(n, named_ret_var);
     } else if (n.kind == NodeKind::WhileStatement) {
-      emit_while(n);
+      emit_while(n, named_ret_var);
     } else if (n.kind == NodeKind::ForStatement) {
-      emit_for(n);
+      emit_for(n, named_ret_var);
     } else if (n.kind == NodeKind::BlockStatement) {
       out_ << "{\n";
       ++indent_;
-      emit_block(n);
+      emit_block(n, named_ret_var);
       --indent_;
       emit_indent();
       out_ << "}\n";
@@ -450,7 +640,7 @@ private:
     } else if (n.kind == NodeKind::Statement) {
       // Generic statement - check children
       for (const auto &child : tree_.children(n)) {
-        emit_statement(child);
+        emit_statement(child, named_ret_var);
       }
     } else if (n.kind == NodeKind::UnifiedDeclaration) {
       // Local variable
@@ -460,7 +650,7 @@ private:
     }
   }
 
-  void emit_if(const Node &n) {
+  void emit_if(const Node &n, const std::string &named_ret_var = "") {
     out_ << "if (";
     bool first = true;
     for (const auto &child : tree_.children(n)) {
@@ -471,7 +661,7 @@ private:
       } else if (child.kind == NodeKind::BlockStatement) {
         out_ << ") {\n";
         ++indent_;
-        emit_block(child);
+        emit_block(child, named_ret_var);
         --indent_;
         emit_indent();
         out_ << "}";
@@ -480,7 +670,7 @@ private:
     out_ << "\n";
   }
 
-  void emit_while(const Node &n) {
+  void emit_while(const Node &n, const std::string &named_ret_var = "") {
     out_ << "while (";
     bool first = true;
     for (const auto &child : tree_.children(n)) {
@@ -490,7 +680,7 @@ private:
       } else if (child.kind == NodeKind::BlockStatement) {
         out_ << ") {\n";
         ++indent_;
-        emit_block(child);
+        emit_block(child, named_ret_var);
         --indent_;
         emit_indent();
         out_ << "} \n";
@@ -498,7 +688,7 @@ private:
     }
   }
 
-  void emit_for(const Node &n) {
+  void emit_for(const Node &n, const std::string &named_ret_var = "") {
     // Cpp2 for: for items do (item) { body }
     // C++1 for: for (item : items) { body }
     // Both emit as: for (auto item : items) { body }
@@ -520,7 +710,7 @@ private:
     out_ << "for (auto " << var << " : " << items << ") {\n";
     ++indent_;
     if (body)
-      emit_block(*body);
+      emit_block(*body, named_ret_var);
     --indent_;
     emit_indent();
     out_ << "}\n";
@@ -618,6 +808,11 @@ private:
   // Emit an initializer expression, converting (a,b,c) tuple syntax to {a,b,c}
   void emit_initializer(const Node &n) {
     std::string text = trim(node_text(n));
+    // Check if it's empty parens () -> brace init {}
+    if (text == "()") {
+      out_ << "{}";
+      return;
+    }
     // Check if it's a parenthesized expression with commas (tuple initializer)
     if (!text.empty() && text.front() == '(' && text.back() == ')' &&
         text.find(',') != std::string::npos) {
@@ -630,10 +825,130 @@ private:
     emit_expression(n);
   }
 
-  void emit_type(const std::string &name, const Node & /*suffix*/) {
+  void emit_type(const std::string &name, const Node &suffix) {
     out_ << "struct " << name << " {\n";
-    out_ << "    // TODO: type body\n";
+    ++indent_;
+    
+    // Find the TypeBody child and emit its declarations
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::TypeBody) {
+        emit_type_body(child, name);
+      }
+    }
+    
+    --indent_;
     out_ << "};\n\n";
+  }
+  
+  void emit_type_body(const Node &body, const std::string &type_name) {
+    // TypeBody contains Declaration nodes
+    for (const auto &child : tree_.children(body)) {
+      if (child.kind == NodeKind::Declaration) {
+        emit_type_member(child, type_name);
+      }
+    }
+  }
+  
+  void emit_type_member(const Node &decl, const std::string &type_name) {
+    // Get the member name and determine if it's a field or method
+    for (const auto &child : tree_.children(decl)) {
+      if (child.kind == NodeKind::UnifiedDeclaration) {
+        std::string member_name;
+        for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::Identifier) {
+            member_name = node_text(grandchild);
+            break;
+          }
+        }
+        if (member_name.empty()) {
+          member_name = std::string(token_text(child.token_start));
+        }
+        
+        // Check if it's a function (method) or variable (field)
+        for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::FunctionSuffix) {
+            emit_method(member_name, grandchild, type_name);
+            return;
+          }
+          if (grandchild.kind == NodeKind::VariableSuffix) {
+            emit_field(member_name, grandchild);
+            return;
+          }
+        }
+      }
+    }
+  }
+  
+  void emit_method(const std::string &name, const Node &suffix, const std::string &type_name) {
+    // Similar to emit_function but for methods
+    std::string return_type = "auto";
+    std::string params;
+    const Node *body = nullptr;
+    bool is_static = false;
+    
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::ParamList) {
+        // Check for 'this' parameter to determine static vs non-static
+        for (const auto &param : tree_.children(child)) {
+          if (param.kind == NodeKind::Parameter) {
+            std::string param_text = node_text(param);
+            if (param_text.find("this") != std::string::npos) {
+              is_static = false;
+            }
+          }
+        }
+        params = emit_params(child);
+      } else if (child.kind == NodeKind::ReturnSpec) {
+        return_type = emit_type_spec(child);
+      } else if (child.kind == NodeKind::FunctionBody) {
+        body = &child;
+      }
+    }
+    
+    // Check for named return type
+    std::string named_return_type = extract_named_return_type(return_type);
+    if (!named_return_type.empty()) {
+      return_type = named_return_type;  // Use the actual type for methods
+    }
+    
+    // Infer void return type when no explicit return
+    if (return_type == "auto" && !function_has_return_value(suffix)) {
+      return_type = "void";
+    }
+    
+    emit_indent();
+    if (is_static) {
+      out_ << "static ";
+    }
+    out_ << "auto " << name << "(" << params << ") -> " << return_type << " {\n";
+    
+    ++indent_;
+    if (body)
+      emit_function_body(*body);
+    --indent_;
+    
+    emit_indent();
+    out_ << "}\n";
+  }
+  
+  void emit_field(const std::string &name, const Node &suffix) {
+    std::string type = "auto";
+    std::string init;
+    
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
+        type = format_type(child);
+      } else if (meta::is_expression(child.kind)) {
+        init = node_text(child);
+      }
+    }
+    
+    emit_indent();
+    out_ << type << " " << name;
+    if (!init.empty()) {
+      out_ << " = " << init;
+    }
+    out_ << ";\n";
   }
 
   bool is_infix_expression(NodeKind k) const {
@@ -697,36 +1012,43 @@ private:
         ++it;
         
         // Check if this is a UFCS call (obj.method(args) -> CPP2_UFCS(method)(obj, args))
+        // But NOT if it's explicit member access with .. (double dot)
         if (callee.kind == NodeKind::MemberOp) {
-          // UFCS: obj.method(args) should become CPP2_UFCS(method)(obj, args)
-          auto member_children = tree_.children(callee);
-          auto member_it = member_children.begin();
+          // Check if the MemberOp contains ".." token (explicit member, not UFCS)
+          bool is_explicit_member = node_contains_token(callee, "..");
           
-          if (member_it != member_children.end()) {
-            const Node &obj = *member_it;
-            ++member_it;
+          if (!is_explicit_member) {
+            // UFCS: obj.method(args) should become CPP2_UFCS(method)(obj, args)
+            auto member_children = tree_.children(callee);
+            auto member_it = member_children.begin();
             
-            // Get the method name
-            std::string method_name;
-            for (; member_it != member_children.end(); ++member_it) {
-              if (member_it->kind == NodeKind::Identifier) {
-                method_name = node_text(*member_it);
-                break;
+            if (member_it != member_children.end()) {
+              const Node &obj = *member_it;
+              ++member_it;
+              
+              // Get the method name
+              std::string method_name;
+              for (; member_it != member_children.end(); ++member_it) {
+                if (member_it->kind == NodeKind::Identifier) {
+                  method_name = node_text(*member_it);
+                  break;
+                }
               }
-            }
-            
-            if (!method_name.empty()) {
-              // Emit: CPP2_UFCS(method)(obj, args...)
-              out_ << "CPP2_UFCS(" << method_name << ")(";
-              emit_expression(obj);
-              for (; it != children.end(); ++it) {
-                out_ << ", ";
-                emit_expression(*it);
+              
+              if (!method_name.empty()) {
+                // Emit: CPP2_UFCS(method)(obj, args...)
+                out_ << "CPP2_UFCS(" << method_name << ")(";
+                emit_expression(obj);
+                for (; it != children.end(); ++it) {
+                  out_ << ", ";
+                  emit_expression(*it);
+                }
+                out_ << ")";
+                return;
               }
-              out_ << ")";
-              return;
             }
           }
+          // Explicit member call (..): fall through to emit as regular call
         }
         
         // Not UFCS - regular function call
@@ -761,7 +1083,13 @@ private:
         // In hierarchical mode, start_infix was called at the operator.
         // n.token_start is the operator token.
         std::string op = std::string(token_text(n.token_start));
-        out_ << (op == "::" ? "::" : ".");
+        // Handle :: (scope), . (member), and .. (explicit member - emit as single .)
+        if (op == "::") {
+          out_ << "::";
+        } else {
+          // Both . and .. emit as single . in C++
+          out_ << ".";
+        }
         for (; it != children.end(); ++it) {
           if (it->kind == NodeKind::Identifier)
             out_ << node_text(*it);

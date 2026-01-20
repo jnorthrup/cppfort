@@ -19,7 +19,7 @@ endfunction()
 set(DISABLED_TESTS
     end_to_end_arena_codegen_test cpp26_contracts_test benchmark_allocation_performance
     test_markdown_ast_metadata test_markdown_code_generation test_markdown_integration
-    test_output_parity test_parameter_qualifier_parsing test_regression_coverage
+    test_output_parity test_parameter_qualifier_parsing
     codegen_extraction_test
     test_advanced_types_fir test_ast_to_fir_comprehensive test_ast_to_fir
     test_binary_expression_fir test_call_expression_fir test_contract_fir
@@ -71,11 +71,14 @@ add_test_if_exists(test_forward_ref_types test_forward_ref_types.cpp)
 add_test_if_exists(parser_extraction_test parser_extraction_test.cpp)
 add_test_if_exists(annotated_grammar_test annotated_grammar_test.cpp)
 add_test_if_exists(test_variable_declarations parser/test_variable_declarations.cpp)
+add_test_if_exists(test_parameter_emission parser/test_parameter_emission.cpp)
+add_test_if_exists(test_function_emission parser/test_function_emission.cpp)
+add_test_if_exists(test_statement_emission parser/test_statement_emission.cpp)
 add_test_if_exists(test_complex_expressions parser/test_complex_expressions.cpp)
 add_test_if_exists(test_pratt_parser parser/test_pratt_parser.cpp)
 add_test_if_exists(test_statement_parsing parser/test_statement_parsing.cpp)
-add_test_if_exists(test_statement_emission parser/test_statement_emission.cpp)
 add_test_if_exists(debug_for_tree parser/debug_for_tree.cpp)
 add_test_if_exists(parser_test_harness parser/test_harness.cpp)
+add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
 
 enable_testing()

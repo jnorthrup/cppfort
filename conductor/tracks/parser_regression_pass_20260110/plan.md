@@ -188,14 +188,18 @@
     - [x] Skip forward decls for main() and functions with deduced return types (auto)
     - [x] Fixed CMake build to include libc++ headers properly (-isystem flag)
     - [x] Updated ckmake to include -I$PROJECT_ROOT/include for cpp2_runtime.h
-  - [ ] Analyze: `pure2-ufcs` chaining and member adoption
-    - Known issue: Named return values `(i:int)` not properly emitted
-    - Known issue: Type definitions not forward-declared
-    - Known issue: Functions with deduced return types can't be forward-declared
-  - [ ] Address remaining forward declaration issues
+  - [x] Fix named return values and type definition ordering (2026-01-19)
+    - [x] Implemented: `extract_named_return_info()` extracts (name, type) from `(i:int)` syntax
+    - [x] Implemented: Forward declaration emits `using fun_ret = int;` type alias
+    - [x] Implemented: Function body emits return variable declaration at top
+    - [x] Implemented: Empty `return;` in named return context emits `return i;`
+    - [x] Implemented: Three-pass emit - forward decls, type definitions, functions
+    - [x] Implemented: `emit_type()` properly traverses TypeBody to emit methods/fields
+    - [x] Test: `pure2-ufcs-member-access-and-chaining` now PASS (was compile failure)
+  - [ ] Address remaining issues (pure2-bugfix-for-ufcs-arguments, pure2-bugfix-for-ufcs-sfinae)
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-01-19)**: 55/159 passed (34.5%) - up from 54/159 (33.9%)
+**Current Results (2026-01-19)**: 57/159 passed (35.8%) - up from 56/159 (35.2%)
 
 - [ ] Task: Performance verification
   - [ ] Execute: Time full regression run

@@ -13,9 +13,9 @@ void check_emit(const std::string& input, const std::string& expected_contains, 
     cpp2_transpiler::Lexer lexer(input);
     auto tokens = lexer.tokenize();
     auto tree = cpp2::parser::parse(tokens);
-    
+
     std::string output = generate_from_tree(tree, tokens);
-    
+
     if (output.find(expected_contains) == std::string::npos) {
         std::cerr << "FAIL: " << test_name << "\n";
         std::cerr << "Input: " << input << "\n";
@@ -23,7 +23,7 @@ void check_emit(const std::string& input, const std::string& expected_contains, 
         std::cerr << "Actual output:\n" << output << "\n";
         std::exit(1);
     }
-    
+
     std::cout << "PASS: " << test_name << "\n";
 }
 

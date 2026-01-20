@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo-area">
+                <div class="qb-logo-icon"></div>
+                <span class="logo-text">QuickBooks</span>
+            </div>
+            
+            <div class="nav-create-btn-container">
+                <button class="nav-create-btn" id="navCreateBtn">
+                    <span class="material-symbols-outlined">add</span>
+                    <span>New</span>
+                </button>
+            </div>
+
+            <ul class="nav-links">
+                <li class="active">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                    <span>Banking</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">attach_money</span>
+                    <span>Sales</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">payments</span>
+                    <span>Expenses</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">people</span>
+                    <span>Payroll</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">insert_chart</span>
+                    <span>Reports</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    <span>Taxes</span>
+                </li>
+                <li>
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Accounting</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="company-selector">
+                    <span class="company-name">My Company Ltd</span>
+                    <span class="material-symbols-outlined">expand_more</span>
+                </div>
+                
+                <div class="top-actions">
+                    <div class="search-bar">
+                        <span class="material-symbols-outlined search-icon">search</span>
+                        <input type="text" placeholder="Search">
+                    </div>
+                    <button class="icon-btn"><span class="material-symbols-outlined">settings</span></button>
+                    <button class="icon-btn"><span class="material-symbols-outlined">help</span></button>
+                    <button class="icon-btn"><span class="material-symbols-outlined">notifications</span></button>
+                    <div class="user-avatar">J</div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <div class="dashboard-header">
+                    <h1>Business Overview</h1>
+                    <div class="date-range">
+                        <span>Last 30 Days</span>
+                        <span class="material-symbols-outlined">expand_more</span>
+                    </div>
+                </div>
+
+                <div class="widgets-grid">
+                    <!-- Profit and Loss Widget -->
+                    <div class="widget card">
+                        <div class="widget-header">
+                            <h3>Profit and Loss</h3>
+                            <span class="material-symbols-outlined">more_horiz</span>
+                        </div>
+                        <div class="widget-body">
+                            <div class="amount-large">$12,450.00</div>
+                            <div class="trend positive">
+                                <span class="material-symbols-outlined">trending_up</span>
+                                <span>+15% from last month</span>
+                            </div>
+                            <div class="graph-placeholder clean-graph"></div>
+                        </div>
+                    </div>
+
+                    <!-- Expenses Widget -->
+                    <div class="widget card">
+                        <div class="widget-header">
+                            <h3>Expenses</h3>
+                            <span class="material-symbols-outlined">more_horiz</span>
+                        </div>
+                        <div class="widget-body">
+                            <div class="amount-large">$4,230.50</div>
+                            <div class="expense-breakdown">
+                                <div class="expense-item">
+                                    <span class="color-dot blue"></span>
+                                    <span>Payroll</span>
+                                    <span class="amount">$2,500</span>
+                                </div>
+                                <div class="expense-item">
+                                    <span class="color-dot red"></span>
+                                    <span>Supplies</span>
+                                    <span class="amount">$800</span>
+                                </div>
+                                <div class="expense-item">
+                                    <span class="color-dot yellow"></span>
+                                    <span>Rent</span>
+                                    <span class="amount">$930</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoices Widget -->
+                    <div class="widget card">
+                        <div class="widget-header">
+                            <h3>Invoices</h3>
+                            <button class="btn-text">Create invoice</button>
+                        </div>
+                        <div class="widget-body">
+                            <div class="invoice-stats">
+                                <div class="stat-box">
+                                    <div class="stat-value">$2,100</div>
+                                    <div class="stat-label">Overdue</div>
+                                    <div class="stat-bar overdue"></div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value">$5,400</div>
+                                    <div class="stat-label">Not deposited</div>
+                                    <div class="stat-bar pending"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Account Creation Modal overlay -->
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <button class="close-btn" id="closeModalBtn">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-progress-indicator">
+                    <div class="step active"></div>
+                    <div class="step"></div>
+                    <div class="step"></div>
+                </div>
+                
+                <p class="modal-subtitle">Tell us a bit about your business to get started.</p>
+                
+                <form id="accountForm" class="premium-form">
+                    <div class="form-group">
+                        <label for="businessName">Business Name</label>
+                        <input type="text" id="businessName" placeholder="e.g. Acme Corp" autocomplete="off">
+                        <div class="suggestions-dropdown" id="businessSuggestions"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="industry">Industry</label>
+                        <input type="text" id="industry" placeholder="Search functionality (e.g. Tech, Retail)" autocomplete="off">
+                        <div class="suggestions-dropdown" id="industrySuggestions"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="businessType">Business Type</label>
+                            <select id="businessType" class="styled-select">
+                                <option value="" disabled selected>Select type</option>
+                                <option value="llc">LLC</option>
+                                <option value="corp">Corporation</option>
+                                <option value="sole">Sole Proprietorship</option>
+                                <option value="nonprofit">Non-profit</option>
+                            </select>
+                        </div>
+                        <div class="form-group half">
+                            <label for="employeeCount">Employees</label>
+                            <select id="employeeCount" class="styled-select">
+                                <option value="1">1 (Solopreneur)</option>
+                                <option value="2-9">2-9</option>
+                                <option value="10-50">10-50</option>
+                                <option value="50+">50+</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="hasAccountant" class="styled-checkbox">
+                        <label for="hasAccountant">I have an accountant or bookkeeper</label>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn-primary" id="continueBtn">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

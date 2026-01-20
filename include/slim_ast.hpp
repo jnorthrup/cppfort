@@ -29,6 +29,7 @@ enum class NodeKind : uint8_t {
   PrimaryExpression,
   CallOp,
   MemberOp,
+  ScopeOp, // Scope resolution ::
   SubscriptOp,
   PostfixOp,
   PostfixExpression,
@@ -47,6 +48,8 @@ enum class NodeKind : uint8_t {
   TernaryExpression,
   PipelineExpression,
   BinaryOp,
+  IsExpression,
+  AsExpression,
   RangeExpression,
   AssignmentOp,
   AssignmentExpression,
@@ -60,6 +63,7 @@ enum class NodeKind : uint8_t {
 
   // Contracts
   ContractClause,
+  RequiresClause,
 
   // Pattern Matching
   InspectExpression,
@@ -70,6 +74,9 @@ enum class NodeKind : uint8_t {
 
   // Statements
   BlockStatement,
+  UncheckedStatement,
+  ScopeStatement,
+  LambdaExpression,
   ReturnStatement,
   IfStatement,
   WhileStatement,
@@ -154,6 +161,8 @@ inline constexpr const char *names[] = {"Identifier",
                                         "TernaryExpression",
                                         "PipelineExpression",
                                         "BinaryOp",
+                                        "IsExpression",
+                                        "AsExpression",
                                         "RangeExpression",
                                         "AssignmentOp",
                                         "AssignmentExpression",
@@ -163,15 +172,20 @@ inline constexpr const char *names[] = {"Identifier",
                                         "QualifiedType",
                                         "TypeSpecifier",
                                         "ContractClause",
+                                        "RequiresClause",
                                         "InspectExpression",
                                         "InspectArm",
                                         "Pattern",
                                         "IsPattern",
                                         "AsPattern",
                                         "BlockStatement",
+                                        "UncheckedStatement",
+                                        "ScopeStatement",
+                                        "LambdaExpression",
                                         "ReturnStatement",
                                         "IfStatement",
                                         "WhileStatement",
+                                        "DoWhileStatement",
                                         "ForStatement",
                                         "ExpressionStatement",
                                         "AssertStatement",
@@ -201,8 +215,8 @@ constexpr const char *name(NodeKind k) {
 // Category predicates
 constexpr bool is_expression(NodeKind k) {
   auto i = static_cast<uint8_t>(k);
-  return i >= static_cast<uint8_t>(NodeKind::GroupedExpression) &&
-         i <= static_cast<uint8_t>(NodeKind::Expression);
+  return i <= static_cast<uint8_t>(NodeKind::Expression) &&
+         i >= static_cast<uint8_t>(NodeKind::Identifier);
 }
 
 constexpr bool is_statement(NodeKind k) {
@@ -242,6 +256,12 @@ struct Node {
 
   // Metadata (optional, but maintained for convenience)
   uint32_t child_count = 0;
+
+  Node() = default;
+  Node(NodeKind k, uint32_t ts, uint32_t te, uint32_t fc = UINT32_MAX,
+       uint32_t ns = UINT32_MAX, uint32_t cc = 0)
+      : kind(k), token_start(ts), token_end(te), first_child(fc),
+        next_sibling(ns), child_count(cc) {}
 
   constexpr bool has_children() const { return child_count > 0; }
   constexpr std::size_t token_count() const { return token_end - token_start; }
@@ -348,7 +368,59 @@ public:
   struct Checkpoint {
     std::size_t nodes_size;
     std::size_t stack_size;
+    uint32_t mod_idx[4];
+    Node mod_nodes[4];
+    uint32_t mod_count;
+    StackFrame top_frame;
   };
+
+  [[nodiscard]] Checkpoint checkpoint() const {
+    Checkpoint cp;
+    cp.nodes_size = nodes_.size();
+    cp.stack_size = stack_.size();
+    cp.mod_count = 0;
+    if (!stack_.empty()) {
+      cp.top_frame = stack_.back();
+      uint32_t p_idx = cp.top_frame.node_idx;
+      cp.mod_idx[cp.mod_count] = p_idx;
+      cp.mod_nodes[cp.mod_count++] = nodes_[p_idx];
+
+      if (cp.top_frame.last_child_idx != UINT32_MAX) {
+        // LHS
+        uint32_t l_idx = cp.top_frame.last_child_idx;
+        cp.mod_idx[cp.mod_count] = l_idx;
+        cp.mod_nodes[cp.mod_count++] = nodes_[l_idx];
+
+        // Prev sibling of LHS (if any)
+        uint32_t prev_idx = UINT32_MAX;
+        uint32_t it = nodes_[p_idx].first_child;
+        while (it != UINT32_MAX && it != l_idx) {
+          prev_idx = it;
+          it = nodes_[it].next_sibling;
+        }
+        if (prev_idx != UINT32_MAX) {
+          cp.mod_idx[cp.mod_count] = prev_idx;
+          cp.mod_nodes[cp.mod_count++] = nodes_[prev_idx];
+        }
+      }
+    }
+    return cp;
+  }
+
+  void restore(const Checkpoint &cp) {
+    // 1. Restore modified node contents before truncating
+    for (uint32_t i = 0; i < cp.mod_count; ++i) {
+      if (cp.mod_idx[i] < nodes_.size()) {
+        nodes_[cp.mod_idx[i]] = cp.mod_nodes[i];
+      }
+    }
+    // 2. Truncate
+    nodes_.resize(cp.nodes_size);
+    stack_.resize(cp.stack_size);
+    if (!stack_.empty()) {
+      stack_.back() = cp.top_frame;
+    }
+  }
 
   void begin(NodeKind kind, uint32_t token_pos) {
     uint32_t idx = static_cast<uint32_t>(nodes_.size());
@@ -439,48 +511,6 @@ public:
     tree.tokens = tokens;
     tree.root = 0;
     return tree;
-  }
-
-  [[nodiscard]] Checkpoint checkpoint() const {
-    return {nodes_.size(), stack_.size()};
-  }
-
-  void restore(const Checkpoint &cp) {
-    nodes_.resize(cp.nodes_size);
-    stack_.resize(cp.stack_size);
-    // Fixup dangling pointers in the restored stack frame if needed
-    if (!stack_.empty()) {
-      StackFrame &frame = stack_.back();
-      uint32_t last = frame.last_child_idx;
-      if (last != UINT32_MAX) {
-        if (last >= nodes_.size()) {
-          // Last child was erased. We need to find the new last child.
-          // Or if we can't find it, traverse?
-          // This is complex. For now assume basic restore works for failure
-          // atoms. If we restored, we lose the knowledge of previous sibling?
-          // Ideally check point also saves the `last_child_idx`.
-          // It does (via stack resize restoring old frames).
-          // BUT: The node pointed to by `last_child_idx` MUST exist.
-          // If `nodes_` was resized, and `last_child_idx` < `cp.nodes_size`, we
-          // are good. If `last_child_idx` >= `cp.nodes_size`, that's impossible
-          // because the frame was saved WHEN `nodes_size` was smaller (or
-          // equal). Frame is from the past. Nodes it refers to must be from the
-          // past (smaller indices). So `last_child_idx` is strictly <
-          // `nodes_.size()`. So the node exists. However,
-          // `nodes_[last].next_sibling` might point to a node that was just
-          // deleted.
-          nodes_[last].next_sibling = UINT32_MAX;
-        } else {
-          nodes_[last].next_sibling = UINT32_MAX;
-        }
-      } else {
-        // No children. Reset first child?
-        if (frame.node_idx < nodes_.size()) {
-          nodes_[frame.node_idx].first_child = UINT32_MAX;
-          nodes_[frame.node_idx].child_count = 0;
-        }
-      }
-    }
   }
 };
 

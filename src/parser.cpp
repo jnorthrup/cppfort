@@ -4,10 +4,10 @@
 #include <string_view>
 
 namespace cpp2::parser {
-namespace { // Internal linkage
-
 using namespace spirit;
 using namespace cpp2::ast;
+
+namespace { // Internal linkage
 
 struct Tok {
   static constexpr auto ID = tok(TT::Identifier);
@@ -57,6 +57,17 @@ inline auto type_spec_parser() {
   return Proto<FnParser>{{parse_type_specifier}};
 }
 inline auto expr_parser() { return Proto<FnParser>{{parse_expression}}; }
+
+inline auto debug_log(const char *msg) {
+  return Proto<FnParser>{
+      {[=](TokenStream input) -> ebnf::Result<std::monostate, TokenStream> {
+        std::cout << "DEBUG_PARSER: " << msg
+                  << " token: " << (input.empty() ? "EOF" : input.peek().lexeme)
+                  << "\n";
+        return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+      }}};
+}
+
 inline auto stmt_parser() { return Proto<FnParser>{{parse_statement}}; }
 inline auto decl_parser() { return Proto<FnParser>{{parse_declaration}}; }
 
@@ -71,14 +82,16 @@ struct Rules {
 
 inline auto &template_args() {
   static auto r = (lit("<") >> -(type_spec_parser() % ",") >> ">") %
-                  with_node(NodeKind::TemplateArgs);
+                  with_binary(NodeKind::TemplateArgs);
   return r;
 }
 inline auto &qualified_type() {
-  static auto r = (-lit("const") >> Rules::basic_type >>
-                   *(lit("::") >> Tok::ID >> -template_args()) >>
-                   *(lit("const") | "*" | "&")) %
-                  with_node(NodeKind::QualifiedType);
+  static auto r =
+      (*(lit("const") | "*") >> Rules::basic_type >>
+       *((lit("::") % with_node(NodeKind::BinaryOp)) >>
+         (Tok::ID % with_node(NodeKind::Identifier)) >> -template_args()) >>
+       *(lit("const") | "*" | "&")) %
+      with_node(NodeKind::QualifiedType);
   return r;
 }
 inline auto &type_specifier() {
@@ -124,7 +137,7 @@ inline int get_prec(std::string_view op) {
       {">", CMP},     {"<=", CMP},    {">=", CMP},    {"<=>", CMP},
       {"<<", SHIFT},  {">>", SHIFT},  {"+", ADD},     {"-", ADD},
       {"*", MUL},     {"/", MUL},     {"%", MUL},     {"..", CMP},
-      {"..<", CMP},   {"..=", CMP}};
+      {"..<", CMP},   {"..=", CMP},   {"is", CMP},    {"as", CMP}};
   for (const auto &e : map) {
     if (e.op == op)
       return e.prec;
@@ -139,7 +152,8 @@ inline bool is_binop(const cpp2_transpiler::Token &t) {
 inline bool is_prefix(const cpp2_transpiler::Token &t) {
   auto l = t.lexeme;
   return l == "+" || l == "-" || l == "!" || l == "~" || l == "++" ||
-         l == "--" || l == "&" || l == "*";
+         l == "--" || l == "&" || l == "*" || l == "delete" || l == "new" ||
+         l == "sizeof" || l == "typeid" || l == "throw";
 }
 
 inline bool is_postfix_start(const cpp2_transpiler::Token &t) {
@@ -151,6 +165,9 @@ inline bool is_postfix_start(const cpp2_transpiler::Token &t) {
 auto parse_pratt(TokenStream input, int min_prec)
     -> ebnf::Result<std::monostate, TokenStream>;
 
+auto parse_lambda(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream>;
+
 auto parse_primary(TokenStream input)
     -> ebnf::Result<std::monostate, TokenStream> {
   if (input.empty())
@@ -158,10 +175,18 @@ auto parse_primary(TokenStream input)
 
   const auto &tok = input.peek();
 
-  // Grouped expression
+  // Grouped expression or unit/tuple
   if (tok.lexeme == "(") {
     begin(NodeKind::GroupedExpression, input.pos);
     input = input.next(); // consume (
+
+    // Check for empty ()
+    if (!input.empty() && input.peek().lexeme == ")") {
+      input = input.next(); // consume )
+      end(input.pos);
+      return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+    }
+
     auto inner = parse_pratt(input, NONE);
     if (!inner.success())
       return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -185,7 +210,7 @@ auto parse_primary(TokenStream input)
   }
 
   if (tok.lexeme == "this" || tok.lexeme == "that" || tok.lexeme == "_" ||
-      tok.lexeme == "true" || tok.lexeme == "false") {
+      tok.lexeme == "true" || tok.lexeme == "false" || tok.type == TT::Dollar) {
     begin(NodeKind::Identifier, input.pos);
     input = input.next();
     end(input.pos);
@@ -205,6 +230,10 @@ auto parse_primary(TokenStream input)
     input = input.next();
     end(input.pos);
     return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+  }
+
+  if (tok.lexeme == ":") {
+    return parse_lambda(input);
   }
 
   return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -236,12 +265,18 @@ auto parse_atom(TokenStream input)
   input = primary.remaining();
 
   // Combinator-based postfix parsing
-  static auto call =
-      (lit("(") >> -(expr_parser() % ",") >> ")") % with_node(NodeKind::CallOp);
+  static auto call = (lit("(") >> -(expr_parser() % ",") >> ")") %
+                     with_binary(NodeKind::CallOp);
   static auto subs =
-      (lit("[") >> expr_parser() >> "]") % with_node(NodeKind::SubscriptOp);
-  static auto mem = (lit(".") >> Tok::ID) % with_node(NodeKind::MemberOp);
-  static auto inc = (lit("++") | "--") % with_node(NodeKind::PostfixOp);
+      (lit("[") >> expr_parser() >> "]") % with_binary(NodeKind::SubscriptOp);
+  // Member access: . for UFCS, .. for explicit member call (both produce MemberOp)
+  static auto mem = ((lit("..") | lit(".")) >> (Tok::ID % with_node(NodeKind::Identifier))) %
+                    with_binary(NodeKind::MemberOp);
+  static auto scope =
+      (lit("::") >> (Tok::ID % with_node(NodeKind::Identifier))) %
+      with_binary(NodeKind::ScopeOp); // scope resolution
+  static auto inc = (lit("++") | "--" | "~") % with_node(NodeKind::BinaryOp) %
+                    with_binary(NodeKind::PostfixOp);
 
   struct PostfixPtrCheckWrapper {
     ebnf::Result<std::monostate, TokenStream> parse(TokenStream input) const {
@@ -266,9 +301,13 @@ auto parse_atom(TokenStream input)
       return ebnf::Result<std::monostate, TokenStream>::ok({}, input.next());
     }
   };
-  static auto ptr =
-      lift(PostfixPtrCheckWrapper{}) % with_node(NodeKind::PostfixOp);
-  static auto postfix_chain = *(call | subs | mem | inc | ptr);
+  static auto ptr = lift(PostfixPtrCheckWrapper{}) %
+                    with_node(NodeKind::BinaryOp) %
+                    with_binary(NodeKind::PostfixOp);
+  static auto dollar = tok(TT::Dollar) % with_node(NodeKind::BinaryOp) %
+                       with_binary(NodeKind::PostfixOp);
+  static auto postfix_chain =
+      *(call | subs | mem | scope | inc | ptr | dollar | template_args());
 
   auto postfix = postfix_chain.parse(input);
   if (postfix.success()) {
@@ -342,7 +381,9 @@ auto parse_pratt(TokenStream input, int min_prec)
         {"|>", NodeKind::PipelineExpression},
         {"..", NodeKind::RangeExpression},
         {"..<", NodeKind::RangeExpression},
-        {"..=", NodeKind::RangeExpression}};
+        {"..=", NodeKind::RangeExpression},
+        {"is", NodeKind::IsExpression},
+        {"as", NodeKind::AsExpression}};
 
     for (const auto &e : binop_entries) {
       if (e.op == tok.lexeme) {
@@ -411,6 +452,11 @@ inline auto &assert_stmt() {
                   with_node(NodeKind::AssertStatement);
   return r;
 }
+inline auto &unchecked_stmt() {
+  static auto r = (lit("unchecked") >> block_stmt()) %
+                  with_node(NodeKind::UncheckedStatement);
+  return r;
+}
 
 // Control flow
 inline auto &if_stmt() {
@@ -457,9 +503,31 @@ inline auto &try_stmt() {
   return r;
 }
 
+// Helper for expressions that shouldn't consume assignment (for patterns)
+auto parse_expr_pratt_no_assign(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  return pratt::parse_pratt(input, pratt::PIPELINE);
+}
+auto parse_expression_no_assign(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  auto cp = tree_checkpoint();
+  begin(NodeKind::Expression, input.pos);
+  auto result = parse_expr_pratt_no_assign(input);
+  if (result.success() && result.remaining().pos > input.pos) {
+    end(result.remaining().pos);
+    return ebnf::Result<std::monostate, TokenStream>::ok({},
+                                                         result.remaining());
+  }
+  tree_restore(cp);
+  return ebnf::Result<std::monostate, TokenStream>::fail(input);
+}
+inline auto expr_parser_no_assign() {
+  return Proto<FnParser>{{parse_expression_no_assign}};
+}
+
 // Switch / inspect
 inline auto &is_pattern() {
-  static auto r = (lit("is") >> (type_specifier() | expr_parser())) %
+  static auto r = (lit("is") >> (type_specifier() | expr_parser_no_assign())) %
                   with_node(NodeKind::IsPattern);
   return r;
 }
@@ -470,8 +538,9 @@ inline auto &as_pattern() {
   return r;
 }
 inline auto &pattern() {
-  static auto r = (is_pattern() | as_pattern() | (lit("_") | expr_parser())) %
-                  with_node(NodeKind::Pattern);
+  static auto r =
+      (is_pattern() | as_pattern() | (lit("_") | expr_parser_no_assign())) %
+      with_node(NodeKind::Pattern);
   return r;
 }
 inline auto &inspect_arm() {
@@ -515,33 +584,52 @@ inline auto &labeled_stmt() {
   return r;
 }
 
-inline auto &statement() {
-  static auto r = (labeled_stmt() | block_stmt() | if_stmt() | while_stmt() |
-                   do_while_stmt() | for_range_stmt() | for_cpp1_range_stmt() |
-                   try_stmt() | return_stmt() | break_stmt() | continue_stmt() |
-                   next_stmt() | throw_stmt() | assert_stmt() |
-                   local_var_decl() | expr_stmt() | lit(";")) %
-                  with_node(NodeKind::Statement);
-  return r;
+auto parse_initializer_expr(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  // Use ASSIGN precedence to stop before comma
+  return pratt::parse_pratt(input, pratt::ASSIGN);
+}
+inline auto initializer_expr() {
+  return Proto<FnParser>{{parse_initializer_expr}};
 }
 
 inline auto &parameter() {
   static auto r =
       (*(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >>
        (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
-       -(lit(":") >> type_specifier()) >> -(lit("=") >> expr_parser())) %
+       -(lit(":") >> type_specifier()) >> -(lit("=") >> initializer_expr())) %
       with_node(NodeKind::Parameter);
   return r;
 }
 inline auto &param_list() {
-  static auto r = (lit("(") >> -(parameter() % ",") >> ")") %
+  static auto r = (lit("(") >> -(parameter() % ",") >> lit(")")) %
                   with_node(NodeKind::ParamList);
   return r;
 }
 
-inline auto &return_spec() {
+inline auto &scope_stmt() {
   static auto r =
-      (lit("->") >> type_specifier()) % with_node(NodeKind::ReturnSpec);
+      (param_list() >> block_stmt()) % with_node(NodeKind::ScopeStatement);
+  return r;
+}
+
+inline auto &statement() {
+  // local_var_decl MUST come before labeled_stmt to prevent "x: int = 42;"
+  // from being parsed as label "x:" with body "int = 42;"
+  static auto r =
+      (local_var_decl() | labeled_stmt() | block_stmt() | unchecked_stmt() |
+       scope_stmt() | if_stmt() | while_stmt() | do_while_stmt() |
+       for_range_stmt() | for_cpp1_range_stmt() | try_stmt() | return_stmt() |
+       break_stmt() | continue_stmt() | next_stmt() | throw_stmt() |
+       assert_stmt() | expr_stmt() | lit(";")) %
+      with_node(NodeKind::Statement);
+  return r;
+}
+
+inline auto &return_spec() {
+  // Support both "-> type" and "-> (named:type, ...)" for tuple returns
+  static auto r = (lit("->") >> (param_list() | type_specifier())) %
+                  with_node(NodeKind::ReturnSpec);
   return r;
 }
 inline auto &func_body() {
@@ -550,22 +638,29 @@ inline auto &func_body() {
       with_node(NodeKind::FunctionBody);
   return r;
 }
+
 inline auto &contract_clause() {
-  static auto r = ((lit("pre") | "post") >> "(" >> expr_parser() >> ")") %
-                  with_node(NodeKind::ContractClause);
+  static auto r =
+      ((lit("pre") | "post" | "assert") >> "(" >> expr_parser() >> ")") %
+      with_node(NodeKind::ContractClause);
   return r;
 }
-
+inline auto &requires_clause() {
+  static auto r = (lit("requires") >> expr_parser_no_assign()) %
+                  with_node(NodeKind::RequiresClause);
+  return r;
+}
 inline auto &func_suffix() {
-  static auto r =
-      (param_list() >> -return_spec() >> *contract_clause() >> func_body()) %
-      with_node(NodeKind::FunctionSuffix);
+  static auto r = (param_list() >> -return_spec() >> *contract_clause() >>
+                   -requires_clause() >> func_body()) %
+                  with_node(NodeKind::FunctionSuffix);
   return r;
 }
 inline auto &var_suffix() {
-  static auto r = ((type_specifier() >> -(lit("=") >> expr_parser()) >> ";") |
-                   (lit("=") >> expr_parser() >> ";")) %
-                  with_node(NodeKind::VariableSuffix);
+  static auto r =
+      ((type_specifier() >> -((lit("=") | "==") >> expr_parser()) >> ";") |
+       ((lit("=") | "==") >> expr_parser() >> ";")) %
+      with_node(NodeKind::VariableSuffix);
   return r;
 }
 inline auto &type_body() {
@@ -573,9 +668,19 @@ inline auto &type_body() {
                   with_node(NodeKind::TypeBody);
   return r;
 }
-inline auto &type_suffix() {
+inline auto &metafunction() {
+  // @name or @name<args>
+  using TT = cpp2_transpiler::TokenType;
   static auto r =
-      (lit("type") >> -type_body()) % with_node(NodeKind::TypeSuffix);
+      (lit("@") >> (Tok::ID | tok(TT::Enum) | tok(TT::Struct) | tok(TT::Class) |
+                    tok(TT::Interface) | tok(TT::Union)) >>
+       -template_args()) |
+      tok(TT::Final) | tok(TT::Virtual) | tok(TT::Override);
+  return r;
+}
+inline auto &type_suffix() {
+  static auto r = (*metafunction() >> lit("type") >> -type_body()) %
+                  with_node(NodeKind::TypeSuffix);
   return r;
 }
 inline auto &ns_body() {
@@ -634,12 +739,11 @@ inline auto &cpp1_function_decl() {
   // Create custom FunctionBody node for C++1 syntax (no leading '=')
   static auto r = (lit("auto") >>
                    (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
-                   (param_list() >>
-                    -return_spec() >>
+                   (param_list() >> -return_spec() >>
                     ((lit("=") >> (block_stmt() | (expr_parser() >> ";"))) |
                      block_stmt() | (expr_parser() >> ";")) %
-                    with_node(NodeKind::FunctionBody)) %
-                  with_node(NodeKind::FunctionSuffix)) %
+                        with_node(NodeKind::FunctionBody)) %
+                       with_node(NodeKind::FunctionSuffix)) %
                   with_node(NodeKind::UnifiedDeclaration);
   return r;
 }
@@ -691,6 +795,30 @@ auto parse_declaration(TokenStream input)
     -> ebnf::Result<std::monostate, TokenStream> {
   return declaration().parse(input);
 }
+namespace pratt {
+auto parse_lambda(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  // Lambda starts with :
+  if (input.empty() || input.peek().lexeme != ":")
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+
+  auto cp = tree_checkpoint();
+  auto start = input.pos;
+
+  begin(NodeKind::LambdaExpression, start);
+
+  input = input.next(); // consume :
+
+  auto suffix = func_suffix().parse(input);
+  if (!suffix.success()) {
+    tree_restore(cp);
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+  }
+
+  end(suffix.remaining().pos);
+  return ebnf::Result<std::monostate, TokenStream>::ok({}, suffix.remaining());
+}
+} // namespace pratt
 
 } // anonymous namespace
 
