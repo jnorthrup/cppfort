@@ -13,6 +13,7 @@ class TreeEmitter {
   std::span<const cpp2_transpiler::Token> tokens_;
   std::ostringstream out_;
   int indent_ = 0;
+  bool in_function_ = false;  // Track if we're emitting inside a function body
 
   void emit_indent() {
     for (int i = 0; i < indent_; ++i)
@@ -108,6 +109,18 @@ class TreeEmitter {
 
   std::string format_type(const Node &n) const {
     std::string text = trim(node_text(n));
+
+    // Check if the text contains decltype, sizeof, or typeid
+    bool contains_decltype = text.find("decltype(") != std::string::npos ||
+                              text.find("sizeof(") != std::string::npos ||
+                              text.find("typeid(") != std::string::npos;
+
+    if (contains_decltype) {
+      // This type contains expressions that need UFCS transformation
+      // Reconstruct the type while transforming expressions
+      return reconstruct_type_with_expressions(n);
+    }
+
     // Simple heuristic: move leading * and & to the end
     size_t i = 0;
     std::string qualifiers;
@@ -117,6 +130,129 @@ class TreeEmitter {
     }
     std::string base = trim(text.substr(i));
     return map_type_name(base) + qualifiers;
+  }
+
+  // Reconstruct a type node while processing expression children with UFCS
+  std::string reconstruct_type_with_expressions(const Node &n) const {
+    // Check if this is a decltype/sizeof/typeid node by looking at first token
+    std::string_view first_token = token_text(n.token_start);
+
+    // Check for decltype/sizeof/typeid pattern
+    if (first_token == "decltype" || first_token == "sizeof" || first_token == "typeid") {
+      // Look for expression children
+      const Node *expr_child = nullptr;
+      for (const auto &child : tree_.children(n)) {
+        if (child.kind == NodeKind::Expression || meta::is_expression(child.kind)) {
+          expr_child = &child;
+          break;
+        }
+      }
+
+      if (expr_child) {
+        std::string transformed = const_cast<TreeEmitter*>(this)->emit_expression_text(*expr_child);
+        return std::string(first_token) + "(" + transformed + ")";
+      }
+
+      // No expression child - check if we need to recurse into children
+      // The expression might be nested deeper in the tree
+      std::string text = node_text(n);
+      bool has_nested_expression = false;
+      for (const auto &child : tree_.children(n)) {
+        std::string child_text = node_text(child);
+        if (child_text.find(".(") != std::string::npos ||
+            child_text.find("().") != std::string::npos) {
+          has_nested_expression = true;
+          break;
+        }
+      }
+
+      if (has_nested_expression) {
+        // Recurse to find and transform expressions
+        std::string result;
+        for (const auto &child : tree_.children(n)) {
+          result += reconstruct_type_with_expressions(child);
+        }
+        return result;
+      }
+
+      return text;
+    }
+
+    // Special handling for TemplateArgs
+    if (n.kind == NodeKind::TemplateArgs) {
+      std::string result = "<";
+      bool first = true;
+      for (const auto &child : tree_.children(n)) {
+        if (!first) result += ", ";
+        first = false;
+
+        if (child.kind == NodeKind::Expression) {
+          result += const_cast<TreeEmitter*>(this)->emit_expression_text(child);
+        } else if (child.kind == NodeKind::TypeSpecifier) {
+          // TypeSpecifier child might contain expressions
+          result += reconstruct_type_with_expressions(child);
+        } else if (child.has_children()) {
+          result += reconstruct_type_with_expressions(child);
+        } else {
+          result += node_text(child);
+        }
+      }
+      result += ">";
+      return result;
+    }
+
+    // For other nodes, check if any descendant has expressions
+    bool has_expression_descendant = false;
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::Expression || meta::is_expression(child.kind)) {
+        has_expression_descendant = true;
+        break;
+      }
+      // Check descendants
+      for (const auto &grandchild : tree_.children(child)) {
+        if (grandchild.kind == NodeKind::Expression || meta::is_expression(grandchild.kind)) {
+          has_expression_descendant = true;
+          break;
+        }
+      }
+      if (has_expression_descendant) break;
+    }
+
+    if (has_expression_descendant) {
+      // Reconstruct with recursion
+      std::string result;
+      for (const auto &child : tree_.children(n)) {
+        if (child.kind == NodeKind::Expression) {
+          result += const_cast<TreeEmitter*>(this)->emit_expression_text(child);
+        } else if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::TemplateArgs) {
+          result += reconstruct_type_with_expressions(child);
+        } else if (child.has_children()) {
+          result += reconstruct_type_with_expressions(child);
+        } else {
+          result += node_text(child);
+        }
+      }
+      return result;
+    }
+
+    // No expressions - use node_text
+    return node_text(n);
+  }
+
+  // Helper to emit an expression and return it as a string
+  std::string emit_expression_text(const Node &n) {
+    // Save current output state
+    std::ostringstream old_out;
+    old_out.swap(out_);
+
+    // Emit the expression
+    emit_expression(n);
+
+    // Get the result and restore output
+    std::string result = out_.str();
+    out_.swap(old_out);
+
+    return result;
   }
 
 public:
@@ -209,29 +345,41 @@ private:
       name = std::string(token_text(n.token_start));
     }
 
-    // Check for type suffix (struct/class forward declaration)
+    // Look for template parameters and suffix
+    const Node *template_params = nullptr;
+    const Node *suffix = nullptr;
+
     for (const auto &child : tree_.children(n)) {
-      if (child.kind == NodeKind::TypeSuffix) {
+      if (child.kind == NodeKind::TemplateArgs && !template_params) {
+        template_params = &child;
+      } else if (child.kind == NodeKind::TypeSuffix) {
+        suffix = &child;
+        break;
+      } else if (child.kind == NodeKind::FunctionSuffix) {
+        suffix = &child;
+        break;
+      }
+    }
+
+    if (suffix) {
+      if (suffix->kind == NodeKind::TypeSuffix) {
         // Emit forward declaration for the type
         out_ << "class " << name << ";\n";
         return;
       }
-    }
-
-    // Check for function suffix (function forward declaration)
-    for (const auto &child : tree_.children(n)) {
-      if (child.kind == NodeKind::FunctionSuffix) {
-        emit_function_forward(name, child);
+      if (suffix->kind == NodeKind::FunctionSuffix) {
+        emit_function_forward(name, *suffix, template_params);
         return;
       }
     }
   }
   
-  void emit_function_forward(const std::string &name, const Node &suffix) {
+  void emit_function_forward(const std::string &name, const Node &suffix,
+                             const Node *template_params = nullptr) {
     // Skip main function (doesn't need forward decl)
     if (name == "main")
       return;
-      
+
     std::string return_type = "auto";
     std::string params;
 
@@ -246,7 +394,7 @@ private:
     // Check for multi-return or single named return type
     auto multi_returns = parse_named_return_fields(return_type);
     std::string named_return_type = extract_named_return_type(return_type);
-    
+
     if (!multi_returns.empty()) {
       // Multi-return: emit struct definition
       out_ << "struct " << name << "_ret {\n";
@@ -263,13 +411,23 @@ private:
 
     // For deduced return types, check if function returns void (no return value)
     // C++ allows forward-declaring void functions even without explicit return type
+    // Exception: main() should return int
     if (return_type == "auto") {
-      if (!function_has_return_value(suffix)) {
+      if (name != "main" && !function_has_return_value(suffix)) {
         return_type = "void";
+      } else if (name == "main") {
+        return_type = "int";
       } else {
         // Has a return value but type is deduced - can't forward declare in C++
         return;
       }
+    }
+
+    // Emit template parameters if present
+    if (template_params) {
+      out_ << "template";
+      emit_template_args(*template_params);
+      out_ << "\n";
     }
 
     out_ << "auto " << name << "(" << params << ") -> " << return_type << ";\n";
@@ -311,22 +469,43 @@ private:
       name = std::string(token_text(n.token_start));
     }
 
-    // Check for function suffix vs variable suffix
+    // Look for template parameters and function/variable/type suffix
+    const Node *template_params = nullptr;
+    const Node *suffix = nullptr;
+
     for (const auto &child : tree_.children(n)) {
-      if (child.kind == NodeKind::FunctionSuffix) {
-        emit_function(name, child);
+      if (child.kind == NodeKind::TemplateArgs && !template_params) {
+        template_params = &child;
+      } else if (child.kind == NodeKind::FunctionSuffix) {
+        suffix = &child;
+        break;
+      } else if (child.kind == NodeKind::VariableSuffix) {
+        suffix = &child;
+        break;
+      } else if (child.kind == NodeKind::TypeSuffix) {
+        suffix = &child;
+        break;
+      } else if (child.kind == NodeKind::NamespaceSuffix) {
+        suffix = &child;
+        break;
+      }
+    }
+
+    if (suffix) {
+      if (suffix->kind == NodeKind::FunctionSuffix) {
+        emit_function(name, *suffix, template_params);
         return;
       }
-      if (child.kind == NodeKind::VariableSuffix) {
-        emit_variable(name, child);
+      if (suffix->kind == NodeKind::VariableSuffix) {
+        emit_variable(name, *suffix, template_params);
         return;
       }
-      if (child.kind == NodeKind::TypeSuffix) {
-        emit_type(name, child);
+      if (suffix->kind == NodeKind::TypeSuffix) {
+        emit_type(name, *suffix);
         return;
       }
-      if (child.kind == NodeKind::NamespaceSuffix) {
-        emit_namespace(name, child);
+      if (suffix->kind == NodeKind::NamespaceSuffix) {
+        emit_namespace(name, *suffix);
         return;
       }
     }
@@ -350,7 +529,8 @@ private:
     }
   }
 
-  void emit_function(const std::string &name, const Node &suffix) {
+  void emit_function(const std::string &name, const Node &suffix,
+                     const Node *template_params = nullptr) {
     // Extract return type (if any) and parameters
     std::string return_type = "auto";
     std::string params;
@@ -379,8 +559,16 @@ private:
     }
 
     // Infer void return type when there's no explicit return type and no return value
-    if (return_type == "auto" && !function_has_return_value(suffix)) {
+    // Exception: main() should return int, not void
+    if (return_type == "auto" && name != "main" && !function_has_return_value(suffix)) {
       return_type = "void";
+    }
+
+    // Emit template parameters if present
+    if (template_params) {
+      out_ << "template";
+      emit_template_args(*template_params);
+      out_ << "\n";
     }
 
     // Handle main function specially (only for Cpp2 syntax without explicit
@@ -393,11 +581,43 @@ private:
     }
 
     ++indent_;
+    in_function_ = true;
     if (body)
       emit_function_body(*body, named_ret_var, named_ret_type, multi_returns);
+    in_function_ = false;
     --indent_;
 
     out_ << "}\n\n";
+  }
+
+  void emit_template_args(const Node &n) {
+    out_ << "<";
+
+    // Template parameters are stored as direct tokens, not child nodes
+    // The node spans from < to >, so we need to look at the tokens inside
+    bool first = true;
+    for (uint32_t i = n.token_start + 1; i < n.token_end - 1; ++i) {
+      const auto &token = tokens_[i];
+
+      // Skip commas and whitespace
+      if (token.lexeme == "," || token.lexeme.empty()) {
+        continue;
+      }
+
+      if (!first) {
+        out_ << ", ";
+      }
+      first = false;
+
+      // Convert _ to typename
+      if (token.lexeme == "_") {
+        out_ << "typename";
+      } else {
+        out_ << "typename " << token.lexeme;
+      }
+    }
+
+    out_ << ">";
   }
 
   std::string emit_params(const Node &n) {
@@ -800,9 +1020,128 @@ private:
     } else if (n.kind == NodeKind::UnifiedDeclaration) {
       // Local variable
       emit_local_var(n);
+    } else if (n.kind == NodeKind::AssertStatement) {
+      emit_assert_statement(n);
     } else {
       out_ << node_text(n) << ";\n";
     }
+  }
+
+  // Emit assert statement as contract check
+  void emit_assert_statement(const Node &n) {
+    // Format: if (handler.is_active() && !(condition)) { handler.report_violation(CPP2_CONTRACT_MSG("message")); }
+    // assert(cond, "msg")          -> cpp2::cpp2_default
+    // assert<type>(cond, "msg")    -> cpp2::type
+    // assert<type, audit>(cond, msg) -> audit && cpp2::type
+    // assert<unevaluated>(cond)    -> no output (completely suppressed)
+
+    // Parse the assert statement structure
+    // Token layout: [assert] [<type>] [(] [condition] [,] [message] [)] [;]
+
+    std::string contract_kind = "cpp2_default";  // default
+    std::string audit_flag = "";  // optional audit flag
+
+    // Check for template args between 'assert' and '('
+    uint32_t open_paren = n.token_start + 1;
+
+    // Check if there's a '<' after 'assert'
+    while (open_paren < n.token_end && open_paren < tokens_.size()) {
+      if (tokens_[open_paren].lexeme == "<") {
+        // Parse template args: <type> or <type, audit>
+        uint32_t gt_pos = open_paren + 1;
+        int angle_depth = 1;
+        while (gt_pos < n.token_end && gt_pos < tokens_.size() && angle_depth > 0) {
+          if (tokens_[gt_pos].lexeme == "<") angle_depth++;
+          if (tokens_[gt_pos].lexeme == ">") angle_depth--;
+          gt_pos++;
+        }
+
+        // Extract args between < and >
+        std::string args;
+        for (uint32_t t = open_paren + 1; t < gt_pos - 1; ++t) {
+          args += tokens_[t].lexeme;
+        }
+
+        // Parse args: could be "type" or "type, audit"
+        auto comma_pos = args.find(',');
+        if (comma_pos != std::string::npos) {
+          contract_kind = trim(args.substr(0, comma_pos));
+          audit_flag = trim(args.substr(comma_pos + 1));
+        } else {
+          contract_kind = trim(args);
+        }
+
+        open_paren = gt_pos;  // Move past '>'
+      }
+      if (tokens_[open_paren].lexeme == "(") {
+        break;
+      }
+      open_paren++;
+    }
+
+    // Special case: unevaluated contracts emit nothing
+    if (contract_kind == "unevaluated") {
+      return;  // No output
+    }
+
+    // Now find condition and message
+    // Condition starts after '(' and ends at ',' or ')'
+    // Message starts after ',' and ends at ')'
+
+    uint32_t cond_start = open_paren + 1;
+    uint32_t cond_end = open_paren + 1;
+    uint32_t msg_start = 0;
+    uint32_t msg_end = 0;
+
+    // Find the comma separator
+    int paren_depth = 0;
+    for (uint32_t t = open_paren; t < n.token_end && t < tokens_.size(); ++t) {
+      if (tokens_[t].lexeme == "(") paren_depth++;
+      if (tokens_[t].lexeme == ")") {
+        paren_depth--;
+        if (paren_depth == 0) {
+          msg_end = t;
+          break;
+        }
+      }
+      if (tokens_[t].lexeme == "," && paren_depth == 1) {
+        cond_end = t;
+        msg_start = t + 1;
+      }
+    }
+
+    // If no message, condition goes to ')'
+    if (msg_start == 0) {
+      cond_end = msg_end;
+    }
+
+    // Emit the contract check
+    out_ << "if (";
+
+    // Emit audit flag if present
+    if (!audit_flag.empty()) {
+      out_ << audit_flag << " && ";
+    }
+
+    // Emit handler check
+    out_ << "cpp2::" << contract_kind << ".is_active() && !(";
+
+    // Emit condition
+    for (uint32_t t = cond_start; t < cond_end; ++t) {
+      out_ << tokens_[t].lexeme;
+    }
+    out_ << ") ) { cpp2::" << contract_kind << ".report_violation(CPP2_CONTRACT_MSG(";
+
+    // Emit message if present
+    if (msg_start > 0 && msg_end > msg_start) {
+      for (uint32_t t = msg_start; t < msg_end; ++t) {
+        out_ << tokens_[t].lexeme;
+      }
+    } else {
+      out_ << "\"contract violation\"";
+    }
+
+    out_ << ")); }\n";
   }
 
   void emit_if(const Node &n, const std::string &named_ret_var = "",
@@ -921,12 +1260,20 @@ private:
     out_ << ";\n";
   }
 
-  void emit_variable(const std::string &name, const Node &suffix) {
+  void emit_variable(const std::string &name, const Node &suffix,
+                     const Node *template_params = nullptr) {
     // Global variable (from emit_unified_decl)
     emit_indent();
 
     std::string type = "auto";
     const Node *init_expr = nullptr;
+
+    // Emit template parameters if present
+    if (template_params) {
+      out_ << "template";
+      emit_template_args(*template_params);
+      out_ << " ";
+    }
 
     // Suffix might be VariableSuffix, or UnifiedDeclaration logic might have
     // passed the suffix node But emit_unified_decl passes the child node.
@@ -1195,7 +1542,9 @@ private:
               
               if (!method_name.empty()) {
                 // Emit: CPP2_UFCS(method)(obj, args...)
-                out_ << "CPP2_UFCS(" << method_name << ")(";
+                // Use CPP2_UFCS_NONLOCAL when in global scope
+                const char *ufcs_macro = in_function_ ? "CPP2_UFCS" : "CPP2_UFCS_NONLOCAL";
+                out_ << ufcs_macro << "(" << method_name << ")(";
                 emit_expression(obj);
                 for (; it != children.end(); ++it) {
                   out_ << ", ";

@@ -94,8 +94,20 @@ inline auto &qualified_type() {
       with_node(NodeKind::QualifiedType);
   return r;
 }
+// Parse decltype(expr) and similar C++ type constructors
+inline auto &decltype_type() {
+  using TT = cpp2_transpiler::TokenType;
+  static auto r =
+      (tok(TT::Decltype) >> "(" >> expr_parser() >> ")") |
+      (tok(TT::Sizeof) >> "(" >> expr_parser() >> ")") |
+      (tok(TT::Typeid) >> "(" >> expr_parser() >> ")") |
+      (Tok::ID >> "(" >> expr_parser() >> ")")  // Generic fallback for other type constructors
+      ;
+  return r;
+}
+
 inline auto &type_specifier() {
-  static auto r = qualified_type() % with_node(NodeKind::TypeSpecifier);
+  static auto r = (decltype_type() | qualified_type()) % with_node(NodeKind::TypeSpecifier);
   return r;
 }
 
@@ -447,7 +459,11 @@ inline auto &throw_stmt() {
   return r;
 }
 inline auto &assert_stmt() {
-  static auto r = ((lit("assert") | "pre" | "post") >> "(" >> expr_parser() >>
+  // assert, pre, post: assert<type_safety, audit>(cond, "msg")
+  // Template args are optional: <type> or <type, audit>
+  static auto r = ((lit("assert") | "pre" | "post") >>
+                   -((lit("<") >> -(Tok::ID % ",") >> ">") % with_binary(NodeKind::TemplateArgs)) >>
+                   "(" >> expr_parser() >>
                    -(lit(",") >> expr_parser()) >> ")" >> ";") %
                   with_node(NodeKind::AssertStatement);
   return r;

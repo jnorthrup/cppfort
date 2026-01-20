@@ -116,7 +116,50 @@ constexpr auto bounds_check(T index, T size) -> T {
 }
 
 // ============================================================================
-//  Contract assertions
+//  Contract assertion handlers
+// ============================================================================
+
+// Contract violation handler
+class contract_handler {
+public:
+    using handler_fn = void(*)(const char* msg);
+
+    contract_handler() = default;
+
+    bool is_active() const {
+        return handler_ != nullptr;
+    }
+
+    void set_handler(handler_fn h = nullptr) {
+        handler_ = h;
+    }
+
+    void report_violation(const char* msg) const {
+        if (handler_) {
+            handler_(msg);
+        }
+    }
+
+private:
+    handler_fn handler_ = nullptr;
+};
+
+// Default contract handler (throws)
+inline void default_contract_handler(const char* msg) {
+    throw std::logic_error(msg);
+}
+
+// Predefined contract categories
+inline contract_handler cpp2_default;
+inline contract_handler type_safety;
+inline contract_handler bounds_safety;
+inline contract_handler null_safety;
+
+// Macro for contract messages
+#define CPP2_CONTRACT_MSG(msg) msg
+
+// ============================================================================
+//  Legacy contract assertions (deprecated)
 // ============================================================================
 
 inline void contract_assert(bool condition, const char* message = "contract violation") {

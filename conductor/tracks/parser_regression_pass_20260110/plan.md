@@ -165,7 +165,7 @@
     - **Fixed Bug**: `std::` now correctly emitted (was `std.`)
     - **Parser gaps**: Contracts, regex, advanced features incomplete
 
-- [~] Task: Fix remaining failures incrementally
+- [ ] Task: Fix remaining failures incrementally
   - [x] Fix `ckmake` binary path and stderr redirection
   - [x] Fix `_` wildcard and `is_expression` baseline
   - [x] Fix scope resolution operator emission (`::` vs `.`)
@@ -197,19 +197,21 @@
     - [x] Implemented: `emit_type()` properly traverses TypeBody to emit methods/fields
     - [x] Test: `pure2-ufcs-member-access-and-chaining` now PASS (was compile failure)
   - [ ] Address remaining issues (pure2-bugfix-for-ufcs-arguments, pure2-bugfix-for-ufcs-sfinae)
+    - Note: Partial - UFCS transformation works, but QualifiedType reconstruction broken (emits `std::<type_identity_t, ...>` instead of `std::type_identity_t<...>`)
   - [ ] Test: All 159 tests pass
 
 **Current Results (2026-01-19)**: 57/159 passed (35.8%) - up from 56/159 (35.2%)
 
-- [ ] Task: Performance verification
-  - [ ] Execute: Time full regression run
-  - [ ] Verify: Completes in under 5 minutes
+- [x] Task: Performance verification
+  - [x] Execute: Time full regression run
+  - [x] Verify: Completes in under 5 minutes (29.4s)
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 7' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 7' (Protocol in workflow.md)
+  - Note: Skipped per user request, moved to Phase 8
 
 ## Phase 8: Advanced Cpp2 Features Tests
 
-- [ ] Task: Create contract tests
+- [~] Task: Create contract tests
   - [ ] Write test: Precondition `[[expects: x > 0]]`
   - [ ] Write test: Postcondition `[[ensures: result > 0]]`
   - [ ] Write test: Assertion `assert(x != null)`
