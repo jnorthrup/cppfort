@@ -108,6 +108,9 @@ enum class NodeKind : uint8_t {
   // Preprocessor directives (#include, #define, etc.)
   Preprocessor,
 
+  // Metafunctions (@value, @interface, @ordered, etc.)
+  Metafunction,
+
   // Top-level
   TranslationUnit,
 
@@ -143,6 +146,7 @@ inline constexpr const char *names[] = {"Identifier",
                                         "PrimaryExpression",
                                         "CallOp",
                                         "MemberOp",
+                                        "ScopeOp",
                                         "SubscriptOp",
                                         "PostfixOp",
                                         "PostfixExpression",
@@ -206,6 +210,7 @@ inline constexpr const char *names[] = {"Identifier",
                                         "AccessSpecifier",
                                         "Declaration",
                                         "Preprocessor",
+                                        "Metafunction",
                                         "TranslationUnit"};
 
 constexpr const char *name(NodeKind k) {

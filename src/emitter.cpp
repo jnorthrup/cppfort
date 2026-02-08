@@ -2,6 +2,7 @@
 #include <cctype>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -51,6 +52,8 @@ class TreeEmitter {
   }
 
   std::string map_type_name(const std::string &name) const {
+    if (name == "_")
+      return "auto";  // Cpp2 wildcard/deduced type
     if (name == "i32")
       return "int";
     if (name == "u32")
@@ -265,6 +268,7 @@ public:
     out_ << "#include <iostream>\n";
     out_ << "#include <string>\n";
     out_ << "#include <cstdint>\n";
+    out_ << "#include <compare>\n";  // For std::strong_ordering, std::weak_ordering
     out_ << "#include <cpp2_runtime.h>\n\n";
 
     if (tree_.nodes.empty())
@@ -669,38 +673,41 @@ private:
     }
 
     // Apply qualifiers to type
+    // In Cpp2, the default for parameters is 'in' (const reference)
     std::string result_type = type;
-    if (!qualifier.empty()) {
-      if (qualifier == "inout" || qualifier == "out") {
-        // Reference parameter
-        if (type == "auto") {
-          result_type = "auto&";
-        } else {
-          result_type = type + "&";
-        }
-      } else if (qualifier == "move") {
-        // Rvalue reference
-        if (type == "auto") {
-          result_type = "auto&&";
-        } else {
-          result_type = type + "&&";
-        }
-      } else if (qualifier == "forward") {
-        // Forwarding reference
-        if (type == "auto") {
-          result_type = "auto&&";
-        } else {
-          result_type = type + "&&";
-        }
-      } else if (qualifier == "in") {
-        // Const reference
-        if (type == "auto") {
-          result_type = "const auto&";
-        } else {
-          result_type = "const " + type + "&";
-        }
+    std::string effective_qualifier = qualifier.empty() ? "in" : qualifier;
+
+    if (effective_qualifier == "inout" || effective_qualifier == "out") {
+      // Reference parameter
+      if (type == "auto") {
+        result_type = "auto&";
+      } else {
+        result_type = type + "&";
       }
-      // "copy" (value) is default, no change needed
+    } else if (effective_qualifier == "move") {
+      // Rvalue reference
+      if (type == "auto") {
+        result_type = "auto&&";
+      } else {
+        result_type = type + "&&";
+      }
+    } else if (effective_qualifier == "forward") {
+      // Forwarding reference
+      if (type == "auto") {
+        result_type = "auto&&";
+      } else {
+        result_type = type + "&&";
+      }
+    } else if (effective_qualifier == "in") {
+      // Const reference (default for Cpp2 parameters)
+      if (type == "auto") {
+        result_type = "auto const&";
+      } else {
+        result_type = "const " + type + "&";
+      }
+    } else if (effective_qualifier == "copy") {
+      // Value (copy) - no change needed
+      result_type = type;
     }
 
     std::string result = result_type + " " + name;
@@ -1330,19 +1337,270 @@ private:
     emit_expression(n);
   }
 
+  // Extract metafunction names from TypeSuffix
+  std::vector<std::string> extract_metafunctions(const Node &suffix) {
+    std::vector<std::string> result;
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::Metafunction) {
+        // Extract the metafunction name (skip @ token)
+        std::string text = node_text(child);
+        // Remove leading @ if present
+        if (!text.empty() && text[0] == '@') {
+          text = text.substr(1);
+        }
+        // Remove any template args
+        size_t pos = text.find('<');
+        if (pos != std::string::npos) {
+          text = text.substr(0, pos);
+        }
+        result.push_back(text);
+      }
+    }
+    return result;
+  }
+
+  // Check if a metafunction is present
+  bool has_metafunction(const std::vector<std::string> &metafunctions, const std::string &name) {
+    for (const auto &mf : metafunctions) {
+      if (mf == name) return true;
+    }
+    return false;
+  }
+
+  // Emit special members for @value metafunction
+  void emit_value_special_members(const std::string &name) {
+    // Default constructor
+    emit_indent();
+    out_ << "public: explicit " << name << "();\n";
+    
+    // Spaceship operator for comparison
+    emit_indent();
+    out_ << "public: [[nodiscard]] auto operator<=>(" << name << " const& that) const& -> std::strong_ordering = default;\n";
+    
+    // Copy constructor
+    emit_indent();
+    out_ << "public: " << name << "(" << name << " const& that);\n";
+    
+    // Copy assignment
+    emit_indent();
+    out_ << "public: auto operator=(" << name << " const& that) -> " << name << "&;\n";
+    
+    // Move constructor
+    emit_indent();
+    out_ << "public: " << name << "(" << name << "&& that) noexcept;\n";
+    
+    // Move assignment
+    emit_indent();
+    out_ << "public: auto operator=(" << name << "&& that) noexcept -> " << name << "&;\n";
+  }
+
+  // Emit special members for @ordered metafunction
+  void emit_ordered_special_members(const std::string &name) {
+    // Spaceship operator with weak_ordering
+    emit_indent();
+    out_ << "public: [[nodiscard]] auto operator<=>(" << name << " const& that) const& -> std::weak_ordering = default;\n";
+  }
+
+  // Emit special members for @interface metafunction
+  void emit_interface_special_members(const std::string &name, const Node *body) {
+    // Explicit default constructor
+    emit_indent();
+    out_ << "public: explicit " << name << "();\n";
+    
+    // Protected copy (to prevent slicing)
+    emit_indent();
+    out_ << "protected: " << name << "([[maybe_unused]] " << name << " const& that);\n";
+    emit_indent();
+    out_ << "protected: auto operator=([[maybe_unused]] " << name << " const& that) -> " << name << "&;\n";
+    
+    // Protected move
+    emit_indent();
+    out_ << "protected: " << name << "([[maybe_unused]] " << name << "&& that) noexcept;\n";
+    emit_indent();
+    out_ << "protected: auto operator=([[maybe_unused]] " << name << "&& that) noexcept -> " << name << "&;\n";
+    
+    // Virtual destructor
+    emit_indent();
+    out_ << "public: virtual ~" << name << "() noexcept;\n";
+  }
+
+  // Emit special members for @polymorphic_base metafunction
+  void emit_polymorphic_base_special_members(const std::string &name) {
+    // Virtual destructor
+    emit_indent();
+    out_ << "public: virtual ~" << name << "() noexcept;\n";
+    
+    // Delete copy/move to prevent slicing
+    emit_indent();
+    out_ << "public: " << name << "(" << name << " const&) = delete;\n";
+    emit_indent();
+    out_ << "public: auto operator=(" << name << " const&) -> void = delete;\n";
+  }
+
   void emit_type(const std::string &name, const Node &suffix) {
-    out_ << "struct " << name << " {\n";
+    // Extract metafunctions from the TypeSuffix
+    auto metafunctions = extract_metafunctions(suffix);
+    bool is_interface = has_metafunction(metafunctions, "interface");
+    
+    // Use 'class' for interface types (for virtual functions)
+    if (is_interface) {
+      out_ << "class " << name << " {\n";
+    } else {
+      out_ << "struct " << name << " {\n";
+    }
     ++indent_;
     
     // Find the TypeBody child and emit its declarations
+    const Node *body = nullptr;
     for (const auto &child : tree_.children(suffix)) {
       if (child.kind == NodeKind::TypeBody) {
-        emit_type_body(child, name);
+        body = &child;
+        emit_type_body_with_interface(child, name, is_interface);
       }
+    }
+    
+    // Emit special members based on metafunctions
+    if (has_metafunction(metafunctions, "value") || 
+        has_metafunction(metafunctions, "weakly_ordered_value") ||
+        has_metafunction(metafunctions, "partially_ordered_value")) {
+      emit_value_special_members(name);
+    }
+    if (has_metafunction(metafunctions, "ordered")) {
+      emit_ordered_special_members(name);
+    }
+    if (is_interface) {
+      emit_interface_special_members(name, body);
+    }
+    if (has_metafunction(metafunctions, "polymorphic_base")) {
+      emit_polymorphic_base_special_members(name);
     }
     
     --indent_;
     out_ << "};\n\n";
+  }
+
+  void emit_type_body_with_interface(const Node &body, const std::string &type_name, bool is_interface) {
+    // TypeBody contains Declaration nodes
+    for (const auto &child : tree_.children(body)) {
+      if (child.kind == NodeKind::Declaration) {
+        emit_type_member_with_interface(child, type_name, is_interface);
+      }
+    }
+  }
+
+  void emit_type_member_with_interface(const Node &decl, const std::string &type_name, bool is_interface) {
+    // Get the member name and determine if it's a field or method
+    for (const auto &child : tree_.children(decl)) {
+      if (child.kind == NodeKind::UnifiedDeclaration) {
+        std::string member_name;
+        for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::Identifier) {
+            member_name = node_text(grandchild);
+            break;
+          }
+        }
+        if (member_name.empty()) {
+          member_name = std::string(token_text(child.token_start));
+        }
+        
+        // Check if it's a function (method) or variable (field)
+        for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::FunctionSuffix) {
+            emit_method_with_interface(member_name, grandchild, type_name, is_interface);
+            return;
+          }
+          if (grandchild.kind == NodeKind::VariableSuffix) {
+            emit_field(member_name, grandchild);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // Check if function body is empty (just a `;` declaration, no actual content)
+  bool is_empty_function_body(const Node *body) {
+    if (!body) return true;
+    // Check if body has no children or all children are empty
+    bool has_content = false;
+    for (const auto &child : tree_.children(*body)) {
+      has_content = true;
+      break;
+    }
+    if (!has_content) {
+      // Also check if the source text is just a semicolon
+      std::string text = node_text(*body);
+      // Trim whitespace
+      size_t start = text.find_first_not_of(" \t\n\r");
+      if (start == std::string::npos) return true;
+      size_t end = text.find_last_not_of(" \t\n\r");
+      text = text.substr(start, end - start + 1);
+      return text == ";" || text.empty();
+    }
+    return false;
+  }
+
+  void emit_method_with_interface(const std::string &name, const Node &suffix, 
+                                   const std::string &type_name, bool is_interface) {
+    // Similar to emit_method but makes pure virtual for interfaces
+    std::string return_type = "auto";
+    std::string params;
+    const Node *body = nullptr;
+    bool is_const = false;
+    
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::ParamList) {
+        // Check for 'this' parameter to determine const
+        for (const auto &param : tree_.children(child)) {
+          if (param.kind == NodeKind::Parameter) {
+            std::string param_text = node_text(param);
+            if (param_text.find("this") != std::string::npos && 
+                param_text.find("inout") == std::string::npos &&
+                param_text.find("out") == std::string::npos) {
+              is_const = true;
+            }
+          }
+        }
+        params = emit_params(child);
+      } else if (child.kind == NodeKind::ReturnSpec) {
+        return_type = emit_type_spec(child);
+      } else if (child.kind == NodeKind::FunctionBody) {
+        body = &child;
+      }
+    }
+    
+    // Check for named return type
+    std::string named_return_type = extract_named_return_type(return_type);
+    if (!named_return_type.empty()) {
+      return_type = named_return_type;
+    }
+    
+    // Infer void return type when no explicit return
+    if (return_type == "auto" && !function_has_return_value(suffix)) {
+      return_type = "void";
+    }
+    
+    emit_indent();
+    
+    // For interfaces with empty body (just `;`), emit as pure virtual
+    if (is_interface && is_empty_function_body(body)) {
+      out_ << "public: virtual auto " << name << "(" << params << ")";
+      if (is_const) out_ << " const";
+      out_ << " -> " << return_type << " = 0;\n";
+      return;
+    }
+    
+    out_ << "auto " << name << "(" << params << ")";
+    if (is_const) out_ << " const";
+    out_ << " -> " << return_type << " {\n";
+    
+    ++indent_;
+    if (body)
+      emit_function_body(*body);
+    --indent_;
+    
+    emit_indent();
+    out_ << "}\n";
   }
   
   void emit_type_body(const Node &body, const std::string &type_name) {
@@ -1491,6 +1749,46 @@ private:
             emit_expression(*child);
           }
         }
+      }
+    } else if (n.kind == NodeKind::IsExpression) {
+      // is expression: expr is Type -> cpp2::is<Type>(expr)
+      auto children = tree_.children(n);
+      std::vector<const Node *> parts;
+      for (const auto &child : children) {
+        if (child.kind != NodeKind::BinaryOp) {
+          parts.push_back(&child);
+        }
+      }
+      if (parts.size() >= 2) {
+        out_ << "cpp2::is<";
+        // Second part is the type
+        out_ << format_type(*parts[1]);
+        out_ << ">(";
+        emit_expression(*parts[0]);
+        out_ << ")";
+      } else {
+        // Fallback
+        out_ << node_text(n);
+      }
+    } else if (n.kind == NodeKind::AsExpression) {
+      // as expression: expr as Type -> cpp2::as<Type>(expr)
+      auto children = tree_.children(n);
+      std::vector<const Node *> parts;
+      for (const auto &child : children) {
+        if (child.kind != NodeKind::BinaryOp) {
+          parts.push_back(&child);
+        }
+      }
+      if (parts.size() >= 2) {
+        out_ << "cpp2::as<";
+        // Second part is the type
+        out_ << format_type(*parts[1]);
+        out_ << ">(";
+        emit_expression(*parts[0]);
+        out_ << ")";
+      } else {
+        // Fallback
+        out_ << node_text(n);
       }
     } else if (is_infix_expression(n.kind)) {
       for (const auto &child : tree_.children(n)) {
@@ -1734,10 +2032,249 @@ private:
           emit_expression(child);
         }
       }
+    } else if (n.kind == NodeKind::InspectExpression) {
+      emit_inspect_expression(n);
     } else {
       // Fallback
       out_ << node_text(n);
     }
+  }
+
+  void emit_inspect_expression(const Node &n) {
+    // Structure: inspect expr -> type { arm1; arm2; ... }
+    // Emits as: [&] () -> type { auto&& _expr = expr; if (...) return ...; else return ...; }
+
+    auto children = tree_.children(n);
+
+    // Get the expression being inspected (first child)
+    const Node *inspect_expr = nullptr;
+    const Node *return_type = nullptr;
+    std::vector<const Node*> arms;
+
+    for (const auto &child : children) {
+      if (child.kind == NodeKind::Expression || meta::is_expression(child.kind)) {
+        if (!inspect_expr) {
+          inspect_expr = &child;
+        }
+      } else if (child.kind == NodeKind::TypeSpecifier) {
+        return_type = &child;
+      } else if (child.kind == NodeKind::InspectArm) {
+        arms.push_back(&child);
+      }
+    }
+
+    // Emit lambda: [&] () -> type
+    out_ << "[&] () -> ";
+    if (return_type) {
+      out_ << format_type(*return_type);
+    } else {
+      out_ << "auto";
+    }
+
+    out_ << " { ";
+
+    // Emit: auto&& _expr = <inspect_expr>;
+    if (inspect_expr) {
+      out_ << "auto&& _expr = ";
+      emit_expression(*inspect_expr);
+      out_ << "; ";
+    }
+
+    // Emit each arm as if/else if
+    // For generic functions, we need SFINAE guards to prevent instantiation
+    // of invalid code paths
+    bool first = true;
+    std::string return_type_str = return_type ? format_type(*return_type) : "auto";
+    
+    for (const auto *arm : arms) {
+      if (!arm) continue;
+
+      auto arm_children = tree_.children(*arm);
+
+      // Get pattern and body
+      const Node *pattern = nullptr;
+      const Node *body = nullptr;
+
+      for (const auto &child : arm_children) {
+        if (child.kind == NodeKind::Pattern || child.kind == NodeKind::IsPattern) {
+          pattern = &child;
+        } else if (meta::is_expression(child.kind) || child.kind == NodeKind::BlockStatement) {
+          body = &child;
+        }
+      }
+
+      if (pattern && body) {
+        if (first) {
+          out_ << "if (";
+          first = false;
+        } else {
+          out_ << "else if (";
+        }
+
+        // Emit pattern check: cpp2::is(_expr, pattern) or cpp2::is<type>(_expr)
+        emit_pattern_check(*pattern);
+
+        out_ << ") { ";
+        
+        // Capture body expression as string for SFINAE guards
+        std::ostringstream body_stream;
+        std::swap(out_, body_stream);
+        emit_expression(*body);
+        std::swap(out_, body_stream);
+        std::string body_str = body_stream.str();
+        
+        // Emit SFINAE-guarded return:
+        // if constexpr(requires{<body>}) 
+        //   if constexpr(std::is_convertible_v<decltype((<body>)),<return_type>>) 
+        //     return <body>;
+        //   else return <return_type>{};
+        // else return <return_type>{};
+        out_ << "if constexpr( requires{" << body_str << ";} ) ";
+        out_ << "if constexpr( std::is_convertible_v<decltype((" << body_str << "))," << return_type_str << "> ) ";
+        out_ << "return " << body_str << "; ";
+        out_ << "else return " << return_type_str << "{}; ";
+        out_ << "else return " << return_type_str << "{}; ";
+        out_ << "} ";
+      }
+    }
+
+    // Default case (wildcard) if no match
+    if (!first) {
+      out_ << "else return ";
+      if (return_type) {
+        out_ << format_type(*return_type) << "{}";
+      } else {
+        out_ << "\"(no match)\"";
+      }
+      out_ << "; ";
+    }
+
+    out_ << "} ()";
+  }
+
+  void emit_pattern_check(const Node &pattern) {
+    // Pattern can be:
+    // - IsPattern: "is type" or "is expr"
+    // - AsPattern: "as type = identifier"
+    // - Pattern node containing IsPattern/AsPattern/Wildcard/Expression
+    // - Wildcard: "_"
+    // - Expression
+
+    std::string debug_text = trim(node_text(pattern));
+
+    // First check if this is a Pattern node containing other patterns
+    if (pattern.kind == NodeKind::Pattern) {
+      auto children = tree_.children(pattern);
+      for (const auto &child : children) {
+        if (child.kind == NodeKind::IsPattern || child.kind == NodeKind::AsPattern) {
+          // Delegate to the inner pattern
+          emit_pattern_check(child);
+          return;
+        }
+      }
+      
+      // No inner pattern found - check if the text starts with "is " (token-based fallback)
+      if (debug_text.size() >= 3 && debug_text.substr(0, 3) == "is ") {
+        std::string target = trim(debug_text.substr(3));
+        if (target == "_" || target.empty()) {
+          out_ << "true";
+        } else if (is_type_like(target)) {
+          out_ << "cpp2::is<" << target << ">(_expr)";
+        } else {
+          out_ << "cpp2::is(_expr, " << target << ")";
+        }
+        return;
+      }
+      
+      // Check if it's a wildcard "_"
+      if (debug_text == "_") {
+        out_ << "true";
+        return;
+      }
+      // It's an expression pattern
+      out_ << "cpp2::is(_expr, ";
+      emit_expression(pattern);
+      out_ << ")";
+      return;
+    }
+
+    if (pattern.kind == NodeKind::IsPattern) {
+      // "is type" or "is expr"
+      // IsPattern has children: first token is "is", followed by type or expression
+      auto children = tree_.children(pattern);
+
+      // Check for TypeSpecifier child (type pattern)
+      for (const auto &child : children) {
+        if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
+          std::string type_text = trim(format_type(child));
+          if (type_text == "_" || type_text == "auto") {
+            out_ << "true";  // Wildcard matches anything
+          } else {
+            out_ << "cpp2::is<" << type_text << ">(_expr)";
+          }
+          return;
+        }
+      }
+
+      // Check for expression child (value pattern)
+      for (const auto &child : children) {
+        if (meta::is_expression(child.kind)) {
+          std::string expr_text = trim(node_text(child));
+          if (expr_text == "_") {
+            out_ << "true";  // Wildcard matches anything
+          } else {
+            out_ << "cpp2::is(_expr, ";
+            emit_expression(child);
+            out_ << ")";
+          }
+          return;
+        }
+      }
+
+      // Fallback: parse the text
+      std::string text = trim(node_text(pattern));
+      // Remove "is " prefix if present
+      if (text.substr(0, 3) == "is ") {
+        text = trim(text.substr(3));
+      }
+
+      if (text == "_" || text.empty()) {
+        out_ << "true";
+      } else if (is_type_like(text)) {
+        out_ << "cpp2::is<" << text << ">(_expr)";
+      } else {
+        out_ << "cpp2::is(_expr, " << text << ")";
+      }
+    } else if (pattern.kind == NodeKind::AsPattern) {
+      // "as type = identifier" - binds value to identifier
+      // For now, just emit true (TODO: implement binding)
+      out_ << "true";
+    } else {
+      // Expression pattern
+      std::string text = trim(node_text(pattern));
+      if (text == "_") {
+        out_ << "true";
+      } else {
+        out_ << "cpp2::is(_expr, ";
+        emit_expression(pattern);
+        out_ << ")";
+      }
+    }
+  }
+
+  bool is_type_like(const std::string &s) const {
+    // Check if s looks like a type name
+    // Types: contain ::, <>, or are known type names
+    if (s.find("::") != std::string::npos) return true;
+    if (s.find('<') != std::string::npos) return true;
+    // Known simple types
+    static const std::unordered_set<std::string> known_types = {
+        "int", "unsigned", "signed", "char", "short", "long", "float", "double",
+        "bool", "void", "auto", "size_t", "ptrdiff_t", "int8_t", "int16_t",
+        "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+        "string", "vector", "map", "set", "optional", "variant", "any"
+    };
+    return known_types.count(s) > 0;
   }
 
   bool is_operator(std::string_view s) const {

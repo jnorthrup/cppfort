@@ -149,7 +149,7 @@ inline int get_prec(std::string_view op) {
       {">", CMP},     {"<=", CMP},    {">=", CMP},    {"<=>", CMP},
       {"<<", SHIFT},  {">>", SHIFT},  {"+", ADD},     {"-", ADD},
       {"*", MUL},     {"/", MUL},     {"%", MUL},     {"..", CMP},
-      {"..<", CMP},   {"..=", CMP},   {"is", CMP},    {"as", CMP}};
+      {"..<", CMP},   {"..=", CMP},   {"is", POSTFIX}, {"as", POSTFIX}};
   for (const auto &e : map) {
     if (e.op == op)
       return e.prec;
@@ -206,6 +206,61 @@ auto parse_primary(TokenStream input)
     if (input.empty() || input.peek().lexeme != ")")
       return ebnf::Result<std::monostate, TokenStream>::fail(input);
     input = input.next(); // consume )
+    end(input.pos);
+    return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+  }
+
+  // C++1 lambda: [capture](params) -> return { body }
+  if (tok.lexeme == "[") {
+    begin(NodeKind::LambdaExpression, input.pos);
+    auto start = input.pos;
+    input = input.next(); // consume [
+
+    // Capture list: anything until ]
+    while (!input.empty() && input.peek().lexeme != "]") {
+      input = input.next();
+    }
+    if (input.empty() || input.peek().lexeme != "]")
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    input = input.next(); // consume ]
+
+    // Optional parameters: (params)
+    if (!input.empty() && input.peek().lexeme == "(") {
+      input = input.next(); // consume (
+      int paren_count = 1;
+      while (!input.empty() && paren_count > 0) {
+        if (input.peek().lexeme == "(") paren_count++;
+        if (input.peek().lexeme == ")") paren_count--;
+        input = input.next();
+      }
+      if (paren_count != 0)
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+
+    // Optional return type: -> type
+    if (!input.empty() && input.peek().lexeme == "->") {
+      input = input.next(); // consume ->
+      // Skip tokens until we hit {
+      while (!input.empty() && input.peek().lexeme != "{") {
+        input = input.next();
+      }
+    }
+
+    // Body: { statements } - consume as single unit (doesn't need internal parsing for transpiler)
+    if (input.empty() || input.peek().lexeme != "{")
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    
+    input = input.next(); // consume {
+    int brace_count = 1;
+    while (!input.empty() && brace_count > 0) {
+      if (input.peek().lexeme == "{") brace_count++;
+      if (input.peek().lexeme == "}") brace_count--;
+      input = input.next();
+    }
+
+    if (brace_count != 0)
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+
     end(input.pos);
     return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
   }
@@ -688,9 +743,9 @@ inline auto &metafunction() {
   // @name or @name<args>
   using TT = cpp2_transpiler::TokenType;
   static auto r =
-      (lit("@") >> (Tok::ID | tok(TT::Enum) | tok(TT::Struct) | tok(TT::Class) |
+      ((lit("@") >> (Tok::ID | tok(TT::Enum) | tok(TT::Struct) | tok(TT::Class) |
                     tok(TT::Interface) | tok(TT::Union)) >>
-       -template_args()) |
+       -template_args()) % with_node(NodeKind::Metafunction)) |
       tok(TT::Final) | tok(TT::Virtual) | tok(TT::Override);
   return r;
 }
