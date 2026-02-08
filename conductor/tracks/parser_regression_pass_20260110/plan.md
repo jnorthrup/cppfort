@@ -196,18 +196,23 @@
     - [x] Implemented: Three-pass emit - forward decls, type definitions, functions
     - [x] Implemented: `emit_type()` properly traverses TypeBody to emit methods/fields
     - [x] Test: `pure2-ufcs-member-access-and-chaining` now PASS (was compile failure)
-  - [ ] Address remaining issues (pure2-bugfix-for-ufcs-arguments, pure2-bugfix-for-ufcs-sfinae)
-    - Note: Partial - UFCS transformation works, but QualifiedType reconstruction broken (emits `std::<type_identity_t, ...>` instead of `std::type_identity_t<...>`)
+  - [x] Address remaining issues (pure2-bugfix-for-ufcs-arguments, pure2-bugfix-for-ufcs-sfinae)
+    - [x] Fixed: `reconstruct_type_with_expressions()` TemplateArgs handler wasn't extracting adoptee
+    - [x] Fixed: Added ScopeOp handler to properly emit `::` in qualified types
+    - [x] Result: `std::type_identity_t<decltype(...)>` emits correctly (was `std::<type_identity_t, ...>`)
+    - [x] Both UFCS tests now transpile successfully
   - [ ] Test: All 159 tests pass
 
 **Current Results (2026-02-04)**: 68/159 passed (42.7%) - improved from 63/159 (39.6%)
 
 **Breakdown:**
+
 - Mixed-mode (C++1 + Cpp2): ~32/51 passing (62.7%)
 - Pure2 (100% Cpp2): ~36/108 passing (33.3%)
 - Error tests: 9 skipped (as expected)
 
 **Recent Fixes (2026-02-04)**:
+
 - Added SFINAE `if constexpr(requires{...})` guards to inspect arm emission
 - Added SFINAE `requires` constraints to general `as<>` template
 - Added SFINAE constraints to optional `as<>` overload
@@ -215,6 +220,7 @@
 - Added `<vector>`, `<memory>`, `<functional>` headers to cpp2_runtime.h
 
 **Previous Fixes (2026-02-01)**:
+
 - Fixed `is`/`as` operator precedence (now POSTFIX=16, higher than ADD=13)
 - Fixed pattern matching emission for inspect expressions
 - Added std::variant/any/optional support for `cpp2::is<T>()` and `cpp2::as<T>()`
@@ -253,7 +259,7 @@
   - [x] Emit `if constexpr(requires{...})` guards for generic inspect arms
   - [x] Handle variant with duplicate types via `std::visit`
   - [x] Add missing headers to cpp2_runtime.h: `<any>`, `<optional>`, `<variant>`, `<iomanip>`, `<vector>`, `<memory>`, `<functional>`
-  - [x] Test: Pattern matching tests pass (7/9 inspect tests now pass) ✅ 
+  - [x] Test: Pattern matching tests pass (7/9 inspect tests now pass) ✅
     - [x] mixed-inspect-templates - PASS
     - [x] mixed-inspect-values-2 - PASS
     - [x] pure2-inspect-fallback-with-variant-any-optional - PASS
@@ -272,7 +278,7 @@
   - [x] Implement: Parser handles @meta syntax
   - [x] Test: Metafunction tests pass
 
-- [ ] Task: Create string interpolation tests
+- [~] Task: Create string interpolation tests
   - [ ] Write test: `$"Hello {name}!"` syntax
   - [ ] Implement: Parser handles interpolation
   - [ ] Implement: Emitter generates string concat/format

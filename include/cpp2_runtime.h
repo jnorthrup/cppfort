@@ -15,6 +15,13 @@
 #include <typeinfo>
 #include <stdexcept>
 #include <cassert>
+#include <any>
+#include <optional>
+#include <variant>
+#include <iomanip>
+#include <vector>
+#include <memory>
+#include <functional>
 
 namespace cpp2 {
 
@@ -49,6 +56,19 @@ auto to_string(T const& x) -> std::string {
     }
 }
 
+// to_string with format specifier for interpolation: "(expr: fmt)$"
+// Uses std::format when available, falls back to ostringstream
+template<typename T>
+auto to_string(T const& x, std::string_view fmt) -> std::string {
+#if __cpp_lib_format >= 202110L
+    return std::vformat(fmt, std::make_format_args(x));
+#else
+    // Fallback: ignore format spec, just convert to string
+    (void)fmt;
+    return to_string(x);
+#endif
+}
+
 // ============================================================================
 //  Type inspection: x is T
 // ============================================================================
@@ -76,18 +96,152 @@ constexpr auto is(T const& x, U const& value) -> bool {
 }
 
 // ============================================================================
+//  std::variant specializations for is and as
+// ============================================================================
+
+// Helper to check if T is one of Ts...
+template<typename T, typename... Ts>
+struct is_one_of : std::disjunction<std::is_same<T, Ts>...> {};
+
+// Helper to check if T appears exactly once in Ts...
+template<typename T, typename... Ts>
+struct appears_once : std::bool_constant<(... + (std::is_same_v<T, Ts> ? 1 : 0)) == 1> {};
+
+// is<T> for variant: check if current alternative is T
+// Use type-based check when T appears exactly once
+template<typename T, typename... Ts>
+requires (is_one_of<T, Ts...>::value && appears_once<T, Ts...>::value)
+constexpr auto is(std::variant<Ts...> const& x) -> bool {
+    return std::holds_alternative<T>(x);
+}
+
+// is<T> for variant with duplicate types: use visit
+template<typename T, typename... Ts>
+requires (is_one_of<T, Ts...>::value && !appears_once<T, Ts...>::value)
+constexpr auto is(std::variant<Ts...> const& x) -> bool {
+    return std::visit([](auto const& v) -> bool {
+        return std::is_same_v<std::remove_cvref_t<decltype(v)>, T>;
+    }, x);
+}
+
+// as<T> for variant: extract alternative T (unique case)
+template<typename T, typename... Ts>
+requires (is_one_of<T, Ts...>::value && appears_once<T, Ts...>::value)
+constexpr auto as(std::variant<Ts...> const& x) -> T {
+    if (!std::holds_alternative<T>(x)) {
+        throw std::bad_variant_access();
+    }
+    return std::get<T>(x);
+}
+
+// as<T> for variant with duplicate types: use visit
+template<typename T, typename... Ts>
+requires (is_one_of<T, Ts...>::value && !appears_once<T, Ts...>::value)
+constexpr auto as(std::variant<Ts...> const& x) -> T {
+    return std::visit([](auto const& v) -> T {
+        if constexpr (std::is_same_v<std::remove_cvref_t<decltype(v)>, T>) {
+            return v;
+        } else {
+            throw std::bad_variant_access();
+        }
+    }, x);
+}
+
+template<typename T, typename... Ts>
+requires (is_one_of<T, Ts...>::value && appears_once<T, Ts...>::value)
+constexpr auto as(std::variant<Ts...>& x) -> T& {
+    if (!std::holds_alternative<T>(x)) {
+        throw std::bad_variant_access();
+    }
+    return std::get<T>(x);
+}
+
+// ============================================================================
+//  std::any specializations for is and as
+// ============================================================================
+
+// is<T> for any: check type
+template<typename T>
+constexpr auto is(std::any const& x) -> bool {
+    return x.type() == typeid(T);
+}
+
+// as<T> for any: extract value
+template<typename T>
+auto as(std::any const& x) -> T {
+    if (x.type() != typeid(T)) {
+        throw std::bad_any_cast();
+    }
+    return std::any_cast<T>(x);
+}
+
+template<typename T>
+auto as(std::any& x) -> T& {
+    if (x.type() != typeid(T)) {
+        throw std::bad_any_cast();
+    }
+    return *std::any_cast<T>(&x);
+}
+
+// ============================================================================
+//  std::optional specializations for is and as
+// ============================================================================
+
+// is<T> for optional: check if has value of type T
+template<typename T, typename U>
+constexpr auto is(std::optional<U> const& x) -> bool {
+    if (!x.has_value()) {
+        return false;
+    }
+    if constexpr (std::is_same_v<T, U>) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// as<T> for optional: extract value - constrained for SFINAE
+template<typename T, typename U>
+requires (
+    std::is_same_v<T, U> ||
+    std::is_constructible_v<T, U> ||
+    std::is_convertible_v<U, T>
+)
+auto as(std::optional<U> const& x) -> T {
+    if (!x.has_value()) {
+        throw std::bad_optional_access();
+    }
+    if constexpr (std::is_same_v<T, U>) {
+        return x.value();
+    } else if constexpr (std::is_constructible_v<T, U>) {
+        return T(x.value());
+    } else {
+        return static_cast<T>(x.value());
+    }
+}
+
+// ============================================================================
 //  Type conversion: x as T
 // ============================================================================
 
+// General as<> - constrained to only match valid conversions (SFINAE-friendly)
 template<typename Target, typename Source>
+requires (
+    std::is_same_v<Target, std::remove_cvref_t<Source>> ||
+    std::is_base_of_v<Target, std::remove_cvref_t<Source>> ||
+    std::is_base_of_v<std::remove_cvref_t<Source>, Target> ||
+    (std::is_polymorphic_v<std::remove_cvref_t<Source>> && std::is_polymorphic_v<Target>) ||
+    std::is_constructible_v<Target, Source> ||
+    std::is_convertible_v<Source, Target>
+)
 constexpr auto as(Source const& x) -> Target {
-    if constexpr (std::is_same_v<Target, Source>) {
+    if constexpr (std::is_same_v<Target, std::remove_cvref_t<Source>>) {
         return x;
     }
-    else if constexpr (std::is_base_of_v<Target, Source>) {
+    else if constexpr (std::is_base_of_v<Target, std::remove_cvref_t<Source>>) {
         return static_cast<Target const&>(x);
     }
-    else if constexpr (std::is_polymorphic_v<Source> && std::is_polymorphic_v<Target>) {
+    else if constexpr (std::is_polymorphic_v<std::remove_cvref_t<Source>> && std::is_polymorphic_v<Target>) {
         if (auto* p = dynamic_cast<Target const*>(&x)) {
             return *p;
         }

@@ -51,6 +51,96 @@ class TreeEmitter {
     return result;
   }
 
+  // Process Cpp2 string interpolation: "(expr)$" -> "" + cpp2::to_string(expr) + ""
+  // Handles format specifiers: "(expr: fmt)$" -> cpp2::to_string(expr, "{:fmt}")
+  // Returns the original string unchanged if no interpolation patterns found.
+  std::string process_string_interpolation(const std::string &str) const {
+    // Only process quoted strings that contain the )$ interpolation marker
+    if (str.size() < 2 || str.front() != '"' || str.back() != '"')
+      return str;
+    if (str.find(")$") == std::string::npos)
+      return str;
+
+    // Work on the content between the outer quotes
+    std::string content = str.substr(1, str.size() - 2);
+    std::string result;
+    bool first_segment = true;
+    size_t i = 0;
+
+    while (i < content.size()) {
+      // Look for interpolation pattern: (expr)$ or (expr: fmt)$
+      if (content[i] == '(' && (i == 0 || content[i - 1] != '\\')) {
+        // Find matching close-paren with nesting support
+        size_t paren_count = 1;
+        size_t j = i + 1;
+        while (j < content.size() && paren_count > 0) {
+          if (content[j] == '(') paren_count++;
+          else if (content[j] == ')') paren_count--;
+          j++;
+        }
+        // j now points one past the matching ')'
+        // Check if ')' is followed by '$'
+        if (j <= content.size() && j > 0 && content[j - 1] == ')' &&
+            j < content.size() && content[j] == '$') {
+          // Found interpolation: (expr)$ or (expr: fmt)$
+          std::string inner = content.substr(i + 1, j - i - 2);
+
+          // Flush any accumulated literal text as a quoted string segment
+          if (!result.empty() || !first_segment) {
+            result += "\" + ";
+          } else {
+            result += "\"\" + ";
+          }
+
+          // Check for format specifier - colon separating expr from format
+          // But be careful: colons inside nested parens/templates are not format specs
+          // The format spec comes after the LAST colon at depth 0
+          size_t colon_pos = std::string::npos;
+          int depth = 0;
+          for (size_t k = 0; k < inner.size(); ++k) {
+            if (inner[k] == '(' || inner[k] == '<') depth++;
+            else if (inner[k] == ')' || inner[k] == '>') depth--;
+            else if (inner[k] == ':' && depth == 0) colon_pos = k;
+          }
+
+          if (colon_pos != std::string::npos && colon_pos > 0) {
+            // Has format specifier
+            std::string expr = inner.substr(0, colon_pos);
+            std::string fmt = inner.substr(colon_pos + 1);
+            // Trim leading/trailing whitespace from format
+            while (!fmt.empty() && fmt.front() == ' ') fmt.erase(fmt.begin());
+            while (!fmt.empty() && fmt.back() == ' ') fmt.pop_back();
+            result += "cpp2::to_string(" + expr + ", \"{:" + fmt + "}\")";
+          } else {
+            result += "cpp2::to_string(" + inner + ")";
+          }
+
+          result += " + \"";
+          i = j + 1;  // Skip past the '$'
+          first_segment = false;
+          continue;
+        }
+      }
+
+      // Regular character - accumulate into current string segment
+      if (first_segment && result.empty()) {
+        result += "\"";
+        first_segment = false;
+      }
+      result += content[i];
+      ++i;
+    }
+
+    // Close the final string segment
+    if (!first_segment) {
+      result += "\"";
+    } else {
+      return str;  // No interpolation found after all
+    }
+
+    return result;
+  }
+
   std::string map_type_name(const std::string &name) const {
     if (name == "_")
       return "auto";  // Cpp2 wildcard/deduced type
@@ -182,25 +272,63 @@ class TreeEmitter {
     }
 
     // Special handling for TemplateArgs
+    // First child is the adoptee (type being templated), remaining are template arguments
     if (n.kind == NodeKind::TemplateArgs) {
-      std::string result = "<";
+      auto children = tree_.children(n);
+      auto it = children.begin();
+      std::string result;
+      
+      if (it != children.end()) {
+        // First child is the adoptee (the type name being templated)
+        if (it->kind == NodeKind::TypeSpecifier || it->kind == NodeKind::Identifier ||
+            it->kind == NodeKind::QualifiedType || it->kind == NodeKind::BasicType) {
+          result += reconstruct_type_with_expressions(*it);
+        } else if (it->has_children()) {
+          result += reconstruct_type_with_expressions(*it);
+        } else {
+          result += node_text(*it);
+        }
+        ++it;
+      }
+      
+      result += "<";
       bool first = true;
-      for (const auto &child : tree_.children(n)) {
+      for (; it != children.end(); ++it) {
         if (!first) result += ", ";
         first = false;
 
-        if (child.kind == NodeKind::Expression) {
-          result += const_cast<TreeEmitter*>(this)->emit_expression_text(child);
-        } else if (child.kind == NodeKind::TypeSpecifier) {
+        if (it->kind == NodeKind::Expression) {
+          result += const_cast<TreeEmitter*>(this)->emit_expression_text(*it);
+        } else if (it->kind == NodeKind::TypeSpecifier) {
           // TypeSpecifier child might contain expressions
-          result += reconstruct_type_with_expressions(child);
-        } else if (child.has_children()) {
-          result += reconstruct_type_with_expressions(child);
+          result += reconstruct_type_with_expressions(*it);
+        } else if (it->has_children()) {
+          result += reconstruct_type_with_expressions(*it);
         } else {
-          result += node_text(child);
+          result += node_text(*it);
         }
       }
       result += ">";
+      return result;
+    }
+
+    // Special handling for ScopeOp (namespace::type)
+    if (n.kind == NodeKind::ScopeOp) {
+      auto children = tree_.children(n);
+      auto it = children.begin();
+      std::string result;
+      
+      if (it != children.end()) {
+        // First child is the LHS (namespace/class)
+        result += reconstruct_type_with_expressions(*it);
+        ++it;
+        result += "::";
+        
+        // Remaining children are RHS identifiers or template args
+        for (; it != children.end(); ++it) {
+          result += reconstruct_type_with_expressions(*it);
+        }
+      }
       return result;
     }
 
@@ -719,20 +847,33 @@ private:
 
   std::string emit_type_spec(const Node &n) {
     // Return spec has arrow -> type
+    // DEBUG: Print all children
+    std::ostringstream debug;
+    debug << "emit_type_spec children:\n";
     for (const auto &child : tree_.children(n)) {
+      debug << "  kind=" << static_cast<int>(child.kind) << " text='" << node_text(child) << "'\n";
       if (child.kind == NodeKind::TypeSpecifier ||
-          child.kind == NodeKind::BasicType) {
+          child.kind == NodeKind::BasicType ||
+          child.kind == NodeKind::QualifiedType) {
         return format_type(child);
       }
     }
     // Fallback: get text after ->
     std::string text = node_text(n);
+    debug << "  fallback, text='" << text << "'\n";
     auto pos = text.find("->");
     if (pos != std::string::npos) {
       std::string result = text.substr(pos + 2);
       // Trim whitespace
       while (!result.empty() && std::isspace(result.front()))
         result.erase(0, 1);
+      // Apply format_type to process any decltype expressions
+      if (result.find("decltype(") != std::string::npos) {
+        // We need to process this through format_type, but we only have text
+        // Create a fake type spec from the text
+        // For now, apply UFCS transformation manually
+        return result; // Just return raw text
+      }
       return result.empty() ? "auto" : result;
     }
     return "auto";
@@ -1723,8 +1864,17 @@ private:
   }
 
   void emit_expression(const Node &n) {
-    if (n.kind == NodeKind::Identifier || n.kind == NodeKind::Literal) {
+    if (n.kind == NodeKind::Identifier) {
       out_ << node_text(n);
+    } else if (n.kind == NodeKind::Literal) {
+      // Apply string interpolation processing for string literals
+      std::string text = node_text(n);
+      if (text.size() >= 2 && text.front() == '"' && text.back() == '"' &&
+          text.find(")$") != std::string::npos) {
+        out_ << process_string_interpolation(text);
+      } else {
+        out_ << text;
+      }
     } else if (n.kind == NodeKind::Expression) {
       for (const auto &child : tree_.children(n)) {
         emit_expression(child);
