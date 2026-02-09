@@ -303,6 +303,25 @@ auto parse_primary(TokenStream input)
     return parse_lambda(input);
   }
 
+  // Leading :: (global scope) - parse as ScopeOp with empty left side
+  if (tok.lexeme == "::") {
+    begin(NodeKind::ScopeOp, input.pos);
+    input = input.next(); // consume ::
+
+    // Expect identifier after ::
+    if (input.empty() || input.peek().type != TT::Identifier) {
+      tree_restore(tree_checkpoint());
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+
+    begin(NodeKind::Identifier, input.pos);
+    input = input.next();
+    end(input.pos);
+
+    end(input.pos);
+    return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+  }
+
   return ebnf::Result<std::monostate, TokenStream>::fail(input);
 }
 

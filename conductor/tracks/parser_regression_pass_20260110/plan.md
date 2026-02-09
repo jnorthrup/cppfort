@@ -203,15 +203,22 @@
     - [x] Both UFCS tests now transpile successfully
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-04)**: 68/159 passed (42.7%) - improved from 63/159 (39.6%)
+**Current Results (2026-02-09)**: 78/159 passed (49.0%) - improved from 75/159 (47.1%)
 
 **Breakdown:**
 
 - Mixed-mode (C++1 + Cpp2): ~32/51 passing (62.7%)
-- Pure2 (100% Cpp2): ~36/108 passing (33.3%)
+- Pure2 (100% Cpp2): ~46/108 passing (42.5%)
 - Error tests: 9 skipped (as expected)
 
-**Recent Fixes (2026-02-04)**:
+**Recent Fixes (2026-02-09)**:
+
+- Fixed leading `::` (global scope) parsing in expressions - parser was stopping early when encountering `::foo()`
+- Fixed if/while condition expressions to use `emit_expression()` instead of `node_text()` - enables `is`/`as` operators in conditions
+- Fixed else clause emission - was missing `else` keyword and producing broken `}) {` syntax
+- Fixed pointer types inside template arguments - `std::optional<*D>` now correctly emits as `std::optional<D*>`
+
+**Previous Fixes (2026-02-04)**:
 
 - Added SFINAE `if constexpr(requires{...})` guards to inspect arm emission
 - Added SFINAE `requires` constraints to general `as<>` template

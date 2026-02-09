@@ -12,7 +12,7 @@ BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build_clean}"
 CPPFRONT_DIR="$PROJECT_ROOT/third_party/cppfront"
 CPPFRONT_SRC="$CPPFRONT_DIR/source/cppfront.cpp"
 CPPFRONT_BIN="$BUILD_DIR/bin/cppfront"
-CPPFORT_BIN="${PROJECT_ROOT}/build/src/cppfort"
+CPPFORT_BIN="${PROJECT_ROOT}/build/cppfort"
 CORPUS_DIR="$PROJECT_ROOT/corpus"
 WORK_DIR="$BUILD_DIR/test_work"
 

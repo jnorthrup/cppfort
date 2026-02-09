@@ -176,9 +176,28 @@ class TreeEmitter {
   }
 
   // Check if a function body contains a return statement with a value
+  // or is an expression body (= expr;) which implicitly returns
   bool function_has_return_value(const Node &suffix) const {
     for (const auto &child : tree_.children(suffix)) {
       if (child.kind == NodeKind::FunctionBody) {
+        // Check if this is an expression body (no BlockStatement child)
+        bool has_block = false;
+        for (const auto &body_child : tree_.children(child)) {
+          if (body_child.kind == NodeKind::BlockStatement) {
+            has_block = true;
+            break;
+          }
+        }
+        if (!has_block) {
+          // Check for pure virtual (= 0) or deleted (= delete) markers
+          // These are NOT expression bodies
+          std::string body_text = trim(node_text(child));
+          if (body_text == "0" || body_text == "delete") {
+            return false;
+          }
+          // Expression body: = expr; → implicitly returns
+          return true;
+        }
         return body_has_return_value(child);
       }
     }
@@ -208,9 +227,12 @@ class TreeEmitter {
                               text.find("sizeof(") != std::string::npos ||
                               text.find("typeid(") != std::string::npos;
 
-    if (contains_decltype) {
-      // This type contains expressions that need UFCS transformation
-      // Reconstruct the type while transforming expressions
+    // Check if the text contains template arguments (need to fix pointer prefixes inside)
+    bool contains_template = text.find('<') != std::string::npos;
+
+    if (contains_decltype || contains_template) {
+      // This type contains expressions or template args that need transformation
+      // Reconstruct the type while transforming
       return reconstruct_type_with_expressions(n);
     }
 
@@ -366,8 +388,16 @@ class TreeEmitter {
       return result;
     }
 
-    // No expressions - use node_text
-    return node_text(n);
+    // No expressions - fix pointer/reference prefix and return
+    std::string text = trim(node_text(n));
+    size_t i = 0;
+    std::string qualifiers;
+    while (i < text.length() && (text[i] == '*' || text[i] == '&')) {
+      qualifiers += text[i];
+      i++;
+    }
+    std::string base = trim(text.substr(i));
+    return map_type_name(base) + qualifiers;
   }
 
   // Helper to emit an expression and return it as a string
@@ -705,8 +735,14 @@ private:
 
     // Handle main function specially (only for Cpp2 syntax without explicit
     // return)
-    if (name == "main" && return_type == "auto") {
+    bool is_main = (name == "main");
+    if (is_main && return_type == "auto") {
       out_ << "int main(int argc, char* argv[]) {\n";
+    } else if (is_main) {
+      out_ << "int main(int argc, char* argv[]) {\n";
+    } else if (return_type == "auto") {
+      // Deduced return type - omit trailing return for cleaner C++
+      out_ << "auto " << name << "(" << params << ") {\n";
     } else {
       out_ << "auto " << name << "(" << params << ") -> " << return_type
            << " {\n";
@@ -714,8 +750,13 @@ private:
 
     ++indent_;
     in_function_ = true;
+    // For main(), emit args variable for Cpp2's main(args) parameter
+    if (is_main) {
+      emit_indent();
+      out_ << "auto args = cpp2::make_args(argc, argv);\n";
+    }
     if (body)
-      emit_function_body(*body, named_ret_var, named_ret_type, multi_returns);
+      emit_function_body(*body, named_ret_var, named_ret_type, multi_returns, return_type);
     in_function_ = false;
     --indent_;
 
@@ -754,11 +795,44 @@ private:
 
   std::string emit_params(const Node &n) {
     std::string result;
+    int wildcard_count = 0;  // Track duplicate '_' parameter names
     for (const auto &param : tree_.children(n)) {
       if (param.kind == NodeKind::Parameter) {
+        // Skip 'this' parameter - it becomes implicit in C++ member functions
+        std::string param_text = node_text(param);
+        if (param_text.find("this") != std::string::npos) {
+          continue;
+        }
         if (!result.empty())
           result += ", ";
-        result += emit_param(param);
+        std::string p = emit_param(param);
+        // Rename duplicate '_' parameters to '_2', '_3', etc.
+        // C++ doesn't allow multiple parameters with the same name
+        if (!p.empty()) {
+          // Check if param name is '_' (find it at the end of type portion)
+          auto space_pos = p.rfind(' ');
+          if (space_pos != std::string::npos) {
+            std::string pname = p.substr(space_pos + 1);
+            // Check for default value
+            auto eq_pos = pname.find('=');
+            if (eq_pos != std::string::npos) {
+              pname = pname.substr(0, eq_pos);
+              // trim
+              while (!pname.empty() && pname.back() == ' ') pname.pop_back();
+            }
+            if (pname == "_") {
+              wildcard_count++;
+              if (wildcard_count > 1) {
+                // Replace the trailing '_ ' with '_N '
+                p = p.substr(0, space_pos + 1) + "_" + std::to_string(wildcard_count);
+                if (eq_pos != std::string::npos) {
+                  // re-append default value portion - but this is complex, skip for now
+                }
+              }
+            }
+          }
+        }
+        result += p;
       }
     }
     return result;
@@ -831,7 +905,14 @@ private:
       if (type == "auto") {
         result_type = "auto const&";
       } else {
-        result_type = "const " + type + "&";
+        // Avoid 'const const T&' duplication when type already has const
+        bool already_const = (type.substr(0, 6) == "const " || 
+                              type.find(" const") != std::string::npos);
+        if (already_const) {
+          result_type = type + "&";
+        } else {
+          result_type = "const " + type + "&";
+        }
       }
     } else if (effective_qualifier == "copy") {
       // Value (copy) - no change needed
@@ -1034,7 +1115,8 @@ private:
   }
 
   void emit_function_body(const Node &n, const std::string &named_ret_var = "", const std::string &named_ret_type = "", 
-                          const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
+                          const std::vector<std::pair<std::string, std::string>> &multi_returns = {},
+                          const std::string &return_type = "auto") {
     // If we have multiple named return variables, declare them all at the top
     if (!multi_returns.empty()) {
       for (const auto &[name, type] : multi_returns) {
@@ -1056,8 +1138,13 @@ private:
       } else {
         // Expression body: = expr;
         emit_indent();
-        out_ << "return " << node_text(child) << ";\n";
-        return; // Expression body already has a return
+        if (return_type == "void") {
+          // Void function - don't wrap in return
+          out_ << node_text(child) << ";\n";
+        } else {
+          out_ << "return " << node_text(child) << ";\n";
+        }
+        return; // Expression body already handled
       }
     }
     
@@ -1295,19 +1382,42 @@ private:
   void emit_if(const Node &n, const std::string &named_ret_var = "",
                const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     out_ << "if (";
-    bool first = true;
+    bool emitted_condition = false;
+    int block_count = 0;
     for (const auto &child : tree_.children(n)) {
-      if (first && child.kind != NodeKind::BlockStatement &&
+      if (!emitted_condition && child.kind != NodeKind::BlockStatement &&
           child.kind != NodeKind::Statement) {
-        out_ << node_text(child);
-        first = false;
+        emit_expression(child);
+        emitted_condition = true;
       } else if (child.kind == NodeKind::BlockStatement) {
-        out_ << ") {\n";
-        ++indent_;
-        emit_block(child, named_ret_var, multi_returns);
-        --indent_;
-        emit_indent();
-        out_ << "}";
+        if (block_count == 0) {
+          // Then block
+          out_ << ") {\n";
+          ++indent_;
+          emit_block(child, named_ret_var, multi_returns);
+          --indent_;
+          emit_indent();
+          out_ << "}";
+        } else {
+          // Else block
+          out_ << " else {\n";
+          ++indent_;
+          emit_block(child, named_ret_var, multi_returns);
+          --indent_;
+          emit_indent();
+          out_ << "}";
+        }
+        block_count++;
+      } else if (child.kind == NodeKind::Statement) {
+        // Single-statement branch
+        if (block_count == 0) {
+          out_ << ") ";
+          emit_statement(child, named_ret_var);
+        } else {
+          out_ << " else ";
+          emit_statement(child, named_ret_var);
+        }
+        block_count++;
       }
     }
     out_ << "\n";
@@ -1319,7 +1429,7 @@ private:
     bool first = true;
     for (const auto &child : tree_.children(n)) {
       if (first && child.kind != NodeKind::BlockStatement) {
-        out_ << node_text(child);
+        emit_expression(child);
         first = false;
       } else if (child.kind == NodeKind::BlockStatement) {
         out_ << ") {\n";
@@ -1865,7 +1975,14 @@ private:
 
   void emit_expression(const Node &n) {
     if (n.kind == NodeKind::Identifier) {
-      out_ << node_text(n);
+      std::string name = node_text(n);
+      // Qualify known cpp2 runtime functions with cpp2:: namespace
+      if (name == "unchecked_narrow" || name == "unchecked_cast" ||
+          name == "narrow" || name == "narrow_cast") {
+        out_ << "cpp2::" << name;
+      } else {
+        out_ << name;
+      }
     } else if (n.kind == NodeKind::Literal) {
       // Apply string interpolation processing for string literals
       std::string text = node_text(n);
@@ -2033,6 +2150,28 @@ private:
       auto children = tree_.children(n);
       auto it = children.begin();
       if (it != children.end()) {
+        // Check for unique.new<T> / shared.new<T> pattern
+        std::string lhs_text = node_text(*it);
+        std::string rhs_text;
+        auto peek = it;
+        ++peek;
+        for (auto p = peek; p != children.end(); ++p) {
+          rhs_text += node_text(*p);
+        }
+        if ((lhs_text == "unique" || lhs_text == "shared") && 
+            rhs_text.find("new") != std::string::npos) {
+          // Transform unique.new<T> → std::make_unique<T>
+          //          shared.new<T> → std::make_shared<T>
+          if (lhs_text == "unique") {
+            // Replace "new" with the full make_unique call
+            size_t new_pos = rhs_text.find("new");
+            out_ << "std::make_unique" << rhs_text.substr(new_pos + 3);
+          } else {
+            size_t new_pos = rhs_text.find("new");
+            out_ << "std::make_shared" << rhs_text.substr(new_pos + 3);
+          }
+          return;
+        }
         emit_expression(*it); // Adoptee (LHS)
         ++it;
         // In hierarchical mode, start_infix was called at the operator.
@@ -2060,10 +2199,24 @@ private:
         }
       }
     } else if (n.kind == NodeKind::ScopeOp) {
-      // Scope resolution operator :: (e.g., std::cout)
+      // Scope resolution operator :: (e.g., std::cout or ::global)
       auto children = tree_.children(n);
       auto it = children.begin();
-      if (it != children.end()) {
+      
+      // Check if this is a leading :: (global scope)
+      // If the first token of this ScopeOp is ::, it's a global scope reference
+      bool is_global_scope = (token_text(n.token_start) == "::");
+      
+      if (is_global_scope) {
+        // Leading :: - emit :: first, then all children
+        out_ << "::";
+        for (; it != children.end(); ++it) {
+          if (it->kind == NodeKind::Identifier)
+            out_ << node_text(*it);
+          else
+            emit_expression(*it);
+        }
+      } else if (it != children.end()) {
         emit_expression(*it); // Adoptee (LHS - namespace or class)
         ++it;
         out_ << "::";

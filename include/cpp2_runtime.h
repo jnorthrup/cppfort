@@ -22,6 +22,22 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <cstdio>
+#include <map>
+#include <set>
+#include <algorithm>
+#if __has_include(<span>)
+#include <span>
+#endif
+#if __has_include(<expected>)
+#include <expected>
+#endif
+#if __has_include(<filesystem>)
+#include <filesystem>
+#endif
+#if __has_include(<source_location>)
+#include <source_location>
+#endif
 
 namespace cpp2 {
 
@@ -387,6 +403,10 @@ namespace detail {
         return FUNCNAME(std::forward<decltype(obj)>(obj), std::forward<decltype(args)>(args)...); \
     }
 
+// Nonlocal UFCS - same as CPP2_UFCS but usable in non-local (namespace) scope
+// In C++23, generic lambdas work fine in non-local contexts
+#define CPP2_UFCS_NONLOCAL(FUNCNAME) CPP2_UFCS(FUNCNAME)
+
 // ============================================================================
 //  main() argument handling: main(args)
 // ============================================================================
@@ -398,6 +418,52 @@ struct args_t {
 
 inline auto make_args(int argc, char** argv) -> args_t {
     return { argc, const_cast<char const* const*>(argv) };
+}
+
+// ============================================================================
+//  Narrowing conversions
+// ============================================================================
+
+template<typename To, typename From>
+constexpr auto unchecked_narrow(From from) noexcept -> To {
+    return static_cast<To>(from);
+}
+
+template<typename To, typename From>
+constexpr auto narrow(From from) -> To {
+    auto result = static_cast<To>(from);
+    if (static_cast<From>(result) != from) {
+        throw std::runtime_error("narrowing conversion failed");
+    }
+    return result;
+}
+
+template<typename To, typename From>
+auto unchecked_cast(From from) noexcept -> To {
+    return reinterpret_cast<To>(from);
+}
+
+// ============================================================================
+//  RAII wrappers for C stdio
+// ============================================================================
+
+inline auto fopen(const char* filename, const char* mode) -> std::FILE* {
+    return std::fopen(filename, mode);
+}
+
+// ============================================================================
+//  Smart pointer construction: unique.new<T>(args)
+//  In generated code, this becomes cpp2::unique_new<T>(args)
+// ============================================================================
+
+template<typename T, typename... Args>
+auto unique_new(Args&&... args) -> std::unique_ptr<T> {
+    return std::make_unique<T>(std::forward<Args>(args)...);
+}
+
+template<typename T, typename... Args>
+auto shared_new(Args&&... args) -> std::shared_ptr<T> {
+    return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 } // namespace cpp2

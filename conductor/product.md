@@ -33,6 +33,7 @@ Cpp2 Source
 ## Current State
 
 ### ✅ Working
+
 - **Lexer/Parser**: Full Cpp2 grammar (pure2 mode)
   - Grammar: `conductor/PARSER_ORCHESTRATION.md` (EBNF → combinator mappings, single source of truth)
   - EBNF: `grammar/cpp2.ebnf` (formal grammar)
@@ -49,9 +50,11 @@ Cpp2 Source
 - **Corpus Validation**: 178/189 (93.7%) passing, 0.124 avg semantic loss
 
 ### 🔧 In Progress
+
 - **Code Quality**: Reducing output noise, improving formatting
 
 ### 📊 Corpus Analysis
+
 - **Reference Corpus**: 158 transpiled tests in `tests/reference/` (lazy-cached via `tools/reference_corpus.sh`)
 - **Head-to-Head**: 178/189 (93.7%) passing against cppfront (`VALIDATION_REPORT.md`, `SEMANTIC_PRESERVATION_REPORT.md`)
 - **AST Database**: 1.4M isomorphs extracted, 13.5K unique patterns, 100% MLIR region coverage
@@ -69,6 +72,7 @@ Cpp2 Source
 ## Key Features
 
 ### Language Support
+
 - Unified declaration syntax (`name: type = value`)
 - Parameter qualifiers (`in`, `out`, `inout`, `move`, `forward`)
 - UFCS (Unified Function Call Syntax)
@@ -78,6 +82,7 @@ Cpp2 Source
 - String interpolation
 
 ### Safety Features (Implemented)
+
 - Null pointer checking
 - Array bounds checking
 - Division by zero prevention
@@ -94,6 +99,7 @@ Cpp2 Source
 - C++26 Integration (Reflection SBO sizing, Contracts, Pattern matching)
 
 ### Advanced Features
+
 - **CAS-Driven Modules**: Markdown block comments trigger C++20 module generation
 - **Fractal JIT**: Content-addressable caching for JIT-compiled code
 - **Concurrency**: Kotlin-style channels, coroutine scopes, spawn/await
@@ -103,6 +109,7 @@ Cpp2 Source
 ## Target Users
 
 C++ developers seeking:
+
 - Modern syntax with safety guarantees
 - Migration from C++ to Cpp2
 - Performance-critical systems with memory safety
