@@ -189,10 +189,11 @@ class TreeEmitter {
           }
         }
         if (!has_block) {
-          // Check for pure virtual (= 0) or deleted (= delete) markers
+          // Check for pure virtual (= 0), deleted (= delete), or empty body markers
           // These are NOT expression bodies
           std::string body_text = trim(node_text(child));
-          if (body_text == "0" || body_text == "delete") {
+          if (body_text == "0" || body_text == "delete" || 
+              body_text.empty() || body_text == ";") {
             return false;
           }
           // Expression body: = expr; → implicitly returns
@@ -2031,7 +2032,19 @@ private:
       if (name == "unchecked_narrow" || name == "unchecked_cast" ||
           name == "narrow" || name == "narrow_cast") {
         out_ << "cpp2::" << name;
-      } else {
+      }
+      // Map Cpp2 type aliases to C++ types
+      else if (name == "i32") { out_ << "int"; }
+      else if (name == "i64") { out_ << "int64_t"; }
+      else if (name == "i16") { out_ << "int16_t"; }
+      else if (name == "i8") { out_ << "int8_t"; }
+      else if (name == "u32") { out_ << "unsigned int"; }
+      else if (name == "u64") { out_ << "uint64_t"; }
+      else if (name == "u16") { out_ << "uint16_t"; }
+      else if (name == "u8") { out_ << "uint8_t"; }
+      else if (name == "f32") { out_ << "float"; }
+      else if (name == "f64") { out_ << "double"; }
+      else {
         out_ << name;
       }
     } else if (n.kind == NodeKind::Literal) {
