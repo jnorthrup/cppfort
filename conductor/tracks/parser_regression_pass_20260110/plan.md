@@ -203,13 +203,21 @@
     - [x] Both UFCS tests now transpile successfully
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-10)**: 86/159 passed (54.0%) - improved from 78/159 (49.0%)
+**Current Results (2026-02-08)**: 87/159 passed (54.7%) - improved from 86/159 (54.0%)
 
 **Breakdown:**
 
-- Mixed-mode (C++1 + Cpp2): ~32/51 passing (62.7%)
-- Pure2 (100% Cpp2): ~54/108 passing (50.0%)
+- Compile failures: 25 (transpiled OK, failed to compile)
+- Transpile failures: 47 (parser/emitter can't handle syntax)
 - Error tests: 9 skipped (as expected)
+
+**Recent Fixes (2026-02-08)**:
+
+Session (87/159, +1 from pure virtual fix):
+- Fixed `function_has_return_value` to treat empty body (`;`) as non-returning
+  (interface methods were incorrectly treated as expression bodies)
+- Added Cpp2 type alias mapping (i32→int, etc.) in expression context
+- Virtual method `speak: (this);` now correctly emits `-> void = 0;`
 
 **Recent Fixes (2026-02-10)**:
 
