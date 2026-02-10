@@ -22,7 +22,8 @@ struct Ops {
   static constexpr auto prefix =
       "+"_l | "-" | "!" | "~" | "++" | "--" | "&" | "*" | "call";
   static constexpr auto postfix_op = "++"_l | "--" | "*" | "&";
-  static constexpr auto assign = "="_l | "+=" | "-=" | "*=" | "/=" | "%=";
+  static constexpr auto assign = "="_l | "+=" | "-=" | "*=" | "/=" | "%=" |
+      "&=" | "|=" | "^=" | ">>=" | "<<=";
   static constexpr auto mul = "*"_l | "/" | "%";
   static constexpr auto add = "+"_l | "-";
   static constexpr auto shift = "<<"_l | ">>";
@@ -72,8 +73,12 @@ inline auto stmt_parser() { return Proto<FnParser>{{parse_statement}}; }
 inline auto decl_parser() { return Proto<FnParser>{{parse_declaration}}; }
 
 struct Rules {
+  // Cpp2 keywords that can also be used as identifiers in declarations
+  // (e.g., `next := ...`, `base: @struct type = { ... }`, `in(min, max)`)
   static constexpr auto identifier_like =
-      Tok::ID | lit("_") | lit("this") | lit("that") | lit("$");
+      Tok::ID | lit("_") | lit("this") | lit("that") | lit("$") | lit("next") |
+      lit("base") | lit("in") | lit("is") | lit("as") | lit("type") |
+      lit("namespace") | lit("import");
   static constexpr auto literal =
       lit("true") | "false" | Tok::INT | Tok::FLOAT | Tok::STR | Tok::CHR;
   static constexpr auto basic_type =
@@ -143,7 +148,9 @@ inline int get_prec(std::string_view op) {
   };
   static constexpr Entry map[] = {
       {",", COMMA},   {"=", ASSIGN},  {"+=", ASSIGN}, {"-=", ASSIGN},
-      {"*=", ASSIGN}, {"/=", ASSIGN}, {"%=", ASSIGN}, {"|>", PIPELINE},
+      {"*=", ASSIGN}, {"/=", ASSIGN}, {"%=", ASSIGN}, {"&=", ASSIGN},
+      {"|=", ASSIGN}, {"^=", ASSIGN}, {">>=", ASSIGN}, {"<<=", ASSIGN},
+      {"|>", PIPELINE},
       {"||", LOR},    {"&&", LAND},   {"|", BOR},     {"^", BXOR},
       {"&", BAND},    {"==", EQ},     {"!=", EQ},     {"<", CMP},
       {">", CMP},     {"<=", CMP},    {">=", CMP},    {"<=>", CMP},
@@ -373,13 +380,17 @@ auto parse_atom(TokenStream input)
         return ebnf::Result<std::monostate, TokenStream>::fail(input);
 
       const auto &next = input.peek(1);
+      // In Cpp2, postfix * (dereference) binds tighter than binary operators.
+      // Only treat * as binary multiplication when followed by a primary
+      // expression start (identifier, literal, paren). Do NOT treat +/- as
+      // operand starts here - they are binary operators after postfix *.
       bool is_next_operand_start =
           next.type == TT::Identifier || next.type == TT::IntegerLiteral ||
           next.type == TT::FloatLiteral || next.type == TT::StringLiteral ||
           next.type == TT::CharacterLiteral || next.lexeme == "(" ||
           next.lexeme == "true" || next.lexeme == "false" ||
           next.lexeme == "this" || next.lexeme == "that" ||
-          next.lexeme == "_" || is_prefix(next);
+          next.lexeme == "_";
 
       if (is_next_operand_start)
         return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -570,6 +581,7 @@ inline auto &do_while_stmt() {
 }
 inline auto &for_range_stmt() {
   static auto r = (lit("for") >> expr_parser() >> "do" >> "(" >>
+                   *(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >>
                    (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
                    ")" >> block_stmt()) %
                   with_node(NodeKind::ForStatement);
@@ -692,7 +704,7 @@ inline auto &parameter() {
   return r;
 }
 inline auto &param_list() {
-  static auto r = (lit("(") >> -(parameter() % ",") >> lit(")")) %
+  static auto r = (lit("(") >> -(parameter() % "," >> -lit(",")) >> lit(")")) %
                   with_node(NodeKind::ParamList);
   return r;
 }
@@ -785,7 +797,10 @@ inline auto &ns_suffix() {
 }
 
 inline auto &template_param() {
+  // Template parameter with optional constraint, variadic, and default:
+  // T, T: type, T..., T: type..., T: _ = default, Ts...: type
   static auto r = Rules::identifier_like >> -(lit("...")) >>
+                  -(lit(":") >> type_specifier()) >> -(lit("...")) >>
                   -(lit("=") >> type_specifier());
   return r;
 }
@@ -806,16 +821,34 @@ inline auto &operator_name() {
   return r;
 }
 inline auto &operator_suffix() {
-  static auto r = lit("operator") >> operator_name() >> ":" >>
+  // Note: "=:" is lexed as a single EqualColon token, so handle it specially
+  static auto r = lit("operator") >>
+                  (lit("=:") | (operator_name() >> lit(":"))) >>
                   -template_params() >> func_suffix();
+  return r;
+}
+
+inline auto &concept_suffix() {
+  // concept = expression ;
+  static auto r = lit("concept") >> "=" >> expr_parser() >> ";";
   return r;
 }
 
 inline auto &decl_suffix() {
   static auto r =
-      (template_params() >> (func_suffix() | type_suffix() | var_suffix())) |
+      (template_params() >>
+       (concept_suffix() | func_suffix() | type_suffix() | var_suffix())) |
       alias_suffix() | operator_suffix() | func_suffix() | type_suffix() |
       ns_suffix() | var_suffix();
+  return r;
+}
+inline auto &operator_decl() {
+  // operator=: (params) = body — operator as declaration name
+  // Note: "=:" is lexed as a single EqualColon token, so handle it specially
+  static auto r = (lit("operator") >>
+                   (lit("=:") | (operator_name() >> lit(":"))) >>
+                   -template_params() >> func_suffix()) %
+                  with_node(NodeKind::UnifiedDeclaration);
   return r;
 }
 inline auto &unified_decl() {
@@ -838,8 +871,14 @@ inline auto &cpp1_function_decl() {
   return r;
 }
 inline auto &declaration() {
-  static auto r = (-Ops::access >> (unified_decl() | cpp1_function_decl())) %
-                  with_node(NodeKind::Declaration);
+  // Note: operator_decl() is defined but not yet used here — the emitter
+  // doesn't properly differentiate (out this) constructors from (inout this)
+  // assignment operators yet. Once that's fixed, add operator_decl() back
+  // as the first alternative here.
+  static auto r =
+      (-Ops::access >>
+       (unified_decl() | cpp1_function_decl())) %
+      with_node(NodeKind::Declaration);
   return r;
 }
 inline auto &preprocessor_directive() {

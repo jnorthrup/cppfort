@@ -203,20 +203,32 @@
     - [x] Both UFCS tests now transpile successfully
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-09)**: 78/159 passed (49.0%) - improved from 75/159 (47.1%)
+**Current Results (2026-02-10)**: 86/159 passed (54.0%) - improved from 78/159 (49.0%)
 
 **Breakdown:**
 
 - Mixed-mode (C++1 + Cpp2): ~32/51 passing (62.7%)
-- Pure2 (100% Cpp2): ~46/108 passing (42.5%)
+- Pure2 (100% Cpp2): ~54/108 passing (50.0%)
 - Error tests: 9 skipped (as expected)
 
-**Recent Fixes (2026-02-09)**:
+**Recent Fixes (2026-02-10)**:
 
+Session 1 (84/159):
 - Fixed leading `::` (global scope) parsing in expressions - parser was stopping early when encountering `::foo()`
 - Fixed if/while condition expressions to use `emit_expression()` instead of `node_text()` - enables `is`/`as` operators in conditions
 - Fixed else clause emission - was missing `else` keyword and producing broken `}) {` syntax
 - Fixed pointer types inside template arguments - `std::optional<*D>` now correctly emits as `std::optional<D*>`
+- Fixed postfix dereference precedence (removed `is_prefix()` from operand start check)
+- Added trailing comma support in parameter lists
+- Added parameter qualifier support in for-range statements
+
+Session 2 (86/159, +2 net new):
+- Expanded `identifier_like` to include keywords usable as identifiers: `next`, `base`, `in`, `is`, `as`, `type`, `namespace`, `import` — fixes `pure2-hashable`
+- Added compound assignment operators: `&=`, `|=`, `^=`, `>>=`, `<<=` to Pratt parser — fixes `pure2-synthesize-rightshift-and-rightshifteq`
+- Added template parameter constraint syntax (`: type_specifier`) for `<T: type>`, `<Ts...: type>`
+- Added `concept_suffix()` to `decl_suffix()` for `concept = expr;` declarations
+- Fixed `operator_suffix()` EqualColon handling (`=:` lexed as single token)
+- Defined `operator_decl()` rule (not yet used in `declaration()` — emitter needs constructor vs assignment differentiation first)
 
 **Previous Fixes (2026-02-04)**:
 

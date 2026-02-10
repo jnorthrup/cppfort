@@ -628,7 +628,18 @@ private:
     }
     // Fallback to first token for Cpp2 declarations
     if (name.empty()) {
-      name = std::string(token_text(n.token_start));
+      auto first = std::string(token_text(n.token_start));
+      if (first == "operator" && n.token_start + 1 < n.token_end) {
+        // operator=: or operator+: etc.
+        auto next = std::string(token_text(n.token_start + 1));
+        if (next == "=:") {
+          name = "operator=";  // EqualColon is combined =:
+        } else {
+          name = "operator" + next;  // e.g. operator+, operator[]
+        }
+      } else {
+        name = first;
+      }
     }
 
     // Look for template parameters and function/variable/type suffix
@@ -1140,9 +1151,12 @@ private:
         emit_indent();
         if (return_type == "void") {
           // Void function - don't wrap in return
-          out_ << node_text(child) << ";\n";
+          emit_expression(child);
+          out_ << ";\n";
         } else {
-          out_ << "return " << node_text(child) << ";\n";
+          out_ << "return ";
+          emit_expression(child);
+          out_ << ";\n";
         }
         return; // Expression body already handled
       }
@@ -1203,7 +1217,7 @@ private:
       out_ << "return";
       bool has_value = false;
       for (const auto &child : tree_.children(n)) {
-        out_ << " " << node_text(child);
+        out_ << " " << emit_expression_text(child);
         has_value = true;
       }
       // For multi-returns with no value, emit struct constructor
@@ -1447,22 +1461,39 @@ private:
     // Cpp2 for: for items do (item) { body }
     // C++1 for: for (item : items) { body }
     // Both emit as: for (auto item : items) { body }
-    std::string items, var;
+    std::string items, var, qualifier;
     const Node *body = nullptr;
 
     for (const auto &child : tree_.children(n)) {
       if (child.kind == NodeKind::BlockStatement) {
         body = &child;
-      } else if (child.kind == NodeKind::Identifier ||
-                 (child.kind == NodeKind::Parameter && var.empty())) {
+      } else if (child.kind == NodeKind::ParamQualifier && qualifier.empty()) {
+        qualifier = node_text(child);
+      } else if (child.kind == NodeKind::Identifier && var.empty()) {
         var = node_text(child);
+      } else if (child.kind == NodeKind::Parameter && var.empty()) {
+        // Parameter node may contain qualifier + identifier children
+        for (const auto &pc : tree_.children(child)) {
+          if (pc.kind == NodeKind::ParamQualifier && qualifier.empty()) {
+            qualifier = node_text(pc);
+          } else if (pc.kind == NodeKind::Identifier && var.empty()) {
+            var = node_text(pc);
+          }
+        }
+        if (var.empty()) var = node_text(child);
       } else if (meta::is_expression(child.kind) && items.empty()) {
         // Only use expression nodes for items (skip keywords, punctuation)
-        items = node_text(child);
+        items = emit_expression_text(child);
       }
     }
 
-    out_ << "for (auto " << var << " : " << items << ") {\n";
+    // Map Cpp2 qualifiers to C++ binding
+    std::string binding = "auto";
+    if (qualifier == "inout") binding = "auto&";
+    else if (qualifier == "move") binding = "auto&&";
+    else if (qualifier == "in") binding = "const auto&";
+
+    out_ << "for (" << binding << " " << var << " : " << items << ") {\n";
     ++indent_;
     if (body)
       emit_block(*body, named_ret_var, multi_returns);
@@ -1751,7 +1782,17 @@ private:
           }
         }
         if (member_name.empty()) {
-          member_name = std::string(token_text(child.token_start));
+          auto first = std::string(token_text(child.token_start));
+          if (first == "operator" && child.token_start + 1 < child.token_end) {
+            auto next = std::string(token_text(child.token_start + 1));
+            if (next == "=:") {
+              member_name = "operator=";
+            } else {
+              member_name = "operator" + next;
+            }
+          } else {
+            member_name = first;
+          }
         }
         
         // Check if it's a function (method) or variable (field)
@@ -1875,7 +1916,17 @@ private:
           }
         }
         if (member_name.empty()) {
-          member_name = std::string(token_text(child.token_start));
+          auto first = std::string(token_text(child.token_start));
+          if (first == "operator" && child.token_start + 1 < child.token_end) {
+            auto next = std::string(token_text(child.token_start + 1));
+            if (next == "=:") {
+              member_name = "operator=";
+            } else {
+              member_name = "operator" + next;
+            }
+          } else {
+            member_name = first;
+          }
         }
         
         // Check if it's a function (method) or variable (field)
