@@ -203,11 +203,11 @@
     - [x] Both UFCS tests now transpile successfully
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-08)**: 87/159 passed (54.7%) - improved from 86/159 (54.0%)
+**Current Results (2026-02-11)**: 95/159 passed (59.7%) - improved from 87/159 (54.7%)
 
 **Breakdown:**
 
-- Compile failures: 25 (transpiled OK, failed to compile)
+- Compile failures: 17 (transpiled OK, failed to compile)
 - Transpile failures: 47 (parser/emitter can't handle syntax)
 - Error tests: 9 skipped (as expected)
 

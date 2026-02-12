@@ -324,6 +324,7 @@ inline contract_handler cpp2_default;
 inline contract_handler type_safety;
 inline contract_handler bounds_safety;
 inline contract_handler null_safety;
+inline contract_handler testing;
 
 // Macro for contract messages
 #define CPP2_CONTRACT_MSG(msg) msg
@@ -408,6 +409,16 @@ namespace detail {
 #define CPP2_UFCS_NONLOCAL(FUNCNAME) CPP2_UFCS(FUNCNAME)
 
 // ============================================================================
+//  Forward references and type deduction helpers
+// ============================================================================
+
+// CPP2_FORWARD - perfect forwarding macro for forward parameters
+#define CPP2_FORWARD(x) std::forward<decltype(x)>(x)
+
+// CPP2_TYPEOF - get the unqualified type of an expression
+#define CPP2_TYPEOF(x) std::remove_cvref_t<decltype(x)>
+
+// ============================================================================
 //  main() argument handling: main(args)
 // ============================================================================
 
@@ -465,6 +476,21 @@ template<typename T, typename... Args>
 auto shared_new(Args&&... args) -> std::shared_ptr<T> {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+// ============================================================================
+//  Cpp2 type aliases (integer, floating point)
+// ============================================================================
+
+using i8  = std::int8_t;
+using i16 = std::int16_t;
+using i32 = std::int32_t;
+using i64 = std::int64_t;
+using u8  = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using u64 = std::uint64_t;
+using f32 = float;
+using f64 = double;
 
 } // namespace cpp2
 

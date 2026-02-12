@@ -93,8 +93,8 @@ void test_forward_emission() {
   std::string output = generate_from_tree(tree, tokens);
   std::cout << "Output: " << output << "\n";
 
-  require(contains(output, "T&& x"),
-          "Should emit forwarding reference (T&&) for forward");
+    require(contains(output, "auto&& x"),
+      "Should emit forwarding reference (auto&&) for forward");
 
   std::cout << "  PASS\n";
 }
@@ -110,7 +110,8 @@ void test_i32_mapping() {
   std::string output = generate_from_tree(tree, tokens);
   std::cout << "Output: " << output << "\n";
 
-  require(contains(output, "int x") || contains(output, "int32_t x"),
+  require(contains(output, "int x") || contains(output, "int32_t x") ||
+              contains(output, "int const& x") || contains(output, "int32_t const& x"),
           "Should map i32 to int or int32_t");
 
   std::cout << "  PASS\n";
@@ -127,7 +128,8 @@ void test_pointer_syntax() {
   std::string output = generate_from_tree(tree, tokens);
   std::cout << "Output: " << output << "\n";
 
-  require(contains(output, "void* pv"), "Should emit void* for *void");
+    require(contains(output, "void* pv") || contains(output, "void* const& pv"),
+      "Should emit void* for *void");
 
   std::cout << "  PASS\n";
 }

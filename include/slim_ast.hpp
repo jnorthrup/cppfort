@@ -98,6 +98,7 @@ enum class NodeKind : uint8_t {
   VariableSuffix,
   TypeBody,
   TypeSuffix,
+  TypeAliasSuffix,
   NamespaceBody,
   NamespaceSuffix,
   DeclarationSuffix,

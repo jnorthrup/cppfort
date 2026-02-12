@@ -72,6 +72,9 @@ inline auto debug_log(const char *msg) {
 inline auto stmt_parser() { return Proto<FnParser>{{parse_statement}}; }
 inline auto decl_parser() { return Proto<FnParser>{{parse_declaration}}; }
 
+// Forward declare helper used in pratt postfix call parsing.
+inline Proto<FnParser> initializer_expr();
+
 struct Rules {
   // Cpp2 keywords that can also be used as identifiers in declarations
   // (e.g., `next := ...`, `base: @struct type = { ... }`, `in(min, max)`)
@@ -358,7 +361,9 @@ auto parse_atom(TokenStream input)
   input = primary.remaining();
 
   // Combinator-based postfix parsing
-  static auto call = (lit("(") >> -(expr_parser() % ",") >> ")") %
+  // IMPORTANT: call arguments must not treat ',' as an expression operator,
+  // otherwise we consume the entire argument list as a single expression.
+  static auto call = (lit("(") >> -(initializer_expr() % ",") >> ")") %
                      with_binary(NodeKind::CallOp);
   static auto subs =
       (lit("[") >> expr_parser() >> "]") % with_binary(NodeKind::SubscriptOp);
@@ -425,7 +430,9 @@ auto parse_pratt(TokenStream input, int min_prec)
     const auto &tok = input.peek();
 
     if (tok.lexeme == "?" && TERNARY >= min_prec) {
-      begin(NodeKind::TernaryExpression, input.pos);
+      // Ternary: cond ? then : else
+      // Use start_infix so the existing LHS becomes the condition child.
+      g_builder.start_infix(NodeKind::TernaryExpression, input.pos);
       input = input.next();
       auto then_expr = parse_pratt(input, NONE);
       if (!then_expr.success())
@@ -691,7 +698,7 @@ auto parse_initializer_expr(TokenStream input)
   // Use ASSIGN precedence to stop before comma
   return pratt::parse_pratt(input, pratt::ASSIGN);
 }
-inline auto initializer_expr() {
+inline Proto<FnParser> initializer_expr() {
   return Proto<FnParser>{{parse_initializer_expr}};
 }
 
@@ -790,9 +797,16 @@ inline auto &ns_body() {
                   with_node(NodeKind::NamespaceBody);
   return r;
 }
+inline auto &ns_alias() {
+  // namespace == QualifiedName ;
+  static auto r = (lit("namespace") >> "==" >> type_specifier() >> ";") %
+                  with_node(NodeKind::NamespaceSuffix);
+  return r;
+}
 inline auto &ns_suffix() {
   static auto r =
-      (lit("namespace") >> ns_body()) % with_node(NodeKind::NamespaceSuffix);
+      (lit("namespace") >> (("==" >> type_specifier() >> ";") | ns_body())) %
+      with_node(NodeKind::NamespaceSuffix);
   return r;
 }
 
@@ -811,7 +825,8 @@ inline auto &template_params() {
 }
 
 inline auto &alias_suffix() {
-  static auto r = lit("type") >> "==" >> type_specifier() >> ";";
+  static auto r = (lit("type") >> "==" >> type_specifier() >> ";") %
+                  with_node(NodeKind::TypeAliasSuffix);
   return r;
 }
 
@@ -837,7 +852,7 @@ inline auto &concept_suffix() {
 inline auto &decl_suffix() {
   static auto r =
       (template_params() >>
-       (concept_suffix() | func_suffix() | type_suffix() | var_suffix())) |
+       (concept_suffix() | alias_suffix() | func_suffix() | type_suffix() | var_suffix())) |
       alias_suffix() | operator_suffix() | func_suffix() | type_suffix() |
       ns_suffix() | var_suffix();
   return r;

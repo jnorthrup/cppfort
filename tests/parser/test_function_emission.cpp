@@ -53,7 +53,7 @@ void test_void_emission() {
     std::string output = generate_from_tree(tree, tokens);
     std::cout << "Output: " << output << "\n";
     
-    assert(contains(output, "auto my_void(int x) -> void {"));
+    assert(contains(output, "auto my_void(int const& x) -> void {"));
     
     std::cout << "  PASS\n";
 }
@@ -69,8 +69,8 @@ void test_expression_body_emission() {
     std::string output = generate_from_tree(tree, tokens);
     std::cout << "Output: " << output << "\n";
     
-    // Implicit return type should be auto
-    assert(contains(output, "auto expr_func() -> auto {"));
+    // Implicit return type uses decltype(auto) to preserve reference returns
+    assert(contains(output, "auto expr_func() -> decltype(auto) {"));
     assert(contains(output, "return 123;"));
     
     std::cout << "  PASS\n";

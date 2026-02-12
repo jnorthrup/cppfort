@@ -177,6 +177,27 @@ class TreeEmitter {
 
   // Check if a function body contains a return statement with a value
   // or is an expression body (= expr;) which implicitly returns
+  // Check if a function has an expression body (= expr; rather than = { ... })
+  bool function_is_expression_body(const Node &suffix) const {
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::FunctionBody) {
+        for (const auto &body_child : tree_.children(child)) {
+          if (body_child.kind == NodeKind::BlockStatement) {
+            return false; // Has a block body
+          }
+        }
+        // No block -> check it's not pure virtual / deleted / empty
+        std::string body_text = trim(node_text(child));
+        if (body_text == "0" || body_text == "delete" || 
+            body_text.empty() || body_text == ";") {
+          return false;
+        }
+        return true; // Expression body
+      }
+    }
+    return false;
+  }
+
   bool function_has_return_value(const Node &suffix) const {
     for (const auto &child : tree_.children(suffix)) {
       if (child.kind == NodeKind::FunctionBody) {
@@ -462,7 +483,7 @@ private:
     for (const auto &child : tree_.children(n)) {
       if (child.kind == NodeKind::UnifiedDeclaration) {
         for (const auto &grandchild : tree_.children(child)) {
-          if (grandchild.kind == NodeKind::TypeSuffix)
+          if (grandchild.kind == NodeKind::TypeSuffix || grandchild.kind == NodeKind::TypeAliasSuffix)
             return true;
         }
       }
@@ -662,6 +683,9 @@ private:
       } else if (child.kind == NodeKind::NamespaceSuffix) {
         suffix = &child;
         break;
+      } else if (child.kind == NodeKind::TypeAliasSuffix) {
+        suffix = &child;
+        break;
       }
     }
 
@@ -682,6 +706,29 @@ private:
         emit_namespace(name, *suffix);
         return;
       }
+      if (suffix->kind == NodeKind::TypeAliasSuffix) {
+        emit_type_alias(name, *suffix);
+        return;
+      }
+    }
+
+    // Fallback: check for concept declaration
+    // Cpp2: name: <T> concept = expr; → template<typename T> concept name = expr;
+    if (template_params && node_contains_token(n, "concept")) {
+      emit_indent();
+      out_ << "template";
+      emit_template_args(*template_params);
+      out_ << " concept " << name << " = ";
+      // Find the expression child (the concept body)
+      for (const auto &child : tree_.children(n)) {
+        if (meta::is_expression(child.kind) ||
+            child.kind == NodeKind::AssignmentExpression) {
+          emit_expression(child);
+          break;
+        }
+      }
+      out_ << ";\n";
+      return;
     }
 
     // Fallback: simple variable with := initialization
@@ -707,12 +754,12 @@ private:
                      const Node *template_params = nullptr) {
     // Extract return type (if any) and parameters
     std::string return_type = "auto";
-    std::string params;
+    const Node *param_list = nullptr;
     const Node *body = nullptr;
 
     for (const auto &child : tree_.children(suffix)) {
       if (child.kind == NodeKind::ParamList) {
-        params = emit_params(child);
+        param_list = &child;
       } else if (child.kind == NodeKind::ReturnSpec) {
         return_type = emit_type_spec(child);
       } else if (child.kind == NodeKind::FunctionBody) {
@@ -738,6 +785,16 @@ private:
       return_type = "void";
     }
 
+    // Determine if this function has a forward declaration (and thus defaults
+    // should only appear there, not in the definition)
+    bool has_forward_decl = (name != "main") && 
+        (return_type != "auto" || !function_has_return_value(suffix));
+    
+    std::string params;
+    if (param_list) {
+      params = emit_params(*param_list, /*include_defaults=*/!has_forward_decl);
+    }
+
     // Emit template parameters if present
     if (template_params) {
       out_ << "template";
@@ -753,8 +810,14 @@ private:
     } else if (is_main) {
       out_ << "int main(int argc, char* argv[]) {\n";
     } else if (return_type == "auto") {
-      // Deduced return type - omit trailing return for cleaner C++
-      out_ << "auto " << name << "(" << params << ") {\n";
+      // Deduced return type
+      // For expression bodies, use decltype(auto) to preserve reference returns.
+      bool is_expression_body = function_is_expression_body(suffix);
+      if (is_expression_body) {
+        out_ << "auto " << name << "(" << params << ") -> decltype(auto) {\n";
+      } else {
+        out_ << "auto " << name << "(" << params << ") {\n";
+      }
     } else {
       out_ << "auto " << name << "(" << params << ") -> " << return_type
            << " {\n";
@@ -805,7 +868,7 @@ private:
     out_ << ">";
   }
 
-  std::string emit_params(const Node &n) {
+  std::string emit_params(const Node &n, bool include_defaults = true) {
     std::string result;
     int wildcard_count = 0;  // Track duplicate '_' parameter names
     for (const auto &param : tree_.children(n)) {
@@ -817,7 +880,7 @@ private:
         }
         if (!result.empty())
           result += ", ";
-        std::string p = emit_param(param);
+        std::string p = emit_param(param, include_defaults);
         // Rename duplicate '_' parameters to '_2', '_3', etc.
         // C++ doesn't allow multiple parameters with the same name
         if (!p.empty()) {
@@ -850,7 +913,7 @@ private:
     return result;
   }
 
-  std::string emit_param(const Node &n) {
+  std::string emit_param(const Node &n, bool include_defaults = true) {
     // Get param name and optional type and default value
     std::string name;
     std::string type = "auto";
@@ -887,7 +950,7 @@ private:
     }
 
     // Apply qualifiers to type
-    // In Cpp2, the default for parameters is 'in' (const reference)
+    // Default for parameters is `in` (const reference).
     std::string result_type = type;
     std::string effective_qualifier = qualifier.empty() ? "in" : qualifier;
 
@@ -906,25 +969,15 @@ private:
         result_type = type + "&&";
       }
     } else if (effective_qualifier == "forward") {
-      // Forwarding reference
-      if (type == "auto") {
-        result_type = "auto&&";
-      } else {
-        result_type = type + "&&";
-      }
+      // Forwarding reference (match cppfront style): always auto&&
+      result_type = "auto&&";
     } else if (effective_qualifier == "in") {
-      // Const reference (default for Cpp2 parameters)
+      // Const reference
       if (type == "auto") {
         result_type = "auto const&";
       } else {
-        // Avoid 'const const T&' duplication when type already has const
-        bool already_const = (type.substr(0, 6) == "const " || 
-                              type.find(" const") != std::string::npos);
-        if (already_const) {
-          result_type = type + "&";
-        } else {
-          result_type = "const " + type + "&";
-        }
+        // Use postfix const& to preserve pointer types correctly
+        result_type = type + " const&";
       }
     } else if (effective_qualifier == "copy") {
       // Value (copy) - no change needed
@@ -932,7 +985,7 @@ private:
     }
 
     std::string result = result_type + " " + name;
-    if (!default_value.empty()) {
+    if (include_defaults && !default_value.empty()) {
       result += " = " + default_value;
     }
     return result;
@@ -1004,6 +1057,22 @@ private:
     while (!type_part.empty() && std::isspace(type_part.front())) 
       type_part.erase(0, 1);
     
+    // Strip default value initializer (e.g., std::string = "xyzzy" -> std::string)
+    {
+      int pd = 0, ad = 0;
+      for (size_t i = 0; i < type_part.size(); ++i) {
+        if (type_part[i] == '(') pd++;
+        else if (type_part[i] == ')') pd--;
+        else if (type_part[i] == '<') ad++;
+        else if (type_part[i] == '>') ad--;
+        else if (type_part[i] == '=' && pd == 0 && ad == 0) {
+          type_part = type_part.substr(0, i);
+          while (!type_part.empty() && std::isspace(type_part.back())) type_part.pop_back();
+          break;
+        }
+      }
+    }
+    
     return type_part.empty() ? "" : type_part;
   }
 
@@ -1058,6 +1127,23 @@ private:
       while (!name.empty() && std::isspace(name.back())) name.pop_back();
       while (!type.empty() && std::isspace(type.front())) type.erase(0, 1);
       while (!type.empty() && std::isspace(type.back())) type.pop_back();
+      
+      // Strip default value initializer from type (e.g., std::string = "xyzzy" -> std::string)
+      // Look for '=' that's not inside angle brackets or parens
+      {
+        int pd = 0, ad = 0;
+        for (size_t i = 0; i < type.size(); ++i) {
+          if (type[i] == '(') pd++;
+          else if (type[i] == ')') pd--;
+          else if (type[i] == '<') ad++;
+          else if (type[i] == '>') ad--;
+          else if (type[i] == '=' && pd == 0 && ad == 0) {
+            type = type.substr(0, i);
+            while (!type.empty() && std::isspace(type.back())) type.pop_back();
+            break;
+          }
+        }
+      }
       
       if (!name.empty() && !type.empty()) {
         fields.push_back({name, type});
@@ -1120,6 +1206,22 @@ private:
     while (!type_part.empty() && std::isspace(type_part.front())) 
       type_part.erase(0, 1);
     
+    // Strip default value initializer (e.g., std::string = "xyzzy" -> std::string)
+    {
+      int pd = 0, ad = 0;
+      for (size_t i = 0; i < type_part.size(); ++i) {
+        if (type_part[i] == '(') pd++;
+        else if (type_part[i] == ')') pd--;
+        else if (type_part[i] == '<') ad++;
+        else if (type_part[i] == '>') ad--;
+        else if (type_part[i] == '=' && pd == 0 && ad == 0) {
+          type_part = type_part.substr(0, i);
+          while (!type_part.empty() && std::isspace(type_part.back())) type_part.pop_back();
+          break;
+        }
+      }
+    }
+    
     if (name_part.empty() || type_part.empty())
       return {"", ""};
     
@@ -1150,8 +1252,33 @@ private:
       } else {
         // Expression body: = expr;
         emit_indent();
-        if (return_type == "void") {
-          // Void function - don't wrap in return
+        
+        // Check if this is a discard expression (_ = expr)
+        bool is_discard = false;
+        for (const auto &ec : tree_.children(child)) {
+          if (ec.kind == NodeKind::AssignmentExpression) {
+            auto first_tok = token_text(ec.token_start);
+            if (first_tok == "_") {
+              is_discard = true;
+            }
+            break;
+          }
+          // Check direct token
+          if (ec.token_start < ec.token_end && token_text(ec.token_start) == "_") {
+            is_discard = true;
+            break;
+          }
+        }
+        // Also check directly if the expression starts with _
+        if (!is_discard) {
+          auto first = token_text(child.token_start);
+          if (first == "_") {
+            is_discard = true;
+          }
+        }
+        
+        if (return_type == "void" || is_discard) {
+          // Void function or discard expression - don't wrap in return
           emit_expression(child);
           out_ << ";\n";
         } else {
@@ -1241,6 +1368,8 @@ private:
       emit_while(n, named_ret_var, multi_returns);
     } else if (n.kind == NodeKind::ForStatement) {
       emit_for(n, named_ret_var, multi_returns);
+    } else if (n.kind == NodeKind::DoWhileStatement) {
+      emit_do_while(n, named_ret_var, multi_returns);
     } else if (n.kind == NodeKind::BlockStatement) {
       out_ << "{\n";
       ++indent_;
@@ -1263,9 +1392,38 @@ private:
       // Fallback
       out_ << node_text(n) << "\n";
     } else if (n.kind == NodeKind::Statement) {
-      // Generic statement - check children
-      for (const auto &child : tree_.children(n)) {
-        emit_statement(child, named_ret_var);
+      // Check the first token for keyword-based statements
+      std::string_view first = (n.token_start < tokens_.size()) 
+          ? token_text(n.token_start) : "";
+      
+      if (first == "try") {
+        emit_try_catch(n, named_ret_var, multi_returns);
+      } else if (first == "throw") {
+        out_ << "throw";
+        // Emit the expression after 'throw' (if any)
+        for (const auto &child : tree_.children(n)) {
+          if (meta::is_expression(child.kind)) {
+            out_ << " ";
+            emit_expression(child);
+          }
+        }
+        out_ << ";\n";
+      } else if (first == "break") {
+        out_ << "break;\n";
+      } else if (first == "continue") {
+        out_ << "continue;\n";
+      } else if (first == "next") {
+        // Cpp2 'next' is like continue but with a clause
+        // For now, emit the clause as the loop increment
+        // 'next expr;' → the expr is the loop increment, just emit it
+        for (const auto &child : tree_.children(n)) {
+          emit_statement(child, named_ret_var);
+        }
+      } else {
+        // Generic statement - check children
+        for (const auto &child : tree_.children(n)) {
+          emit_statement(child, named_ret_var);
+        }
       }
     } else if (n.kind == NodeKind::UnifiedDeclaration) {
       // Local variable
@@ -1457,6 +1615,38 @@ private:
     }
   }
 
+  // Emit do-while loop
+  // Cpp2: do { body } next clause while (cond);
+  // C++:  do { body } while (cond);
+  void emit_do_while(const Node &n, const std::string &named_ret_var = "",
+                     const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
+    out_ << "do ";
+    const Node *cond = nullptr;
+    
+    // Find the block (body) and condition expression
+    // DoWhileStatement: do block [next clause] while expr ;
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::BlockStatement) {
+        out_ << "{\n";
+        ++indent_;
+        emit_block(child, named_ret_var, multi_returns);
+        --indent_;
+        emit_indent();
+        out_ << "} ";
+      } else if (meta::is_expression(child.kind)) {
+        cond = &child;
+      }
+    }
+    
+    out_ << "while (";
+    if (cond) {
+      emit_expression(*cond);
+    } else {
+      out_ << "true";
+    }
+    out_ << ");\n";
+  }
+
   void emit_for(const Node &n, const std::string &named_ret_var = "",
                 const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
     // Cpp2 for: for items do (item) { body }
@@ -1501,6 +1691,113 @@ private:
     --indent_;
     emit_indent();
     out_ << "}\n";
+  }
+
+  // Emit try/catch statement
+  // Cpp2: try { ... } catch (name: type) { ... } catch (_) { ... }
+  // C++:  try { ... } catch (type name) { ... } catch (...) { ... }
+  void emit_try_catch(const Node &n, const std::string &named_ret_var = "",
+                      const std::vector<std::pair<std::string, std::string>> &multi_returns = {}) {
+    // Walk through the tokens of this Statement node to reconstruct try/catch
+    // The structure is: try { block } catch ( params ) { block } [catch ...]
+    
+    // Collect blocks and catch info by iterating tokens
+    enum class Phase { TryKeyword, TryBody, CatchKeyword, CatchParams, CatchBody };
+    Phase phase = Phase::TryKeyword;
+    
+    // Find block statement children - they alternate: try body, catch body, catch body, ...
+    std::vector<const Node *> blocks;
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::BlockStatement) {
+        blocks.push_back(&child);
+      }
+    }
+    
+    // Parse catch clauses from tokens
+    struct CatchInfo {
+      std::string param_name;
+      std::string param_type;
+      bool is_catch_all = false;
+    };
+    std::vector<CatchInfo> catches;
+    
+    // Walk tokens to find catch clause parameters
+    for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size(); ++i) {
+      if (tokens_[i].lexeme == "catch") {
+        CatchInfo info;
+        // Skip to opening paren
+        ++i;
+        while (i < n.token_end && i < tokens_.size() && tokens_[i].lexeme != "(") ++i;
+        if (i >= n.token_end) break;
+        ++i; // skip (
+        
+        // Collect param tokens until )
+        std::string param_name;
+        std::string param_type;
+        bool found_colon = false;
+        
+        while (i < n.token_end && i < tokens_.size() && tokens_[i].lexeme != ")") {
+          if (tokens_[i].lexeme == "_") {
+            info.is_catch_all = true;
+          } else if (tokens_[i].lexeme == ":") {
+            found_colon = true;
+          } else if (!found_colon) {
+            // Before colon: parameter name (skip qualifiers like 'in')
+            auto lex = std::string(tokens_[i].lexeme);
+            if (lex != "in" && lex != "inout" && lex != "out" && lex != "move" && lex != "forward" && lex != "copy") {
+              param_name = lex;
+            }
+          } else {
+            // After colon: type
+            if (!param_type.empty()) param_type += " ";
+            param_type += std::string(tokens_[i].lexeme);
+          }
+          ++i;
+        }
+        
+        if (!info.is_catch_all) {
+          info.param_name = param_name;
+          info.param_type = param_type.empty() ? "..." : param_type;
+        }
+        catches.push_back(info);
+      }
+    }
+    
+    // Emit try block
+    out_ << "try ";
+    if (!blocks.empty()) {
+      out_ << "{\n";
+      ++indent_;
+      emit_block(*blocks[0], named_ret_var, multi_returns);
+      --indent_;
+      emit_indent();
+      out_ << "}";
+    }
+    
+    // Emit catch blocks
+    for (size_t i = 0; i < catches.size(); ++i) {
+      const auto &ci = catches[i];
+      if (ci.is_catch_all) {
+        out_ << " catch (...) ";
+      } else if (ci.param_type == "...") {
+        out_ << " catch (...) ";
+      } else {
+        out_ << " catch (" << ci.param_type << " " << ci.param_name << ") ";
+      }
+      
+      size_t block_idx = i + 1; // blocks[0] is try body
+      if (block_idx < blocks.size()) {
+        out_ << "{\n";
+        ++indent_;
+        emit_block(*blocks[block_idx], named_ret_var, multi_returns);
+        --indent_;
+        emit_indent();
+        out_ << "}";
+      } else {
+        out_ << "{ }";
+      }
+    }
+    out_ << "\n";
   }
 
   void emit_local_var(const Node &n) {
@@ -1720,17 +2017,67 @@ private:
     out_ << "public: auto operator=(" << name << " const&) -> void = delete;\n";
   }
 
+  // Extract base classes from TypeBody by looking for 'this: BaseType' members
+  std::vector<std::string> extract_base_classes(const Node &suffix) {
+    std::vector<std::string> bases;
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::TypeBody) {
+        for (const auto &member : tree_.children(child)) {
+          if (member.kind == NodeKind::Declaration) {
+            for (const auto &udc : tree_.children(member)) {
+              if (udc.kind == NodeKind::UnifiedDeclaration) {
+                std::string member_name;
+                for (const auto &gc : tree_.children(udc)) {
+                  if (gc.kind == NodeKind::Identifier) {
+                    member_name = node_text(gc);
+                    break;
+                  }
+                }
+                if (member_name == "this") {
+                  // this: Base is an inheritance declaration
+                  for (const auto &gc : tree_.children(udc)) {
+                    if (gc.kind == NodeKind::VariableSuffix) {
+                      for (const auto &type_child : tree_.children(gc)) {
+                        if (type_child.kind == NodeKind::TypeSpecifier || type_child.kind == NodeKind::BasicType) {
+                          bases.push_back(format_type(type_child));
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return bases;
+  }
+
   void emit_type(const std::string &name, const Node &suffix) {
     // Extract metafunctions from the TypeSuffix
     auto metafunctions = extract_metafunctions(suffix);
     bool is_interface = has_metafunction(metafunctions, "interface");
     
+    // Extract base classes from 'this: Base' members
+    auto base_classes = extract_base_classes(suffix);
+    
     // Use 'class' for interface types (for virtual functions)
     if (is_interface) {
-      out_ << "class " << name << " {\n";
+      out_ << "class " << name;
     } else {
-      out_ << "struct " << name << " {\n";
+      out_ << "struct " << name;
     }
+    
+    // Emit base class list if any
+    if (!base_classes.empty()) {
+      out_ << " : ";
+      for (size_t i = 0; i < base_classes.size(); ++i) {
+        if (i > 0) out_ << ", ";
+        out_ << "public " << base_classes[i];
+      }
+    }
+    out_ << " {\n";
     ++indent_;
     
     // Find the TypeBody child and emit its declarations
@@ -1796,14 +2143,22 @@ private:
           }
         }
         
-        // Check if it's a function (method) or variable (field)
+        // Check if it's a function (method), variable (field), or type alias
         for (const auto &grandchild : tree_.children(child)) {
           if (grandchild.kind == NodeKind::FunctionSuffix) {
             emit_method_with_interface(member_name, grandchild, type_name, is_interface);
             return;
           }
           if (grandchild.kind == NodeKind::VariableSuffix) {
+            // Skip 'this: Base' members - they become base class inheritance
+            if (member_name == "this") {
+              return;
+            }
             emit_field(member_name, grandchild);
+            return;
+          }
+          if (grandchild.kind == NodeKind::TypeAliasSuffix) {
+            emit_type_alias(member_name, grandchild);
             return;
           }
         }
@@ -1864,7 +2219,12 @@ private:
     
     // Check for named return type
     std::string named_return_type = extract_named_return_type(return_type);
-    if (!named_return_type.empty()) {
+    auto [named_ret_var, named_ret_type] = extract_named_return_info(return_type);
+    auto multi_returns = parse_named_return_fields(return_type);
+    if (!multi_returns.empty()) {
+      // Multi-return: emit struct definition (handled by forward decl)
+      return_type = name + "_ret";
+    } else if (!named_return_type.empty()) {
       return_type = named_return_type;
     }
     
@@ -1889,7 +2249,7 @@ private:
     
     ++indent_;
     if (body)
-      emit_function_body(*body);
+      emit_function_body(*body, named_ret_var, named_ret_type, multi_returns, return_type);
     --indent_;
     
     emit_indent();
@@ -2033,17 +2393,12 @@ private:
           name == "narrow" || name == "narrow_cast") {
         out_ << "cpp2::" << name;
       }
-      // Map Cpp2 type aliases to C++ types
-      else if (name == "i32") { out_ << "int"; }
-      else if (name == "i64") { out_ << "int64_t"; }
-      else if (name == "i16") { out_ << "int16_t"; }
-      else if (name == "i8") { out_ << "int8_t"; }
-      else if (name == "u32") { out_ << "unsigned int"; }
-      else if (name == "u64") { out_ << "uint64_t"; }
-      else if (name == "u16") { out_ << "uint16_t"; }
-      else if (name == "u8") { out_ << "uint8_t"; }
-      else if (name == "f32") { out_ << "float"; }
-      else if (name == "f64") { out_ << "double"; }
+      // Map Cpp2 type aliases to C++ types (use cpp2:: namespace prefix)
+      else if (name == "i8" || name == "i16" || name == "i32" || name == "i64" ||
+               name == "u8" || name == "u16" || name == "u32" || name == "u64" ||
+               name == "f32" || name == "f64") {
+        out_ << "cpp2::" << name;
+      }
       else {
         out_ << name;
       }
@@ -2075,7 +2430,12 @@ private:
               child->kind == NodeKind::BinaryOp ||
               (child->token_start < child->token_end &&
                is_operator(token_text(child->token_start)))) {
-            out_ << " " << node_text(*child) << " ";
+            auto op = node_text(*child);
+            if (op == ",") {
+              out_ << ", ";
+            } else {
+              out_ << " " << op << " ";
+            }
           } else {
             emit_expression(*child);
           }
@@ -2176,6 +2536,12 @@ private:
                 out_ << ufcs_macro << "(" << method_name << ")(";
                 emit_expression(obj);
                 for (; it != children.end(); ++it) {
+                  // CallOp may still contain separator/operator nodes depending on how the
+                  // expression was parsed; skip those and emit only argument expressions.
+                  if (it->kind == NodeKind::BinaryOp || it->kind == NodeKind::AssignmentOp)
+                    continue;
+                  if (it->token_start < it->token_end && token_text(it->token_start) == ",")
+                    continue;
                   out_ << ", ";
                   emit_expression(*it);
                 }
@@ -2192,6 +2558,10 @@ private:
         out_ << "(";
         bool first = true;
         for (; it != children.end(); ++it) {
+          if (it->kind == NodeKind::BinaryOp || it->kind == NodeKind::AssignmentOp)
+            continue;
+          if (it->token_start < it->token_end && token_text(it->token_start) == ",")
+            continue;
           if (!first)
             out_ << ", ";
           emit_expression(*it);
@@ -2377,13 +2747,19 @@ private:
         out_ << node_text(n);
       }
     } else if (n.kind == NodeKind::TernaryExpression) {
-      out_ << " ? ";
-      int i = 0;
-      for (const auto &child : tree_.children(n)) {
-        if (i == 1)
-          out_ << " : ";
-        emit_expression(child);
-        i++;
+      auto children = tree_.children(n);
+      std::vector<const Node *> parts;
+      for (const auto &child : children)
+        parts.push_back(&child);
+
+      if (parts.size() == 3) {
+        emit_expression(*parts[0]);
+        out_ << " ? ";
+        emit_expression(*parts[1]);
+        out_ << " : ";
+        emit_expression(*parts[2]);
+      } else {
+        out_ << node_text(n);
       }
     } else if (n.kind == NodeKind::GroupedExpression) {
       out_ << "(";
@@ -2650,15 +3026,50 @@ private:
   }
 
   void emit_namespace(const std::string &name, const Node &suffix) {
-    out_ << "namespace " << name << " {\n\n";
+    // Check if this is a namespace alias (namespace == Name) or body (namespace = { ... })
+    bool has_body = false;
     for (const auto &child : tree_.children(suffix)) {
       if (child.kind == NodeKind::NamespaceBody) {
-        for (const auto &decl : tree_.children(child)) {
-          emit_declaration(decl);
-        }
+        has_body = true;
+        break;
       }
     }
-    out_ << "} // namespace " << name << "\n\n";
+    
+    if (has_body) {
+      out_ << "namespace " << name << " {\n\n";
+      for (const auto &child : tree_.children(suffix)) {
+        if (child.kind == NodeKind::NamespaceBody) {
+          for (const auto &decl : tree_.children(child)) {
+            emit_declaration(decl);
+          }
+        }
+      }
+      out_ << "} // namespace " << name << "\n\n";
+    } else {
+      // Namespace alias: namespace == QualifiedName
+      emit_indent();
+      out_ << "namespace " << name << " = ";
+      for (const auto &child : tree_.children(suffix)) {
+        if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
+          out_ << format_type(child);
+          break;
+        }
+      }
+      out_ << ";\n";
+    }
+  }
+
+  void emit_type_alias(const std::string &name, const Node &suffix) {
+    // Cpp2: name: type == OtherType; → using name = OtherType;
+    emit_indent();
+    out_ << "using " << name << " = ";
+    for (const auto &child : tree_.children(suffix)) {
+      if (child.kind == NodeKind::TypeSpecifier || child.kind == NodeKind::BasicType) {
+        out_ << format_type(child);
+        break;
+      }
+    }
+    out_ << ";\n";
   }
 };
 

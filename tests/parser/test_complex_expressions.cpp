@@ -57,8 +57,8 @@ int main() {
   // Member Access
   check_emit("x: int = obj.field;", "int x = obj.field;",
              "Member access field");
-  check_emit("x: int = obj.method();", "int x = obj.method();",
-             "Member access method");
+  check_emit("x: int = obj.method();", "int x = CPP2_UFCS_NONLOCAL(method)(obj);",
+             "Member access method (UFCS)");
   check_emit("x: int = obj.inner.field;", "int x = obj.inner.field;",
              "Nested member access");
 
@@ -85,7 +85,7 @@ int main() {
 
   // Complex Combinations
   check_emit("x: int = arr[i].method(a, b ? c : d);",
-             "int x = arr[i].method(a, b ? c : d);", "Complex combination");
+             "int x = CPP2_UFCS_NONLOCAL(method)(arr[i], a, b ? c : d);", "Complex combination (UFCS)");
 
   std::cout << "\nAll complex expression tests passed.\n";
   return 0;
