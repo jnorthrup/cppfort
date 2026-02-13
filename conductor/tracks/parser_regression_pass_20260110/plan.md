@@ -201,14 +201,20 @@
     - [x] Fixed: Added ScopeOp handler to properly emit `::` in qualified types
     - [x] Result: `std::type_identity_t<decltype(...)>` emits correctly (was `std::<type_identity_t, ...>`)
     - [x] Both UFCS tests now transpile successfully
+  - [x] Fix `pure2-expected-is-as` compile failure (2026-02-12)
+    - [x] Emit `expr is <value>` as `cpp2::is(expr, value)` (not `cpp2::is<value>(expr)`)
+    - [x] Emit `:(...) -> _ = { ... }` as a C++ lambda expression
+    - [x] Ignore returns inside lambdas when deciding if an outer function returns a value (forward decl correctness)
+    - [x] Add `std::expected`/`std::unexpected` overloads for `cpp2::is`/`cpp2::as` in `cpp2_runtime.h`
+    - [x] Fix pointer-type RHS detection (`*B`, `*D`) to remain type-like
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-11)**: 95/159 passed (59.7%) - improved from 87/159 (54.7%)
+**Current Results (2026-02-13)**: 100/159 passed (62.8%) - +1 from C++1 parameter fix
 
 **Breakdown:**
 
-- Compile failures: 17 (transpiled OK, failed to compile)
-- Transpile failures: 47 (parser/emitter can't handle syntax)
+- Compile failures: 47 (transpiled OK, failed to compile)
+- Transpile failures: 13 (parser/emitter can't handle syntax)
 - Error tests: 9 skipped (as expected)
 
 **Recent Fixes (2026-02-08)**:

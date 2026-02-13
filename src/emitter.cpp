@@ -2903,11 +2903,16 @@ private:
         out_ << node_text(n);
       }
     } else if (n.kind == NodeKind::GroupedExpression) {
-      out_ << "(";
-      for (const auto &child : tree_.children(n)) {
-        emit_expression(child);
+      auto children = tree_.children(n);
+      if (children.empty()) {
+        out_ << "{}";
+      } else {
+        out_ << "(";
+        for (const auto &child : children) {
+          emit_expression(child);
+        }
+        out_ << ")";
       }
-      out_ << ")";
     } else if (n.kind == NodeKind::PrefixExpression) {
       for (const auto &child : tree_.children(n)) {
         if (child.kind == NodeKind::PrefixOp) {

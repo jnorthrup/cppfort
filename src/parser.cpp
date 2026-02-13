@@ -716,6 +716,21 @@ inline auto &param_list() {
   return r;
 }
 
+inline auto &cpp1_parameter() {
+  static auto r =
+      (type_specifier() >>
+       (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
+       -(lit("=") >> initializer_expr())) %
+      with_node(NodeKind::Parameter);
+  return r;
+}
+
+inline auto &cpp1_param_list() {
+  static auto r = (lit("(") >> -(cpp1_parameter() % "," >> -lit(",")) >> lit(")")) %
+                  with_node(NodeKind::ParamList);
+  return r;
+}
+
 inline auto &scope_stmt() {
   static auto r =
       (param_list() >> block_stmt()) % with_node(NodeKind::ScopeStatement);
@@ -874,10 +889,9 @@ inline auto &unified_decl() {
 }
 inline auto &cpp1_function_decl() {
   // C++1: auto name(params) -> return_type { body }
-  // Create custom FunctionBody node for C++1 syntax (no leading '=')
   static auto r = (lit("auto") >>
                    (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
-                   (param_list() >> -return_spec() >>
+                   (cpp1_param_list() >> -return_spec() >>
                     ((lit("=") >> (block_stmt() | (expr_parser() >> ";"))) |
                      block_stmt() | (expr_parser() >> ";")) %
                         with_node(NodeKind::FunctionBody)) %
