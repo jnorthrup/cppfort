@@ -105,8 +105,16 @@ constexpr auto is(Source const& x) -> bool {
     }
 }
 
+// Predicate check: x is (pred)
+template<typename T, typename U>
+    requires std::is_invocable_r_v<bool, U, T const&>
+constexpr auto is(T const& x, U const& value) -> bool {
+    return value(x);
+}
+
 // Value comparison: x is 42
 template<typename T, typename U>
+    requires (!std::is_invocable_r_v<bool, U, T const&>)
 constexpr auto is(T const& x, U const& value) -> bool {
     return x == value;
 }
@@ -235,6 +243,62 @@ auto as(std::optional<U> const& x) -> T {
         return static_cast<T>(x.value());
     }
 }
+
+// ============================================================================
+//  std::expected specializations for is and as
+// ============================================================================
+
+#if __has_include(<expected>)
+
+// is<T> for expected:
+// - T == value_type            => has_value()
+// - T == std::unexpected<E>    => !has_value()
+// - T == void                  => !has_value() (Cpp2 treats unexpected as "empty")
+template<typename Target, typename U, typename E>
+constexpr auto is(std::expected<U, E> const& x) -> bool {
+    using T = std::remove_cvref_t<Target>;
+    if constexpr (std::is_same_v<T, U>) {
+        return x.has_value();
+    }
+    else if constexpr (std::is_same_v<T, std::unexpected<E>>) {
+        return !x.has_value();
+    }
+    else if constexpr (std::is_same_v<T, void>) {
+        return !x.has_value();
+    }
+    else {
+        return false;
+    }
+}
+
+// Value comparison for expected: x is 42
+template<typename U, typename E, typename V>
+requires requires (U const& u, V const& v) { u == v; }
+constexpr auto is(std::expected<U, E> const& x, V const& value) -> bool {
+    return x.has_value() && (x.value() == value);
+}
+
+// as<U> for expected: extract value
+template<typename Target, typename U, typename E>
+requires (std::is_same_v<std::remove_cvref_t<Target>, U>)
+auto as(std::expected<U, E> const& x) -> Target {
+    if (!x.has_value()) {
+        throw std::bad_expected_access<E>(x.error());
+    }
+    return static_cast<Target>(x.value());
+}
+
+// as<std::unexpected<E>> for expected: extract unexpected
+template<typename Target, typename U, typename E>
+requires (std::is_same_v<std::remove_cvref_t<Target>, std::unexpected<E>>)
+auto as(std::expected<U, E> const& x) -> Target {
+    if (x.has_value()) {
+        throw std::runtime_error("cpp2::as<std::unexpected<E>>(expected): expected has value");
+    }
+    return std::unexpected<E>(x.error());
+}
+
+#endif // __has_include(<expected>)
 
 // ============================================================================
 //  Type conversion: x as T

@@ -69,6 +69,24 @@ int main(int argc, char* argv[]) {
         cpp2_transpiler::Lexer lexer{std::string_view(source_code)};
         auto tokens = lexer.tokenize();
 
+        // Pre-parse check: reject markdown blocks inside nested braces.
+        // The parser will also fail, but this gives a much clearer diagnostic.
+        {
+            int brace_depth = 0;
+            for (const auto &tok : tokens) {
+                if (tok.lexeme == "{") brace_depth++;
+                else if (tok.lexeme == "}") brace_depth--;
+                else if (tok.type == cpp2_transpiler::TokenType::MarkdownBlock &&
+                         brace_depth > 0) {
+                    std::cerr << input_filename << ":" << tok.line
+                              << ": error: markdown block must "
+                              "appear at top level, not inside a function, "
+                              "type, or nested scope\n";
+                    return 1;
+                }
+            }
+        }
+
         // All files go through the parser (no C++1 passthrough bypass)
         // This ensures preprocessor directives are preserved in the AST
 
@@ -78,6 +96,16 @@ int main(int argc, char* argv[]) {
         // Check for valid parse
         if (tree.nodes.empty() || tree.nodes[tree.root].child_count == 0) {
             std::cerr << "Error: Parsing failed - no declarations found\n";
+            return 1;
+        }
+
+        // Validate markdown block placement (must be top-level only)
+        auto diags = cpp2::ast::validate_markdown_placement(tree, tokens);
+        if (!diags.empty()) {
+            for (const auto &d : diags) {
+                std::cerr << input_filename << ":" << d.line << ":" << d.column
+                          << ": error: " << d.message << "\n";
+            }
             return 1;
         }
 

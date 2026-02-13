@@ -7,6 +7,7 @@
 // ============================================================================
 
 #include "core/tokens.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <span>
@@ -23,6 +24,7 @@ enum class NodeKind : uint8_t {
   // Terminals
   Identifier,
   Literal,
+  MarkdownBlock,
 
   // Expressions (precedence climbing)
   GroupedExpression,
@@ -143,6 +145,7 @@ namespace meta {
 // Names for debugging/serialization
 inline constexpr const char *names[] = {"Identifier",
                                         "Literal",
+                                        "MarkdownBlock",
                                         "GroupedExpression",
                                         "PrimaryExpression",
                                         "CallOp",
@@ -519,6 +522,55 @@ public:
     return tree;
   }
 };
+
+// ============================================================================
+// Diagnostic: Validate markdown block placement
+// ============================================================================
+
+struct Diagnostic {
+  std::string message;
+  std::size_t line;
+  std::size_t column;
+};
+
+/// Walk the parse tree and report any MarkdownBlock nodes that are not
+/// direct children of TranslationUnit.  Returns the list of diagnostics
+/// (empty == clean).
+inline std::vector<Diagnostic> validate_markdown_placement(
+    const ParseTree &tree,
+    std::span<const cpp2_transpiler::Token> tokens) {
+  std::vector<Diagnostic> diags;
+  if (tree.nodes.empty())
+    return diags;
+
+  // Collect indices of root's direct children into a sorted vector
+  // so we can binary-search membership without <unordered_set>.
+  std::vector<uint32_t> root_children;
+  const Node &root = tree[tree.root];
+  uint32_t child_idx = root.first_child;
+  while (child_idx != UINT32_MAX && child_idx < tree.nodes.size()) {
+    root_children.push_back(child_idx);
+    child_idx = tree.nodes[child_idx].next_sibling;
+  }
+  std::sort(root_children.begin(), root_children.end());
+
+  // Every MarkdownBlock that is NOT a root child is misplaced
+  for (uint32_t i = 0; i < static_cast<uint32_t>(tree.nodes.size()); ++i) {
+    if (tree.nodes[i].kind == NodeKind::MarkdownBlock &&
+        !std::binary_search(root_children.begin(), root_children.end(), i)) {
+      std::size_t line = 0, col = 0;
+      if (tree.nodes[i].token_start < tokens.size()) {
+        line = tokens[tree.nodes[i].token_start].line;
+        col  = tokens[tree.nodes[i].token_start].column;
+      }
+      diags.push_back({
+        "markdown block must appear at top level, not inside a function, type, or nested scope",
+        line, col
+      });
+    }
+  }
+  return diags;
+}
 
 } // namespace cpp2::ast
 

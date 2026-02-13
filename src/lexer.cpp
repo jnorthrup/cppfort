@@ -694,20 +694,6 @@ void Lexer::scan_markdown_block() {
 
     std::size_t content_start = current;
 
-    // Skip optional name/identifier immediately after opening ```
-    while (!is_at_end() && peek() != '\n' && !std::isspace(static_cast<unsigned char>(peek()))) {
-        advance();
-    }
-
-    // Skip whitespace/newline after name
-    if (peek() == '\n' || std::isspace(static_cast<unsigned char>(peek()))) {
-        if (peek() == '\n') {
-            line++;
-            column = 1;
-        }
-        advance();
-    }
-
     // Now capture content until we find closing ```
     while (!is_at_end()) {
         // Check for closing delimiter: ```

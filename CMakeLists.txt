@@ -12,9 +12,11 @@ if(APPLE)
   set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
 
   # Use stable MacOSX.sdk to avoid header conflicts with newer beta SDKs
-  set(MACOS_SDK_PATH "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+  # CommandLineTools SDK 15.2 is compatible with Homebrew LLVM 21
+  set(MACOS_SDK_PATH "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk")
   if(EXISTS "${MACOS_SDK_PATH}")
     set(CMAKE_SYSROOT "${MACOS_SDK_PATH}")
+    set(CMAKE_OSX_SYSROOT "${MACOS_SDK_PATH}")
   endif()
 
   # Use Homebrew's libc++ exclusively - add system include path explicitly
@@ -62,6 +64,9 @@ endif()
 if(CMAKE_GENERATOR STREQUAL "Ninja")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 endif()
+
+# Workaround for macOS SDK + libc++ availability conflicts
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_LIBCPP_DISABLE_AVAILABILITY")
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
