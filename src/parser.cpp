@@ -587,7 +587,8 @@ inline auto &do_while_stmt() {
   return r;
 }
 inline auto &for_range_stmt() {
-  static auto r = (lit("for") >> expr_parser() >> "do" >> "(" >>
+  // Cpp2: for range_expr next next_expr? do (var) { body }
+  static auto r = (lit("for") >> expr_parser() >> -next_clause() >> "do" >> "(" >>
                    *(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >>
                    (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
                    ")" >> block_stmt()) %
