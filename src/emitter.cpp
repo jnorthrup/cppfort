@@ -1,4 +1,5 @@
 #include "emitter.hpp"
+#include "markdown_hash.hpp"
 #include <cctype>
 #include <iostream>
 #include <sstream>
@@ -167,6 +168,13 @@ class TreeEmitter {
     return name;
   }
 
+  // Check if a token is a Cpp2 type alias (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64)
+  bool is_cpp2_type_alias(std::string_view name) const {
+    return name == "i8" || name == "i16" || name == "i32" || name == "i64" ||
+           name == "u8" || name == "u16" || name == "u32" || name == "u64" ||
+           name == "f32" || name == "f64";
+  }
+
   std::string trim(std::string_view s) const {
     size_t first = s.find_first_not_of(" \t\n\r");
     if (first == std::string::npos)
@@ -227,18 +235,31 @@ class TreeEmitter {
   }
 
   bool body_has_return_value(const Node &n) const {
-    // Check if any token in the body is a 'return' followed by something other than ';'
-    for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size(); ++i) {
-      if (tokens_[i].lexeme == "return") {
-        // Check if there's a value after return (not just "return;")
-        if (i + 1 < n.token_end && i + 1 < tokens_.size()) {
-          if (tokens_[i + 1].lexeme != ";") {
-            return true;  // Has a return value
-          }
-        }
+    // Parse-tree-based return detection that ignores returns inside nested
+    // lambda expressions (":( ... ) = { return ...; }") so we don't misclassify
+    // outer functions as having a value return.
+    return node_has_return_value(n);
+  }
+
+  bool node_has_return_value(const Node &n) const {
+    // Returns inside lambdas are not returns of the surrounding function.
+    if (n.kind == NodeKind::LambdaExpression)
+      return false;
+
+    if (n.kind == NodeKind::ReturnStatement) {
+      // If the return statement has an expression child, it returns a value.
+      for (const auto &child : tree_.children(n)) {
+        if (meta::is_expression(child.kind))
+          return true;
       }
+      return false;
     }
-    return false;  // No return with value found -> returns void
+
+    for (const auto &child : tree_.children(n)) {
+      if (node_has_return_value(child))
+        return true;
+    }
+    return false;
   }
 
   std::string format_type(const Node &n) const {
@@ -456,23 +477,51 @@ public:
 
     const auto &root = tree_[tree_.root];
     
-    // First pass: emit forward declarations for functions and types
+    // First pass: emit markdown blocks as module stubs
+    for (const auto &child : tree_.children(root)) {
+      emit_markdown_block(child);
+    }
+    
+    // Second pass: emit forward declarations for functions and types
     for (const auto &child : tree_.children(root)) {
       emit_forward_declaration(child);
     }
     out_ << "\n";
     
-    // Second pass: emit type definitions (before functions that use them)
+    // Third pass: emit type definitions (before functions that use them)
     for (const auto &child : tree_.children(root)) {
       emit_type_definition(child);
     }
     
-    // Third pass: emit function definitions and other declarations
+    // Fourth pass: emit function definitions and other declarations
     for (const auto &child : tree_.children(root)) {
       emit_non_type_declaration(child);
     }
 
     return out_.str();
+  }
+
+  void emit_markdown_block(const Node &n) {
+    if (n.kind != NodeKind::MarkdownBlock)
+      return;
+    
+    std::string_view content = token_text(n.token_start);
+    size_t newline_pos = content.find('\n');
+    std::string name;
+    std::string_view hash_content = content;
+    if (newline_pos != std::string_view::npos) {
+      name = std::string(content.substr(0, newline_pos));
+      size_t start = name.find_first_not_of(" \t");
+      size_t end = name.find_last_not_of(" \t");
+      if (start != std::string::npos && end != std::string::npos) {
+        name = name.substr(start, end - start + 1);
+      }
+      hash_content = content.substr(newline_pos + 1);
+    }
+    std::string hash = cpp2_transpiler::compute_markdown_hash(hash_content);
+    std::string module_name = name.empty() ? ("__cas_" + hash.substr(0, 16)) : name;
+    out_ << "export module " << module_name << ";\n";
+    out_ << "inline constexpr char cas_sha256[] = \"" << hash << "\";\n\n";
   }
 
 private:
@@ -843,6 +892,14 @@ private:
 
     // Template parameters are stored as direct tokens, not child nodes
     // The node spans from < to >, so we need to look at the tokens inside
+    // Patterns:
+    //   <T>           -> typename T
+    //   <T: type>     -> typename T
+    //   <T: _>        -> typename T
+    //   <_>           -> typename (anonymous)
+    //   <T...: type>  -> typename... T
+    //   <T: int>      -> int T  (non-type template param)
+    //   <V: _>        -> typename V  (V: any = typename)
     bool first = true;
     for (uint32_t i = n.token_start + 1; i < n.token_end - 1; ++i) {
       const auto &token = tokens_[i];
@@ -857,11 +914,70 @@ private:
       }
       first = false;
 
-      // Convert _ to typename
-      if (token.lexeme == "_") {
+      // Collect the full parameter: name, optional colon, optional type, optional ...
+      std::string param_name{token.lexeme};
+      std::string param_type;
+      bool is_variadic = false;
+
+      // Look ahead for `:` followed by type
+      uint32_t j = i + 1;
+      // Check for `...` after name (variadic)
+      if (j < n.token_end - 1 && (tokens_[j].lexeme == "..." || tokens_[j].lexeme == "..")) {
+        is_variadic = true;
+        j++;
+      }
+      // Check for `:` followed by type
+      if (j < n.token_end - 1 && tokens_[j].lexeme == ":") {
+        j++;  // skip `:`
+        if (j < n.token_end - 1) {
+          param_type = std::string{tokens_[j].lexeme};
+          i = j;  // advance outer loop past consumed tokens
+        }
+      } else if (is_variadic) {
+        i = j - 1;  // advance past `...`
+      }
+
+      // Emit the parameter
+      if (param_name == "_" && param_type.empty()) {
+        // Anonymous type parameter
         out_ << "typename";
+      } else if (param_type.empty() || param_type == "type") {
+        // Type parameter (typename)
+        if (is_variadic) {
+          out_ << "typename... " << param_name;
+        } else {
+          out_ << "typename " << param_name;
+        }
+      } else if (param_type == "_") {
+        // Non-type template parameter with deduced type: <T:_> -> auto T
+        if (is_variadic) {
+          out_ << "auto... " << param_name;
+        } else {
+          out_ << "auto " << param_name;
+        }
+      } else if (param_type == "int" || param_type == "bool" || param_type == "char" ||
+                 param_type == "long" || param_type == "short" || param_type == "unsigned" ||
+                 param_type == "size_t" || param_type == "auto") {
+        // Non-type template parameter with C++ builtin type
+        if (is_variadic) {
+          out_ << param_type << "... " << param_name;
+        } else {
+          out_ << param_type << " " << param_name;
+        }
+      } else if (is_cpp2_type_alias(param_type)) {
+        // Non-type template parameter with Cpp2 type alias: <T: i8> -> cpp2::i8 T
+        if (is_variadic) {
+          out_ << "cpp2::" << param_type << "... " << param_name;
+        } else {
+          out_ << "cpp2::" << param_type << " " << param_name;
+        }
       } else {
-        out_ << "typename " << token.lexeme;
+        // Unknown constraint type - emit as typename with constraint
+        if (is_variadic) {
+          out_ << "typename... " << param_name;
+        } else {
+          out_ << "typename " << param_name;
+        }
       }
     }
 
@@ -1534,9 +1650,14 @@ private:
     // Emit handler check
     out_ << "cpp2::" << contract_kind << ".is_active() && !(";
 
-    // Emit condition
+    // Emit condition (with Cpp2 type alias qualification)
     for (uint32_t t = cond_start; t < cond_end; ++t) {
-      out_ << tokens_[t].lexeme;
+      const auto &lex = tokens_[t].lexeme;
+      if (is_cpp2_type_alias(lex)) {
+        out_ << "cpp2::" << lex;
+      } else {
+        out_ << lex;
+      }
     }
     out_ << ") ) { cpp2::" << contract_kind << ".report_violation(CPP2_CONTRACT_MSG(";
 
@@ -2291,9 +2412,13 @@ private:
         }
         
         // Check if it's a function (method) or variable (field)
+        const Node *tpl_params = nullptr;
         for (const auto &grandchild : tree_.children(child)) {
+          if (grandchild.kind == NodeKind::TemplateArgs && !tpl_params) {
+            tpl_params = &grandchild;
+          }
           if (grandchild.kind == NodeKind::FunctionSuffix) {
-            emit_method(member_name, grandchild, type_name);
+            emit_method(member_name, grandchild, type_name, tpl_params);
             return;
           }
           if (grandchild.kind == NodeKind::VariableSuffix) {
@@ -2305,7 +2430,13 @@ private:
     }
   }
   
-  void emit_method(const std::string &name, const Node &suffix, const std::string &type_name) {
+  void emit_method(const std::string &name, const Node &suffix, const std::string &type_name, const Node *template_params = nullptr) {
+    if (template_params) {
+      emit_indent();
+      out_ << "template";
+      emit_template_args(*template_params);
+      out_ << "\n";
+    }
     // Similar to emit_function but for methods
     std::string return_type = "auto";
     std::string params;
@@ -2442,7 +2573,9 @@ private:
         }
       }
     } else if (n.kind == NodeKind::IsExpression) {
-      // is expression: expr is Type -> cpp2::is<Type>(expr)
+      // is expression:
+      // - expr is Type  -> cpp2::is<Type>(expr)
+      // - expr is value -> cpp2::is(expr, value)
       auto children = tree_.children(n);
       std::vector<const Node *> parts;
       for (const auto &child : children) {
@@ -2451,12 +2584,20 @@ private:
         }
       }
       if (parts.size() >= 2) {
-        out_ << "cpp2::is<";
-        // Second part is the type
-        out_ << format_type(*parts[1]);
-        out_ << ">(";
-        emit_expression(*parts[0]);
-        out_ << ")";
+        std::string rhs_text = trim(node_text(*parts[1]));
+        if (is_type_like(rhs_text)) {
+          out_ << "cpp2::is<";
+          out_ << format_type(*parts[1]);
+          out_ << ">(";
+          emit_expression(*parts[0]);
+          out_ << ")";
+        } else {
+          out_ << "cpp2::is(";
+          emit_expression(*parts[0]);
+          out_ << ", ";
+          emit_expression(*parts[1]);
+          out_ << ")";
+        }
       } else {
         // Fallback
         out_ << node_text(n);
@@ -2777,6 +2918,8 @@ private:
       }
     } else if (n.kind == NodeKind::InspectExpression) {
       emit_inspect_expression(n);
+    } else if (n.kind == NodeKind::LambdaExpression) {
+      emit_lambda_expression(n);
     } else {
       // Fallback
       out_ << node_text(n);
@@ -2895,6 +3038,68 @@ private:
     out_ << "} ()";
   }
 
+  void emit_lambda_expression(const Node &n) {
+    // Cpp2 function-expression syntax:
+    //   :(params) -> type = { ... }
+    // Emit as a C++ lambda:
+    //   [&](params) -> type { ... }
+
+    const Node *suffix = nullptr;
+    for (const auto &child : tree_.children(n)) {
+      if (child.kind == NodeKind::FunctionSuffix) {
+        suffix = &child;
+        break;
+      }
+    }
+
+    if (!suffix) {
+      out_ << node_text(n);
+      return;
+    }
+
+    std::string return_type = "auto";
+    const Node *param_list = nullptr;
+    const Node *body = nullptr;
+
+    for (const auto &child : tree_.children(*suffix)) {
+      if (child.kind == NodeKind::ParamList) {
+        param_list = &child;
+      } else if (child.kind == NodeKind::ReturnSpec) {
+        return_type = emit_type_spec(child);
+      } else if (child.kind == NodeKind::FunctionBody) {
+        body = &child;
+      }
+    }
+
+    std::string params;
+    if (param_list) {
+      params = emit_params(*param_list);
+    }
+
+    out_ << "[&](" << params << ")";
+
+    // If return type is explicitly specified and not auto/deduced, include it.
+    // (Cpp2 uses '_' for deduced return, which maps to 'auto'.)
+    if (return_type != "auto") {
+      out_ << " -> " << return_type;
+    }
+
+    out_ << " {";
+    if (!body) {
+      out_ << " }";
+      return;
+    }
+
+    out_ << "\n";
+    ++indent_;
+    emit_function_body(*body, /*named_ret_var=*/"", /*named_ret_type=*/"",
+                       /*multi_returns=*/{},
+                       /*return_type=*/return_type == "auto" ? "auto" : return_type);
+    --indent_;
+    emit_indent();
+    out_ << "}";
+  }
+
   void emit_pattern_check(const Node &pattern) {
     // Pattern can be:
     // - IsPattern: "is type" or "is expr"
@@ -3008,6 +3213,8 @@ private:
   bool is_type_like(const std::string &s) const {
     // Check if s looks like a type name
     // Types: contain ::, <>, or are known type names
+    std::string t = trim(s);
+    if (!t.empty() && (t[0] == '*' || t[0] == '&')) return true;
     if (s.find("::") != std::string::npos) return true;
     if (s.find('<') != std::string::npos) return true;
     // Known simple types
