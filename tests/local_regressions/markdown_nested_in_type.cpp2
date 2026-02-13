@@ -1,0 +1,7 @@
+// Test: markdown block inside type body must be rejected
+mytype: type = {
+    /*```badmodule
+    This should also fail
+    ```*/
+    x: int = 0;
+}

@@ -15,6 +15,21 @@ function(add_test_if_exists test_name file_name)
     endif()
 endfunction()
 
+# Slim-only tests (no MLIR dependency, link against Cpp2SlimParser)
+function(add_slim_test test_name file_name)
+    if(EXISTS "${TESTS_DIR}/${file_name}")
+        add_executable(${test_name} ${file_name})
+        target_link_libraries(${test_name} PRIVATE Cpp2SlimParser)
+        target_include_directories(${test_name} PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_BINARY_DIR}
+        )
+        add_test(NAME ${test_name} COMMAND ${test_name}
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        )
+    endif()
+endfunction()
+
 # Tests disabled due to missing parser.hpp or MLIR linkage issues
 set(DISABLED_TESTS
     end_to_end_arena_codegen_test cpp26_contracts_test benchmark_allocation_performance
@@ -61,6 +76,7 @@ add_test_if_exists(test_function_try_catch test_function_try_catch.cpp)
 add_test_if_exists(test_memory_transfer test_memory_transfer.cpp)
 add_test_if_exists(test_gpu_dma_escape_analysis test_gpu_dma_escape_analysis.cpp)
 add_test_if_exists(test_markdown_blocks test_markdown_blocks.cpp)
+add_slim_test(test_markdown_placement test_markdown_placement.cpp)
 add_test_if_exists(test_markdown_hash test_markdown_hash.cpp)
 add_test_if_exists(test_parameter_qualifier_lexing test_parameter_qualifier_lexing.cpp)
 add_test_if_exists(escape_analysis_pass_test escape_analysis_pass_test.cpp)
@@ -84,5 +100,8 @@ add_test_if_exists(test_statement_parsing parser/test_statement_parsing.cpp)
 add_test_if_exists(debug_for_tree parser/debug_for_tree.cpp)
 add_test_if_exists(parser_test_harness parser/test_harness.cpp)
 add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
+
+# Local regressions - independent of cppfront suite
+add_subdirectory(local_regressions)
 
 enable_testing()

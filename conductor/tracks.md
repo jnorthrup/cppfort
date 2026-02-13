@@ -346,11 +346,78 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 13*
-*Completed: 8*
+## [x] Track: Cpp2 Tailcall-Potential Fibonacci Local Regression
+
+*Link: [./conductor/tracks/tailcall_fibonacci_local_20260212/](./conductor/tracks/tailcall_fibonacci_local_20260212/)*
+*Status: COMPLETE - Local regression infrastructure established*
+
+**Deliverables:**
+- `tests/local_regressions/` directory structure
+- `tests/local_regressions/tailcall_fibonacci.cpp2` - Cpp2 source
+- `tests/local_regressions/expected/tailcall_fibonacci.cpp` - expected output
+- CMake integration for `local_regression` target
+- Verified: transpiles, compiles, executes (fib(10) = 55)
+
+---
+
+## [ ] Track: Markdown CAS Byte-Spec - Fix Lexer Capture for Byte-Perfect Hash
+
+*Link: [./conductor/tracks/markdown_cas_bytespec_20260212/](./conductor/tracks/markdown_cas_bytespec_20260212/)*
+*Status: NEW*
+
+**Objective:** Fix lexer to capture markdown content byte-for-byte for consistent hash computation.
+
+**Phases:**
+1. Fix `scan_markdown_block()` - remove identifier and whitespace skipping
+2. Create local regression test with known hash vector
+3. Document and close track
+
+---
+
+## [ ] Track: Markdown blocks — pure lines, not concentric, not recursive
+
+*Status: NEW*
+
+**Objective:** Enforce the three invariants of markdown comment blocks as language boxes.
+
+Markdown comment blocks (`/*```...```*/`) are **inline empty modules** — CAS-hashed interface boundaries.
+They must obey three structural rules that distinguish them from comments and from code:
+
+### Invariant 1: Pure markdown lines
+Each line inside `` ``` `` delimiters is a plain markdown line. No Cpp2 parsing is applied to
+the content. The content is line-oriented text hashed byte-for-byte.
+
+### Invariant 2: Not concentric with surrounding code
+Markdown blocks appear **alongside** declarations at the translation-unit top level, never
+inside function bodies, type definitions, or nested scopes. They are peers of declarations,
+not children. The Cpp2 mixed-mode rule applies: Cpp2 and markdown regions sit side-by-side
+but do not nest into each other.
+
+**Current violation:** The lexer tokenizes `MARKDOWN_BLOCK` at any source position (both the
+bare `` ``` `` entry point at lexer.cpp:277 and the `/*```...```*/` path in `scan_block_comment()`
+at lexer.cpp:660). A markdown block appearing inside a function body will be tokenized — the
+parser top-level grammar constrains `markdown_block()` to `translation_unit` but there is no
+diagnostic when one appears in an illegal position.
+
+### Invariant 3: Not recursive
+Markdown blocks do not nest. A `` ``` `` sequence inside the content of a markdown block is
+**not** an opening delimiter — it is literal text. The lexer already handles this correctly
+(`scan_markdown_block()` scans for the next `` ``` `` as closing delimiter without recursion).
+
+**Phases:**
+1. Add lexer/parser diagnostic error when `MARKDOWN_BLOCK` token appears at non-top-level position
+2. Add regression tests: markdown block inside function body → error; inside type → error
+3. Add regression tests: markdown block at top level alongside declarations → pass (existing behavior)
+4. Update spec (section 2.1) to replace "blocks can appear anywhere a comment can" with the three invariants
+5. Optionally: restrict the bare `` ``` `` lexer entry point to only fire at line-start / top-level context
+
+---
+
+*Total Tracks: 16*
+*Completed: 9*
 *In Progress: 0*
 *Active: 0*
 *Suspended: 1*
 *Planned: 4*
 *Blocked: 0*
-*New: 0*
+*New: 2*

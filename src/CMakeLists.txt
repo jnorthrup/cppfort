@@ -5,6 +5,7 @@ add_library(Cpp2SlimParser
     lexer.cpp
     parser.cpp
     emitter.cpp
+    markdown_hash.cpp
 )
 target_include_directories(Cpp2SlimParser PUBLIC
     ${CMAKE_SOURCE_DIR}/include

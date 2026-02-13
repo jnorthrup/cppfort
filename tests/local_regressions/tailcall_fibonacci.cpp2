@@ -1,0 +1,31 @@
+// Fibonacci with tailcall potential
+// Tests: recursive function, tailcall optimization
+
+// Basic recursive Fibonacci - has tailcall potential after transformation
+fib: (n: int) -> int = {
+    if n <= 1 {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+// Tail-recursive Fibonacci helper - direct tailcall
+fib_tail_helper: (n: int, acc: int, prev: int) -> int = {
+    if n == 0 {
+        return acc;
+    }
+    return fib_tail_helper(n - 1, acc + prev, acc);
+}
+
+// Tail-recursive Fibonacci wrapper
+fib_tail: (n: int) -> int = {
+    return fib_tail_helper(n, 1, 0);
+}
+
+main: () -> int = {
+    // Runtime tests
+    std::cout << "fib(10) = " << fib(10) << "\n";
+    std::cout << "fib_tail(10) = " << fib_tail(10) << "\n";
+    
+    return 0;
+}
