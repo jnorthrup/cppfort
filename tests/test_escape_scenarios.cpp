@@ -14,9 +14,11 @@ void analyze_escape(AST& ast);
 // Helper: Get VarDecl from DeclarationStatement in function body
 VariableDeclaration* get_var_decl_from_function(FunctionDeclaration* func, size_t stmt_index) {
     if (!func || !func->body) return nullptr;
-    if (stmt_index >= func->body->statements.size()) return nullptr;
+    auto* block = dynamic_cast<BlockStatement*>(func->body.get());
+    if (!block) return nullptr;
+    if (stmt_index >= block->statements.size()) return nullptr;
 
-    auto* decl_stmt = dynamic_cast<DeclarationStatement*>(func->body->statements[stmt_index].get());
+    auto* decl_stmt = dynamic_cast<DeclarationStatement*>(block->statements[stmt_index].get());
     if (!decl_stmt) return nullptr;
 
     return dynamic_cast<VariableDeclaration*>(decl_stmt->declaration.get());
@@ -33,13 +35,12 @@ void test_no_escape_scenario() {
     func->body = std::make_unique<BlockStatement>(1);
 
     auto var_decl = std::make_unique<VariableDeclaration>("x", 2);
-    var_decl->type = std::make_unique<Type>();
-    var_decl->type->kind = Type::Kind::Builtin;
+    var_decl->type = std::make_unique<Type>(Type::Kind::Builtin);
     var_decl->type->name = "int";
-    var_decl->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_decl->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
-    func->body->statements.push_back(
+    auto* block = dynamic_cast<BlockStatement*>(func->body.get());
+    block->statements.push_back(
         std::make_unique<DeclarationStatement>(std::move(var_decl), 2)
     );
 
@@ -56,9 +57,9 @@ void test_no_escape_scenario() {
     assert(analyzed_var && "Variable declaration not found");
 
     // Check escape_info field exists and is populated
-    assert(analyzed_var->escape_info.has_value() && "EscapeInfo not attached to variable");
+    assert(analyzed_var->escape_info && "EscapeInfo not attached to variable");
 
-    const auto& escape_info = analyzed_var->escape_info.value();
+    const auto& escape_info = *(analyzed_var->escape_info);
     assert(escape_info.kind == EscapeKind::NoEscape && "Expected NoEscape kind");
     assert(!escape_info.needs_lifetime_extension && "NoEscape should not need lifetime extension");
     assert(escape_info.escape_points.empty() && "NoEscape should have no escape points");
@@ -76,25 +77,23 @@ void test_escape_to_return_scenario() {
     AST ast;
 
     auto func = std::make_unique<FunctionDeclaration>("get_value", 1);
-    func->return_type = std::make_unique<Type>();
-    func->return_type->kind = Type::Kind::Builtin;
+    func->return_type = std::make_unique<Type>(Type::Kind::Builtin);
     func->return_type->name = "int";
     func->body = std::make_unique<BlockStatement>(1);
 
     auto var_decl = std::make_unique<VariableDeclaration>("x", 2);
-    var_decl->type = std::make_unique<Type>();
-    var_decl->type->kind = Type::Kind::Builtin;
+    var_decl->type = std::make_unique<Type>(Type::Kind::Builtin);
     var_decl->type->name = "int";
-    var_decl->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_decl->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
-    func->body->statements.push_back(
+    auto* block = dynamic_cast<BlockStatement*>(func->body.get());
+    block->statements.push_back(
         std::make_unique<DeclarationStatement>(std::move(var_decl), 2)
     );
 
     auto return_value = std::make_unique<IdentifierExpression>("x", 3);
     auto return_stmt = std::make_unique<ReturnStatement>(std::move(return_value), 3);
-    func->body->statements.push_back(std::move(return_stmt));
+    block->statements.push_back(std::move(return_stmt));
 
     ast.declarations.push_back(std::move(func));
 
@@ -109,9 +108,9 @@ void test_escape_to_return_scenario() {
     assert(analyzed_var && "Variable declaration not found");
 
     // Check escape_info
-    assert(analyzed_var->escape_info.has_value() && "EscapeInfo not attached to returned variable");
+    assert(analyzed_var->escape_info && "EscapeInfo not attached to returned variable");
 
-    const auto& escape_info = analyzed_var->escape_info.value();
+    const auto& escape_info = *(analyzed_var->escape_info);
     assert(escape_info.kind == EscapeKind::EscapeToReturn && "Expected EscapeToReturn kind");
     assert(escape_info.needs_lifetime_extension && "Returned value should need lifetime extension");
 
@@ -135,20 +134,18 @@ void test_escape_to_heap_scenario() {
 
     // Declare x: int = 42
     auto var_x = std::make_unique<VariableDeclaration>("x", 2);
-    var_x->type = std::make_unique<Type>();
-    var_x->type->kind = Type::Kind::Builtin;
+    var_x->type = std::make_unique<Type>(Type::Kind::Builtin);
     var_x->type->name = "int";
-    var_x->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_x->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
-    func->body->statements.push_back(
+    auto* block = dynamic_cast<BlockStatement*>(func->body.get());
+    block->statements.push_back(
         std::make_unique<DeclarationStatement>(std::move(var_x), 2)
     );
 
     // Declare obj: MyClass = MyClass()
     auto var_obj = std::make_unique<VariableDeclaration>("obj", 3);
-    var_obj->type = std::make_unique<Type>();
-    var_obj->type->kind = Type::Kind::UserDefined;
+    var_obj->type = std::make_unique<Type>(Type::Kind::UserDefined);
     var_obj->type->name = "MyClass";
     // Constructor call as initializer
     auto constructor = std::make_unique<CallExpression>(
@@ -156,7 +153,7 @@ void test_escape_to_heap_scenario() {
     );
     var_obj->initializer = std::move(constructor);
 
-    func->body->statements.push_back(
+    block->statements.push_back(
         std::make_unique<DeclarationStatement>(std::move(var_obj), 3)
     );
 
@@ -167,13 +164,10 @@ void test_escape_to_heap_scenario() {
     );
     auto x_ref = std::make_unique<IdentifierExpression>("x", 4);
     auto assignment = std::make_unique<BinaryExpression>(
-        TokenType::Equal,
-        std::move(member_access),
-        std::move(x_ref),
-        4
+        std::move(member_access), TokenType::Equal, std::move(x_ref), 4
     );
 
-    func->body->statements.push_back(
+    block->statements.push_back(
         std::make_unique<ExpressionStatement>(std::move(assignment), 4)
     );
 
@@ -192,9 +186,9 @@ void test_escape_to_heap_scenario() {
     // For now, we expect this to still be NoEscape because the current implementation
     // doesn't yet track heap escapes via member assignments
     // This test documents the EXPECTED behavior once fully implemented
-    assert(analyzed_var_x->escape_info.has_value() && "EscapeInfo not attached to x");
+    assert(analyzed_var_x->escape_info && "EscapeInfo not attached to x");
 
-    const auto& escape_info = analyzed_var_x->escape_info.value();
+    const auto& escape_info = *(analyzed_var_x->escape_info);
 
     // FUTURE: When heap escape tracking is implemented, change this assertion
     // Currently: NoEscape (not yet tracking member assignments)
@@ -223,40 +217,36 @@ void test_multiple_escape_points() {
     AST ast;
 
     auto func = std::make_unique<FunctionDeclaration>("multi_escape", 1);
-    func->return_type = std::make_unique<Type>();
-    func->return_type->kind = Type::Kind::Builtin;
+    func->return_type = std::make_unique<Type>(Type::Kind::Builtin);
     func->return_type->name = "int";
     func->body = std::make_unique<BlockStatement>(1);
 
     // Declare x
     auto var_x = std::make_unique<VariableDeclaration>("x", 2);
-    var_x->type = std::make_unique<Type>();
-    var_x->type->kind = Type::Kind::Builtin;
+    var_x->type = std::make_unique<Type>(Type::Kind::Builtin);
     var_x->type->name = "int";
-    var_x->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_x->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
-    func->body->statements.push_back(
+    auto* block = dynamic_cast<BlockStatement*>(func->body.get());
+    block->statements.push_back(
         std::make_unique<DeclarationStatement>(std::move(var_x), 2)
     );
 
     // if (condition) return x;
-    auto if_stmt = std::make_unique<IfStatement>(3);
-    if_stmt->condition = std::make_unique<IdentifierExpression>("condition", 3);
-    if_stmt->then_branch = std::make_unique<ReturnStatement>(
+    auto then_stmt = std::make_unique<ReturnStatement>(
         std::make_unique<IdentifierExpression>("x", 3), 3
     );
-    func->body->statements.push_back(std::move(if_stmt));
+    auto if_stmt = std::make_unique<IfStatement>(
+        std::make_unique<IdentifierExpression>("condition", 3),
+        std::move(then_stmt), nullptr, 3
+    );
+    block->statements.push_back(std::move(if_stmt));
 
     // return x + 1;
     auto x_ref = std::make_unique<IdentifierExpression>("x", 4);
-    auto one = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "1", 4
-    );
-    auto add_expr = std::make_unique<BinaryExpression>(
-        TokenType::Plus, std::move(x_ref), std::move(one), 4
-    );
-    func->body->statements.push_back(
+    auto one = std::make_unique<LiteralExpression>(int64_t(1), 4);
+    auto add_expr = std::make_unique<BinaryExpression>(std::move(x_ref), TokenType::Plus, std::move(one), 4);
+    block->statements.push_back(
         std::make_unique<ReturnStatement>(std::move(add_expr), 4)
     );
 
@@ -269,9 +259,9 @@ void test_multiple_escape_points() {
     auto* analyzed_func = dynamic_cast<FunctionDeclaration*>(ast.declarations[0].get());
     auto* analyzed_var = get_var_decl_from_function(analyzed_func, 0);
     assert(analyzed_var && "Variable not found");
-    assert(analyzed_var->escape_info.has_value() && "EscapeInfo not attached");
+    assert(analyzed_var->escape_info && "EscapeInfo not attached");
 
-    const auto& escape_info = analyzed_var->escape_info.value();
+    const auto& escape_info = *(analyzed_var->escape_info);
     assert(escape_info.kind == EscapeKind::EscapeToReturn && "Expected EscapeToReturn");
 
     std::cout << "  ✓ Variable correctly marked as EscapeToReturn despite multiple uses\n";

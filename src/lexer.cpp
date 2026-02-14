@@ -151,17 +151,20 @@ void Lexer::scan_token() {
             break;
         }
         case '<': {
-            if (match('=')) {
+            if (match('<')) {
+                // Check for [[ attribute syntax
+                if (match('[')) {
+                    scan_cpp26_attribute();
+                } else if (match('=')) {
+                    add_token(TokenType::LeftShiftEqual);
+                } else {
+                    add_token(TokenType::LeftShift);
+                }
+            } else if (match('=')) {
                 if (match('>')) {
                     add_token(TokenType::Spaceship);  // <=>
                 } else {
                     add_token(TokenType::LessThanOrEqual);
-                }
-            } else if (match('<')) {
-                if (match('=')) {
-                    add_token(TokenType::LeftShiftEqual);
-                } else {
-                    add_token(TokenType::LeftShift);
                 }
             } else {
                 add_token(TokenType::LessThan);
@@ -478,18 +481,16 @@ void Lexer::scan_number() {
     bool is_binary = false;
     bool is_float = false;
     
-    if (peek() == '0') {
-        if (peek_next() == 'x' || peek_next() == 'X') {
+    if (source[start] == '0') {
+        if (peek() == 'x' || peek() == 'X') {
             is_hex = true;
-            advance(); // 0
-            advance(); // x
+            advance(); // x/X
             while (is_hex_digit(peek()) || peek() == '\'') {
                 advance();
             }
-        } else if (peek_next() == 'b' || peek_next() == 'B') {
+        } else if (peek() == 'b' || peek() == 'B') {
             is_binary = true;
-            advance(); // 0
-            advance(); // b
+            advance(); // b/B
             while (peek() == '0' || peek() == '1' || peek() == '\'') {
                 advance();
             }
@@ -693,20 +694,6 @@ void Lexer::scan_markdown_block() {
 
     std::size_t content_start = current;
 
-    // Skip optional name/identifier immediately after opening ```
-    while (!is_at_end() && peek() != '\n' && !std::isspace(static_cast<unsigned char>(peek()))) {
-        advance();
-    }
-
-    // Skip whitespace/newline after name
-    if (peek() == '\n' || std::isspace(static_cast<unsigned char>(peek()))) {
-        if (peek() == '\n') {
-            line++;
-            column = 1;
-        }
-        advance();
-    }
-
     // Now capture content until we find closing ```
     while (!is_at_end()) {
         // Check for closing delimiter: ```
@@ -796,6 +783,56 @@ TokenType Lexer::identifier_type() {
     auto it = keywords.find(std::string(text));
     if (it != keywords.end()) return it->second;
     return TokenType::Identifier;
+}
+
+void Lexer::scan_cpp26_attribute() {
+    // Called when we've seen [[ - scan C++26 attribute syntax like [[expects]], [[ensures]], [[assert]]
+    // Current position is after the [[
+
+    // Skip whitespace
+    while (std::isspace(static_cast<unsigned char>(peek())) && !is_at_end()) {
+        advance();
+    }
+
+    // Scan identifier (expects, ensures, assert, or other attribute)
+    size_t attr_start = current;
+    while (is_identifier_char(peek()) && !is_at_end()) {
+        advance();
+    }
+
+    if (current == attr_start) {
+        // No identifier found, emit unknown tokens
+        add_token(TokenType::Unknown);
+        return;
+    }
+
+    std::string_view attr_name = source.substr(attr_start, current - attr_start);
+
+    // Map attribute names to tokens
+    TokenType attr_type = TokenType::Identifier;
+    if (attr_name == "expects") {
+        attr_type = TokenType::AttributeExpect;
+    } else if (attr_name == "ensures") {
+        attr_type = TokenType::AttributeEnsure;
+    } else if (attr_name == "assert") {
+        attr_type = TokenType::AttributeAssert;
+    }
+
+    // Add the attribute token
+    add_token(attr_type, attr_name);
+
+    // Skip whitespace
+    while (std::isspace(static_cast<unsigned char>(peek())) && !is_at_end()) {
+        advance();
+    }
+
+    // Check for closing ]]
+    if (match(']') && match(']')) {
+        add_token(TokenType::DoubleRightBracket, "]]");
+    } else {
+        // Malformed attribute - emit error token
+        add_token(TokenType::Unknown);
+    }
 }
 
 } // namespace cpp2_transpiler

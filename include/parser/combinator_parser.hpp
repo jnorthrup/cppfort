@@ -87,33 +87,29 @@ inline std::unique_ptr<Expression> parse_primary(ParseContext& ctx) {
     // Literals
     if (tok.type == TT::IntegerLiteral) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::Integer, std::string(tok.lexeme), tok.line);
+        return std::make_unique<LiteralExpression>(int64_t(std::stoll(std::string(tok.lexeme))), tok.line);
     }
     if (tok.type == TT::FloatLiteral) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::Float, std::string(tok.lexeme), tok.line);
+        return std::make_unique<LiteralExpression>(double(std::stod(std::string(tok.lexeme))), tok.line);
     }
     if (tok.type == TT::StringLiteral) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::String, std::string(tok.lexeme), tok.line);
+        return std::make_unique<LiteralExpression>(std::string(tok.lexeme), tok.line);
     }
     if (tok.type == TT::CharacterLiteral) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::Character, std::string(tok.lexeme), tok.line);
+        char c = '\0';
+        if (std::string(tok.lexeme).size() >= 3) c = std::string(tok.lexeme)[1];
+        return std::make_unique<LiteralExpression>(c, tok.line);
     }
     if (tok.type == TT::True) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::Boolean, "true", tok.line);
+        return std::make_unique<LiteralExpression>(true, tok.line);
     }
     if (tok.type == TT::False) {
         ctx.advance();
-        return std::make_unique<LiteralExpression>(
-            LiteralExpression::LiteralKind::Boolean, "false", tok.line);
+        return std::make_unique<LiteralExpression>(false, tok.line);
     }
     
     // this - represented as identifier

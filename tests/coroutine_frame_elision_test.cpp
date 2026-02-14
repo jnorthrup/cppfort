@@ -60,7 +60,9 @@ void test_coroutine_containment_graph() {
     child_graph.child_coroutines.clear();
 
     // Test is_contained()
-    if (parent_graph.is_contained() && child_graph.is_contained()) {
+    // Parent is top-level (nullptr parent) so NOT contained
+    // Child has a parent so IS contained
+    if (!parent_graph.is_contained() && child_graph.is_contained()) {
         std::cout << "  PASS: CoroutineContainmentGraph::is_contained() works\n";
     } else {
         std::cerr << "  FAIL: is_contained() returned unexpected result\n";

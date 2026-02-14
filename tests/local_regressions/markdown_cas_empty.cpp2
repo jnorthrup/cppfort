@@ -1,0 +1,11 @@
+// Test markdown CAS idempotent modules
+
+/*``````*/
+
+/*```mymodule
+Hello world
+```*/
+
+main: () -> int = {
+    return 0;
+}

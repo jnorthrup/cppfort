@@ -55,6 +55,14 @@ std::unique_ptr<Pass> createSONLoopOptPass();
 /// memory barrier elimination, async-to-sync conversion, and parallel region detection.
 std::unique_ptr<Pass> createSONConcurrencyAnalysisPass();
 
+/// Create JMM (Java Memory Model) verification pass for SON
+/// Validates JMM constraints in SON IR:
+/// - Happens-before edge consistency
+/// - Volatile operation sequential consistency
+/// - Final field freeze timing
+/// - Safe publication patterns
+std::unique_ptr<Pass> createSONJMMVerificationPass();
+
 //===----------------------------------------------------------------------===//
 // External Memory Optimization Passes (Phase 3: Semantic AST Enhancements)
 //===----------------------------------------------------------------------===//

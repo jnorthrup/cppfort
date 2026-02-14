@@ -23,20 +23,20 @@ class Cpp2FIR_Op<string mnemonic, list<Trait> traits = []> :
 // Escape Analysis Attributes (Phase 3: External Memory Integration)
 // ============================================================================
 
-// Escape kind enum for escape analysis annotations
-def Cpp2FIR_EscapeKindAttr : StrEnumAttr<"EscapeKind", 
-    "Escape analysis result for SSA values", [
-  StrEnumAttrCase<"no_escape">,   // Value stays local (stack) - transfer can be eliminated
-  StrEnumAttrCase<"heap">,        // Stored in heap-allocated object
-  StrEnumAttrCase<"return">,      // Returned from function
-  StrEnumAttrCase<"param">,       // Stored via pointer/reference parameter  
-  StrEnumAttrCase<"global">,      // Stored in global variable
-  StrEnumAttrCase<"channel">,     // Sent through channel
-  StrEnumAttrCase<"gpu">,         // Transferred to GPU memory - transfer required
-  StrEnumAttrCase<"dma">          // Transferred via DMA buffer - transfer required
-]> {
-  let cppNamespace = "::mlir::cpp2fir";
-}
+// // Escape kind enum for escape analysis annotations
+// def Cpp2FIR_EscapeKindAttr : StrEnumAttr<"EscapeKind", 
+//     "Escape analysis result for SSA values", [
+//   StrEnumAttrCase<"no_escape">,   // Value stays local (stack) - transfer can be eliminated
+//   StrEnumAttrCase<"heap">,        // Stored in heap-allocated object
+//   StrEnumAttrCase<"return">,      // Returned from function
+//   StrEnumAttrCase<"param">,       // Stored via pointer/reference parameter  
+//   StrEnumAttrCase<"global">,      // Stored in global variable
+//   StrEnumAttrCase<"channel">,     // Sent through channel
+//   StrEnumAttrCase<"gpu">,         // Transferred to GPU memory - transfer required
+//   StrEnumAttrCase<"dma">          // Transferred via DMA buffer - transfer required
+// ]> {
+//   let cppNamespace = "::mlir::cpp2fir";
+// }
 
 // Arena allocation attributes (Phase 7)
 def Cpp2FIR_ArenaScopeAttr : AttrDef<Cpp2FIR_Dialect, "ArenaScope"> {
@@ -65,9 +65,9 @@ def Cpp2FIR_VarOp : Cpp2FIR_Op<"var"> {
   }];
   let arguments = (ins 
     Variadic<AnyType>:$initializer,
-    OptionalAttr<StrAttr>:$sym_name,
-    OptionalAttr<Cpp2FIR_EscapeKindAttr>:$escape,
-    OptionalAttr<Cpp2FIR_ArenaScopeAttr>:$arena_scope
+    OptionalAttr<StrAttr>:$sym_name
+    // OptionalAttr<Cpp2FIR_EscapeKindAttr>:$escape,
+    // OptionalAttr<Cpp2FIR_ArenaScopeAttr>:$arena_scope
   );
   let results = (outs AnyType:$result);
   let assemblyFormat = "($initializer^ `:` type($initializer))? attr-dict `->` type($result)";

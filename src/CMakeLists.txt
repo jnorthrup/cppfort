@@ -1,9 +1,26 @@
 # CMakeLists.txt for cppfort transpiler
 
-# Main transpiler library
+# Slim parser target (no MLIR dependencies)
+add_library(Cpp2SlimParser
+    lexer.cpp
+    parser.cpp
+    emitter.cpp
+    markdown_hash.cpp
+)
+target_include_directories(Cpp2SlimParser PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# cppfort executable (slim parser version)
+add_executable(cppfort main.cpp)
+target_link_libraries(cppfort PRIVATE Cpp2SlimParser)
+
+# Main transpiler library (MLIR-dependent)
 add_library(Cpp2Transpiler
     lexer.cpp
     parser.cpp
+    emitter.cpp
     ast.cpp
     semantic_analyzer.cpp
     code_generator.cpp
@@ -11,21 +28,6 @@ add_library(Cpp2Transpiler
     metafunction_processor.cpp
     contract_processor.cpp
     markdown_hash.cpp
-    # ast_to_fir.cpp  # Disabled: requires MLIR
-    # clang_ast_reverse.cpp  # Disabled: requires Clang
-    # ConvertFIRToSON.cpp  # Disabled: requires MLIR
-    # crdt_patch.cpp  # Disabled: requires MLIR
-    # diagnostic_collector.cpp  # Disabled: requires MLIR
-    # FIRSCCPPass.cpp  # Disabled: requires MLIR
-    # FIRTransferEliminationPass.cpp  # Disabled: requires MLIR (Phase 3: External Memory)
-    # LoopToKernel.cpp  # Disabled: requires MLIR
-    # markdown_hash.cpp  # Disabled: requires MLIR
-    # SCCPPass.cpp  # Disabled: requires MLIR
-    # semantic_hash.cpp  # Disabled: requires MLIR
-    # son_serialization.cpp  # Disabled: requires MLIR
-    # Cpp2ConcurrencyDialect.cpp  # Disabled: requires MLIR
-    # Cpp2FIRDialect.cpp  # Disabled: requires MLIR
-    # Cpp2SONDialect.cpp  # Disabled: requires MLIR
 )
 
 target_include_directories(Cpp2Transpiler PUBLIC
@@ -33,12 +35,12 @@ target_include_directories(Cpp2Transpiler PUBLIC
     ${CMAKE_BINARY_DIR}
 )
 
-# target_link_libraries(Cpp2Transpiler PUBLIC
-#     MLIRIR
-#     MLIRSupport
-#     LLVMCore
-# )
-
-# cppfort executable
-add_executable(cppfort main.cpp)
-target_link_libraries(cppfort PRIVATE Cpp2Transpiler)
+target_link_libraries(Cpp2Transpiler PUBLIC
+    MLIRIR
+    MLIRSupport
+    LLVMCore
+    MLIRFuncDialect
+    MLIRFuncTransforms
+    MLIRTransforms
+    MLIRSCFDialect
+)

@@ -1,378 +1,289 @@
 #pragma once
-
 // ============================================================================
 // Spirit-Like Parser Combinators for Cpp2
 // ============================================================================
-//
-// This file provides Spirit-like operator syntax sugar over the functional
-// combinators in ebnf.hpp, specialized for Cpp2 token parsing.
-//
 // EBNF → C++ Operator Mapping:
-//   EBNF sequence (a b)      → a >> b
-//   EBNF alternation (a | b) → a | b  
-//   EBNF repetition ({ a })  → *a
-//   EBNF one-or-more (a+)    → +a
-//   EBNF optional ([ a ])    → -a
-//   EBNF list (a % sep)      → a % sep
-//   Transform                → a[f]
-//
-// Usage:
-//   using namespace cpp2::parser::spirit;
-//   
-//   // Terminal parsers
-//   constexpr auto identifier = token(TokenType::Identifier);
-//   constexpr auto lparen = token(TokenType::LeftParen);
-//   constexpr auto rparen = token(TokenType::RightParen);
-//   constexpr auto comma = token(TokenType::Comma);
-//
-//   // Combined rules
-//   constexpr auto param_list = lparen >> (identifier % comma) >> rparen;
-//   constexpr auto optional_params = -param_list;
-//
+//   sequence (a b)      → a >> b
+//   alternation (a | b) → a | b  
+//   repetition ({ a })  → *a
+//   one-or-more (a+)    → +a
+//   optional ([ a ])    → -a
+//   list (a % sep)      → a % sep
+//   char literal 'x'    → implicit via operator
+//   string literal "x"  → implicit via operator
 // ============================================================================
-
-#ifndef CPP2_COMBINATORS_SPIRIT_HPP
-#define CPP2_COMBINATORS_SPIRIT_HPP
+ 
 
 #include "ebnf.hpp"
 #include "../lexer.hpp"
-#include <string_view>
+#include "../slim_ast.hpp"
+#include <span>
 
 namespace cpp2::parser::spirit {
 
-// Import ebnf namespace for underlying combinators
 namespace ebnf = cpp2::combinators::ebnf;
+using TT = cpp2_transpiler::TokenType;
 
 // ============================================================================
-// Token Stream Input Adapter
+// Token Stream
 // ============================================================================
-// Adapts std::span<Token> to work with ebnf combinators
 
 struct TokenStream {
     std::span<const cpp2_transpiler::Token> tokens;
     std::size_t pos = 0;
     
-    using Iterator = std::span<const cpp2_transpiler::Token>::iterator;
-    
     constexpr TokenStream() = default;
-    
-    constexpr explicit TokenStream(std::span<const cpp2_transpiler::Token> toks) 
-        : tokens(toks), pos(0) {}
-    
-    constexpr TokenStream(std::span<const cpp2_transpiler::Token> toks, std::size_t p)
-        : tokens(toks), pos(p) {}
+    constexpr explicit TokenStream(std::span<const cpp2_transpiler::Token> t) : tokens(t) {}
+    constexpr TokenStream(std::span<const cpp2_transpiler::Token> t, std::size_t p) : tokens(t), pos(p) {}
     
     [[nodiscard]] constexpr bool empty() const {
-        return pos >= tokens.size() || 
-               tokens[pos].type == cpp2_transpiler::TokenType::EndOfFile;
+        return pos >= tokens.size() || tokens[pos].type == TT::EndOfFile;
     }
-    
-    [[nodiscard]] constexpr const cpp2_transpiler::Token& peek() const {
-        if (pos >= tokens.size()) {
-            return tokens.back(); // EOF token
-        }
-        return tokens[pos];
+    [[nodiscard]] constexpr const cpp2_transpiler::Token& peek(std::size_t offset = 0) const {
+        return (pos + offset) < tokens.size() ? tokens[pos + offset] : tokens.back();
     }
-    
     constexpr cpp2_transpiler::Token advance() {
-        if (pos < tokens.size()) {
-            return tokens[pos++];
-        }
-        return tokens.back();
+        return pos < tokens.size() ? tokens[pos++] : tokens.back();
     }
-    
-    constexpr Iterator begin() const { return tokens.begin() + pos; }
-    constexpr Iterator end() const { return tokens.end(); }
+    constexpr auto begin() const { return tokens.begin() + static_cast<std::ptrdiff_t>(pos); }
+    constexpr auto end() const { return tokens.end(); }
+    // Return new stream with position advanced by 1 (immutable style for Pratt parser)
+    [[nodiscard]] constexpr TokenStream next() const {
+        return TokenStream{tokens, pos + 1};
+    }
 };
 
 // ============================================================================
-// Token Parser (Terminal)
+// Parsers
 // ============================================================================
-// Matches a specific TokenType
 
 struct TokenParser {
-    cpp2_transpiler::TokenType expected;
-    
-    constexpr auto parse(TokenStream input) const 
-        -> ebnf::Result<cpp2_transpiler::Token, TokenStream> 
-    {
-        if (input.empty() || input.peek().type != expected) {
-            return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
+    TT expected;
+    constexpr auto parse(TokenStream input) const -> ebnf::Result<cpp2_transpiler::Token, TokenStream> {
+        // Special handling for EndOfFile: input.empty() is true for EndOfFile, 
+        // preventing standard check from working.
+        if (expected == TT::EndOfFile) {
+             if (input.peek().type == TT::EndOfFile) { 
+                 return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(input.peek(), input.next());
+             }
+             return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
         }
-        auto tok = input.advance();
-        return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(tok, input);
+
+        if (input.empty() || input.peek().type != expected)
+            return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
+        return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(input.advance(), input);
     }
 };
 
-// Factory for token parsers
-constexpr auto token(cpp2_transpiler::TokenType type) {
-    return TokenParser{type};
-}
-
-// ============================================================================
-// Lexeme Parser (Terminal with Specific Value)
-// ============================================================================
-// Matches a token type with a specific lexeme value
-
+// Matches token by lexeme (for operators/keywords as string literals)
 struct LexemeParser {
-    cpp2_transpiler::TokenType expected_type;
-    std::string_view expected_lexeme;
-    
-    constexpr auto parse(TokenStream input) const
-        -> ebnf::Result<cpp2_transpiler::Token, TokenStream>
-    {
-        if (input.empty() || 
-            input.peek().type != expected_type ||
-            input.peek().lexeme != expected_lexeme) {
+    std::string_view expected;
+    constexpr auto parse(TokenStream input) const -> ebnf::Result<cpp2_transpiler::Token, TokenStream> {
+        if (input.empty() || input.peek().lexeme != expected)
             return ebnf::Result<cpp2_transpiler::Token, TokenStream>::fail(input);
-        }
-        auto tok = input.advance();
-        return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(tok, input);
+        return ebnf::Result<cpp2_transpiler::Token, TokenStream>::ok(input.advance(), input);
     }
 };
 
-// Factory for lexeme parsers
-constexpr auto lexeme(cpp2_transpiler::TokenType type, std::string_view lex) {
-    return LexemeParser{type, lex};
-}
-
 // ============================================================================
-// Keyword Parser
+// Proto Wrapper
 // ============================================================================
-// Matches a keyword token
-
-constexpr auto keyword(std::string_view kw) {
-    // Keywords use Identifier type with specific lexeme
-    return LexemeParser{cpp2_transpiler::TokenType::Identifier, kw};
-}
-
-// ============================================================================
-// Proto Wrapper (from operators.hpp pattern)
-// ============================================================================
-// Wraps parsers to provide Spirit-like operator syntax
 
 template<typename P>
 struct Proto {
     P parser;
-    
     template<typename Input>
-    constexpr auto parse(Input input) const {
-        return parser.parse(input);
-    }
+    constexpr auto parse(Input input) const { return parser.parse(input); }
     
-    // Transform: p[f] - semantic action
     template<typename F>
     constexpr auto operator[](F f) const {
-        auto m = ebnf::map(parser, std::move(f));
-        return Proto<decltype(m)>{std::move(m)};
+        return Proto<decltype(ebnf::map(parser, f))>{ebnf::map(parser, f)};
     }
 };
 
-// Lift any parser into Proto wrapper
-template<typename P>
-constexpr auto lift(P p) {
-    return Proto<P>{std::move(p)};
-}
+template<typename P> constexpr auto lift(P p) { return Proto<P>{p}; }
+
+// tok(TT::X) - by enum
+constexpr auto tok(TT type) { return lift(TokenParser{type}); }
+
+// User-defined literals: "||"_l or '+'_l
+constexpr auto operator""_l(const char* s, std::size_t n) { return lift(LexemeParser{std::string_view{s, n}}); }
+constexpr auto operator""_l(char c) { return lift(LexemeParser{std::string_view{&c, 1}}); }
+
+// lit() wrapper for compatibility
+template<std::size_t N>
+constexpr auto lit(const char (&s)[N]) { return lift(LexemeParser{std::string_view{s, N-1}}); }
 
 // ============================================================================
-// Operator Overloads (Proto → Proto)
+// Operators
 // ============================================================================
 
 // Sequence: a >> b
 template<typename L, typename R>
 constexpr auto operator>>(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::seq(std::move(l.parser), std::move(r.parser)));
+    return lift(ebnf::discard(ebnf::seq(l.parser, r.parser)));
+}
+
+// String literal on right: a >> "+"
+template<typename L, std::size_t N>
+constexpr auto operator>>(Proto<L> l, const char (&s)[N]) {
+    return l >> lift(LexemeParser{std::string_view{s, N-1}});
+}
+
+// String literal on left: "(" >> a
+template<typename R, std::size_t N>
+constexpr auto operator>>(const char (&s)[N], Proto<R> r) {
+    return lift(LexemeParser{std::string_view{s, N-1}}) >> r;
 }
 
 // Alternative: a | b
 template<typename L, typename R>
 constexpr auto operator|(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::alt(std::move(l.parser), std::move(r.parser)));
+    return lift(ebnf::alt(ebnf::discard(l.parser), ebnf::discard(r.parser)));
 }
 
-// List: a % b (sep_by)
+// String literal alternatives: a | "+"
+template<typename L, std::size_t N>
+constexpr auto operator|(Proto<L> l, const char (&s)[N]) {
+    return l | lift(LexemeParser{std::string_view{s, N-1}});
+}
+
+template<typename R, std::size_t N>
+constexpr auto operator|(const char (&s)[N], Proto<R> r) {
+    return lift(LexemeParser{std::string_view{s, N-1}}) | r;
+}
+
+// Both string literals: "+" | "-"
+template<std::size_t M, std::size_t N>
+constexpr auto operator|(const char (&l)[M], const char (&r)[N]) {
+    return lift(LexemeParser{std::string_view{l, M-1}}) | lift(LexemeParser{std::string_view{r, N-1}});
+}
+
+// List: a % sep
 template<typename L, typename R>
 constexpr auto operator%(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::sep_by(std::move(l.parser), std::move(r.parser)));
+    return lift(ebnf::sep_by(l.parser, r.parser));
+}
+
+template<typename L, std::size_t N>
+constexpr auto operator%(Proto<L> l, const char (&s)[N]) {
+    return l % lift(LexemeParser{std::string_view{s, N-1}});
 }
 
 // Zero-or-more: *p
 template<typename P>
-constexpr auto operator*(Proto<P> p) {
-    return lift(ebnf::many(std::move(p.parser)));
-}
+constexpr auto operator*(Proto<P> p) { return lift(ebnf::many(p.parser)); }
 
 // One-or-more: +p
 template<typename P>
-constexpr auto operator+(Proto<P> p) {
-    return lift(ebnf::some(std::move(p.parser)));
-}
+constexpr auto operator+(Proto<P> p) { return lift(ebnf::some(p.parser)); }
 
-// Optional: -p
+// Optional: -p (unary)
 template<typename P>
-constexpr auto operator-(Proto<P> p) {
-    return lift(ebnf::opt(std::move(p.parser)));
-}
+constexpr auto operator-(Proto<P> p) { return lift(ebnf::opt(p.parser)); }
 
-// Difference: a - b (matches a but not b)
+// Difference: a - b
 template<typename L, typename R>
 constexpr auto operator-(Proto<L> l, Proto<R> r) {
-    return lift(ebnf::seq_right(
-        ebnf::not_followed_by(std::move(r.parser)),
-        std::move(l.parser)
-    ));
+    return lift(ebnf::seq_right(ebnf::not_followed_by(r.parser), l.parser));
 }
 
-// ============================================================================
-// Lifted Token Factories
-// ============================================================================
-
-// Create lifted token parser
-constexpr auto tok(cpp2_transpiler::TokenType type) {
-    return lift(token(type));
-}
-
-// Create lifted lexeme parser
-constexpr auto lex(cpp2_transpiler::TokenType type, std::string_view lexeme) {
-    return lift(LexemeParser{type, lexeme});
-}
-
-// Create lifted keyword parser
-constexpr auto kw(std::string_view keyword_name) {
-    return lift(keyword(keyword_name));
-}
 
 // ============================================================================
-// Common Token Shortcuts
+// Semantic Actions
 // ============================================================================
 
-namespace tokens {
+struct NodeAnnotation { cpp2::ast::NodeKind kind; };
+struct BinaryAnnotation { cpp2::ast::NodeKind kind; };
+struct PrefixAnnotation { cpp2::ast::NodeKind kind; };
+struct PostfixAnnotation { cpp2::ast::NodeKind kind; };
+template<typename T> struct TypeHint {};
 
-using TT = cpp2_transpiler::TokenType;
+constexpr auto with_node(cpp2::ast::NodeKind k) { return NodeAnnotation{k}; }
+constexpr auto with_binary(cpp2::ast::NodeKind k) { return BinaryAnnotation{k}; }
+constexpr auto with_prefix(cpp2::ast::NodeKind k) { return PrefixAnnotation{k}; }
+constexpr auto with_postfix(cpp2::ast::NodeKind k) { return PostfixAnnotation{k}; }
+template<typename T> constexpr auto ast_node() { return TypeHint<T>{}; }
 
-// Identifiers and Literals
-inline const auto identifier   = tok(TT::Identifier);
-inline const auto integer_lit  = tok(TT::IntegerLiteral);
-inline const auto float_lit    = tok(TT::FloatLiteral);
-inline const auto string_lit   = tok(TT::StringLiteral);
-inline const auto char_lit     = tok(TT::CharacterLiteral);
+// Annotated Parser (Wraps P with begin/end)
+template<typename P>
+struct AnnotatedParser {
+    P parser;
+    cpp2::ast::NodeKind kind;
 
-// Delimiters
-inline const auto lparen       = tok(TT::LeftParen);
-inline const auto rparen       = tok(TT::RightParen);
-inline const auto lbrace       = tok(TT::LeftBrace);
-inline const auto rbrace       = tok(TT::RightBrace);
-inline const auto lbracket     = tok(TT::LeftBracket);
-inline const auto rbracket     = tok(TT::RightBracket);
-
-// Punctuation
-inline const auto semicolon    = tok(TT::Semicolon);
-inline const auto colon        = tok(TT::Colon);
-inline const auto double_colon = tok(TT::DoubleColon);
-inline const auto colon_equal  = tok(TT::ColonEqual);
-inline const auto comma        = tok(TT::Comma);
-inline const auto dot          = tok(TT::Dot);
-inline const auto arrow        = tok(TT::Arrow);
-inline const auto at           = tok(TT::At);
-inline const auto underscore   = tok(TT::Underscore);
-
-// Operators
-inline const auto eq           = tok(TT::Equal);
-inline const auto plus         = tok(TT::Plus);
-inline const auto minus        = tok(TT::Minus);
-inline const auto star         = tok(TT::Asterisk);
-inline const auto slash        = tok(TT::Slash);
-inline const auto ampersand    = tok(TT::Ampersand);
-inline const auto pipe         = tok(TT::Pipe);
-inline const auto pipeline     = tok(TT::Pipeline);
-inline const auto lt           = tok(TT::LessThan);
-inline const auto gt           = tok(TT::GreaterThan);
-
-// Keywords
-inline const auto kw_let       = tok(TT::Let);
-inline const auto kw_const     = tok(TT::Const);
-inline const auto kw_func      = tok(TT::Func);
-inline const auto kw_type      = tok(TT::Type);
-inline const auto kw_namespace = tok(TT::Namespace);
-inline const auto kw_if        = tok(TT::If);
-inline const auto kw_else      = tok(TT::Else);
-inline const auto kw_while     = tok(TT::While);
-inline const auto kw_for       = tok(TT::For);
-inline const auto kw_return    = tok(TT::Return);
-inline const auto kw_in        = tok(TT::In);
-inline const auto kw_out       = tok(TT::Out);
-inline const auto kw_inout     = tok(TT::Inout);
-inline const auto kw_copy      = tok(TT::Copy);
-inline const auto kw_move      = tok(TT::Move);
-inline const auto kw_forward   = tok(TT::Forward);
-inline const auto kw_inspect   = tok(TT::Inspect);
-inline const auto kw_is        = tok(TT::Is);
-inline const auto kw_as        = tok(TT::As);
-
-} // namespace tokens
-
-// ============================================================================
-// Recursive Rule Support
-// ============================================================================
-// For defining recursive grammar rules
-
-template<typename T>
-struct RecursiveRule {
-    std::function<ebnf::Result<T, TokenStream>(TokenStream)> parser_fn;
-    
-    auto parse(TokenStream input) const {
-        return parser_fn(input);
+    constexpr auto parse(TokenStream input) const {
+        auto cp = cpp2::ast::tree_checkpoint();
+        auto start_pos = input.pos;
+        
+        cpp2::ast::begin(kind, start_pos);
+        
+        auto res = parser.parse(input);
+        
+        if (res.success()) {
+            cpp2::ast::end(res.remaining().pos);
+            return res;
+        } else {
+            cpp2::ast::tree_restore(cp);
+            return res;
+        }
     }
 };
 
-// Create a recursive rule by passing a lambda that receives the rule reference
-template<typename T, typename F>
-auto recursive(F factory) {
-    RecursiveRule<T> rule;
-    rule.parser_fn = [&rule, factory](TokenStream input) {
-        return factory(lift(rule)).parser.parse(input);
-    };
-    return lift(rule);
+// Binary Annotated Parser (Uses start_infix)
+template<typename P>
+struct BinaryAnnotatedParser {
+    P parser;
+    cpp2::ast::NodeKind kind;
+
+    constexpr auto parse(TokenStream input) const {
+        auto cp = cpp2::ast::tree_checkpoint();
+        auto start_pos = input.pos;
+        
+        // Use start_infix to adopt previous sibling as Lhs
+        cpp2::ast::start_infix(kind, start_pos);
+        
+        auto res = parser.parse(input);
+        
+        if (res.success()) {
+            cpp2::ast::end(res.remaining().pos);
+            return res;
+        } else {
+            cpp2::ast::tree_restore(cp);
+            return res;
+        }
+    }
+};
+
+// Operator % Overloads for Annotations
+
+template<typename P>
+constexpr auto operator%(Proto<P> p, NodeAnnotation a) {
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
 }
 
-// ============================================================================
-// Utility Combinators
-// ============================================================================
-
-// Between: open >> content << close
-template<typename Open, typename Content, typename Close>
-constexpr auto between(Proto<Open> open, Proto<Content> content, Proto<Close> close) {
-    return lift(ebnf::between(
-        std::move(open.parser),
-        std::move(content.parser),
-        std::move(close.parser)
-    ));
+template<typename P>
+constexpr auto operator%(Proto<P> p, BinaryAnnotation a) {
+    return lift(BinaryAnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
 }
 
-// Parenthesized: ( content )
-template<typename Content>
-constexpr auto parens(Proto<Content> content) {
-    return between(tokens::lparen, std::move(content), tokens::rparen);
+template<typename P>
+constexpr auto operator%(Proto<P> p, PrefixAnnotation a) {
+    // Prefix currently maps to standard annotation (begin/end)
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
 }
 
-// Braced: { content }
-template<typename Content>
-constexpr auto braces(Proto<Content> content) {
-    return between(tokens::lbrace, std::move(content), tokens::rbrace);
+template<typename P>
+constexpr auto operator%(Proto<P> p, PostfixAnnotation a) {
+    // Postfix currently maps to standard annotation (begin/end)
+    return lift(AnnotatedParser<decltype(p.parser)>{p.parser, a.kind});
 }
 
-// Bracketed: [ content ]
-template<typename Content>
-constexpr auto brackets(Proto<Content> content) {
-    return between(tokens::lbracket, std::move(content), tokens::rbracket);
-}
-
-// Separated by comma
-template<typename Item>
-constexpr auto comma_list(Proto<Item> item) {
-    return item % tokens::comma;
+// Ignore Type Hints for now (preserving P)
+template<typename P, typename T>
+constexpr auto operator%(Proto<P> p, TypeHint<T>) {
+    return p;
 }
 
 } // namespace cpp2::parser::spirit
 
-#endif // CPP2_COMBINATORS_SPIRIT_HPP
+ 

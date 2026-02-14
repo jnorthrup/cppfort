@@ -17,17 +17,16 @@ void test_no_escape_local_variable() {
     AST ast;
 
     auto func = std::make_unique<FunctionDeclaration>("main", 1);
-    func->body = std::make_unique<BlockStatement>(1);
 
     auto var_decl = std::make_unique<VariableDeclaration>("x", 2);
-    var_decl->type = std::make_unique<Type>();
-    var_decl->type->kind = Type::Kind::Builtin;
+    var_decl->type = std::make_unique<cpp2_transpiler::Type>(cpp2_transpiler::Type::Kind::Builtin);
     var_decl->type->name = "int";
-    var_decl->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_decl->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
     auto decl_stmt = std::make_unique<DeclarationStatement>(std::move(var_decl), 2);
-    func->body->statements.push_back(std::move(decl_stmt));
+    auto block = std::make_unique<BlockStatement>(1);
+    block->statements.push_back(std::move(decl_stmt));
+    func->body = std::move(block);
 
     ast.declarations.push_back(std::move(func));
 
@@ -46,25 +45,22 @@ void test_escape_to_return() {
     AST ast;
 
     auto func = std::make_unique<FunctionDeclaration>("get_value", 1);
-    func->return_type = std::make_unique<Type>();
-    func->return_type->kind = Type::Kind::Builtin;
+    func->return_type = std::make_unique<cpp2_transpiler::Type>(cpp2_transpiler::Type::Kind::Builtin);
     func->return_type->name = "int";
-    func->body = std::make_unique<BlockStatement>(1);
-
     auto var_decl = std::make_unique<VariableDeclaration>("x", 2);
-    var_decl->type = std::make_unique<Type>();
-    var_decl->type->kind = Type::Kind::Builtin;
+    var_decl->type = std::make_unique<cpp2_transpiler::Type>(cpp2_transpiler::Type::Kind::Builtin);
     var_decl->type->name = "int";
-    var_decl->initializer = std::make_unique<LiteralExpression>(
-        LiteralExpression::LiteralKind::Integer, "42", 2);
+    var_decl->initializer = std::make_unique<LiteralExpression>(int64_t(42), 2);
 
     auto decl_stmt = std::make_unique<DeclarationStatement>(std::move(var_decl), 2);
-    func->body->statements.push_back(std::move(decl_stmt));
+    auto block = std::make_unique<BlockStatement>(1);
+    block->statements.push_back(std::move(decl_stmt));
 
     auto return_value = std::make_unique<IdentifierExpression>("x", 3);
     auto return_stmt = std::make_unique<ReturnStatement>(std::move(return_value), 3);
-    func->body->statements.push_back(std::move(return_stmt));
+    block->statements.push_back(std::move(return_stmt));
 
+    func->body = std::move(block);
     ast.declarations.push_back(std::move(func));
 
     // Run escape analysis

@@ -8,7 +8,7 @@ cppfort uses a **multi-stage IR pipeline** with MLIR as the optimization infrast
 
 ## Architecture Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              CPP2 SOURCE CODE                              │
 │                              main.cpp2                                     │
@@ -194,7 +194,7 @@ The SON (Sea of Nodes) dialect is the **final optimization stage**. After SON op
 
 The JIT allocation passes (Phase 7-10) run **directly on FIR** before SON lowering:
 
-```
+```md
 FIR (with semantic annotations)
   → FIRArenaInferencePass
   → FIRCoroutineFrameSROAPass
@@ -208,6 +208,7 @@ This design keeps semantic information **close to the source** where it's most a
 ### 3. **Semantic Info is Source of Truth**
 
 The `SemanticInfo` struct in `ast.hpp` is the **authoritative source** for:
+
 - Escape analysis results
 - Borrow/ownership state
 - Memory transfer requirements

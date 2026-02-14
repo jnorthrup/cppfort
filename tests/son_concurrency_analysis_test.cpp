@@ -1,4 +1,5 @@
 #include "../include/Cpp2Passes.h"
+#include "../include/Cpp2SONDialect.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -6,7 +7,6 @@
 #include "mlir/IR/Verifier.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Transforms/PassManager.h"
 
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/SourceMgr.h"
@@ -44,7 +44,7 @@ soned.func @test_empty_lock() {
     assert(module && "Failed to parse module");
 
     // Create pass manager and run analysis
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -74,7 +74,7 @@ sond.func @test_barrier() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -103,7 +103,7 @@ sond.func @test_async() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -133,7 +133,7 @@ sond.func @test_parallel() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -164,7 +164,7 @@ sond.func @test_alias() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -195,7 +195,7 @@ sond.func @test_critical_section() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {
@@ -225,7 +225,7 @@ sond.func @test_stats() {
     auto module = parseModule(&context, moduleStr);
     assert(module && "Failed to parse module");
 
-    PassManager pm(module->getName());
+    PassManager pm(&context);
     pm.addPass(mlir::cpp2::createSONConcurrencyAnalysisPass());
 
     if (succeeded(pm.run(module.get()))) {

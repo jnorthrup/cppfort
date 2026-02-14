@@ -1,23 +1,14 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <span>
 #include <string_view>
-#include <iostream>
 #include <cstring>
 
 #include "lexer.hpp"
-#include "parser.hpp"
-#include "semantic_analyzer.hpp"
-#include "code_generator.hpp"
-#include "safety_checker.hpp"
-#include "metafunction_processor.hpp"
-#include "contract_processor.hpp"
-#include "utils.hpp"
-// #include "mlir_cpp2_dialect.hpp"  // Disabled: requires MLIR
-
-// Forward declaration for the Sea of Nodes codegen helper
-// namespace cppfort::mlir_son { class SeaOfNodesBuilder; }
-// std::string generate_cpp_from_sea_of_nodes(const cppfort::mlir_son::SeaOfNodesBuilder& builder);
+#include "combinator_parser.hpp"
+#include "slim_ast.hpp"
+#include "emitter.hpp"
 
 void print_usage(const char* prog) {
     std::cerr << "Usage: " << prog << " [options] <input.cpp2> <output.cpp>\n";
@@ -29,18 +20,15 @@ void print_usage(const char* prog) {
 }
 
 int main(int argc, char* argv[]) {
-    cpp2_transpiler::OutputMode output_mode = cpp2_transpiler::OutputMode::Inline;
     const char* input_file_arg = nullptr;
     const char* output_file_arg = nullptr;
     
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--inline") == 0) {
-            output_mode = cpp2_transpiler::OutputMode::Inline;
-        } else if (strcmp(argv[i], "--header") == 0) {
-            output_mode = cpp2_transpiler::OutputMode::Header;
-        } else if (strcmp(argv[i], "--pch") == 0) {
-            output_mode = cpp2_transpiler::OutputMode::PCH;
+        if (strcmp(argv[i], "--inline") == 0 ||
+            strcmp(argv[i], "--header") == 0 ||
+            strcmp(argv[i], "--pch") == 0) {
+            // Options currently ignored - future: pass to emitter
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -81,47 +69,48 @@ int main(int argc, char* argv[]) {
         cpp2_transpiler::Lexer lexer{std::string_view(source_code)};
         auto tokens = lexer.tokenize();
 
-        // Mixed-mode C++1 passthrough: If no Cpp2-specific syntax is found,
-        // emit the original source with minimal changes
-        if (!lexer.has_cpp2_syntax()) {
-            std::ofstream output_file(output_filename);
-            if (!output_file) {
-                throw std::runtime_error("Cannot open output file: " + output_filename);
+        // Pre-parse check: reject markdown blocks inside nested braces.
+        // The parser will also fail, but this gives a much clearer diagnostic.
+        {
+            int brace_depth = 0;
+            for (const auto &tok : tokens) {
+                if (tok.lexeme == "{") brace_depth++;
+                else if (tok.lexeme == "}") brace_depth--;
+                else if (tok.type == cpp2_transpiler::TokenType::MarkdownBlock &&
+                         brace_depth > 0) {
+                    std::cerr << input_filename << ":" << tok.line
+                              << ": error: markdown block must "
+                              "appear at top level, not inside a function, "
+                              "type, or nested scope\n";
+                    return 1;
+                }
             }
-
-            // For pure C++ files, emit as-is (source already has cppfront-style comments)
-            output_file << source_code;
-
-            std::cout << "Successfully transpiled " << input_filename << " to " << output_filename << " (C++1 passthrough mode)\n";
-            return 0;
         }
 
-        cpp2_transpiler::Parser parser(tokens);
-        auto ast = parser.parse();
+        // All files go through the parser (no C++1 passthrough bypass)
+        // This ensures preprocessor directives are preserved in the AST
 
-        // Abort if parsing had errors - continuing with incomplete AST causes segfaults
-        if (parser.had_errors()) {
-            std::cerr << "Error: Parsing failed with " << parser.error_count << " error(s)\n";
+        // Parse with slim combinator parser
+        auto tree = cpp2::parser::parse(tokens);
+
+        // Check for valid parse
+        if (tree.nodes.empty() || tree.nodes[tree.root].child_count == 0) {
+            std::cerr << "Error: Parsing failed - no declarations found\n";
             return 1;
         }
 
-        cpp2_transpiler::SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.analyze(*ast);
+        // Validate markdown block placement (must be top-level only)
+        auto diags = cpp2::ast::validate_markdown_placement(tree, tokens);
+        if (!diags.empty()) {
+            for (const auto &d : diags) {
+                std::cerr << input_filename << ":" << d.line << ":" << d.column
+                          << ": error: " << d.message << "\n";
+            }
+            return 1;
+        }
 
-        cpp2_transpiler::SafetyChecker safety_checker;
-        safety_checker.check(*ast);
-
-        cpp2_transpiler::MetafunctionProcessor meta_processor;
-        meta_processor.process(*ast);
-
-        cpp2_transpiler::ContractProcessor contract_processor;
-        contract_processor.process(*ast);
-
-        // Default (AST -> Cpp1) code generation
-        cpp2_transpiler::CodeGenerator code_generator(output_mode);
-        auto cpp1_code = code_generator.generate(*ast);
-
-        // --son pipeline removed for now (requires additional integration)
+        // Generate C++ directly from ParseTree
+        std::string cpp1_code = generate_from_tree(tree, tokens);
 
         std::ofstream output_file(output_filename);
         if (!output_file) {

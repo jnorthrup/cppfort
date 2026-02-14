@@ -18,7 +18,7 @@
 #define GET_TYPEDEF_CLASSES
 #include "Cpp2SONOpsTypes.h.inc"
 
-// Include generated attributes
+// Include generated attribute declarations
 #define GET_ATTRDEF_CLASSES
 #include "Cpp2SONOpsAttrDefs.h.inc"
 

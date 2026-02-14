@@ -214,10 +214,9 @@ struct CoroutineContainmentGraph {
     std::vector<void*> child_coroutines; // ASTNode* of children
 
     // Check if this coroutine's frame is contained within parent lifetime
+    // A coroutine is contained if it has a parent coroutine scope
     bool is_contained() const {
-        // A coroutine is contained if all its captured variables
-        // do not outlive the parent scope
-        return !child_coroutines.empty() || parent_coroutine != nullptr;
+        return parent_coroutine != nullptr;
     }
 
     CoroutineContainmentGraph() = default;
@@ -431,6 +430,31 @@ struct SemanticInfo {
                     case CoroutineFrameStrategy::Heap: attrs += "heap"; break;
                 }
                 attrs += "\"";
+            }
+
+            // C++26 contracts (Phase 9)
+            if (!contracts.empty()) {
+                attrs += ", contracts = [";
+                for (size_t i = 0; i < contracts.size(); ++i) {
+                    if (i > 0) attrs += ", ";
+                    attrs += "#cpp2.contract<";
+                    switch (contracts[i].kind) {
+                        case SafetyContract::Kind::Precondition:
+                            attrs += "precondition";
+                            break;
+                        case SafetyContract::Kind::Postcondition:
+                            attrs += "postcondition";
+                            break;
+                        case SafetyContract::Kind::Assertion:
+                            attrs += "assertion";
+                            break;
+                        case SafetyContract::Kind::Invariant:
+                            attrs += "invariant";
+                            break;
+                    }
+                    attrs += ">";
+                }
+                attrs += "]";
             }
 
             return attrs;

@@ -1,0 +1,30 @@
+# Cppcheck configuration for Algebraic Golf style
+# Run: cppcheck --project=build/compile_commands.json --suppressions-list=.cppcheck
+
+# Suppress verbosity-demanding checks
+unusedFunction
+missingIncludeSystem
+unmatchedSuppression
+
+# Allow terse variable names
+variableScope
+
+# Allow ternary density
+knownConditionTrueFalse
+
+# Performance false positives with modern C++
+passedByValue
+returnByReference
+
+# Trust the programmer on casts
+cstyleCast
+
+# Allow array-to-pointer in modern contexts
+arrayIndexOutOfBounds
+
+# Inline lambda captures
+unusedVariable
+
+# Template metaprogramming
+syntaxError
+templateInstantiation

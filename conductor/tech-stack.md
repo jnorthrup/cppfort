@@ -1,26 +1,50 @@
 # Technology Stack
 
 ## Core Language
+
 - **C++23/C++2c** (Current): Clang 21.1.8 with `-std=c++2c` (`__cplusplus = 202400`)
 - **C++26** (Target): Migration path for reflection, contracts, pattern matching when compiler support arrives
 - **MLIR**: Multi-Level Intermediate Representation framework
 
 ### C++ Standard Strategy
+
 - **Implementation**: C++23 features (ranges, concepts, coroutines, format, expected)
 - **Forward Compatibility**: Design for C++26, implement with C++23 fallbacks
 - **Migration Timeline**: Phase 9 (C++26 Integration) uses conditional compilation until features stabilize
 
 ## Build System
-- **CMake 3.25+**: Build configuration
-- **Ninja**: Fast parallel builds
+
+- **CMake 3.28+**: Build configuration with Homebrew LLVM integration
+- **Ninja**: Fast parallel builds (recommended)
 - **CTest**: Test execution framework
 
+### CMake Targets
+
+| Target | Type | Description |
+|--------|------|-------------|
+| `cppfort` | Executable | Main Cpp2 transpiler with MLIR pipeline |
+| `Cpp2Transpiler` | Static Library | Transpiler core library |
+| `cppfront` | Executable | Reference Cpp2 transpiler (from cppfront submodule) |
+| `corpus_transpile` | Custom Target | Transpile 189 .cpp2 → .cpp files |
+| `corpus_ast` | Custom Target | Generate Clang AST dumps from .cpp files |
+| `corpus_reference` | Custom Target | Combined corpus processing (transpile + AST) |
+| `test` | CTest | Run all test suites |
+
+### Build Configuration
+
+- **Homebrew LLVM**: `/opt/homebrew/opt/llvm` on macOS
+- **libc++**: Homebrew's libc++ (not system SDK)
+- **TableGen**: MLIR dialect code generation to `build/`
+- **Output Directory**: `build/` (all artifacts, no generated files in root)
+
 ## Compilers & Toolchains
+
 - **Clang 21.1.8** (LLVM/Homebrew): Primary C++ compiler, AST analysis
 - **g++-15**: Alternative compiler (used for cppfront reference build)
 - **cppfront** (hsutter/cppfront): Reference Cpp2 transpiler for semantic validation
 
 ## MLIR Infrastructure
+
 - **LLVM 21.1.8**: Core LLVM libraries
 - **MLIR Dialects**:
   - `cpp2fir` (Cpp2FIR): Front-IR for straight-line expression evaluation
@@ -30,13 +54,19 @@
 - **mlir-opt**: MLIR optimization pipeline runner
 
 ## Testing & Analysis
-- **CTest**: Test framework (29 test suites, 24 passing)
-- **lcov 2.4**: Code coverage measurement
+
+- **CTest**: Test framework (21+ test suites verified passing)
+  - `cpp26_contracts_test`: C++26 contract attribute parsing (4 tests)
+  - `arena_inference_test`: Arena allocation inference (6 tests)
+  - `allocation_strategy_test`: Allocation strategy verification (11 tests)
+- **Integration Tests**: `test_cmake_integration.cpp` (10 build system tests)
+- **lcov**: Code coverage measurement
 - **genhtml**: Coverage report generation
-- **LLVM gcov 17.0.0**: Coverage data collection
-- **timeout (15s)**: Test execution time limit enforcement
+- **LLVM gcov**: Coverage data collection
+- **timeout**: Test execution time limit enforcement
 
 ## Regression Testing Infrastructure
+
 - **Corpus**: 189 .cpp2 files from cppfront regression suite
   - 139 pure2 files (pure Cpp2 syntax)
   - 50 mixed files (Cpp2 + C++1 syntax)
@@ -50,6 +80,7 @@
   - **Pass Rate**: 98.4% pure2, 100% mixed
 
 ## Analysis Tools (Python 3)
+
 - `tools/extract_ast_isomorphs.py`: Clang AST → graph pattern extraction
 - `tools/tag_mlir_regions.py`: AST pattern → MLIR region mapping
 - `tools/build_isomorph_database.py`: Deduplicated pattern database builder
@@ -60,6 +91,7 @@
 - `tools/score_corpus_semantics.sh`: Automated scoring pipeline
 
 ## Version Control & Workflow
+
 - **Git**: Source control
 - **git notes**: Verification report attachment for checkpoints
 - **Conductor**: Context-Driven Development framework
@@ -70,6 +102,7 @@
 ## Development Libraries
 
 ### Currently Available (C++23/C++2c - Clang 21.1.8)
+
 - ✅ **Ranges**: `std::ranges` (202406) - algorithms, views, pipelines
 - ✅ **Concepts**: `concept`, `requires` (202002) - type constraints
 - ✅ **Format**: `std::format` (202110) - type-safe string formatting
@@ -78,38 +111,41 @@
 - ✅ **Optional/Variant**: `std::optional`, `std::variant` - sum types
 - ✅ **Span**: `std::span` - safe array views
 - ✅ **String_view**: `std::string_view` - zero-copy string operations
+- ✅ **Reflection-driven SBO sizing**: `cpp2::reflection_sbo_size<T>()` with template metaprogramming fallback
+- ✅ **Contracts parsing**: C++26 `[[expects]]` attribute parsing with AST integration
+- ✅ **Pattern matching state tracking**: `ResourceState` enum with exhaustive matching
+
+### Implemented (C++23 Fallbacks)
+
+- ✅ **Reflection SBO**: Template metaprogramming fallback (`cpp2::reflection_sbo.hpp`)
+  - **Migration**: Replace with `std::meta` when `__cpp_static_reflection` is available
+- ✅ **Contracts**: AST-based parsing (`cpp26_contracts_test.cpp`)
+  - **Migration**: Switch to native `[[expects]]` attribute parsing when available
+- ✅ **Pattern Matching**: C++23 switch-based exhaustive matching (`ResourceState` enum)
+  - **Migration**: Replace with `inspect` expressions when `__cpp_pattern_matching` is available
+- ✅ **std::inplace_vector**: Custom `cpp2::inplace_vector<T, N>` implementation
+  - **SBO sizing**: Automatic capacity via `sbo_capacity<T>()`
+  - **Tests**: `reflection_sbo_test.cpp`, `inplace_vector_codegen_test.cpp`
 
 ### Planned (C++26 - Not Yet Available)
-- ⏳ **Reflection (`std::meta`)**: Compile-time type introspection
-  - **Fallback**: Template metaprogramming for SBO sizing
-  - **Use Case**: `reflection_driven_sbo_size()` for `std::inplace_vector<T, N>`
-
-- ⏳ **Contracts**: `[[expects]]`, `[[ensures]]`, `[[assert]]` for preconditions/postconditions
-  - **Fallback**: Parse custom `// [[expects]]` comments in AST
-  - **Use Case**: Feed contract annotations into alias analysis
-
-- ⏳ **Pattern Matching**: `inspect` expressions for exhaustive matching
-  - **Fallback**: C++23 `std::expected` + exhaustive `if-else` chains
-  - **Use Case**: Resource state tracking (Uninitialized, Initialized, Moved, Borrowed)
 
 - ⏳ **std::execution**: Structured concurrency (senders/receivers)
   - **Fallback**: `std::coroutine` (available) for coroutine frame elision
   - **Use Case**: Port Kotlin `CoroutineScope` semantics
 
-- ⏳ **std::inplace_vector**: Stack-allocated vector
-  - **Fallback**: Custom `cpp2::inplace_vector<T, N>` implementation
-  - **Use Case**: Arena-allocated containers with compile-time capacity
-
 ## Platform
+
 - **macOS 14.6** (Darwin 24.6.0): Development environment
 - **Homebrew**: Package management for LLVM/Clang
 
 ## Documentation Generation
+
 - **Markdown**: All documentation in GitHub-flavored Markdown
 - **Mermaid** (planned): Architecture diagrams
 - **Graphviz** (via d3-graphviz.js): AST/IR visualization in docs
 
 ## Semantic Analysis Stack (Planned)
+
 - **Escape Analysis Engine**: Lifetime and escape point tracking
 - **Borrow Checker**: Rust-like ownership enforcement
 - **Lifetime Region Analysis**: Scope-based lifetime bounds
@@ -119,14 +155,17 @@
 ## JIT Memory-Managed Front-IR Architecture (Phases 7-10)
 
 ### Feature Validation (2026-01-06)
+
 **Environment**: Clang 21.1.8, LLVM 21.1.8, macOS 14.6 (arm64)
 
 #### ✅ Available Now (C++23/C++2c)
+
 - Ranges (202406), Concepts (202002), Format (202110)
 - Coroutines (201902), Expected (202211)
 - Standard Library: optional, variant, span, string_view
 
 #### ⏳ Planned (C++26 - Not Yet Available)
+
 - Reflection (`std::meta`) - Feature test macro: `__cpp_static_reflection`
 - Contracts (`[[expects]]`, `[[ensures]]`) - Feature test macro: `__cpp_contracts`
 - Pattern Matching (`inspect`) - Feature test macro: `__cpp_pattern_matching`
@@ -135,11 +174,13 @@
 ### Phased Implementation Strategy
 
 **Phase 7-8: Immediate (C++23 Compatible)**
+
 - ✅ Arena allocation (`ArenaInferencePass`, `ArenaRegion`)
 - ✅ Coroutine frame elision (leverages `std::coroutine` - available)
 - ✅ MLIR passes (`CoroutineFrameSROA`) - no C++26 dependencies
 
 **Phase 9: Conditional (C++26 Features with Fallbacks)**
+
 1. **Reflection (`std::meta`)**:
    - **Fallback**: Template metaprogramming for SBO sizing
    - **Implementation**: `#ifdef __cpp_static_reflection` guards
@@ -161,16 +202,19 @@
    - **Migration**: Adopt `std::execution::schedule` when standardized
 
 **Phase 10: Codegen (C++23 Compatible)**
+
 - ✅ `AllocationStrategyPass` (no C++26 dependencies)
 - ✅ Arena boilerplate generation (`cpp2::monotonic_arena<scopeID>`)
 - ✅ Stack/arena/heap decision logic (standard C++23)
 
 ### Expected Timeline
+
 - **Clang 22+**: Possible experimental reflection support
 - **Clang 23+**: Possible contracts/pattern matching
 - **Migration**: Incremental replacement of fallbacks with native features
 
 ## External Dependencies
+
 - **third_party/cppfront**: Reference transpiler (submodule)
   - Source: `source/cppfront` binary (2.6MB, built with g++-15)
   - Regression tests: `regression-tests/` (189 .cpp2 files)
@@ -178,6 +222,7 @@
   - Reference ASTs: `corpus/reference_ast/` (10GB Clang dumps)
 
 ## Performance & Optimization
+
 - **SCCP Pass**: Sparse Conditional Constant Propagation
   - Code coverage: 72.9% (250/343 lines), 100% functions (42/42)
   - Lattice-based dataflow analysis
@@ -187,6 +232,7 @@
 - **Coverage Instrumentation**: --coverage flag support
 
 ## Project Structure
+
 ```
 cppfort/
 ├── conductor/              # Context-Driven Development framework
@@ -214,6 +260,7 @@ cppfort/
 ```
 
 ## Build Configuration Flags
+
 - `CMAKE_BUILD_TYPE`: Debug (with coverage) or Release
 - `ENABLE_COVERAGE`: ON/OFF (code coverage instrumentation)
 - `CMAKE_CXX_STANDARD`: 23 (current), 26 (target when compiler support available)
@@ -223,6 +270,7 @@ cppfort/
 - Coverage flags: `--coverage` (gcov/lcov compatible)
 
 ## Key Metrics
+
 - Total lines of code: ~18,000 (excluding generated)
 - Test coverage: 72.9% (SCCP), target >80%
 - Build time: ~2 minutes (full rebuild with Ninja -j8)
