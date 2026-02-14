@@ -209,7 +209,7 @@
     - [x] Fix pointer-type RHS detection (`*B`, `*D`) to remain type-like
   - [ ] Test: All 159 tests pass
 
-**Current Results (2026-02-13)**: 100/159 passed (62.8%) - +1 from C++1 parameter fix
+**Current Results (2026-02-14)**: 101/159 passed (63.5%) - +3 from C++1 parameter fix, :: in interpolation, and autodiff fix
 
 **Breakdown:**
 
@@ -217,7 +217,14 @@
 - Transpile failures: 13 (parser/emitter can't handle syntax)
 - Error tests: 9 skipped (as expected)
 
-**Recent Fixes (2026-02-08)**:
+**Recent Fixes (2026-02-14)**:
+
+Session (101/159, +3 from C++1 parameter fix, :: in interpolation, and autodiff fix):
+- Fixed `emit_param()` to not add duplicate `const&` when type already has reference qualifiers (mixed-intro-example-three-loops)
+- Fixed `process_string_interpolation()` to skip `::` scope resolution operator when detecting format specifiers
+- Fixed type alias ordering: emit `constexpr` variables before type aliases, type aliases before forward declarations
+- Fixed preprocessor directive preservation (#include <cpp2taylor.h>)
+- Fixed include path to use cpp2taylor.h when needed (autodiff-taylor test)
 
 Session (87/159, +1 from pure virtual fix):
 - Fixed `function_has_return_value` to treat empty body (`;`) as non-returning

@@ -591,7 +591,7 @@ inline auto &for_range_stmt() {
   static auto r = (lit("for") >> expr_parser() >> -next_clause() >> "do" >> "(" >>
                    *(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >>
                    (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
-                   ")" >> block_stmt()) %
+                   ")" >> (block_stmt() | stmt_parser())) %
                   with_node(NodeKind::ForStatement);
   return r;
 }

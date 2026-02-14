@@ -1773,7 +1773,7 @@ private:
     // Cpp2 for: for items do (item) { body }
     // C++1 for: for (item : items) { body }
     // Both emit as: for (auto item : items) { body }
-    std::string items, var, qualifier;
+    std::string items, var, qualifier, next_expr;
     const Node *body = nullptr;
 
     for (const auto &child : tree_.children(n)) {
@@ -1796,6 +1796,15 @@ private:
       } else if (meta::is_expression(child.kind) && items.empty()) {
         // Only use expression nodes for items (skip keywords, punctuation)
         items = emit_expression_text(child);
+      } else if (meta::is_expression(child.kind) && !items.empty()) {
+        // Second expression is likely the next clause (e.g., count++)
+        next_expr = emit_expression_text(child);
+      } else if (body == nullptr) {
+        // Check if this child is a statement that should be the body
+        // (could be any statement, not just BlockStatement)
+        if (meta::is_statement(child.kind)) {
+          body = &child;
+        }
       }
     }
 
@@ -1807,8 +1816,19 @@ private:
 
     out_ << "for (" << binding << " " << var << " : " << items << ") {\n";
     ++indent_;
-    if (body)
-      emit_block(*body, named_ret_var, multi_returns);
+    if (body) {
+      if (body->kind == NodeKind::BlockStatement) {
+        emit_block(*body, named_ret_var, multi_returns);
+      } else {
+        // Single statement body - emit it with proper indentation
+        emit_statement(*body, named_ret_var, multi_returns);
+      }
+    }
+    // Emit next clause after loop body
+    if (!next_expr.empty()) {
+      emit_indent();
+      out_ << next_expr << ";\n";
+    }
     --indent_;
     emit_indent();
     out_ << "}\n";

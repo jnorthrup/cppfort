@@ -257,7 +257,7 @@ run_regression_tests() {
             gsed -i -e '/^#include "cpp2util.h"/d' -e '/^#line /d' "$cppfile" 2>/dev/null || true
 
             # Stage 3: Compile (syntax-only check) - include cppfort headers for runtime support
-            if timeout "$TIMEOUT_COMPILE" "$CXX" -std=c++23 -I"$PROJECT_ROOT/include" -fsyntax-only "$cppfile" 2>/dev/null; then
+            if timeout "$TIMEOUT_COMPILE" "$CXX" -std=c++23 -I"$PROJECT_ROOT/include" -I"$PROJECT_ROOT/third_party/cppfront/include" -fsyntax-only "$cppfile" 2>/dev/null; then
                 stage="compile"
                 status="PASS"
                 log_ok "$name"
