@@ -21,7 +21,7 @@
   - [x] Implement: Add unit test for AST construction (tests/parsing_annotations_test.cpp - exists)
   - [x] Test: Test suite runs and reports results
 
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Unified Declarations (Variables)
 

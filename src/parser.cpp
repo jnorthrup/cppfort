@@ -1,5 +1,6 @@
 #include "combinators/spirit.hpp"
 #include "slim_ast.hpp"
+#include <algorithm>
 #include <string>
 #include <string_view>
 
@@ -8,6 +9,7 @@ using namespace spirit;
 using namespace cpp2::ast;
 
 namespace { // Internal linkage
+thread_local uint32_t g_last_error_pos = UINT32_MAX;
 
 struct Tok {
   static constexpr auto ID = tok(TT::Identifier);
@@ -20,7 +22,8 @@ struct Tok {
 
 struct Ops {
   static constexpr auto prefix =
-      "+"_l | "-" | "!" | "~" | "++" | "--" | "&" | "*" | "call";
+      "+"_l | "-" | "!" | "~" | "++" | "--" | "&" | "*" | "call" |
+      "move" | "forward" | "in" | "out" | "inout" | "copy";
   static constexpr auto postfix_op = "++"_l | "--" | "*" | "&";
   static constexpr auto assign = "="_l | "+=" | "-=" | "*=" | "/=" | "%=" |
       "&=" | "|=" | "^=" | ">>=" | "<<=";
@@ -30,7 +33,7 @@ struct Ops {
   static constexpr auto cmp = "<"_l | ">" | "<=" | ">=" | "<=>";
   static constexpr auto eq = "=="_l | "!=";
   static constexpr auto param_qual =
-      "in"_l | "out" | "inout" | "copy" | "move" | "forward";
+      "in"_l | "out" | "inout" | "copy" | "move" | "forward" | "implicit";
   static constexpr auto access = "public"_l | "private" | "protected";
 };
 
@@ -43,6 +46,10 @@ auto parse_type_specifier(TokenStream)
 auto parse_expression(TokenStream) -> ebnf::Result<std::monostate, TokenStream>;
 auto parse_statement(TokenStream) -> ebnf::Result<std::monostate, TokenStream>;
 auto parse_declaration(TokenStream)
+    -> ebnf::Result<std::monostate, TokenStream>;
+auto parse_template_args(TokenStream)
+    -> ebnf::Result<std::monostate, TokenStream>;
+auto parse_type_until_semicolon(TokenStream)
     -> ebnf::Result<std::monostate, TokenStream>;
 
 // Parser struct that calls the parse function
@@ -81,24 +88,235 @@ struct Rules {
   static constexpr auto identifier_like =
       Tok::ID | lit("_") | lit("this") | lit("that") | lit("$") | lit("next") |
       lit("base") | lit("in") | lit("is") | lit("as") | lit("type") |
-      lit("namespace") | lit("import");
+      lit("namespace") | lit("import") | lit("func");
   static constexpr auto literal =
       lit("true") | "false" | Tok::INT | Tok::FLOAT | Tok::STR | Tok::CHR;
   static constexpr auto basic_type =
-      (lit("auto") | "_" | Tok::ID) % with_node(NodeKind::BasicType);
+      (lit("auto") | "type" | "_" | Tok::ID) % with_node(NodeKind::BasicType);
 };
 
-inline auto &template_args() {
-  static auto r = (lit("<") >> -(type_spec_parser() % ",") >> ">") %
-                  with_binary(NodeKind::TemplateArgs);
-  return r;
+// Some Cpp2 keywords are allowed as identifiers in declarations/expressions.
+// Keep this aligned with Rules::identifier_like.
+inline bool is_soft_identifier_lexeme(std::string_view lexeme) {
+  return lexeme == "next" || lexeme == "base" || lexeme == "in" ||
+         lexeme == "is" || lexeme == "as" || lexeme == "type" ||
+         lexeme == "namespace" || lexeme == "import" || lexeme == "func";
+}
+
+inline bool is_identifier_like_token(const cpp2_transpiler::Token &tok) {
+  return tok.type == TT::Identifier || tok.type == TT::Dollar ||
+         tok.type == TT::BooleanLiteral || tok.lexeme == "_" ||
+         tok.lexeme == "this" || tok.lexeme == "that" ||
+         tok.lexeme == "true" || tok.lexeme == "false" ||
+         is_soft_identifier_lexeme(tok.lexeme);
+}
+
+auto parse_template_args(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  if (input.empty() || input.peek().lexeme != "<") {
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+  }
+
+  auto cp = tree_checkpoint();
+  start_infix(NodeKind::TemplateArgs, input.pos);
+  input = input.next(); // consume <
+
+  // Parse comma-separated arguments as raw spans. This supports both type and
+  // non-type template arguments (for example X<0>, t<o.f()>).
+  while (!input.empty() && input.peek().lexeme != ">") {
+    bool parsed_as_type = false;
+    {
+      auto arg_cp = tree_checkpoint();
+      auto typed = parse_type_specifier(input);
+      if (typed.success() && typed.remaining().pos > input.pos) {
+        auto rem = typed.remaining();
+        if (rem.empty() || rem.peek().lexeme == "," || rem.peek().lexeme == ">") {
+          input = rem;
+          parsed_as_type = true;
+        }
+      }
+      if (!parsed_as_type) {
+        tree_restore(arg_cp);
+      }
+    }
+
+    if (!parsed_as_type) {
+      auto arg_start = input.pos;
+      int paren_depth = 0;
+      int bracket_depth = 0;
+      int brace_depth = 0;
+      int angle_depth = 0;
+
+      while (!input.empty()) {
+        auto lex = input.peek().lexeme;
+
+        if (lex == "(") {
+          ++paren_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == ")") {
+          if (paren_depth > 0) {
+            --paren_depth;
+            input = input.next();
+            continue;
+          }
+          break;
+        }
+        if (lex == "[") {
+          ++bracket_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == "]") {
+          if (bracket_depth > 0) {
+            --bracket_depth;
+            input = input.next();
+            continue;
+          }
+          break;
+        }
+        if (lex == "{") {
+          ++brace_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == "}") {
+          if (brace_depth > 0) {
+            --brace_depth;
+            input = input.next();
+            continue;
+          }
+          break;
+        }
+        if (lex == "<") {
+          ++angle_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == ">" || lex == ">>") {
+          if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+              angle_depth == 0) {
+            break;
+          }
+          if (angle_depth > 0) {
+            --angle_depth;
+          }
+          input = input.next();
+          continue;
+        }
+        if (lex == "," && paren_depth == 0 && bracket_depth == 0 &&
+            brace_depth == 0 && angle_depth == 0) {
+          break;
+        }
+
+        input = input.next();
+      }
+
+      if (input.pos == arg_start) {
+        tree_restore(cp);
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+
+      begin(NodeKind::Identifier, arg_start);
+      end(input.pos);
+    }
+
+    if (!input.empty() && input.peek().lexeme == ",") {
+      input = input.next(); // consume ,
+      continue;
+    }
+    break;
+  }
+
+  if (input.empty() || input.peek().lexeme != ">") {
+    tree_restore(cp);
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+  }
+
+  input = input.next(); // consume >
+  end(input.pos);
+  return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+}
+
+auto parse_type_until_semicolon(TokenStream input)
+    -> ebnf::Result<std::monostate, TokenStream> {
+  if (input.empty()) {
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+  }
+
+  auto cp = tree_checkpoint();
+  auto start = input.pos;
+
+  int paren_depth = 0;
+  int bracket_depth = 0;
+  int brace_depth = 0;
+  int angle_depth = 0;
+
+  while (!input.empty()) {
+    auto lex = input.peek().lexeme;
+
+    if (lex == ";" && paren_depth == 0 && bracket_depth == 0 &&
+        brace_depth == 0 && angle_depth == 0) {
+      break;
+    }
+
+    if (lex == "(") {
+      ++paren_depth;
+    } else if (lex == ")" && paren_depth > 0) {
+      --paren_depth;
+    } else if (lex == "[") {
+      ++bracket_depth;
+    } else if (lex == "]" && bracket_depth > 0) {
+      --bracket_depth;
+    } else if (lex == "{") {
+      ++brace_depth;
+    } else if (lex == "}" && brace_depth > 0) {
+      --brace_depth;
+    } else if (lex == "<") {
+      ++angle_depth;
+    } else if (lex == ">") {
+      if (angle_depth > 0) {
+        --angle_depth;
+      }
+    } else if (lex == ">>") {
+      // `>>` often closes nested template args in a single token.
+      if (angle_depth > 0) {
+        angle_depth = std::max(0, angle_depth - 2);
+      }
+    }
+
+    input = input.next();
+  }
+
+  if (input.pos == start) {
+    tree_restore(cp);
+    return ebnf::Result<std::monostate, TokenStream>::fail(input);
+  }
+
+  begin(NodeKind::TypeSpecifier, start);
+  end(input.pos);
+  return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+}
+
+inline auto template_args() {
+  return Proto<FnParser>{{parse_template_args}};
+}
+inline auto alias_type_parser() {
+  return Proto<FnParser>{{parse_type_until_semicolon}};
 }
 inline auto &qualified_type() {
   static auto r =
-      (*(lit("const") | "*") >> Rules::basic_type >>
-       *((lit("::") % with_node(NodeKind::BinaryOp)) >>
-         (Tok::ID % with_node(NodeKind::Identifier)) >> -template_args()) >>
-       *(lit("const") | "*" | "&")) %
+      ((*(lit("const") | lit("forward") | "*") >> Rules::basic_type >>
+        -template_args() >>
+        *((lit("::") % with_node(NodeKind::BinaryOp)) >>
+          (Tok::ID % with_node(NodeKind::Identifier)) >> -template_args()) >>
+        *(lit("const") | "*" | "&")) |
+       (lit("::") % with_node(NodeKind::BinaryOp) >>
+        (Tok::ID % with_node(NodeKind::Identifier)) >> -template_args() >>
+        *((lit("::") % with_node(NodeKind::BinaryOp)) >>
+          (Tok::ID % with_node(NodeKind::Identifier)) >> -template_args()) >>
+        *(lit("const") | "*" | "&"))) %
       with_node(NodeKind::QualifiedType);
   return r;
 }
@@ -115,7 +333,12 @@ inline auto &decltype_type() {
 }
 
 inline auto &type_specifier() {
-  static auto r = (decltype_type() | qualified_type()) % with_node(NodeKind::TypeSpecifier);
+  // Support constrained type forms used in parameters/locals:
+  //   _ is std::regular
+  static auto r =
+      ((decltype_type() | qualified_type()) >>
+       -(lit("is") >> (decltype_type() | qualified_type()))) %
+      with_node(NodeKind::TypeSpecifier);
   return r;
 }
 
@@ -175,7 +398,9 @@ inline bool is_prefix(const cpp2_transpiler::Token &t) {
   auto l = t.lexeme;
   return l == "+" || l == "-" || l == "!" || l == "~" || l == "++" ||
          l == "--" || l == "&" || l == "*" || l == "delete" || l == "new" ||
-         l == "sizeof" || l == "typeid" || l == "throw";
+         l == "sizeof" || l == "typeid" || l == "throw" || l == "forward" ||
+         l == "move" || l == "in" || l == "out" || l == "inout" ||
+         l == "copy";
 }
 
 inline bool is_postfix_start(const cpp2_transpiler::Token &t) {
@@ -213,6 +438,12 @@ auto parse_primary(TokenStream input)
     if (!inner.success())
       return ebnf::Result<std::monostate, TokenStream>::fail(input);
     input = inner.remaining();
+    // Accept lambda-style trailing ';' inside parenthesized expressions:
+    //   (:(x) = x > 0;)
+    if (!input.empty() && input.peek().lexeme == ";" &&
+        input.peek(1).lexeme == ")") {
+      input = input.next();
+    }
     if (input.empty() || input.peek().lexeme != ")")
       return ebnf::Result<std::monostate, TokenStream>::fail(input);
     input = input.next(); // consume )
@@ -286,23 +517,11 @@ auto parse_primary(TokenStream input)
     return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
   }
 
-  if (tok.lexeme == "this" || tok.lexeme == "that" || tok.lexeme == "_" ||
-      tok.lexeme == "true" || tok.lexeme == "false" || tok.type == TT::Dollar) {
-    begin(NodeKind::Identifier, input.pos);
-    input = input.next();
-    end(input.pos);
-    return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
-  }
-
-  if (tok.type == TT::Inspect) {
+  if (tok.type == TT::Inspect || tok.lexeme == "inspect") {
     return parse_inspect(input);
   }
 
-  if (tok.type == TT::Identifier) {
-    if (tok.lexeme == "inspect") {
-      return parse_inspect(input);
-    }
-
+  if (is_identifier_like_token(tok)) {
     begin(NodeKind::Identifier, input.pos);
     input = input.next();
     end(input.pos);
@@ -310,6 +529,124 @@ auto parse_primary(TokenStream input)
   }
 
   if (tok.lexeme == ":") {
+    const auto &next = input.peek(1);
+    // Cpp2 typed temporary/value expression, e.g. `:vec = ()` or
+    // `:std::string = args...`.
+    if (next.lexeme != "(" && next.lexeme != "<") {
+      bool has_top_level_assign = false;
+      {
+        TokenStream look = input.next(); // skip ':'
+        int paren_depth = 0;
+        int bracket_depth = 0;
+        int brace_depth = 0;
+        int angle_depth = 0;
+        while (!look.empty()) {
+          auto lex = look.peek().lexeme;
+          if (lex == "(") {
+            ++paren_depth;
+            look = look.next();
+            continue;
+          } else if (lex == ")" && paren_depth > 0) {
+            --paren_depth;
+            look = look.next();
+            continue;
+          } else if (lex == "[") {
+            ++bracket_depth;
+            look = look.next();
+            continue;
+          } else if (lex == "]" && bracket_depth > 0) {
+            --bracket_depth;
+            look = look.next();
+            continue;
+          } else if (lex == "{") {
+            ++brace_depth;
+            look = look.next();
+            continue;
+          } else if (lex == "}" && brace_depth > 0) {
+            --brace_depth;
+            look = look.next();
+            continue;
+          } else if (lex == "<") {
+            ++angle_depth;
+            look = look.next();
+            continue;
+          } else if ((lex == ">" || lex == ">>") && angle_depth > 0) {
+            --angle_depth;
+            look = look.next();
+            continue;
+          }
+
+          if (lex == "=" && paren_depth == 0 && bracket_depth == 0 &&
+              brace_depth == 0 && angle_depth == 0) {
+            has_top_level_assign = true;
+            break;
+          }
+          if ((lex == "," || lex == ")" || lex == ";" || lex == "}" ||
+               lex == "]") &&
+              paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+              angle_depth == 0) {
+            break;
+          }
+          look = look.next();
+        }
+      }
+
+      if (!has_top_level_assign) {
+        return parse_lambda(input);
+      }
+
+      begin(NodeKind::Identifier, input.pos);
+      int paren_depth = 0;
+      int bracket_depth = 0;
+      int brace_depth = 0;
+      int angle_depth = 0;
+      while (!input.empty()) {
+        auto lex = input.peek().lexeme;
+        if (lex == "(") {
+          ++paren_depth;
+          input = input.next();
+          continue;
+        } else if (lex == ")" && paren_depth > 0) {
+          --paren_depth;
+          input = input.next();
+          continue;
+        } else if (lex == "[") {
+          ++bracket_depth;
+          input = input.next();
+          continue;
+        } else if (lex == "]" && bracket_depth > 0) {
+          --bracket_depth;
+          input = input.next();
+          continue;
+        } else if (lex == "{") {
+          ++brace_depth;
+          input = input.next();
+          continue;
+        } else if (lex == "}" && brace_depth > 0) {
+          --brace_depth;
+          input = input.next();
+          continue;
+        } else if (lex == "<") {
+          ++angle_depth;
+          input = input.next();
+          continue;
+        } else if ((lex == ">" || lex == ">>") && angle_depth > 0) {
+          --angle_depth;
+          input = input.next();
+          continue;
+        }
+
+        if ((lex == "," || lex == ")" || lex == ";" || lex == "}" ||
+             lex == "]") &&
+            paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+            angle_depth == 0) {
+          break;
+        }
+        input = input.next();
+      }
+      end(input.pos);
+      return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+    }
     return parse_lambda(input);
   }
 
@@ -395,7 +732,7 @@ auto parse_atom(TokenStream input)
           next.type == TT::CharacterLiteral || next.lexeme == "(" ||
           next.lexeme == "true" || next.lexeme == "false" ||
           next.lexeme == "this" || next.lexeme == "that" ||
-          next.lexeme == "_";
+          next.lexeme == "_" || is_soft_identifier_lexeme(next.lexeme);
 
       if (is_next_operand_start)
         return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -543,7 +880,9 @@ inline auto &next_stmt() {
   return r;
 }
 inline auto &next_clause() {
-  static auto r = lit("next") >> (block_stmt() | stmt_parser() | expr_parser());
+  // Prefer expression parsing before stmt_parser() to avoid stmt_parser's
+  // raw-statement fallback greedily consuming the following loop body.
+  static auto r = lit("next") >> (block_stmt() | expr_parser() | stmt_parser());
   return r;
 }
 inline auto &throw_stmt() {
@@ -555,8 +894,8 @@ inline auto &assert_stmt() {
   // Template args are optional: <type> or <type, audit>
   static auto r = ((lit("assert") | "pre" | "post") >>
                    -((lit("<") >> -(Tok::ID % ",") >> ">") % with_binary(NodeKind::TemplateArgs)) >>
-                   "(" >> expr_parser() >>
-                   -(lit(",") >> expr_parser()) >> ")" >> ";") %
+                   "(" >> initializer_expr() >>
+                   -(lit(",") >> initializer_expr()) >> -lit(",") >> ")" >> ";") %
                   with_node(NodeKind::AssertStatement);
   return r;
 }
@@ -569,7 +908,7 @@ inline auto &unchecked_stmt() {
 // Control flow
 inline auto &if_stmt() {
   static auto r =
-      (lit("if") >> expr_parser() >> (block_stmt() | stmt_parser()) >>
+      (lit("if") >> -lit("constexpr") >> expr_parser() >> (block_stmt() | stmt_parser()) >>
        -(lit("else") >> (block_stmt() | stmt_parser()))) %
       with_node(NodeKind::IfStatement);
   return r;
@@ -676,12 +1015,15 @@ auto parse_inspect(TokenStream input)
 // Local variable declaration (inside block)
 inline auto &local_var_decl() {
   static auto r =
-      (Rules::identifier_like >> ((":="_l >> expr_parser() >> ";") |
-                                  (lit(":") >> type_specifier() >>
-                                   -(lit("=") >> expr_parser()) >> ";"))) %
+      ((Rules::identifier_like % with_node(NodeKind::Identifier)) >>
+       ((":="_l >> expr_parser() >> ";") |
+        (lit(":") >> "==" >> expr_parser() >> ";") |
+        (lit(":") >> type_specifier() >>
+         -((lit("=") | "==") >> expr_parser()) >> ";"))) %
       with_node(NodeKind::UnifiedDeclaration);
   return r;
 }
+
 
 // Expression statement
 inline auto &expr_stmt() {
@@ -692,6 +1034,80 @@ inline auto &expr_stmt() {
 inline auto &labeled_stmt() {
   static auto r = (Rules::identifier_like >> ":" >> stmt_parser());
   return r;
+}
+
+inline auto raw_stmt() {
+  struct RawStatementWrapper {
+    ebnf::Result<std::monostate, TokenStream> parse(TokenStream input) const {
+      if (input.empty() || input.peek().lexeme == "}") {
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+
+      int paren_depth = 0;
+      int bracket_depth = 0;
+      int brace_depth = 0;
+      bool consumed = false;
+
+      while (!input.empty()) {
+        auto lex = input.peek().lexeme;
+
+        if (lex == "(") {
+          ++paren_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == ")") {
+          if (paren_depth > 0) --paren_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == "[") {
+          ++bracket_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == "]") {
+          if (bracket_depth > 0) --bracket_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == "{") {
+          ++brace_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == "}") {
+          if (brace_depth == 0 && paren_depth == 0 && bracket_depth == 0) {
+            break;
+          }
+          if (brace_depth > 0) --brace_depth;
+          consumed = true;
+          input = input.next();
+          continue;
+        }
+
+        consumed = true;
+        input = input.next();
+
+        if (lex == ";" && paren_depth == 0 && bracket_depth == 0 &&
+            brace_depth == 0) {
+          return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+        }
+      }
+
+      if (!consumed) {
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+  };
+
+  return lift(RawStatementWrapper{}) % with_node(NodeKind::Statement);
 }
 
 auto parse_initializer_expr(TokenStream input)
@@ -705,9 +1121,11 @@ inline Proto<FnParser> initializer_expr() {
 
 inline auto &parameter() {
   static auto r =
-      (*(Ops::param_qual % with_node(NodeKind::ParamQualifier)) >>
-       (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
-       -(lit(":") >> type_specifier()) >> -(lit("=") >> initializer_expr())) %
+      ((*(Ops::param_qual % with_node(NodeKind::ParamQualifier))) >>
+       ((Rules::identifier_like % with_node(NodeKind::Identifier)) >>
+        ((":="_l >> initializer_expr()) |
+         (-lit("...") >> -(lit(":") >> -type_specifier()) >>
+          -(lit("=") >> initializer_expr()))))) %
       with_node(NodeKind::Parameter);
   return r;
 }
@@ -721,6 +1139,7 @@ inline auto &cpp1_parameter() {
   static auto r =
       (type_specifier() >>
        (Rules::identifier_like % with_node(NodeKind::Identifier)) >>
+       -lit("...") >>
        -(lit("=") >> initializer_expr())) %
       with_node(NodeKind::Parameter);
   return r;
@@ -734,7 +1153,8 @@ inline auto &cpp1_param_list() {
 
 inline auto &scope_stmt() {
   static auto r =
-      (param_list() >> block_stmt()) % with_node(NodeKind::ScopeStatement);
+      (param_list() >> (block_stmt() | stmt_parser())) %
+      with_node(NodeKind::ScopeStatement);
   return r;
 }
 
@@ -742,11 +1162,18 @@ inline auto &statement() {
   // local_var_decl MUST come before labeled_stmt to prevent "x: int = 42;"
   // from being parsed as label "x:" with body "int = 42;"
   static auto r =
-      (local_var_decl() | labeled_stmt() | block_stmt() | unchecked_stmt() |
+      ((((Rules::identifier_like % with_node(NodeKind::Identifier)) >> lit(":") >>
+         (lit("namespace") >> "==" >> type_specifier() >> ";") %
+             with_node(NodeKind::NamespaceSuffix)) %
+        with_node(NodeKind::UnifiedDeclaration)) |
+       (((Rules::identifier_like % with_node(NodeKind::Identifier)) >> lit(":") >>
+         lit("type") >> "==" >> type_specifier() >> ";") %
+        with_node(NodeKind::UnifiedDeclaration)) |
+       local_var_decl() | labeled_stmt() | block_stmt() | unchecked_stmt() |
        scope_stmt() | if_stmt() | while_stmt() | do_while_stmt() |
        for_range_stmt() | for_cpp1_range_stmt() | try_stmt() | return_stmt() |
        break_stmt() | continue_stmt() | next_stmt() | throw_stmt() |
-       assert_stmt() | expr_stmt() | lit(";")) %
+       assert_stmt() | expr_stmt() | raw_stmt() | lit(";")) %
       with_node(NodeKind::Statement);
   return r;
 }
@@ -766,10 +1193,13 @@ inline auto &func_body() {
 
 inline auto &contract_clause() {
   static auto r =
-      ((lit("pre") | "post" | "assert") >> "(" >> expr_parser() >> ")") %
+      ((lit("pre") | "post" | "assert") >>
+       -((lit("<") >> -(Tok::ID % ",") >> ">") % with_binary(NodeKind::TemplateArgs)) >>
+       "(" >> expr_parser() >> ")") %
       with_node(NodeKind::ContractClause);
   return r;
 }
+
 inline auto &requires_clause() {
   static auto r = (lit("requires") >> expr_parser_no_assign()) %
                   with_node(NodeKind::RequiresClause);
@@ -781,10 +1211,26 @@ inline auto &func_suffix() {
                   with_node(NodeKind::FunctionSuffix);
   return r;
 }
+
+inline auto &lambda_func_body() {
+  // Lambda expressions are regular expressions, so the trailing semicolon
+  // belongs to the outer context (declaration/statement), not the lambda.
+  static auto r = (lit("=") >> (block_stmt() | expr_parser())) %
+                  with_node(NodeKind::FunctionBody);
+  return r;
+}
+
+inline auto &lambda_func_suffix() {
+  static auto r = (param_list() >> -return_spec() >> *contract_clause() >>
+                   -requires_clause() >> lambda_func_body()) %
+                  with_node(NodeKind::FunctionSuffix);
+  return r;
+}
 inline auto &var_suffix() {
   static auto r =
-      ((type_specifier() >> -((lit("=") | "==") >> expr_parser()) >> ";") |
-       ((lit("=") | "==") >> expr_parser() >> ";")) %
+      ((type_specifier() >> -requires_clause() >>
+        -((lit("=") | "==") >> expr_parser()) >> ";") |
+       (-requires_clause() >> ((lit("=") | "==") >> expr_parser()) >> ";")) %
       with_node(NodeKind::VariableSuffix);
   return r;
 }
@@ -804,7 +1250,7 @@ inline auto &metafunction() {
   return r;
 }
 inline auto &type_suffix() {
-  static auto r = (*metafunction() >> lit("type") >> -type_body()) %
+  static auto r = (*metafunction() >> lit("type") >> -requires_clause() >> -type_body()) %
                   with_node(NodeKind::TypeSuffix);
   return r;
 }
@@ -831,7 +1277,7 @@ inline auto &template_param() {
   // T, T: type, T..., T: type..., T: _ = default, Ts...: type
   static auto r = Rules::identifier_like >> -(lit("...")) >>
                   -(lit(":") >> type_specifier()) >> -(lit("...")) >>
-                  -(lit("=") >> type_specifier());
+                  -(lit("=") >> initializer_expr());
   return r;
 }
 inline auto &template_params() {
@@ -841,10 +1287,11 @@ inline auto &template_params() {
 }
 
 inline auto &alias_suffix() {
-  static auto r = (lit("type") >> "==" >> type_specifier() >> ";") %
+  static auto r = (lit("type") >> "==" >> alias_type_parser() >> ";") %
                   with_node(NodeKind::TypeAliasSuffix);
   return r;
 }
+
 
 inline auto &operator_name() {
   static auto r = lit("=") | "[]" | "()" | "++" | "--" | "->" | "<=>" | "+" |
@@ -865,6 +1312,104 @@ inline auto &concept_suffix() {
   return r;
 }
 
+inline auto cpp1_raw_decl() {
+  struct Cpp1RawDeclWrapper {
+    ebnf::Result<std::monostate, TokenStream> parse(TokenStream input) const {
+      if (input.empty()) {
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+
+      auto first = input.peek().lexeme;
+      bool starts_cpp1_decl =
+          first == "template" || first == "struct" || first == "class" ||
+          first == "enum" || first == "union" || first == "namespace" ||
+          first == "using" || first == "typedef" || first == "constexpr" ||
+          first == "consteval" || first == "constinit" || first == "inline" ||
+          first == "static" || first == "extern" || first == "void" ||
+          first == "bool" || first == "int" || first == "long" ||
+          first == "short" || first == "float" || first == "double" ||
+          first == "char" || first == "signed" || first == "unsigned";
+
+      if (!starts_cpp1_decl) {
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+
+      int paren_depth = 0;
+      int bracket_depth = 0;
+      int brace_depth = 0;
+      bool saw_body = false;
+      bool saw_toplevel_paren_before_body = false;
+      bool consumed_any = false;
+      bool starts_with_aggregate =
+          first == "struct" || first == "class" || first == "union" ||
+          first == "enum";
+
+      while (!input.empty()) {
+        auto lex = input.peek().lexeme;
+
+        if (lex == "(") {
+          if (brace_depth == 0) {
+            saw_toplevel_paren_before_body = true;
+          }
+          ++paren_depth;
+        } else if (lex == ")") {
+          if (paren_depth > 0) --paren_depth;
+        } else if (lex == "[") {
+          ++bracket_depth;
+        } else if (lex == "]") {
+          if (bracket_depth > 0) --bracket_depth;
+        } else if (lex == "{") {
+          ++brace_depth;
+          saw_body = true;
+        } else if (lex == "}") {
+          if (brace_depth > 0) --brace_depth;
+          input = input.next();
+          if (saw_body && brace_depth == 0 && paren_depth == 0 &&
+              bracket_depth == 0) {
+            if (!input.empty() && input.peek().lexeme == ";") {
+              input = input.next();
+              return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+            }
+            if (first == "namespace") {
+              return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+            }
+            if (saw_toplevel_paren_before_body) {
+              // C++ function-try-blocks continue with catch clauses after
+              // the function body's closing brace.
+              if (!input.empty() && input.peek().lexeme == "catch") {
+                continue;
+              }
+              return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+            }
+            if (starts_with_aggregate) {
+              // Handle `struct S {} obj;` and similar declarations.
+              continue;
+            }
+            return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+          }
+          continue;
+        } else if (lex == ";" && paren_depth == 0 && bracket_depth == 0 &&
+                   brace_depth == 0) {
+          input = input.next();
+          return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+        }
+
+        consumed_any = true;
+        input = input.next();
+      }
+
+      if (consumed_any && saw_body && saw_toplevel_paren_before_body &&
+          paren_depth == 0 && bracket_depth == 0 && brace_depth == 0) {
+        return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+      }
+
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+  };
+
+  return lift(Cpp1RawDeclWrapper{});
+}
+
 inline auto &decl_suffix() {
   static auto r =
       (template_params() >>
@@ -883,7 +1428,7 @@ inline auto &operator_decl() {
   return r;
 }
 inline auto &unified_decl() {
-  static auto r = (Rules::identifier_like >> ((":="_l >> expr_parser() >> ";") |
+  static auto r = ((Rules::identifier_like % with_node(NodeKind::Identifier)) >> ((":="_l >> expr_parser() >> ";") |
                                               (lit(":") >> decl_suffix()))) %
                   with_node(NodeKind::UnifiedDeclaration);
   return r;
@@ -900,14 +1445,93 @@ inline auto &cpp1_function_decl() {
                   with_node(NodeKind::UnifiedDeclaration);
   return r;
 }
+inline auto cpp1_function_try_decl() {
+  struct Cpp1FunctionTryDeclWrapper {
+    ebnf::Result<std::monostate, TokenStream> parse(TokenStream input) const {
+      if (input.empty() || input.peek().lexeme != "auto") {
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      }
+
+      int paren_depth = 0;
+      int bracket_depth = 0;
+      int brace_depth = 0;
+      bool saw_toplevel_paren = false;
+      bool saw_try_keyword = false;
+      bool saw_try_body = false;
+
+      while (!input.empty()) {
+        auto lex = input.peek().lexeme;
+
+        if (lex == "(") {
+          if (brace_depth == 0) {
+            saw_toplevel_paren = true;
+          }
+          ++paren_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == ")") {
+          if (paren_depth > 0) --paren_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == "[") {
+          ++bracket_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == "]") {
+          if (bracket_depth > 0) --bracket_depth;
+          input = input.next();
+          continue;
+        }
+        if (lex == "try" && brace_depth == 0) {
+          saw_try_keyword = true;
+          input = input.next();
+          continue;
+        }
+        if (lex == "{") {
+          ++brace_depth;
+          if (saw_try_keyword) {
+            saw_try_body = true;
+          }
+          input = input.next();
+          continue;
+        }
+        if (lex == "}") {
+          if (brace_depth > 0) --brace_depth;
+          input = input.next();
+          if (saw_try_body && saw_toplevel_paren && brace_depth == 0 &&
+              paren_depth == 0 && bracket_depth == 0) {
+            if (!input.empty() && input.peek().lexeme == "catch") {
+              continue;
+            }
+            return ebnf::Result<std::monostate, TokenStream>::ok({}, input);
+          }
+          continue;
+        }
+        if (lex == ";" && paren_depth == 0 && bracket_depth == 0 &&
+            brace_depth == 0) {
+          return ebnf::Result<std::monostate, TokenStream>::fail(input);
+        }
+
+        input = input.next();
+      }
+
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+  };
+
+  return lift(Cpp1FunctionTryDeclWrapper{});
+}
 inline auto &declaration() {
-  // Note: operator_decl() is defined but not yet used here — the emitter
-  // doesn't properly differentiate (out this) constructors from (inout this)
-  // assignment operators yet. Once that's fixed, add operator_decl() back
-  // as the first alternative here.
+  // Parse operator declarations explicitly so type bodies can contain
+  // constructor/assignment forms like `operator=:` used by regression tests.
   static auto r =
-      (-Ops::access >>
-       (unified_decl() | cpp1_function_decl())) %
+      ((-Ops::access >>
+       (operator_decl() | unified_decl() | cpp1_function_decl() |
+        cpp1_function_try_decl())) |
+       cpp1_raw_decl()) %
       with_node(NodeKind::Declaration);
   return r;
 }
@@ -968,7 +1592,17 @@ auto parse_lambda(TokenStream input)
 
   input = input.next(); // consume :
 
-  auto suffix = func_suffix().parse(input);
+  // Generic lambda with template params: :<T>(...) = ...
+  if (!input.empty() && input.peek().lexeme == "<") {
+    auto tpl = template_params().parse(input);
+    if (!tpl.success()) {
+      tree_restore(cp);
+      return ebnf::Result<std::monostate, TokenStream>::fail(input);
+    }
+    input = tpl.remaining();
+  }
+
+  auto suffix = lambda_func_suffix().parse(input);
   if (!suffix.success()) {
     tree_restore(cp);
     return ebnf::Result<std::monostate, TokenStream>::fail(input);
@@ -983,12 +1617,17 @@ auto parse_lambda(TokenStream input)
 
 ParseTree parse(std::span<const cpp2_transpiler::Token> tokens) {
   g_builder = TreeBuilder{};
+  g_last_error_pos = UINT32_MAX;
   TokenStream stream{tokens};
   begin(NodeKind::TranslationUnit, 0);
   auto result = translation_unit().parse(stream);
   if (result.success())
     end(result.remaining().pos);
+  else
+    g_last_error_pos = result.remaining().pos;
   return g_builder.finish(tokens);
 }
+
+uint32_t last_error_pos() { return g_last_error_pos; }
 
 } // namespace cpp2::parser

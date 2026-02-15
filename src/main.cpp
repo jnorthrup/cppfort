@@ -95,7 +95,14 @@ int main(int argc, char* argv[]) {
 
         // Check for valid parse
         if (tree.nodes.empty() || tree.nodes[tree.root].child_count == 0) {
-            std::cerr << "Error: Parsing failed - no declarations found\n";
+            auto pos = cpp2::parser::last_error_pos();
+            if (pos < tokens.size()) {
+                const auto& tok = tokens[pos];
+                std::cerr << "Error: Parsing failed near token '" << tok.lexeme
+                          << "' (line " << tok.line << ", column " << tok.column << ")\n";
+            } else {
+                std::cerr << "Error: Parsing failed - no declarations found\n";
+            }
             return 1;
         }
 

@@ -224,8 +224,11 @@ constexpr const char *name(NodeKind k) {
 // Category predicates
 constexpr bool is_expression(NodeKind k) {
   auto i = static_cast<uint8_t>(k);
-  return i <= static_cast<uint8_t>(NodeKind::Expression) &&
-         i >= static_cast<uint8_t>(NodeKind::Identifier);
+  if (i <= static_cast<uint8_t>(NodeKind::Expression) &&
+      i >= static_cast<uint8_t>(NodeKind::Identifier)) {
+    return true;
+  }
+  return k == NodeKind::InspectExpression || k == NodeKind::LambdaExpression;
 }
 
 constexpr bool is_statement(NodeKind k) {

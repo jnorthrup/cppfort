@@ -16,4 +16,8 @@ namespace cpp2::parser {
 // Defined in src/parser.cpp
 cpp2::ast::ParseTree parse(std::span<const cpp2_transpiler::Token> tokens);
 
+// Last top-level parse failure token position from parse().
+// If parse() succeeds, this is set to UINT32_MAX.
+uint32_t last_error_pos();
+
 } // namespace cpp2::parser
