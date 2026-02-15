@@ -226,14 +226,14 @@ This file tracks all major tracks for the project. Each track has its own detail
 ## [~] Track: Parser Regression Test Pass - Full cppfront Parity
 
 *Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
-*Status: IN PROGRESS* - Phase 7 (Full Regression Suite) - **101/159 tests passing (63.5%)**
+*Status: IN PROGRESS* - Phase 7 (Full Regression Suite) - **59/159 tests passing (37.1%) — strict pipeline**
 
 **Progress**:
 
 - Phase 1-6: Implementation completed (preprocessor, variables, parameters, functions, expressions, statements)
-- Phase 7: In Progress - 101/159 tests passing (63.5%)
-- Fixed: Scope resolution operator (`std::` vs `std.`), type formatting (`void*`), named return values
-- Fixed: C++1 parameter qualifiers (duplicate `const&`), `::` in interpolation, type alias ordering, preprocessor preservation
+- Phase 7: In Progress - 59/159 honest (strict pipeline: size gate + full compile + link + runtime)
+- Previous 101/159 and 123/159 numbers were inflated by `-fsyntax-only` + no size gate (64 false positives)
+- `ckmake` hardened 2026-02-15: 4 anti-cheating gates (size gate, full compile, link, runtime match)
 
 **Pending Reviews** (8 manual verification checkpoints):
 
@@ -375,6 +375,31 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## [ ] Track: Cpp2 Runtime Pocketization - Stratify Runtime into Related Pockets
+
+*Link: [./conductor/tracks/cpp2_runtime_pocketization_20260215/](./conductor/tracks/cpp2_runtime_pocketization_20260215/)*
+*Status: NEW*
+
+**Objective:** Break monolithic `cpp2_runtime.*` implementation into domain-aligned pocket headers while preserving the single `cpp2_runtime.h` umbrella API.
+
+**Pocket Regions:**
+1. `core.hpp` (foundational helpers, move/new, string conversion)
+2. `ranges.hpp` (range and iteration helpers)
+3. `regex.hpp` (regex runtime wrappers and types)
+4. `type_inspect_core.hpp` + `type_inspect_std.hpp` (`is/as` core + std specializations)
+5. `contracts.hpp` (contract handlers and macros)
+6. `ufcs.hpp` (UFCS macros)
+7. `safety.hpp` (bounds, narrowing, discard helpers)
+8. `io.hpp` + `types.hpp` (stdio wrappers, args helpers, scalar aliases)
+
+**Phases:**
+1. Build symbol/section ledger from current runtime
+2. Create pocket header layout and extract in safe batches
+3. Convert `cpp2_runtime.h` to compatibility umbrella
+4. Validate emitter-generated outputs and focused regression compiles
+
+---
+
 ## [ ] Track: Markdown blocks — pure lines, not concentric, not recursive
 
 *Status: NEW*
@@ -414,11 +439,11 @@ Markdown blocks do not nest. A `` ``` `` sequence inside the content of a markdo
 
 ---
 
-*Total Tracks: 16*
+*Total Tracks: 17*
 *Completed: 9*
 *In Progress: 0*
 *Active: 0*
 *Suspended: 1*
 *Planned: 4*
 *Blocked: 0*
-*New: 2*
+*New: 3*

@@ -34,6 +34,18 @@ TIMEOUT_BUILD=${TIMEOUT_BUILD:-120}
 TIMEOUT_COMPILE=${TIMEOUT_COMPILE:-30}
 TIMEOUT_RUN=${TIMEOUT_RUN:-5}
 
+# Anti-cheating gates
+SIZE_RATIO_MIN=${SIZE_RATIO_MIN:-0.50}   # Gate 4: minimum output/reference code-line ratio
+REFERENCE_DIR="$CPPFRONT_DIR/regression-tests/test-results"
+REFERENCE_EXEC_DIR="$CPPFRONT_DIR/regression-tests/test-results/clang-19-c++23-libcpp"
+
+# Compile/link flags for full compilation (not syntax-only)
+FORT_CXXFLAGS="-std=c++23 -stdlib=libc++ -Wno-unused-parameter -Wno-unused-variable \
+    -Wno-unused-but-set-variable -Wno-deprecated-declarations -Wno-nan-infinity-disabled \
+    -ftemplate-depth=2048 -ferror-limit=10"
+FORT_LDFLAGS="-stdlib=libc++ -L${HOMEBREW_LLVM_PREFIX}/lib/c++ \
+    -L${HOMEBREW_LLVM_PREFIX}/lib/unwind -lunwind"
+
 # Test source directories
 REGRESSION_DIR="$CPPFRONT_DIR/regression-tests"
 PASSROUGH_DIR="$CPPFRONT_DIR/passthrough-tests"
@@ -164,6 +176,61 @@ build_cppfort() {
 }
 
 # =============================================================================
+# ANTI-CHEATING GATES
+# =============================================================================
+
+# Count "code lines" in a .cpp file (strip includes, using, #line, blank, comments)
+code_line_count() {
+    grep -cvE '^\s*$|^\s*//|^#include|^#line |^using ' "$1" 2>/dev/null || echo 0
+}
+
+# Gate 4: Size gate - compare code-line count against reference
+# Returns 0 (pass) or 1 (fail). Prints ratio to stdout.
+check_size_gate() {
+    local outfile="$1" reffile="$2"
+    if [ ! -f "$reffile" ]; then
+        echo "1.00"  # no reference = skip gate
+        return 0
+    fi
+    local out_code ref_code ratio
+    out_code=$(code_line_count "$outfile")
+    ref_code=$(code_line_count "$reffile")
+    if [ "$ref_code" -eq 0 ]; then
+        echo "1.00"
+        return 0
+    fi
+    ratio=$(echo "scale=2; $out_code / $ref_code" | bc 2>/dev/null || echo "0")
+    echo "$ratio"
+    if (( $(echo "$ratio < $SIZE_RATIO_MIN" | bc -l 2>/dev/null || echo 1) )); then
+        return 1
+    fi
+    return 0
+}
+
+# Gate 1: Diff against cppfront reference output
+# Prints similarity percentage (0-100). Higher = more similar.
+compute_similarity() {
+    local outfile="$1" reffile="$2"
+    if [ ! -f "$reffile" ]; then
+        echo "-"
+        return
+    fi
+    local tmpout="/tmp/ckmake_out_$$" tmpref="/tmp/ckmake_ref_$$"
+    # Strip boilerplate from both, sort for comm comparison
+    grep -vE '^\s*$|^\s*//|^#include|^#line |^using ' "$outfile" 2>/dev/null | sort > "$tmpout"
+    grep -vE '^\s*$|^\s*//|^#include|^#line |^using ' "$reffile" 2>/dev/null | sort > "$tmpref"
+    local common ref_total
+    common=$(comm -12 "$tmpout" "$tmpref" | wc -l | tr -d ' ')
+    ref_total=$(wc -l < "$tmpref" | tr -d ' ')
+    rm -f "$tmpout" "$tmpref"
+    if [ "$ref_total" -eq 0 ]; then
+        echo "100"
+        return
+    fi
+    echo "scale=0; $common * 100 / $ref_total" | bc 2>/dev/null || echo "0"
+}
+
+# =============================================================================
 # REGRESSION TESTS
 # =============================================================================
 # Anti-cheating: reset cppfront repo to clean state
@@ -205,7 +272,8 @@ checkout_corpus_clean() {
 run_regression_tests() {
     local transpiler="${1:-$CPPFRONT_BIN}"
     local name_suffix=""
-    [ "$transpiler" = "$CPPFORT_BIN" ] && name_suffix="-fort"
+    local is_fort=false
+    [ "$transpiler" = "$CPPFORT_BIN" ] && name_suffix="-fort" && is_fort=true
 
     log_section "Running cppfront regression tests using $(basename "$transpiler")$name_suffix"
 
@@ -222,11 +290,18 @@ run_regression_tests() {
     baseline_checksums=$(compute_corpus_sha256)
     log_info "Corpus provenance SHA256: $baseline_checksums"
 
+    # Stage counters
     local tmpcounts="$BUILD_DIR/regression_counts.txt"
     echo "0 0 0" > "$tmpcounts"  # pass fail total
 
     local csv="$BUILD_DIR/regression_results.csv"
-    echo "test,status,stage" > "$csv"
+    echo "test,status,failed_stage,size_ratio,similarity,stages_reached" > "$csv"
+
+    # Per-stage failure counters (written to temp files for subshell access)
+    local stage_file="$BUILD_DIR/regression_stages.txt"
+    : > "$stage_file"
+
+    mkdir -p "$WORK_DIR/obj" "$WORK_DIR/bin" "$WORK_DIR/run"
 
     find "$REGRESSION_DIR" -name '*.cpp2' | sort | while read -r cpp2file; do
         [ -f "$cpp2file" ] || continue
@@ -234,15 +309,23 @@ run_regression_tests() {
 
         # Skip error tests (files ending with -error.cpp2)
         if [[ $name == *-error ]]; then
-            log_info "SKIP: $name (error test)"
-            echo "$name,SKIP,error-test" >> "$csv"
+            echo "$name,SKIP,error_test,-,-,skip" >> "$csv"
+            echo "skip" >> "$stage_file"
             continue
         fi
 
         cppfile="$WORK_DIR/${name}.cpp"
-        status="FAIL" stage=""
+        objfile="$WORK_DIR/obj/${name}.o"
+        binfile="$WORK_DIR/bin/${name}"
+        ref_cpp="$REFERENCE_DIR/${name}.cpp"
+        ref_output="$REFERENCE_EXEC_DIR/${name}.cpp.execution"
+        status="FAIL"
+        failed_stage=""
+        size_ratio="-"
+        similarity="-"
+        stages_reached=""
 
-        # Stage 1: Transpile
+        # ── Stage 1: Transpile ──────────────────────────────────────────
         local transpile_cmd=""
         if [ "$transpiler" = "$CPPFORT_BIN" ]; then
             transpile_cmd="timeout $TIMEOUT_COMPILE $transpiler $cpp2file $cppfile"
@@ -250,31 +333,122 @@ run_regression_tests() {
             transpile_cmd="timeout $TIMEOUT_COMPILE $transpiler $cpp2file -o $cppfile"
         fi
 
-        if eval "$transpile_cmd" 2> "$WORK_DIR/${name}_transpile.log"; then
-            stage="transpile"
-
-            # Stage 2: Preprocess generated cpp (remove cpp2util.h and #line noise)
-            gsed -i -e '/^#include "cpp2util.h"/d' -e '/^#line /d' "$cppfile" 2>/dev/null || true
-
-            # Stage 3: Compile (syntax-only check) - include cppfort headers for runtime support
-            if timeout "$TIMEOUT_COMPILE" "$CXX" -std=c++23 -I"$PROJECT_ROOT/include" -I"$PROJECT_ROOT/third_party/cppfront/include" -fsyntax-only "$cppfile" 2>/dev/null; then
-                stage="compile"
-                status="PASS"
-                log_ok "$name"
-                echo "1 0 1" >> "$tmpcounts"
-            else
-                log_error "$name: compile failed"
-                echo "0 1 1" >> "$tmpcounts"
-            fi
-        else
+        if ! eval "$transpile_cmd" 2> "$WORK_DIR/${name}_transpile.log"; then
+            failed_stage="transpile"
             log_error "$name: transpile failed"
             echo "0 1 1" >> "$tmpcounts"
+            echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+            echo "fail_transpile" >> "$stage_file"
+            continue
+        fi
+        stages_reached="transpile"
+
+        # ── Stage 2: Preprocess (strip cpp2util.h and #line noise) ──────
+        gsed -i -e '/^#include "cpp2util.h"/d' -e '/^#line /d' "$cppfile" 2>/dev/null || true
+
+        # ── Gate 4: Size gate (cppfort only) ────────────────────────────
+        if $is_fort; then
+            size_ratio=$(check_size_gate "$cppfile" "$ref_cpp") || true
+            if [ "$size_ratio" != "1.00" ] && [ -f "$ref_cpp" ]; then
+                if (( $(echo "$size_ratio < $SIZE_RATIO_MIN" | bc -l 2>/dev/null || echo 1) )); then
+                    failed_stage="size_gate"
+                    log_error "$name: STUB output (ratio=$size_ratio < $SIZE_RATIO_MIN)"
+                    echo "0 1 1" >> "$tmpcounts"
+                    echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+                    echo "fail_size_gate" >> "$stage_file"
+                    continue
+                fi
+            fi
+            stages_reached="$stages_reached+size_gate"
         fi
 
-        echo "$name,$status,$stage" >> "$csv"
+        # ── Gate 1: Diff similarity against reference (informational) ───
+        if $is_fort; then
+            similarity=$(compute_similarity "$cppfile" "$ref_cpp")
+            stages_reached="$stages_reached+diff"
+        fi
+
+        # ── Gate 2: Full compile (not syntax-only) ──────────────────────
+        local compile_flags
+        if $is_fort; then
+            compile_flags="$FORT_CXXFLAGS -I$PROJECT_ROOT/include -I$CPPFRONT_DIR/include"
+        else
+            compile_flags="-std=c++23 -I$PROJECT_ROOT/include -I$CPPFRONT_DIR/include"
+        fi
+
+        if ! timeout "$TIMEOUT_COMPILE" "$CXX" $compile_flags -c -o "$objfile" "$cppfile" \
+            2> "$WORK_DIR/${name}_compile.log"; then
+            failed_stage="compile"
+            log_error "$name: compile failed"
+            echo "0 1 1" >> "$tmpcounts"
+            echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+            echo "fail_compile" >> "$stage_file"
+            continue
+        fi
+        stages_reached="$stages_reached+compile"
+
+        # ── Gate 3a: Link ───────────────────────────────────────────────
+        local link_flags
+        if $is_fort; then
+            link_flags="$FORT_LDFLAGS"
+        else
+            link_flags="$CPPFRONT_LDFLAGS"
+        fi
+
+        if ! timeout "$TIMEOUT_COMPILE" "$CXX" $link_flags -o "$binfile" "$objfile" \
+            2> "$WORK_DIR/${name}_link.log"; then
+            failed_stage="link"
+            log_warn "$name: link failed (compiled OK)"
+            echo "0 1 1" >> "$tmpcounts"
+            echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+            echo "fail_link" >> "$stage_file"
+            continue
+        fi
+        stages_reached="$stages_reached+link"
+
+        # ── Gate 3b: Runtime test (if expected output exists) ───────────
+        if [ -f "$ref_output" ]; then
+            local actual_output="$WORK_DIR/run/${name}.output"
+            if timeout "$TIMEOUT_RUN" "$binfile" > "$actual_output" 2>&1; then
+                if diff -q "$ref_output" "$actual_output" > /dev/null 2>&1; then
+                    stages_reached="$stages_reached+run"
+                else
+                    failed_stage="run_mismatch"
+                    local diff_lines
+                    diff_lines=$(diff "$ref_output" "$actual_output" 2>/dev/null | grep -c '^[<>]' || echo "?")
+                    log_warn "$name: runtime output mismatch ($diff_lines lines differ)"
+                    echo "0 1 1" >> "$tmpcounts"
+                    echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+                    echo "fail_run_mismatch" >> "$stage_file"
+                    continue
+                fi
+            else
+                local exit_code=$?
+                if [ "$exit_code" -eq 124 ]; then
+                    failed_stage="run_timeout"
+                    log_warn "$name: runtime timeout (${TIMEOUT_RUN}s)"
+                else
+                    failed_stage="run_crash"
+                    log_warn "$name: runtime crash (exit $exit_code)"
+                fi
+                echo "0 1 1" >> "$tmpcounts"
+                echo "$name,$status,$failed_stage,$size_ratio,$similarity,$stages_reached" >> "$csv"
+                echo "fail_$failed_stage" >> "$stage_file"
+                continue
+            fi
+        else
+            stages_reached="$stages_reached+run_skip"
+        fi
+
+        # ── PASS ────────────────────────────────────────────────────────
+        status="PASS"
+        log_ok "$name  (sim=${similarity}%)"
+        echo "1 0 1" >> "$tmpcounts"
+        echo "$name,$status,,$size_ratio,$similarity,$stages_reached" >> "$csv"
+        echo "pass" >> "$stage_file"
     done
 
-    # Sum up counts
+    # ── Summary ─────────────────────────────────────────────────────────
     local pass=0 fail=0 total=0
     while read -r p f t; do
         pass=$((pass + p))
@@ -283,8 +457,32 @@ run_regression_tests() {
     done < "$tmpcounts"
 
     local pct=$(echo "scale=1; $pass * 100 / $total" | bc 2>/dev/null || echo "0")
+
+    # Per-stage breakdown
+    local n_skip n_transpile n_size n_compile n_link n_run_mm n_run_crash n_run_to n_pass
+    n_skip=$(grep -c '^skip$' "$stage_file" || true)
+    n_transpile=$(grep -c '^fail_transpile$' "$stage_file" || true)
+    n_size=$(grep -c '^fail_size_gate$' "$stage_file" || true)
+    n_compile=$(grep -c '^fail_compile$' "$stage_file" || true)
+    n_link=$(grep -c '^fail_link$' "$stage_file" || true)
+    n_run_mm=$(grep -c '^fail_run_mismatch$' "$stage_file" || true)
+    n_run_crash=$(grep -c '^fail_run_crash$' "$stage_file" || true)
+    n_run_to=$(grep -c '^fail_run_timeout$' "$stage_file" || true)
+    n_pass=$(grep -c '^pass$' "$stage_file" || true)
+
     log_section "Regression Results: $pass/$total passed ($pct%)"
     log_info "Results saved to: $csv"
+    echo ""
+    log_info "Stage breakdown:"
+    log_info "  PASS:             $n_pass"
+    [ "$n_skip" -gt 0 ]      && log_info "  SKIP (error):     $n_skip"
+    [ "$n_transpile" -gt 0 ]  && log_info "  FAIL transpile:   $n_transpile"
+    [ "$n_size" -gt 0 ]       && log_info "  FAIL size_gate:   $n_size  (output < ${SIZE_RATIO_MIN}x reference)"
+    [ "$n_compile" -gt 0 ]    && log_info "  FAIL compile:     $n_compile"
+    [ "$n_link" -gt 0 ]       && log_info "  FAIL link:        $n_link"
+    [ "$n_run_mm" -gt 0 ]     && log_info "  FAIL run mismatch:$n_run_mm"
+    [ "$n_run_crash" -gt 0 ]  && log_info "  FAIL run crash:   $n_run_crash"
+    [ "$n_run_to" -gt 0 ]     && log_info "  FAIL run timeout: $n_run_to"
 
     # Anti-cheating: verify corpus SHA256 unchanged (detect LLM tampering)
     if ! verify_corpus_sha256 "$baseline_checksums"; then
