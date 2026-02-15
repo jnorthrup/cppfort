@@ -226,6 +226,12 @@ Session (101/159, +3 from C++1 parameter fix, :: in interpolation, and autodiff 
 - Fixed preprocessor directive preservation (#include <cpp2taylor.h>)
 - Fixed include path to use cpp2taylor.h when needed (autodiff-taylor test)
 
+Session (2026-02-15, targeted compile matrix 10/10):
+- Added lightweight `include/cpp2taylor.h` shim with `cpp2::taylor<T, N>` and UFCS-compatible helpers (`add/sub/mul/div`, `sqrt/log/exp/sin/cos`)
+- Included `cpp2_runtime.h` from `cpp2taylor.h` so generated autodiff-taylor files have `CPP2_UFCS`, `cpp2::to_string`, and `cpp2::make_args`
+- Confirmed compile pass for newly unblocked cases: `pure2-autodiff-higher-order`, `mixed-autodiff-taylor`
+- Re-verified prior regression targets still compile (range operators, autodiff, UFCS, type-ordering set)
+
 Session (87/159, +1 from pure virtual fix):
 - Fixed `function_has_return_value` to treat empty body (`;`) as non-returning
   (interface methods were incorrectly treated as expression bodies)

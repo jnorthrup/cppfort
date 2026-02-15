@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <ostream>
 #include <type_traits>
+#include <cpp2_runtime.h>
 
 namespace cpp2 {
 
