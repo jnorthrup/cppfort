@@ -1540,8 +1540,17 @@ inline auto &preprocessor_directive() {
   return r;
 }
 
+// Markdown blocks (lexer produces a single MarkdownBlock token containing the
+// full comment-wrapped content).  Represent them as top-level parse-tree
+// nodes so `validate_markdown_placement` and downstream passes can find them.
+inline auto &markdown_block() {
+  using TT = cpp2_transpiler::TokenType;
+  static auto r = tok(TT::MarkdownBlock) % with_node(NodeKind::MarkdownBlock);
+  return r;
+}
+
 inline auto &translation_unit() {
-  static auto r = *(preprocessor_directive() | declaration()) >> Tok::END;
+  static auto r = *(preprocessor_directive() | markdown_block() | declaration()) >> Tok::END;
   return r;
 }
 
