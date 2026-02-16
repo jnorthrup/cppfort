@@ -204,33 +204,6 @@ add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 # Subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
-if(EXISTS "${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt")
-  add_subdirectory(examples)
-else()
-  message(STATUS "No examples CMakeLists found; skipping examples/")
-endif()
-
-# Installation
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-# Package configuration
-configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppfortConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfig.cmake"
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cppfort
-)
-
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfig.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfigVersion.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cppfort
-)
 
 # Testing
 enable_testing()

@@ -1,0 +1,32 @@
+{
+  "track_id": "semantic_ast_20251230",
+  "title": "Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)",
+  "created_date": "2025-12-30",
+  "status": "in-progress",
+  "priority": "high",
+  "estimated_days": "15-18",
+  "phases": 10,
+  "completed_phases": 7,
+  "current_phase": 8,
+  "dependencies": [],
+  "tags": ["semantic-analysis", "escape-analysis", "borrowing", "ownership", "safety"],
+  "phase_completion": {
+    "phase_1": "complete",
+    "phase_2": "complete",
+    "phase_3": "complete",
+    "phase_4": "complete",
+    "phase_5": "complete",
+    "phase_6": "complete",
+    "phase_7": "complete",
+    "phase_8": "pending",
+    "phase_9": "pending",
+    "phase_10": "pending"
+  },
+  "test_coverage": {
+    "fir_transfer_elimination_test": 10,
+    "channelized_concurrency_test": 26,
+    "unified_semantic_info_test": 18,
+    "arena_inference_test": 6,
+    "semantic_preservation": "0.124 avg loss (target <0.15)"
+  }
+}

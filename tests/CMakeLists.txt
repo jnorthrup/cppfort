@@ -104,4 +104,5 @@ add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
 # Local regressions - independent of cppfront suite
 add_subdirectory(local_regressions)
 
+# Enable testing
 enable_testing()
