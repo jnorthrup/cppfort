@@ -1,12 +1,12 @@
 # Project Status
 
-**Last Updated**: 2026-02-11
+**Last Updated**: 2025-02-08
 
 ## Overview
 
 Cppfort is a comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nodes backend, and semantic preservation via Clang AST analysis. The project uses Conductor for Context-Driven Development with spec → plan → implement → verify workflow.
 
-## Current State: ✅ Pattern Matching Complete, Regression 59.7%
+## Current State: ✅ Pattern Matching Complete, Regression 54.7%
 
 ### Completed Milestones
 
@@ -19,7 +19,7 @@ Cppfort is a comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nod
 
 ### Active Focus
 
-- 🔧 **Regression Tests**: 95/159 passing (59.7%) - up from 34% baseline
+- 🔧 **Regression Tests**: 87/159 passing (54.7%) - up from 34% baseline
 - 📋 **Semantic Analysis**: Escape analysis, borrowing, ownership tracking (P2)
 
 ### Blockers
@@ -45,7 +45,7 @@ Cppfort is a comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nod
 | **SCCP Coverage** | 72.9% | >80% | 🟢 Excellent |
 | **Parameter Semantics** | 100% | 100% | 🟢 Complete |
 | **Corpus Loss** | TBD | <0.15 | 🟡 In Progress |
-| **Regression Pass** | 95/159 (59.7%) | 100/159 (63%) | 🟢 Improved |
+| **Regression Pass** | 87/159 (54.7%) | 100/159 (63%) | 🟢 Improved |
 | **Inspect Tests** | 7/9 (77.8%) | 9/9 (100%) | 🟢 Excellent |
 | **Escape Analysis** | 0% | 100% | 🟡 Planned |
 

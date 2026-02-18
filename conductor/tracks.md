@@ -226,14 +226,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 ## [~] Track: Parser Regression Test Pass - Full cppfront Parity
 
 *Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
-*Status: IN PROGRESS* - Phase 7 (Full Regression Suite) - **59/159 tests passing (37.1%) — strict pipeline**
+*Status: IN PROGRESS* - Phase 7 (Full Regression Suite) - **Awaiting Manual Verification Checkpoints**
 
 **Progress**:
 
 - Phase 1-6: Implementation completed (preprocessor, variables, parameters, functions, expressions, statements)
-- Phase 7: In Progress - 59/159 honest (strict pipeline: size gate + full compile + link + runtime)
-- Previous 101/159 and 123/159 numbers were inflated by `-fsyntax-only` + no size gate (64 false positives)
-- `ckmake` hardened 2026-02-15: 4 anti-cheating gates (size gate, full compile, link, runtime match)
+- Phase 7: In Progress - 57/159 tests passing (35.8%)
+- Fixed: Scope resolution operator (`std::` vs `std.`), type formatting (`void*`), named return values
 
 **Pending Reviews** (8 manual verification checkpoints):
 
@@ -347,103 +346,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [x] Track: Cpp2 Tailcall-Potential Fibonacci Local Regression
-
-*Link: [./conductor/tracks/tailcall_fibonacci_local_20260212/](./conductor/tracks/tailcall_fibonacci_local_20260212/)*
-*Status: COMPLETE - Local regression infrastructure established*
-
-**Deliverables:**
-- `tests/local_regressions/` directory structure
-- `tests/local_regressions/tailcall_fibonacci.cpp2` - Cpp2 source
-- `tests/local_regressions/expected/tailcall_fibonacci.cpp` - expected output
-- CMake integration for `local_regression` target
-- Verified: transpiles, compiles, executes (fib(10) = 55)
-
----
-
-## [ ] Track: Markdown CAS Byte-Spec - Fix Lexer Capture for Byte-Perfect Hash
-
-*Link: [./conductor/tracks/markdown_cas_bytespec_20260212/](./conductor/tracks/markdown_cas_bytespec_20260212/)*
-*Status: NEW*
-
-**Objective:** Fix lexer to capture markdown content byte-for-byte for consistent hash computation.
-
-**Phases:**
-1. Fix `scan_markdown_block()` - remove identifier and whitespace skipping
-2. Create local regression test with known hash vector
-3. Document and close track
-
----
-
-## [ ] Track: Cpp2 Runtime Pocketization - Stratify Runtime into Related Pockets
-
-*Link: [./conductor/tracks/cpp2_runtime_pocketization_20260215/](./conductor/tracks/cpp2_runtime_pocketization_20260215/)*
-*Status: NEW*
-
-**Objective:** Break monolithic `cpp2_runtime.*` implementation into domain-aligned pocket headers while preserving the single `cpp2_runtime.h` umbrella API.
-
-**Pocket Regions:**
-1. `core.hpp` (foundational helpers, move/new, string conversion)
-2. `ranges.hpp` (range and iteration helpers)
-3. `regex.hpp` (regex runtime wrappers and types)
-4. `type_inspect_core.hpp` + `type_inspect_std.hpp` (`is/as` core + std specializations)
-5. `contracts.hpp` (contract handlers and macros)
-6. `ufcs.hpp` (UFCS macros)
-7. `safety.hpp` (bounds, narrowing, discard helpers)
-8. `io.hpp` + `types.hpp` (stdio wrappers, args helpers, scalar aliases)
-
-**Phases:**
-1. Build symbol/section ledger from current runtime
-2. Create pocket header layout and extract in safe batches
-3. Convert `cpp2_runtime.h` to compatibility umbrella
-4. Validate emitter-generated outputs and focused regression compiles
-
----
-
-## [ ] Track: Markdown blocks — pure lines, not concentric, not recursive
-
-*Status: NEW*
-
-**Objective:** Enforce the three invariants of markdown comment blocks as language boxes.
-
-Markdown comment blocks (`/*```...```*/`) are **inline empty modules** — CAS-hashed interface boundaries.
-They must obey three structural rules that distinguish them from comments and from code:
-
-### Invariant 1: Pure markdown lines
-Each line inside `` ``` `` delimiters is a plain markdown line. No Cpp2 parsing is applied to
-the content. The content is line-oriented text hashed byte-for-byte.
-
-### Invariant 2: Not concentric with surrounding code
-Markdown blocks appear **alongside** declarations at the translation-unit top level, never
-inside function bodies, type definitions, or nested scopes. They are peers of declarations,
-not children. The Cpp2 mixed-mode rule applies: Cpp2 and markdown regions sit side-by-side
-but do not nest into each other.
-
-**Current violation:** The lexer tokenizes `MARKDOWN_BLOCK` at any source position (both the
-bare `` ``` `` entry point at lexer.cpp:277 and the `/*```...```*/` path in `scan_block_comment()`
-at lexer.cpp:660). A markdown block appearing inside a function body will be tokenized — the
-parser top-level grammar constrains `markdown_block()` to `translation_unit` but there is no
-diagnostic when one appears in an illegal position.
-
-### Invariant 3: Not recursive
-Markdown blocks do not nest. A `` ``` `` sequence inside the content of a markdown block is
-**not** an opening delimiter — it is literal text. The lexer already handles this correctly
-(`scan_markdown_block()` scans for the next `` ``` `` as closing delimiter without recursion).
-
-**Phases:**
-1. Add lexer/parser diagnostic error when `MARKDOWN_BLOCK` token appears at non-top-level position
-2. Add regression tests: markdown block inside function body → error; inside type → error
-3. Add regression tests: markdown block at top level alongside declarations → pass (existing behavior)
-4. Update spec (section 2.1) to replace "blocks can appear anywhere a comment can" with the three invariants
-5. Optionally: restrict the bare `` ``` `` lexer entry point to only fire at line-start / top-level context
-
----
-
-*Total Tracks: 17*
-*Completed: 9*
+*Total Tracks: 13*
+*Completed: 8*
 *In Progress: 0*
 *Active: 0*
 *Suspended: 1*
 *Planned: 4*
 *Blocked: 0*
-*New: 3*
+*New: 0*
