@@ -4,35 +4,21 @@
 
 ## Overview
 
-Cppfort is a transpiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a unified architecture for compilation, safety analysis, and execution.
+Cppfort is an experimental compiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a Sea-of-Nodes (SoN) intermediate representation using MLIR. It combines:
 
-## Project Architecture
-
-The project follows a specific linear flow:
-
-`{[C end game] C++ <-> CPP2} -> SON+MLIR FIR -> LLVM +- JIT`
-
-### 1. Core Loop: C++ ↔ Cpp2
-The foundation is a tight, isomorphic validation loop.
-- **Isomorphic Transpilation**: Clean `wdiff` and whitespace compatibility.
-- **Roundtrip**: Strictly **C++ ↔ Cpp2**.
-- **Context**: "C End Game" implies C as a stable ABI/context within this core loop.
-
-### 2. Analysis Pipeline: SON + MLIR FIR
-From the core loop, the representation flows into the analysis stage.
-- **Dialects**: `cpp2fir` (Frontend IR) and `sond` (Sea-of-Nodes).
-- **Role**: Memory and lifecycle safety analysis ("borrow checker").
-
-### 3. Backend: LLVM ± JIT
-The verified/optimized graph lowers to LLVM.
-- **Output**: AOT binaries or JIT execution.
+- **Traditional AST pipeline**: Direct Cpp2 → C++ transpilation
+- **SoN/MLIR pipeline**: Graph-based optimization with MLIR dialect
+- **Clang AST mapping**: Inverse inference from C++ AST to MLIR regions
 
 ## Key Components
 
-### MLIR Dialects
-- **`cpp2fir` (Frontend IR)**: High-level IR for Cpp2 constructs.
-- **`sond` (Sea-of-Nodes Dialect)**: Analysis IR for safety checks (memory, lifecycle, concurrency).
-- **`cpp2` (Mapping Dialect)**: Used by `tools/inference/` for Clang AST mapping.
+### MLIR Dialect (`include/Cpp2Dialect.td`)
+TableGen-defined dialect with ops for:
+- Control flow: `if`, `for`, `while`, `loop`, `return`
+- Data flow: `constant`, `add`, `sub`, `mul`, `div`, `phi`, `binop`
+- Functions: `func`, `call`, `ufcs_call`
+- Memory: `new`, `load`, `store` with alias classes
+- Cpp2 features: `contract`, `metafunction`, `var`
 
 ### Mapping Tools (`tools/inference/`)
 Python toolchain for extracting Clang AST → MLIR op mappings:
@@ -42,12 +28,11 @@ Python toolchain for extracting Clang AST → MLIR op mappings:
 - **run_inference.sh**: Wrapper with libclang configuration
 
 ### Documentation
-- **[docs/OBJECTIVES.md](docs/OBJECTIVES.md)**: Detailed project goals and architectural vision.
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design.
-- **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification.
-- **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition.
-- **[docs/MAPPING_PROGRESS.md](docs/MAPPING_PROGRESS.md)**: Implementation status.
-- **[docs/sea-of-nodes/](docs/sea-of-nodes/)**: 24 chapters from Cliff Click's book.
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design
+- **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification
+- **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition
+- **[docs/MAPPING_PROGRESS.md](docs/MAPPING_PROGRESS.md)**: Implementation status
+- **[docs/sea-of-nodes/](docs/sea-of-nodes/)**: 24 chapters from Cliff Click's book
 
 ## Quick Start
 
@@ -94,9 +79,9 @@ export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 cmake -B build -G Ninja .
 
 # Build main targets
-ninja -C build cppfort              # Main transpiler executable (slim, no MLIR deps)
-ninja -C build Cpp2Transpiler       # Transpiler library (with MLIR support)
-ninja -C build cppfront             # Cpp2 reference transpiler (from cppfront)
+ninja -C build cppfort              # Main transpiler executable
+ninja -C build Cpp2Transpiler       # Transpiler library
+ninja -C build cppfront             # Cpp2 transpiler (from cppfront)
 
 # Build and run tests
 ninja -C build test                 # Run all CTest suites
@@ -115,8 +100,8 @@ rm -rf build && cmake -B build -G Ninja . && ninja -C build
 
 | Target | Description |
 |--------|-------------|
-| `cppfort` | Main transpiler executable (slim parser, C++ output) |
-| `Cpp2Transpiler` | Transpiler library (MLIR analysis backend) |
+| `cppfort` | Main transpiler executable |
+| `Cpp2Transpiler` | Transpiler library |
 | `cppfront` | Cpp2 reference transpiler |
 | `corpus_transpile` | Transpile 189 .cpp2 files |
 | `corpus_ast` | Generate AST dumps |
@@ -126,28 +111,31 @@ rm -rf build && cmake -B build -G Ninja . && ninja -C build
 ### Running the Transpiler
 
 ```bash
-# Transpile a Cpp2 file to C++
-./build/cppfort input.cpp2 -o output.cpp
+# Transpile a Cpp2 file
+./build/src/cppfort input.cpp2 -o output.cpp
+
+# Generate MLIR
+./build/src/cppfort input.cpp2 --emit-mlir -o output.mlir
 ```
 
 ## Project Status
 
 ### Completed
-- ✅ Isomorphic transpiler (slim parser -> emitter)
-- ✅ MLIR dialect definitions (`sond`, `cpp2fir`, `cpp2`)
+- ✅ MLIR dialect with 24 ops (control flow, data flow, memory, cpp2-specific)
 - ✅ Mapping extraction toolchain
+- ✅ Schema validation (6,301 mappings, 100% pass rate)
 - ✅ Sample corpus and test infrastructure
 - ✅ Documentation and usage guides
 
 ### In Progress
-- 🔄 MLIR lowering (AST -> FIR -> SON) for safety checks
-- 🔄 Full corpus validation (matching `cppfront` output)
+- 🔄 MLIR emitter (template → MLIR IR code generation)
 - 🔄 Cpp2 file transpilation integration
+- 🔄 Full corpus validation
 
 ### Planned
-- 📋 Roundtrip validation (C++ ↔ Cpp2)
 - 📋 CI/CD pipeline
 - 📋 Sea-of-Nodes chapter pattern extraction
+- 📋 Roundtrip validation (C++ → AST → MLIR → C++)
 
 ## Validation Results
 
@@ -162,6 +150,24 @@ Latest validation (sample_son.cpp, 6,301 mappings):
 - **for**: 42 mappings (ForStmt)
 
 All mappings validate successfully against the dialect definition.
+
+## Architecture
+
+```
+C++ Source (.cpp2)
+    ↓
+[cppfront transpiler] → C++ (.cpp)
+    ↓
+[Clang AST parser]
+    ↓
+[Mapping Extractor] → Mapping Artifacts (JSON)
+    ↓
+[MLIR Emitter] → cpp2 Dialect Ops
+    ↓
+[SoN Optimizer] → Optimized MLIR
+    ↓
+[Code Generator] → Target Code
+```
 
 ## Dependencies
 
