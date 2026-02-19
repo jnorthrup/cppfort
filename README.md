@@ -4,17 +4,28 @@
 
 ## Overview
 
-Cppfort is a transpiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that combines:
-- **Traditional AST pipeline**: Isomorphic Cpp2 → C++ transpilation targeting semantic equivalence and `wdiff` compatibility with `cppfront` output.
-- **SoN/MLIR pipeline**: Graph-based "borrow checker" implementing memory and lifecycle safety analysis using MLIR dialects (`sond`, `cpp2fir`).
-- **Clang AST mapping**: Inverse inference from C++ AST to Cpp2 constructs to ground semantics.
+Cppfort is a transpiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a unified architecture for compilation, safety analysis, and execution.
 
-## Project Objectives
+## Project Architecture
 
-1.  **Isomorphic C++ Transpilation**: Clean `wdiff` and whitespace compatibility with `cppfront` output.
-2.  **Roundtrip Transpilation**: strictly **C++ ↔ C++**. Ensures that C++ input can be processed (via MLIR/SON for safety/optimization) and emitted back as C++ with verified fidelity.
-3.  **Safety Analysis (SON)**: Implementing memory/lifecycle safety checks (borrow checker) via Sea-of-Nodes IR.
-4.  **Semantic Grounding**: Using Clang AST to reverse-map C++ semantic features to extend the Cpp2/Cppfort semantic foundation.
+The project follows a specific linear flow:
+
+`{[C end game] C++ <-> CPP2} -> SON+MLIR FIR -> LLVM +- JIT`
+
+### 1. Core Loop: C++ ↔ Cpp2
+The foundation is a tight, isomorphic validation loop.
+- **Isomorphic Transpilation**: Clean `wdiff` and whitespace compatibility.
+- **Roundtrip**: Strictly **C++ ↔ Cpp2**.
+- **Context**: "C End Game" implies C as a stable ABI/context within this core loop.
+
+### 2. Analysis Pipeline: SON + MLIR FIR
+From the core loop, the representation flows into the analysis stage.
+- **Dialects**: `cpp2fir` (Frontend IR) and `sond` (Sea-of-Nodes).
+- **Role**: Memory and lifecycle safety analysis ("borrow checker").
+
+### 3. Backend: LLVM ± JIT
+The verified/optimized graph lowers to LLVM.
+- **Output**: AOT binaries or JIT execution.
 
 ## Key Components
 
@@ -31,7 +42,7 @@ Python toolchain for extracting Clang AST → MLIR op mappings:
 - **run_inference.sh**: Wrapper with libclang configuration
 
 ### Documentation
-- **[docs/OBJECTIVES.md](docs/OBJECTIVES.md)**: Detailed project goals and priorities.
+- **[docs/OBJECTIVES.md](docs/OBJECTIVES.md)**: Detailed project goals and architectural vision.
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design.
 - **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification.
 - **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition.
@@ -134,7 +145,7 @@ rm -rf build && cmake -B build -G Ninja . && ninja -C build
 - 🔄 Cpp2 file transpilation integration
 
 ### Planned
-- 📋 Roundtrip validation (C++ ↔ C++)
+- 📋 Roundtrip validation (C++ ↔ Cpp2)
 - 📋 CI/CD pipeline
 - 📋 Sea-of-Nodes chapter pattern extraction
 
@@ -151,24 +162,6 @@ Latest validation (sample_son.cpp, 6,301 mappings):
 - **for**: 42 mappings (ForStmt)
 
 All mappings validate successfully against the dialect definition.
-
-## Architecture
-
-```
-C++ Source (.cpp2) 
-    ↓
-[cppfront transpiler] → C++ (.cpp)
-    ↓
-[Clang AST parser]
-    ↓
-[Mapping Extractor] → Mapping Artifacts (JSON)
-    ↓
-[MLIR Emitter] → cpp2 Dialect Ops
-    ↓
-[SoN Optimizer] → Optimized MLIR
-    ↓
-[Safety Analysis] → Borrow Checker / Lifecycle Checks
-```
 
 ## Dependencies
 
