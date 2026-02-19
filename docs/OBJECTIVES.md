@@ -7,10 +7,11 @@ The primary immediate goal is to provide a robust **Cpp2 → C++ transpiler** (`
 - **Future**: Potential to serve as an indenter/cleaner for Cpp2.
 
 ## 2. Roundtrip Transpilation
-The project aims to support **roundtrip capability** with a specific flow: **Cpp2 (or best C++) → MLIR → Cpp2/C++**.
-- **Constraint**: The transformation direction is strictly from the "best" available source (Cpp2 or clean C++) *into* MLIR.
-- **Goal**: Use the graph representation (SoN) as a unified source of truth for optimization, safety analysis, and code generation.
-- **Roundtrip**: The "roundtrip" implies generating code back from this MLIR, minimizing n-way mapping complexity by using MLIR as the central hub.
+The project supports **roundtrip capability** with a specific validation scope.
+- **Flow**: Cpp2 (or best C++) → MLIR → Cpp2/C++.
+- **Validation**: Roundtrip validation is strictly defined as **C++ ↔ C++**.
+- **Constraint**: The system validates its correctness by ensuring that C++ input can be processed (e.g., through the SON pipeline for safety/optimization) and emitted back as C++ with verified fidelity.
+- **Non-Goal**: Reverse mapping from arbitrary C++ to MLIR is not a goal unless it supports this specific roundtrip for SON benefits.
 
 ## 3. Safety Analysis via Sea-of-Nodes (SON)
 The MLIR-based Sea-of-Nodes (SON) pipeline is being developed specifically to implement **memory and lifecycle safety checks** (a "borrow checker" for Cpp2).

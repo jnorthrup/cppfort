@@ -12,7 +12,7 @@ Cppfort is a transpiler for the Cpp2 language (from [cppfront](https://github.co
 ## Project Objectives
 
 1.  **Isomorphic C++ Transpilation**: Clean `wdiff` and whitespace compatibility with `cppfront` output.
-2.  **Roundtrip Transpilation**: Strictly defined flow: **Cpp2 (or best C++) → MLIR → Cpp2/C++**. Uses MLIR as the central hub for optimization and safety analysis.
+2.  **Roundtrip Transpilation**: strictly **C++ ↔ C++**. Ensures that C++ input can be processed (via MLIR/SON for safety/optimization) and emitted back as C++ with verified fidelity.
 3.  **Safety Analysis (SON)**: Implementing memory/lifecycle safety checks (borrow checker) via Sea-of-Nodes IR.
 4.  **Semantic Grounding**: Using Clang AST to reverse-map C++ semantic features to extend the Cpp2/Cppfort semantic foundation.
 
@@ -134,7 +134,7 @@ rm -rf build && cmake -B build -G Ninja . && ninja -C build
 - 🔄 Cpp2 file transpilation integration
 
 ### Planned
-- 📋 Roundtrip validation (Cpp2 ↔ MLIR ↔ C++/Cpp2)
+- 📋 Roundtrip validation (C++ ↔ C++)
 - 📋 CI/CD pipeline
 - 📋 Sea-of-Nodes chapter pattern extraction
 
