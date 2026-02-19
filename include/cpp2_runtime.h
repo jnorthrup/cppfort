@@ -805,6 +805,16 @@ namespace impl {
     
     template<typename T, typename U>
     constexpr auto as_(U const& x) -> T { return cpp2::as<T>(x); }
+
+    // Variant overloads: forward to cpp2::as for a std::variant with many alternatives
+    template<typename T, typename... Ts>
+    constexpr auto as_(std::variant<Ts...> const& v) -> T {
+        return cpp2::as<T>(v);
+    }
+    template<typename T, typename... Ts>
+    constexpr auto as_(std::variant<Ts...>& v) -> T& {
+        return cpp2::as<T>(v);
+    }
 }
 
 // ============================================================================

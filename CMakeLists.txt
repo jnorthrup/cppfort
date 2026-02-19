@@ -6,28 +6,42 @@ project(cppfort LANGUAGES C CXX VERSION 1.0.0)
 # Platform-specific toolchain setup
 # ============================================================================
 if(APPLE)
-  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm" CACHE PATH "Homebrew LLVM installation")
-  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "Clang compiler")
-  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "Clang++ compiler")
-  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
+  # --------------------------------------------------------------
+  # 1️⃣ Use the system AppleClang (bundled with Xcode / CLT)
+  # --------------------------------------------------------------
+  find_program(SYSTEM_CLANG clang)
+  find_program(SYSTEM_CLANGXX clang++)
+  if(NOT SYSTEM_CLANG OR NOT SYSTEM_CLANGXX)
+    message(FATAL_ERROR "System clang not found")
+  endif()
+  set(CMAKE_C_COMPILER   "${SYSTEM_CLANG}"   CACHE FILEPATH "Clang compiler")
+  set(CMAKE_CXX_COMPILER "${SYSTEM_CLANGXX}" CACHE FILEPATH "Clang++ compiler")
 
-  # Use stable MacOSX.sdk to avoid header conflicts with newer beta SDKs
-  # CommandLineTools SDK 15.2 is compatible with Homebrew LLVM 21
+  # --------------------------------------------------------------
+  # 2️⃣ Prepend the system libc++ include directory (must be first)
+  # --------------------------------------------------------------
+  set(SYSTEM_LIBCXX_INCLUDE "/Library/Developer/CommandLineTools/usr/include/c++/v1")
+  add_compile_options("-I${SYSTEM_LIBCXX_INCLUDE}" "-stdlib=libc++" "-nostdinc")
+
+  # --------------------------------------------------------------
+  # 3️⃣ Add the SDK's *C* headers explicitly (no -isysroot)
+  # --------------------------------------------------------------
   set(MACOS_SDK_PATH "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk")
   if(EXISTS "${MACOS_SDK_PATH}")
-    set(CMAKE_SYSROOT "${MACOS_SDK_PATH}")
-    set(CMAKE_OSX_SYSROOT "${MACOS_SDK_PATH}")
+    include_directories(BEFORE SYSTEM "${MACOS_SDK_PATH}/usr/include")
   endif()
 
-  # Use Homebrew's libc++ exclusively - add system include path explicitly
-  # Note: CMake's include_directories(SYSTEM ...) needs CMAKE_INCLUDE_SYSTEM_FLAG_CXX
-  set(LIBCXX_INCLUDE_DIR "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
-  include_directories(BEFORE SYSTEM "${LIBCXX_INCLUDE_DIR}")
-  add_compile_options(-stdlib=libc++ -isystem${LIBCXX_INCLUDE_DIR})
-  add_link_options(-stdlib=libc++ -L${HOMEBREW_LLVM_LIB}/c++ -L${HOMEBREW_LLVM_LIB}/unwind -lunwind)
+  # --------------------------------------------------------------
+  # 4️⃣ No extra library search paths – link against system libc++
+  # --------------------------------------------------------------
+  add_link_options("-stdlib=libc++")
 
-  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
-  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
+  # --------------------------------------------------------------
+  # 5️⃣ Keep Homebrew LLVM/MLIR binaries but strip any libc++ includes they may export
+  # --------------------------------------------------------------
+  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
+  set(LLVM_DIR "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+  set(MLIR_DIR "${HOMEBREW_LLVM_PREFIX}/lib/cmake/mlir")
 endif()
 
 # Set cache directory for generated files
@@ -82,6 +96,22 @@ list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
+
+# Strip Homebrew libc++ include directories from the imported MLIR/LLVM targets
+if(TARGET MLIR::MLIR)
+  get_target_property(_inc MLIR::MLIR INTERFACE_INCLUDE_DIRECTORIES)
+  if(_inc)
+    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+    set_target_properties(MLIR::MLIR PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+  endif()
+endif()
+if(TARGET LLVM::LLVM)
+  get_target_property(_inc LLVM::LLVM INTERFACE_INCLUDE_DIRECTORIES)
+  if(_inc)
+    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+    set_target_properties(LLVM::LLVM PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+  endif()
+endif()
 
 # Check for required MLIR components
 include(HandleLLVMOptions)
@@ -162,9 +192,6 @@ if(APPLE)
     )
     target_link_options(cppfront PRIVATE
         -stdlib=libc++
-        -L${HOMEBREW_LLVM_LIB}/c++
-        -L${HOMEBREW_LLVM_LIB}/unwind
-        -lunwind
     )
     set_target_properties(cppfront PROPERTIES
         OUTPUT_NAME "cppfront"

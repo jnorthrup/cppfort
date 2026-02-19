@@ -99,10 +99,14 @@ add_test_if_exists(test_pratt_parser parser/test_pratt_parser.cpp)
 add_test_if_exists(test_statement_parsing parser/test_statement_parsing.cpp)
 add_test_if_exists(debug_for_tree parser/debug_for_tree.cpp)
 add_test_if_exists(parser_test_harness parser/test_harness.cpp)
-add_test_if_exists(test_regression_coverage test_regression_coverage.cpp)
+add_test_if_exists(mixed_mode_test mixed_mode_test.cpp)
 
 # Local regressions - independent of cppfront suite
 add_subdirectory(local_regressions)
 
 # Enable testing
+# Add regression driver
+add_executable(cppfront_full_regression cppfront_full_regression.cpp)
+set_target_properties(cppfront_full_regression PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+
 enable_testing()
