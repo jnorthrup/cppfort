@@ -153,11 +153,41 @@ constexpr auto operator|(const char (&s)[N], Proto<R> r) {
     return lift(LexemeParser{std::string_view{s, N-1}}) | r;
 }
 
-// Both string literals: "+" | "-"
-template<std::size_t M, std::size_t N>
-constexpr auto operator|(const char (&l)[M], const char (&r)[N]) {
-    return lift(LexemeParser{std::string_view{l, M-1}}) | lift(LexemeParser{std::string_view{r, N-1}});
-}
+// BOTH string literals: "+" | "-"
+// This is the problematic overload. Standard C++ does not allow operator overloading
+// where both operands are built-in types (arrays/pointers).
+//
+// Solution: Use a user-defined type wrapper for at least one operand.
+// We provide a `lit()` helper function. Callers should use `lit("a") | "b"` instead of `"a" | "b"`.
+//
+// For existing code that uses `"a" | "b"`, we can't overload operator| globally for raw pointers.
+// However, we can delete this invalid declaration to make the error clearer or rely on
+// callers to use the _l suffix or lit().
+//
+// Based on the error log, the user code is likely doing something like `prefix = "+"_l | "-" | "!"`.
+// `"^_l` produces a Proto, so Proto | char array works.
+// But if it chains like `(Proto | char array) | char array`, the result of first is Proto, so second works.
+// The issue is likely `... | "foo" | "bar"` where grouping might be `... | ("foo" | "bar")`?
+// No, operator| is left-associative. `(("+"_l | "-") | "!")` -> `(Proto | char[])` -> `Proto` -> `Proto | char[]` -> `Proto`.
+//
+// Wait, the error was: `constexpr auto cpp2::parser::spirit::operator|(const char (&)[M], const char (&)[N])`.
+// This definition WAS present in the file I read. It IS invalid C++.
+// I will REMOVE this definition. Users must ensure at least one operand is a parser (e.g. use `lit()` or `_l`).
+//
+// Actually, looking at `parser.cpp`:
+// `static constexpr auto prefix = "+"_l | "-" | "!" ...`
+// This starts with `operator""_l`, which returns a Proto. So it becomes `Proto | char[]` -> `Proto`.
+// Then `Proto | char[]` -> `Proto`.
+// So the chain should work without the `char[] | char[]` overload.
+//
+// However, `static constexpr auto access = "public"_l | "private" | "protected";`
+// This also starts with `_l`.
+//
+// Where is `char[] | char[]` needed?
+// Maybe in `(lit("++") | "--" | "~")`? `lit` returns Proto.
+//
+// If I simply remove the invalid overload, valid chains should still work.
+// The error confirms the compiler sees this definition and complains about it.
 
 // List: a % sep
 template<typename L, typename R>
@@ -285,5 +315,3 @@ constexpr auto operator%(Proto<P> p, TypeHint<T>) {
 }
 
 } // namespace cpp2::parser::spirit
-
- 

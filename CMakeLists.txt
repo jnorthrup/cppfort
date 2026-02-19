@@ -85,40 +85,45 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_LIBCPP_DISABLE_AVAILABILITY")
 # Find required packages
 find_package(PkgConfig REQUIRED)
 
-# MLIR integration
-find_package(MLIR REQUIRED CONFIG)
-message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+# MLIR integration - Optional
+find_package(MLIR CONFIG)
+if(MLIR_FOUND)
+    message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+    message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-set(CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
-# Make sure MLIR's CMake modules are available when including AddMLIR/TableGen
-list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
-include(TableGen)
-include(AddLLVM)
-include(AddMLIR)
+    set(CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
+    # Make sure MLIR's CMake modules are available when including AddMLIR/TableGen
+    list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+    include(TableGen)
+    include(AddLLVM)
+    include(AddMLIR)
 
-# Strip Homebrew libc++ include directories from the imported MLIR/LLVM targets
-if(TARGET MLIR::MLIR)
-  get_target_property(_inc MLIR::MLIR INTERFACE_INCLUDE_DIRECTORIES)
-  if(_inc)
-    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
-    set_target_properties(MLIR::MLIR PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
-  endif()
+    # Strip Homebrew libc++ include directories from the imported MLIR/LLVM targets
+    if(TARGET MLIR::MLIR)
+      get_target_property(_inc MLIR::MLIR INTERFACE_INCLUDE_DIRECTORIES)
+      if(_inc)
+        list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+        set_target_properties(MLIR::MLIR PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+      endif()
+    endif()
+    if(TARGET LLVM::LLVM)
+      get_target_property(_inc LLVM::LLVM INTERFACE_INCLUDE_DIRECTORIES)
+      if(_inc)
+        list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+        set_target_properties(LLVM::LLVM PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+      endif()
+    endif()
+
+    # Check for required MLIR components
+    include(HandleLLVMOptions)
+
+    # Include directories
+    include_directories(${LLVM_INCLUDE_DIRS})
+    include_directories(${MLIR_INCLUDE_DIRS})
+else()
+    message(WARNING "MLIR not found. Building only Cpp2 -> C++ tools (cppfort, regression_suite). MLIR-dependent targets will be skipped.")
 endif()
-if(TARGET LLVM::LLVM)
-  get_target_property(_inc LLVM::LLVM INTERFACE_INCLUDE_DIRECTORIES)
-  if(_inc)
-    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
-    set_target_properties(LLVM::LLVM PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
-  endif()
-endif()
 
-# Check for required MLIR components
-include(HandleLLVMOptions)
-
-# Include directories
-include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${MLIR_INCLUDE_DIRS})
 # Also add project source dir so tablegen-generated .inc files in the source
 # tree (e.g., Cpp2Ops*.inc) are found by includes like "Cpp2Ops.h.inc".
 include_directories(${PROJECT_SOURCE_DIR})
@@ -130,30 +135,32 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 # ============================================================================
 # MLIR Dialect TableGen
 # ============================================================================
-foreach(DIALECT_SPEC "Cpp2Ops;include/Cpp2Dialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc" "Cpp2FIROps;include/Cpp2FIRDialect.td;cpp2fir;" "Cpp2SONOps;include/Cpp2SONDialect.td;sond;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
-  list(GET DIALECT_SPEC 0 DIALECT_NAME)
-  list(GET DIALECT_SPEC 1 TD_FILE)
-  list(GET DIALECT_SPEC 2 DIALECT_NS)
-  list(SUBLIST DIALECT_SPEC 3 -1 EXTRA_TYPES)
+if(MLIR_FOUND)
+    foreach(DIALECT_SPEC "Cpp2Ops;include/Cpp2Dialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc" "Cpp2FIROps;include/Cpp2FIRDialect.td;cpp2fir;" "Cpp2SONOps;include/Cpp2SONDialect.td;sond;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
+      list(GET DIALECT_SPEC 0 DIALECT_NAME)
+      list(GET DIALECT_SPEC 1 TD_FILE)
+      list(GET DIALECT_SPEC 2 DIALECT_NS)
+      list(SUBLIST DIALECT_SPEC 3 -1 EXTRA_TYPES)
 
-  set(LLVM_TARGET_DEFINITIONS ${TD_FILE})
-  mlir_tablegen(${DIALECT_NAME}Ops.h.inc -gen-op-decls)
-  mlir_tablegen(${DIALECT_NAME}Ops.cpp.inc -gen-op-defs)
-  mlir_tablegen(${DIALECT_NAME}OpsDialect.h.inc -gen-dialect-decls -dialect=${DIALECT_NS})
-  mlir_tablegen(${DIALECT_NAME}OpsDialect.cpp.inc -gen-dialect-defs -dialect=${DIALECT_NS})
-  foreach(TYPE ${EXTRA_TYPES})
-    if(TYPE MATCHES "h\\.inc$")
-      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-decls -dialect=${DIALECT_NS})
-    elseif(TYPE MATCHES "\\.cpp\\.inc$")
-      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-defs -dialect=${DIALECT_NS})
-    elseif(TYPE MATCHES "AttrDefs\\.h\\.inc$")
-      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-decls -dialect=${DIALECT_NS})
-    elseif(TYPE MATCHES "AttrDefs\\.cpp\\.inc$")
-      mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-defs -dialect=${DIALECT_NS})
-    endif()
-  endforeach()
-  add_public_tablegen_target(${DIALECT_NAME}IncGen)
-endforeach()
+      set(LLVM_TARGET_DEFINITIONS ${TD_FILE})
+      mlir_tablegen(${DIALECT_NAME}Ops.h.inc -gen-op-decls)
+      mlir_tablegen(${DIALECT_NAME}Ops.cpp.inc -gen-op-defs)
+      mlir_tablegen(${DIALECT_NAME}OpsDialect.h.inc -gen-dialect-decls -dialect=${DIALECT_NS})
+      mlir_tablegen(${DIALECT_NAME}OpsDialect.cpp.inc -gen-dialect-defs -dialect=${DIALECT_NS})
+      foreach(TYPE ${EXTRA_TYPES})
+        if(TYPE MATCHES "h\\.inc$")
+          mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-decls -dialect=${DIALECT_NS})
+        elseif(TYPE MATCHES "\\.cpp\\.inc$")
+          mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-typedef-defs -dialect=${DIALECT_NS})
+        elseif(TYPE MATCHES "AttrDefs\\.h\\.inc$")
+          mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-decls -dialect=${DIALECT_NS})
+        elseif(TYPE MATCHES "AttrDefs\\.cpp\\.inc$")
+          mlir_tablegen(${DIALECT_NAME}${TYPE} -gen-attrdef-defs -dialect=${DIALECT_NS})
+        endif()
+      endforeach()
+      add_public_tablegen_target(${DIALECT_NAME}IncGen)
+    endforeach()
+endif()
 
 # Package configuration
 include(GNUInstallDirs)
@@ -202,6 +209,16 @@ endif()
 # Custom target to build cppfront (for use with ninja)
 add_custom_target(cppfront_build DEPENDS cppfront)
 
+# Regression Suite Executable
+add_executable(regression_suite
+    regression_suite.cpp
+)
+target_compile_features(regression_suite PRIVATE cxx_std_23)
+# Dependencies: needs cppfort and cppfront to exist to run tests
+# But we can't link them since they are executables.
+# We can make the custom target depend on them.
+# Note: 'cppfort' target is defined in src/CMakeLists.txt, which we need to make sure is added properly.
+
 # Corpus processing
 set(CPP2_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests")
 set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
@@ -231,6 +248,13 @@ add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 # Subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
+
+add_custom_target(run_regression_suite
+    COMMAND regression_suite --tier 1
+    DEPENDS regression_suite cppfront cppfort
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running regression suite (Tier 1)"
+)
 
 # Testing
 enable_testing()

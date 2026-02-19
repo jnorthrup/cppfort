@@ -17,30 +17,32 @@ add_executable(cppfort main.cpp)
 target_link_libraries(cppfort PRIVATE Cpp2SlimParser)
 
 # Main transpiler library (MLIR-dependent)
-add_library(Cpp2Transpiler
-    lexer.cpp
-    parser.cpp
-    emitter.cpp
-    ast.cpp
-    semantic_analyzer.cpp
-    code_generator.cpp
-    safety_checker.cpp
-    metafunction_processor.cpp
-    contract_processor.cpp
-    markdown_hash.cpp
-)
+if(MLIR_FOUND)
+    add_library(Cpp2Transpiler
+        lexer.cpp
+        parser.cpp
+        emitter.cpp
+        ast.cpp
+        semantic_analyzer.cpp
+        code_generator.cpp
+        safety_checker.cpp
+        metafunction_processor.cpp
+        contract_processor.cpp
+        markdown_hash.cpp
+    )
 
-target_include_directories(Cpp2Transpiler PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_BINARY_DIR}
-)
+    target_include_directories(Cpp2Transpiler PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+    )
 
-target_link_libraries(Cpp2Transpiler PUBLIC
-    MLIRIR
-    MLIRSupport
-    LLVMCore
-    MLIRFuncDialect
-    MLIRFuncTransforms
-    MLIRTransforms
-    MLIRSCFDialect
-)
+    target_link_libraries(Cpp2Transpiler PUBLIC
+        MLIRIR
+        MLIRSupport
+        LLVMCore
+        MLIRFuncDialect
+        MLIRFuncTransforms
+        MLIRTransforms
+        MLIRSCFDialect
+    )
+endif()

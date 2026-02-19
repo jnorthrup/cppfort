@@ -1,10 +1,18 @@
 #include "lexer.hpp"
+#include "utils.hpp"
+#include <unordered_map>
+#include <cassert>
+#include <cctype>
+#include <iostream>
+
+namespace cpp2_transpiler {
 
 // Detect mixed‑mode source files (legacy C++1 + Cpp2). Simple heuristic:
 //   - presence of "#pragma mixed-mode" (or any line containing "MIXED_MODE")
 //   - this function is O(N) and does not allocate beyond a temporary string.
 // Returns true if the file should be parsed in hybrid mode.
-static bool isMixedMode(const std::string& src) {
+// Note: This is a member function of Lexer as declared in header.
+bool Lexer::isMixedMode(const std::string& src) {
     // Look for the pragma marker (case‑insensitive) or a comment marker.
     const std::string marker = "#pragma mixed-mode";
     const std::string comment = "// MIXED_MODE";
@@ -15,13 +23,6 @@ static bool isMixedMode(const std::string& src) {
     if (lower.find(comment) != std::string::npos) return true;
     return false;
 }
-
-#include "utils.hpp"
-#include <unordered_map>
-#include <cassert>
-#include <cctype>
-
-namespace cpp2_transpiler {
 
 Lexer::Lexer(std::string_view source)
     : source(source), current(0), line(1), column(1), start(0) {}
@@ -41,20 +42,8 @@ std::vector<Token> Lexer::tokenize() {
     }
 
     tokens.emplace_back(TokenType::EndOfFile, "", line, column, current);
-    return tokens;
-}
-
-    while (!is_at_end()) {
-        start = current;
-        scan_token();
-    }
-
-    tokens.emplace_back(TokenType::EndOfFile, "", line, column, current);
 
     // Scan for Cpp2-specific patterns that span multiple tokens
-    // This handles patterns like:
-    // - identifier: ( ... )  -> Cpp2 function declaration
-    // - identifier: type     -> Cpp2 variable declaration with type annotation
     for (size_t i = 0; i < tokens.size() - 2; ++i) {
         // Pattern: identifier : ( -> Cpp2 function declaration
         if (tokens[i].type == TokenType::Identifier &&
@@ -64,7 +53,6 @@ std::vector<Token> Lexer::tokenize() {
             break;
         }
         // Pattern: identifier : identifier/type -> Cpp2 variable declaration
-        // Skip if followed by : (which would be :: namespace access)
         if (i < tokens.size() - 3 &&
             tokens[i].type == TokenType::Identifier &&
             tokens[i + 1].type == TokenType::Colon &&
@@ -363,48 +351,48 @@ void Lexer::add_token(TokenType type) {
     add_token(type, source.substr(start, current - start));
 }
 
-    void Lexer::add_token(TokenType type, std::string_view lexeme) {
-        // If we are in mixed‑mode, suppress Cpp2‑only tokens so the downstream
-        // Cpp2 parser does not see them. Treat them as generic identifiers.
-        if (m_is_mixed) {
-            switch (type) {
-                case TokenType::ColonEqual:   // :=
-                case TokenType::At:           // @
-                case TokenType::Inout:        // inout
-                case TokenType::Out:          // out
-                case TokenType::Move:         // move
-                case TokenType::Forward:      // forward
-                case TokenType::CoAwait:      // co_await (if represented)
-                case TokenType::Inspect:      // inspect
-                case TokenType::When:        // when
-                case TokenType::As:           // as
-                case TokenType::Is:           // is
-                    // Convert to a generic identifier token so the parser can
-                    // ignore it safely.
-                    type = TokenType::Identifier;
-                    break;
-                default:
-                    break;
-            }
-        }
-        // Existing logic that tracks Cpp2‑specific syntax for pure files.
+void Lexer::add_token(TokenType type, std::string_view lexeme) {
+    // If we are in mixed‑mode, suppress Cpp2‑only tokens so the downstream
+    // Cpp2 parser does not see them. Treat them as generic identifiers.
+    if (m_is_mixed) {
         switch (type) {
-            case TokenType::ColonEqual:   // := type inference
-            case TokenType::At:           // @ metafunctions
-            case TokenType::Inout:        // inout parameter
-            case TokenType::Out:          // out parameter
-            case TokenType::Move:         // move parameter
-            case TokenType::Forward:      // forward parameter
-            case TokenType::Copy:         // copy parameter
-            case TokenType::Inspect:      // inspect expression
-            case TokenType::Underscore:   // _ wildcard/discard
-                m_has_cpp2_syntax = true;
+            case TokenType::ColonEqual:   // :=
+            case TokenType::At:           // @
+            case TokenType::Inout:        // inout
+            case TokenType::Out:          // out
+            case TokenType::Move:         // move
+            case TokenType::Forward:      // forward
+            case TokenType::Await:        // await
+            case TokenType::Inspect:      // inspect
+            case TokenType::When:        // when
+            case TokenType::As:           // as
+            case TokenType::Is:           // is
+                // Convert to a generic identifier token so the parser can
+                // ignore it safely.
+                type = TokenType::Identifier;
                 break;
             default:
                 break;
         }
-        tokens.emplace_back(type, lexeme, line, column - lexeme.length(), start);
     }
+    // Existing logic that tracks Cpp2‑specific syntax for pure files.
+    switch (type) {
+        case TokenType::ColonEqual:   // := type inference
+        case TokenType::At:           // @ metafunctions
+        case TokenType::Inout:        // inout parameter
+        case TokenType::Out:          // out parameter
+        case TokenType::Move:         // move parameter
+        case TokenType::Forward:      // forward parameter
+        case TokenType::Copy:         // copy parameter
+        case TokenType::Inspect:      // inspect expression
+        case TokenType::Underscore:   // _ wildcard/discard
+            m_has_cpp2_syntax = true;
+            break;
+        default:
+            break;
+    }
+    tokens.emplace_back(type, lexeme, line, column - lexeme.length(), start);
+}
 
 void Lexer::scan_identifier() {
     while (is_identifier_char(peek())) {

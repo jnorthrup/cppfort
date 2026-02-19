@@ -674,7 +674,8 @@ auto parse_primary(TokenStream input)
 
 auto parse_atom(TokenStream input)
     -> ebnf::Result<std::monostate, TokenStream> {
-  auto start = input.pos;
+  auto start = input.pos; // unused warning suppressed by not creating variable if not needed
+  (void)start;
 
   if (!input.empty() && is_prefix(input.peek())) {
     begin(NodeKind::PrefixExpression, input.pos);
@@ -1595,9 +1596,10 @@ auto parse_lambda(TokenStream input)
     return ebnf::Result<std::monostate, TokenStream>::fail(input);
 
   auto cp = tree_checkpoint();
-  auto start = input.pos;
+  auto start = input.pos; // unused warning suppressed by not creating variable if not needed
+  (void)start;
 
-  begin(NodeKind::LambdaExpression, start);
+  begin(NodeKind::LambdaExpression, input.pos);
 
   input = input.next(); // consume :
 

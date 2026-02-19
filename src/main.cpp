@@ -11,8 +11,9 @@
 #include "emitter.hpp"
 
 void print_usage(const char* prog) {
-    std::cerr << "Usage: " << prog << " [options] <input.cpp2> <output.cpp>\n";
+    std::cerr << "Usage: " << prog << " [options] <input.cpp2> [-o <output.cpp>]\n";
     std::cerr << "\nOptions:\n";
+    std::cerr << "  -o <file>   Output file path (default: stdout)\n";
     std::cerr << "  --inline    Inline runtime (default, self-contained output)\n";
     std::cerr << "  --header    Use #include <cpp2_runtime.h>\n";
     std::cerr << "  --pch       Use #include <cpp2_pch.h> (precompiled header)\n";
@@ -25,7 +26,14 @@ int main(int argc, char* argv[]) {
     
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--inline") == 0 ||
+        if (strcmp(argv[i], "-o") == 0) {
+            if (i + 1 < argc) {
+                output_file_arg = argv[++i];
+            } else {
+                std::cerr << "Error: -o requires an argument\n";
+                return 1;
+            }
+        } else if (strcmp(argv[i], "--inline") == 0 ||
             strcmp(argv[i], "--header") == 0 ||
             strcmp(argv[i], "--pch") == 0) {
             // Options currently ignored - future: pass to emitter
@@ -36,6 +44,7 @@ int main(int argc, char* argv[]) {
             if (!input_file_arg) {
                 input_file_arg = argv[i];
             } else if (!output_file_arg) {
+                // If positional output argument is provided (legacy behavior)
                 output_file_arg = argv[i];
             } else {
                 std::cerr << "Error: Too many arguments\n";
@@ -49,14 +58,13 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    if (!input_file_arg || !output_file_arg) {
+    if (!input_file_arg) {
         print_usage(argv[0]);
         return 1;
     }
 
     try {
         std::string input_filename = input_file_arg;
-        std::string output_filename = output_file_arg;
 
         std::ifstream input_file(input_filename);
         if (!input_file) {
@@ -70,7 +78,6 @@ int main(int argc, char* argv[]) {
         auto tokens = lexer.tokenize();
 
         // Pre-parse check: reject markdown blocks inside nested braces.
-        // The parser will also fail, but this gives a much clearer diagnostic.
         {
             int brace_depth = 0;
             for (const auto &tok : tokens) {
@@ -86,9 +93,6 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-
-        // All files go through the parser (no C++1 passthrough bypass)
-        // This ensures preprocessor directives are preserved in the AST
 
         // Parse with slim combinator parser
         auto tree = cpp2::parser::parse(tokens);
@@ -119,14 +123,17 @@ int main(int argc, char* argv[]) {
         // Generate C++ directly from ParseTree
         std::string cpp1_code = generate_from_tree(tree, tokens);
 
-        std::ofstream output_file(output_filename);
-        if (!output_file) {
-            throw std::runtime_error("Cannot open output file: " + output_filename);
+        if (output_file_arg) {
+            std::ofstream output_file(output_file_arg);
+            if (!output_file) {
+                throw std::runtime_error(std::string("Cannot open output file: ") + output_file_arg);
+            }
+            output_file << cpp1_code;
+            std::cout << "Successfully transpiled " << input_filename << " to " << output_file_arg << "\n";
+        } else {
+            std::cout << cpp1_code;
         }
 
-        output_file << cpp1_code;
-
-        std::cout << "Successfully transpiled " << input_filename << " to " << output_filename << "\n";
         return 0;
     }
     catch (const std::exception& e) {

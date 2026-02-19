@@ -442,19 +442,14 @@ struct SemanticContentBuilder {
         return *this;
     }
 
-    SemanticContentBuilder& add(uint64_t value) {
-        content += std::to_string(value);
-        content += "|";
-        return *this;
-    }
+    // Use SFINAE to enable add(uint64_t) only if uint64_t is distinct from size_t
+    // or simply merge them if size_t == uint64_t.
+    // The simplest fix for "ambiguous overload" if size_t == uint64_t is to NOT declare both.
+    // We can use a template to capture integer types.
 
-    SemanticContentBuilder& add(int64_t value) {
-        content += std::to_string(value);
-        content += "|";
-        return *this;
-    }
-
-    SemanticContentBuilder& add(size_t value) {
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, SemanticContentBuilder&>::type
+    add(T value) {
         content += std::to_string(value);
         content += "|";
         return *this;
