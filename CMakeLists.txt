@@ -249,11 +249,12 @@ add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 add_subdirectory(src)
 add_subdirectory(tests)
 
+# Run all tests by default
 add_custom_target(run_regression_suite
-    COMMAND regression_suite --tier 1
+    COMMAND regression_suite
     DEPENDS regression_suite cppfront cppfort
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running regression suite (Tier 1)"
+    COMMENT "Running regression suite"
 )
 
 # Testing

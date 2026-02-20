@@ -8,8 +8,63 @@
 #include <iomanip>
 #include <array>
 #include <memory>
+#include <map>
 
 namespace fs = std::filesystem;
+
+// Regression Test Tiers (Rankings)
+enum class Tier {
+    Safety_Contracts = 1,
+    Core_Semantics = 2,
+    Advanced_Features = 3,
+    General = 4,
+    Unknown = 99
+};
+
+// Categorize test based on filename heuristics
+Tier categorize_test(const std::string& filename) {
+    std::string name_part = filename;
+    // Remove prefixes/suffixes for matching
+    if (name_part.find("pure2-") == 0) name_part = name_part.substr(6);
+    else if (name_part.find("mixed-") == 0) name_part = name_part.substr(6);
+    if (name_part.size() > 4 && name_part.substr(name_part.size() - 4) == ".cpp")
+        name_part = name_part.substr(0, name_part.size() - 4);
+    if (name_part.size() > 5 && name_part.substr(name_part.size() - 5) == ".cpp2")
+        name_part = name_part.substr(0, name_part.size() - 5);
+
+    // Tier 1: Safety & Contracts (Critical for SON/Borrow Checker)
+    if (name_part.find("safety") != std::string::npos) return Tier::Safety_Contracts;
+    if (name_part.find("contract") != std::string::npos || name_part.find("assert") != std::string::npos) return Tier::Safety_Contracts;
+    if (name_part.find("bound") != std::string::npos) return Tier::Safety_Contracts;
+    if (name_part.find("null") != std::string::npos) return Tier::Safety_Contracts;
+    if (name_part.find("init") != std::string::npos) return Tier::Safety_Contracts;
+    if (name_part.find("unsafe") != std::string::npos) return Tier::Safety_Contracts;
+
+    // Tier 2: Core Language Semantics (Isomorphic Loop)
+    if (name_part.find("loop") != std::string::npos || name_part.find("for") != std::string::npos || name_part.find("while") != std::string::npos) return Tier::Core_Semantics;
+    if (name_part.find("func") != std::string::npos || name_part.find("lambda") != std::string::npos) return Tier::Core_Semantics;
+    if (name_part.find("type") != std::string::npos) return Tier::Core_Semantics;
+    if (name_part.find("inspect") != std::string::npos) return Tier::Core_Semantics;
+    if (name_part.find("hello") != std::string::npos) return Tier::Core_Semantics; // Basic smoke tests
+
+    // Tier 3: Advanced Features
+    if (name_part.find("autodiff") != std::string::npos) return Tier::Advanced_Features;
+    if (name_part.find("ufcs") != std::string::npos) return Tier::Advanced_Features;
+    if (name_part.find("meta") != std::string::npos) return Tier::Advanced_Features;
+    if (name_part.find("regex") != std::string::npos) return Tier::Advanced_Features;
+
+    return Tier::General;
+}
+
+std::string tier_to_string(Tier t) {
+    switch (t) {
+        case Tier::Safety_Contracts: return "Tier 1 (Safety)";
+        case Tier::Core_Semantics: return "Tier 2 (Core)";
+        case Tier::Advanced_Features: return "Tier 3 (Advanced)";
+        case Tier::General: return "Tier 4 (General)";
+        default: return "Unknown";
+    }
+}
 
 // Helper to run a command and capture its output
 std::string run_command(const std::string &cmd) {
@@ -49,52 +104,44 @@ void print_usage(const char* prog) {
     std::cerr << "Usage: " << prog << " [options]\n"
               << "Options:\n"
               << "  --cppfront     Use cppfront instead of cppfort (comparison mode)\n"
+              << "  --tier <N>     Filter tests by tier (optional)\n"
               << "  --help         Show this help\n";
 }
 
 int main(int argc, char **argv) {
     bool use_cppfront = false;
+    int filter_tier = 0;
 
-    // Simple arg parsing (ignore --tier if passed for backward compat in cmake)
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--cppfront") {
             use_cppfront = true;
+        } else if (arg == "--tier") {
+            if (i + 1 < argc) filter_tier = std::atoi(argv[++i]);
         } else if (arg == "--help") {
             print_usage(argv[0]);
             return 0;
         }
-        // ignore --tier <arg>
-        else if (arg == "--tier" && i + 1 < argc) {
-            i++;
-        }
     }
 
     // Paths
-    // Assume we are running from the build directory
     fs::path build_dir = fs::current_path();
-
-    // Find project root (assume build_dir is inside project_root/build or similar)
     fs::path project_root = build_dir.parent_path();
     if (!fs::exists(project_root / "third_party")) {
         project_root = fs::current_path().parent_path();
     }
 
-    // Find cppfort (the project's transpiler)
     fs::path cppfort_bin = build_dir / "src" / "cppfort";
     if (!fs::exists(cppfort_bin)) cppfort_bin = build_dir / "bin" / "cppfort";
     if (!fs::exists(cppfort_bin)) cppfort_bin = build_dir / "cppfort";
 
-    // Find cppfront (reference transpiler)
     fs::path cppfront_bin = build_dir / "cppfront";
     if (!fs::exists(cppfront_bin)) cppfront_bin = build_dir / "bin" / "cppfront";
 
-    // Determine which compiler to use for the "actual" output
     fs::path actual_compiler = use_cppfront ? cppfront_bin : cppfort_bin;
 
     if (!fs::exists(actual_compiler)) {
         std::cerr << "Error: Compiler binary not found at " << actual_compiler << "\n";
-        std::cerr << "Current path: " << fs::current_path() << "\n";
         return 1;
     }
 
@@ -107,11 +154,12 @@ int main(int argc, char **argv) {
     fs::path work_dir = build_dir / "regression_work";
     fs::create_directories(work_dir);
 
-    // CSV header
-    std::cout << "test,sha256,transpile,source_match,compile,exec_match" << std::endl;
+    // CSV header with Tier
+    std::cout << "test,tier,sha256,transpile,source_match,compile,exec_match" << std::endl;
 
     int total = 0;
     int passed = 0;
+    std::map<Tier, std::pair<int, int>> tier_stats; // Tier -> {total, passed}
 
     if (!fs::exists(regression_dir)) {
         std::cerr << "Error: Regression directory not found at " << regression_dir << "\n";
@@ -120,6 +168,9 @@ int main(int argc, char **argv) {
 
     for (auto &entry : fs::recursive_directory_iterator(regression_dir)) {
         if (entry.path().extension() != ".cpp2") continue;
+
+        Tier tier = categorize_test(entry.path().filename().string());
+        if (filter_tier > 0 && static_cast<int>(tier) != filter_tier) continue;
 
         fs::path cpp2 = entry.path();
         std::string test_name = cpp2.stem().string();
@@ -142,7 +193,8 @@ int main(int argc, char **argv) {
         int transpile_ret = std::system(transpile_cmd.c_str());
 
         if (transpile_ret != 0) {
-            std::cout << test_name << "," << sha << ",FAIL,-,-,-" << std::endl;
+            std::cout << test_name << "," << static_cast<int>(tier) << "," << sha << ",FAIL,-,-,-" << std::endl;
+            tier_stats[tier].first++;
             continue;
         }
         replace_header(actual_cpp);
@@ -150,7 +202,6 @@ int main(int argc, char **argv) {
         // 3. Compare Sources (Isomorphic Check)
         bool source_match = false;
         if (have_ref_source) {
-            // Compare ignoring whitespace
             std::string diff_cmd = "diff -w -B " + actual_cpp.string() + " " + ref_cpp.string() + " >/dev/null";
             int diff_ret = std::system(diff_cmd.c_str());
             source_match = (diff_ret == 0);
@@ -159,13 +210,13 @@ int main(int argc, char **argv) {
         }
 
         // 4. Compile
-        // Switched from clang++ to c++ (g++) to avoid Clang 18/GCC 13 stdlib incompatibility
         fs::path exe_out = work_dir / (test_name + "_exe");
         std::string compile_cmd = "c++ -std=c++23 -O0 -I" + (project_root / "include").string() + " " + actual_cpp.string() + " -o " + exe_out.string();
 
         int compile_ret = std::system(compile_cmd.c_str());
         if (compile_ret != 0) {
-            std::cout << test_name << "," << sha << ",OK," << (source_match?"1":"0") << ",FAIL,-" << std::endl;
+            std::cout << test_name << "," << static_cast<int>(tier) << "," << sha << ",OK," << (source_match?"1":"0") << ",FAIL,-" << std::endl;
+            tier_stats[tier].first++;
             continue;
         }
 
@@ -183,14 +234,24 @@ int main(int argc, char **argv) {
             exec_match = true;
         }
 
-        std::cout << test_name << "," << sha << ",OK,"
+        std::cout << test_name << "," << static_cast<int>(tier) << "," << sha << ",OK,"
                   << (source_match ? "1" : "0") << ",OK,"
                   << (exec_match ? "1" : "0") << std::endl;
 
         total++;
-        if (source_match && exec_match) passed++;
+        tier_stats[tier].first++;
+        if (source_match && exec_match) {
+            passed++;
+            tier_stats[tier].second++;
+        }
     }
 
-    std::cerr << "Summary: " << passed << "/" << total << " passed (Source+Exec match).\n";
+    std::cerr << "\n=== Regression Suite Summary ===\n";
+    std::cerr << "Total Tests: " << total << ", Passed: " << passed << "\n";
+    for (auto const& [tier, stats] : tier_stats) {
+        std::cerr << tier_to_string(tier) << ": " << stats.second << "/" << stats.first
+                  << " (" << (stats.first > 0 ? (stats.second * 100 / stats.first) : 0) << "%)\n";
+    }
+
     return (passed == total && total > 0) ? 0 : 1;
 }
