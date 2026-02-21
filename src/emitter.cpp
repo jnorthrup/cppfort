@@ -535,7 +535,25 @@ class TreeEmitter {
                std::isspace(static_cast<unsigned char>(text[follow]))) {
           ++follow;
         }
-        if (follow == text.size() || is_postfix_follow_char(text[follow])) {
+
+        bool is_keyword_follow = false;
+        if (follow < text.size()) {
+            // Check for keywords like "is" and "as" that can follow an expression
+            // Need to check boundaries (e.g. "is " or "is<")
+            static const std::vector<std::string> keywords = {"is", "as"};
+            for (const auto& kw : keywords) {
+                if (text.compare(follow, kw.size(), kw) == 0) {
+                    size_t next_char = follow + kw.size();
+                    if (next_char == text.size() ||
+                        !std::isalnum(static_cast<unsigned char>(text[next_char])) && text[next_char] != '_') {
+                        is_keyword_follow = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (follow == text.size() || is_postfix_follow_char(text[follow]) || is_keyword_follow) {
           out += apply_postfix_ops(base, ops);
           i = j;
           continue;
@@ -660,6 +678,39 @@ class TreeEmitter {
     return text;
   }
 
+  // Helper to apply regex replacement only outside of string literals
+  std::string replace_outside_strings(const std::string& text, const std::regex& re, const std::string& fmt) const {
+    std::string result;
+    size_t start = 0;
+    bool in_string = false;
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == '"' && (i == 0 || text[i-1] != '\\')) {
+            if (!in_string) {
+                // Start of string. Process code before this.
+                std::string code_chunk = text.substr(start, i - start);
+                result += std::regex_replace(code_chunk, re, fmt);
+                start = i;
+                in_string = true;
+            } else {
+                // End of string. Append string verbatim.
+                result += text.substr(start, i - start + 1);
+                start = i + 1;
+                in_string = false;
+            }
+        }
+    }
+    // Process remaining
+    if (start < text.size()) {
+        std::string chunk = text.substr(start);
+        if (!in_string) {
+            result += std::regex_replace(chunk, re, fmt);
+        } else {
+            result += chunk;
+        }
+    }
+    return result;
+  }
+
   std::string rewrite_cpp2_raw_expression(std::string text) const {
     text = trim(text);
     if (text == "this") {
@@ -672,6 +723,22 @@ class TreeEmitter {
     text = rewrite_cpp2_postfix_chains(text);
     text = rewrite_cpp2_range_fragments(text);
     text = rewrite_member_ssize_calls(text);
+
+    // new<T> -> std::make_unique<T>
+    static const std::regex make_unique_re(R"(new\s*<([^>]+)>)");
+    text = replace_outside_strings(text, make_unique_re, "std::make_unique<$1>");
+
+    // Handle := assignment/declaration in raw text
+    // c := ... -> auto c = ...
+    static const std::regex decl_assign_re(R"(\b([a-zA-Z_]\w*)\s*:=\s*)");
+    text = replace_outside_strings(text, decl_assign_re, "auto $1 = ");
+
+    // Handle 'is' operator: s* is Shape -> cpp2::is<Shape>(s*)
+    // Use regex that handles non-space boundaries (e.g. s*is)
+    // Exclude commas and brackets from LHS to avoid consuming argument separators
+    static const std::regex is_type_re(R"(([^,;(){}\[\]]+?)\b\s*is\s+([a-zA-Z_]\w*))");
+    text = replace_outside_strings(text, is_type_re, "cpp2::is<$2>($1)");
+
     return text;
   }
 
@@ -785,7 +852,32 @@ class TreeEmitter {
       return {};
     }
 
-    std::string sig = trim(text.substr(0, brace_pos));
+    // Strip base classes: stop at ':' if not inside template/parens
+    size_t colon_pos = std::string::npos;
+    paren_depth = 0;
+    angle_depth = 0;
+    for (size_t i = 0; i < brace_pos; ++i) {
+      char c = text[i];
+      if (c == '(') ++paren_depth;
+      else if (c == ')') { if (paren_depth > 0) --paren_depth; }
+      else if (c == '<') ++angle_depth;
+      else if (c == '>') { if (angle_depth > 0) --angle_depth; }
+      else if (c == ':' && paren_depth == 0 && angle_depth == 0) {
+        // Check if it's :: (scope)
+        if (i + 1 < brace_pos && text[i+1] == ':') {
+          ++i; continue;
+        }
+        // Check if it was :: (scope)
+        if (i > 0 && text[i-1] == ':') {
+          continue;
+        }
+        colon_pos = i;
+        break;
+      }
+    }
+
+    std::string sig = trim(text.substr(0, colon_pos != std::string::npos ? colon_pos : brace_pos));
+
     if (sig.empty() || sig.find('(') != std::string::npos ||
         sig.find(')') != std::string::npos) {
       return {};
@@ -2973,7 +3065,9 @@ private:
         }
       }
       // Fallback
-      out_ << node_text(n) << "\n";
+      std::string text = node_text(n);
+      text = rewrite_cpp2_raw_expression(text);
+      out_ << text << "\n";
     } else if (n.kind == NodeKind::Statement) {
       // Check the first token for keyword-based statements
       std::string_view first = (n.token_start < tokens_.size()) 
