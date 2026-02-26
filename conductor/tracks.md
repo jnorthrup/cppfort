@@ -2,6 +2,12 @@
 
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
 
+## Conductor Recap / Main Todo
+
+- Main todo: Execute the next incomplete track with a small, validated batch and keep `plan.md` as the source of session state.
+- Immediate prerequisite (now stubbed): Ensure every track listed below has `spec.md` and `plan.md` under `conductor/tracks/<track_id>/`.
+- Next target track by order: `Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)`.
+
 ---
 
 ## [x] Track: Establish Core Cpp2 to MLIR Front-IR Conversion and Sea of Nodes Dialect Integration
@@ -36,9 +42,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
+## [~] Track: Semantic AST Enhancements (Escape Analysis, Borrowing, External Memory, Channels)
 *Link: [./conductor/tracks/semantic_ast_20251230/](./conductor/tracks/semantic_ast_20251230/)*
-*Status: PLANNED* - 6-phase roadmap (15-18 days)
+*Status: ACTIVE* - Gap-fill semantic metadata wiring + tests in progress
 
 **Objectives**:
 - Escape analysis framework (track value lifetimes and escape points)
@@ -46,6 +52,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 - External memory pipeline integration (GPU/DMA transfers, lifecycle optimization)
 - Channelized concurrency integration (ownership through channels, data race detection)
 - Unified semantic representation (SemanticInfo attached to all AST nodes)
+
+**Immediate Session Focus**:
+- Parameter semantic metadata wiring on `FunctionDeclaration::Parameter`
+- `SemanticAnalyzer::check_parameter_types(...)` population
+- Focused semantic analyzer tests + targeted validation
 
 **Target Metrics**:
 - Parameter semantics: 0% → 100%
@@ -100,9 +111,28 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 6*
+## [ ] Track: Clang Back-Annotation of Generated C++ Fragments into Cpp2 AST
+*Link: [./conductor/tracks/clang_back_annotation_20260225/](./conductor/tracks/clang_back_annotation_20260225/)*
+*Status: PLANNED* - Metadata-only semantic oracle integration (tagging + mapping + Clang extraction)
+
+**Objective**: Use Clang to analyze generated C++ fragments and back-annotate the originating Cpp2 AST with tagged semantic facts and provenance.
+
+**Scope (Initial)**:
+- Stable fragment tagging (`cpp2_node_id`) in generated C++
+- Mapping table emission (ID -> generated source range / fragment kind)
+- Narrow Clang extraction prototype (declarations, parameters, call arguments)
+- Back-annotation merge into `SemanticInfo` without changing codegen behavior
+
+**Design Constraints**:
+1. Deterministic IDs and mapping stability across formatting changes
+2. Additive/advisory metadata first (no silent overwrites of native semantic analyzer results)
+3. Explicit handling of implicit Clang nodes, duplicates, and ambiguous mappings
+
+---
+
+*Total Tracks: 7*
 *Completed: 3*
 *In Progress: 0*
 *Active: 1*
-*Planned: 1*
+*Planned: 2*
 *Blocked: 1*

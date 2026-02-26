@@ -232,6 +232,17 @@ struct CoroutineFrame {
     CoroutineFrame() = default;
 };
 
+struct ParameterSemanticInfo {
+    bool is_parameter = false;
+    bool has_explicit_qualifier = false;
+    ParameterQualifier raw_qualifier = ParameterQualifier::None;
+    ParameterQualifier effective_qualifier = ParameterQualifier::None;
+    OwnershipKind mapped_ownership = OwnershipKind::Owned;
+    bool write_before_return_expected = false;
+    bool mutable_access_expected = false;
+    bool move_transfer_expected = false;
+};
+
 struct SemanticInfo {
     // Ownership and borrowing
     BorrowInfo borrow;
@@ -252,6 +263,9 @@ struct SemanticInfo {
 
     // Coroutine frame (Phase 8)
     std::optional<CoroutineFrame> coroutine_frame;
+
+    // Parameter semantics (additive metadata for function params)
+    std::optional<ParameterSemanticInfo> parameter;
 
     // Lifetime bounds
     LifetimeRegion lifetime;
@@ -313,6 +327,31 @@ struct SemanticInfo {
             case OwnershipKind::Borrowed: result += "Borrowed"; break;
             case OwnershipKind::MutBorrowed: result += "MutBorrowed"; break;
             case OwnershipKind::Moved: result += "Moved"; break;
+        }
+
+        if (parameter.has_value()) {
+            result += " | Param:";
+            result += parameter->has_explicit_qualifier ? "explicit" : "implicit";
+            result += "/";
+            switch (parameter->raw_qualifier) {
+                case ParameterQualifier::In: result += "raw=in"; break;
+                case ParameterQualifier::Out: result += "raw=out"; break;
+                case ParameterQualifier::InOut: result += "raw=inout"; break;
+                case ParameterQualifier::Move: result += "raw=move"; break;
+                case ParameterQualifier::Forward: result += "raw=forward"; break;
+                case ParameterQualifier::None: result += "raw=none"; break;
+                default: result += "raw=other"; break;
+            }
+            result += "/";
+            switch (parameter->effective_qualifier) {
+                case ParameterQualifier::In: result += "eff=in"; break;
+                case ParameterQualifier::Out: result += "eff=out"; break;
+                case ParameterQualifier::InOut: result += "eff=inout"; break;
+                case ParameterQualifier::Move: result += "eff=move"; break;
+                case ParameterQualifier::Forward: result += "eff=forward"; break;
+                case ParameterQualifier::None: result += "eff=none"; break;
+                default: result += "eff=other"; break;
+            }
         }
         
         // Escape
@@ -1321,6 +1360,7 @@ struct FunctionDeclaration : Declaration {
         std::unique_ptr<Type> type;
         std::unique_ptr<Expression> default_value;
         std::vector<ParameterQualifier> qualifiers;  // Cpp2: inout, out, move, forward
+        std::unique_ptr<SemanticInfo> semantic_info;
     };
 
     // Named return parameter (e.g., "-> (result: int)" or "-> (result: int = 0)")

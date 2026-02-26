@@ -52,6 +52,10 @@ void SemanticAnalyzer::analyze(AST& ast) {
     // Check for unused variables
     check_unused_variables();
 
+    // Explicit placeholder traversal for future escape/borrow analysis.
+    // Keep this non-fatal and non-codegen-affecting for now.
+    analyze_escape_and_borrow(ast);
+
     if (!errors.empty()) {
         std::cerr << "Semantic analysis found " << errors.size() << " errors:\n";
         for (const auto& error : errors) {
@@ -399,13 +403,43 @@ void SemanticAnalyzer::check_function_body(FunctionDeclaration* func) {
 }
 
 void SemanticAnalyzer::check_parameter_types(FunctionDeclaration* func) {
-    // Cpp2 allows parameters without explicit types - they become deduced/template parameters
-    // So we don't require type annotations for parameters
-    // for (const auto& param : func->parameters) {
-    //     if (!param.type) {
-    //         report_error(func->line, "Parameter '" + param.name + "' missing type annotation");
-    //     }
-    // }
+    // Cpp2 allows parameters without explicit types - they become deduced/template parameters.
+    // This pass records parameter semantic metadata without changing parser/codegen behavior.
+    for (auto& param : func->parameters) {
+        if (!param.semantic_info) {
+            param.semantic_info = std::make_unique<SemanticInfo>();
+        }
+
+        if (param.qualifiers.size() > 1) {
+            report_warning(func->line,
+                "Parameter '" + param.name +
+                "' has multiple qualifiers; using the first qualifier for semantic metadata");
+        }
+
+        const auto raw_qualifier =
+            canonicalize_parameter_qualifier_for_semantics(param.qualifiers);
+        const auto effective_qualifier = raw_qualifier;  // Compatibility mode for now.
+        const auto ownership = map_qualifier_to_ownership(effective_qualifier);
+
+        param.semantic_info->borrow.kind = ownership;
+
+        ParameterSemanticInfo parameter_info;
+        parameter_info.is_parameter = true;
+        parameter_info.has_explicit_qualifier = qualifier_is_explicit(param.qualifiers);
+        parameter_info.raw_qualifier = raw_qualifier;
+        parameter_info.effective_qualifier = effective_qualifier;
+        parameter_info.mapped_ownership = ownership;
+        parameter_info.write_before_return_expected =
+            raw_qualifier == ParameterQualifier::Out;
+        parameter_info.mutable_access_expected =
+            raw_qualifier == ParameterQualifier::Out ||
+            raw_qualifier == ParameterQualifier::InOut;
+        parameter_info.move_transfer_expected =
+            raw_qualifier == ParameterQualifier::Move ||
+            raw_qualifier == ParameterQualifier::Forward;
+
+        param.semantic_info->parameter = parameter_info;
+    }
 }
 
 void SemanticAnalyzer::check_function_contracts(FunctionDeclaration* func) {
@@ -932,6 +966,215 @@ void SemanticAnalyzer::check_channel_select_expression(ChannelSelectExpression* 
     // Check default case if present
     if (expr->default_case) {
         check_expression(expr->default_case.get());
+    }
+}
+
+void SemanticAnalyzer::analyze_escape_and_borrow(AST& ast) {
+    for (auto& decl : ast.declarations) {
+        analyze_escape_and_borrow_declaration(decl.get());
+    }
+}
+
+void SemanticAnalyzer::analyze_escape_and_borrow_declaration(Declaration* decl) {
+    if (!decl) return;
+
+    if (!decl->semantic_info) {
+        decl->semantic_info = std::make_unique<SemanticInfo>();
+    }
+    // Placeholder until real escape analysis computes escape categories.
+    if (decl->semantic_info->escape.kind != EscapeKind::NoEscape) {
+        // Preserve any prior explicit escape result.
+    }
+
+    switch (decl->kind) {
+        case Declaration::Kind::Function: {
+            auto* func = static_cast<FunctionDeclaration*>(decl);
+            for (auto& param : func->parameters) {
+                if (!param.semantic_info) {
+                    param.semantic_info = std::make_unique<SemanticInfo>();
+                }
+            }
+            if (func->body) {
+                analyze_escape_and_borrow_statement(func->body.get());
+            }
+            break;
+        }
+        case Declaration::Kind::Namespace: {
+            auto* ns = static_cast<NamespaceDeclaration*>(decl);
+            for (auto& member : ns->members) {
+                analyze_escape_and_borrow_declaration(member.get());
+            }
+            break;
+        }
+        case Declaration::Kind::Type: {
+            auto* td = static_cast<TypeDeclaration*>(decl);
+            for (auto& member : td->members) {
+                analyze_escape_and_borrow_declaration(member.get());
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void SemanticAnalyzer::analyze_escape_and_borrow_statement(Statement* stmt) {
+    if (!stmt) return;
+
+    switch (stmt->kind) {
+        case Statement::Kind::Expression:
+            analyze_escape_and_borrow_expression(
+                static_cast<ExpressionStatement*>(stmt)->expr.get());
+            break;
+        case Statement::Kind::Declaration: {
+            auto* decl_stmt = static_cast<DeclarationStatement*>(stmt);
+            analyze_escape_and_borrow_declaration(decl_stmt->declaration.get());
+            break;
+        }
+        case Statement::Kind::Block: {
+            auto* block = static_cast<BlockStatement*>(stmt);
+            for (auto& s : block->statements) {
+                analyze_escape_and_borrow_statement(s.get());
+            }
+            break;
+        }
+        case Statement::Kind::If: {
+            auto* if_stmt = static_cast<IfStatement*>(stmt);
+            analyze_escape_and_borrow_expression(if_stmt->condition.get());
+            analyze_escape_and_borrow_statement(if_stmt->then_stmt.get());
+            analyze_escape_and_borrow_statement(if_stmt->else_stmt.get());
+            break;
+        }
+        case Statement::Kind::While: {
+            auto* while_stmt = static_cast<WhileStatement*>(stmt);
+            analyze_escape_and_borrow_expression(while_stmt->condition.get());
+            analyze_escape_and_borrow_expression(while_stmt->increment.get());
+            analyze_escape_and_borrow_statement(while_stmt->body.get());
+            break;
+        }
+        case Statement::Kind::For: {
+            auto* for_stmt = static_cast<ForStatement*>(stmt);
+            analyze_escape_and_borrow_statement(for_stmt->init.get());
+            analyze_escape_and_borrow_expression(for_stmt->condition.get());
+            analyze_escape_and_borrow_expression(for_stmt->increment.get());
+            analyze_escape_and_borrow_statement(for_stmt->body.get());
+            break;
+        }
+        case Statement::Kind::ForRange: {
+            auto* range_stmt = static_cast<ForRangeStatement*>(stmt);
+            analyze_escape_and_borrow_expression(range_stmt->range.get());
+            analyze_escape_and_borrow_expression(range_stmt->next_clause.get());
+            analyze_escape_and_borrow_statement(range_stmt->body.get());
+            break;
+        }
+        case Statement::Kind::Return:
+            analyze_escape_and_borrow_expression(static_cast<ReturnStatement*>(stmt)->value.get());
+            break;
+        case Statement::Kind::Try: {
+            auto* try_stmt = static_cast<TryStatement*>(stmt);
+            analyze_escape_and_borrow_statement(try_stmt->try_block.get());
+            for (auto& c : try_stmt->catch_blocks) {
+                analyze_escape_and_borrow_statement(c.second.get());
+            }
+            break;
+        }
+        case Statement::Kind::Contract:
+            analyze_escape_and_borrow_expression(
+                static_cast<ContractStatement*>(stmt)->contract.get());
+            break;
+        case Statement::Kind::CoroutineScope:
+            analyze_escape_and_borrow_statement(
+                static_cast<CoroutineScopeStatement*>(stmt)->body.get());
+            break;
+        case Statement::Kind::ParallelFor: {
+            auto* par = static_cast<ParallelForStatement*>(stmt);
+            analyze_escape_and_borrow_expression(par->lower_bound.get());
+            analyze_escape_and_borrow_expression(par->upper_bound.get());
+            analyze_escape_and_borrow_expression(par->step.get());
+            analyze_escape_and_borrow_statement(par->body.get());
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void SemanticAnalyzer::analyze_escape_and_borrow_expression(Expression* expr) {
+    if (!expr) return;
+
+    switch (expr->kind) {
+        case Expression::Kind::Binary: {
+            auto* e = static_cast<BinaryExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->left.get());
+            analyze_escape_and_borrow_expression(e->right.get());
+            break;
+        }
+        case Expression::Kind::Unary:
+            analyze_escape_and_borrow_expression(static_cast<UnaryExpression*>(expr)->operand.get());
+            break;
+        case Expression::Kind::Call: {
+            auto* e = static_cast<CallExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->callee.get());
+            for (auto& a : e->arguments) analyze_escape_and_borrow_expression(a.expr.get());
+            for (auto& a : e->args) analyze_escape_and_borrow_expression(a.get());
+            break;
+        }
+        case Expression::Kind::MemberAccess:
+            analyze_escape_and_borrow_expression(
+                static_cast<MemberAccessExpression*>(expr)->object.get());
+            break;
+        case Expression::Kind::Subscript: {
+            auto* e = static_cast<SubscriptExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->array.get());
+            analyze_escape_and_borrow_expression(e->index.get());
+            break;
+        }
+        case Expression::Kind::Ternary: {
+            auto* e = static_cast<TernaryExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->condition.get());
+            analyze_escape_and_borrow_expression(e->then_expr.get());
+            analyze_escape_and_borrow_expression(e->else_expr.get());
+            break;
+        }
+        case Expression::Kind::Lambda: {
+            auto* e = static_cast<LambdaExpression*>(expr);
+            for (auto& s : e->body) analyze_escape_and_borrow_statement(s.get());
+            break;
+        }
+        case Expression::Kind::Is:
+            analyze_escape_and_borrow_expression(static_cast<IsExpression*>(expr)->expr.get());
+            break;
+        case Expression::Kind::As:
+            analyze_escape_and_borrow_expression(static_cast<AsExpression*>(expr)->expr.get());
+            break;
+        case Expression::Kind::Range: {
+            auto* e = static_cast<RangeExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->start.get());
+            analyze_escape_and_borrow_expression(e->end.get());
+            break;
+        }
+        case Expression::Kind::Await:
+            analyze_escape_and_borrow_expression(static_cast<AwaitExpression*>(expr)->value.get());
+            break;
+        case Expression::Kind::Spawn:
+            analyze_escape_and_borrow_expression(static_cast<SpawnExpression*>(expr)->task.get());
+            break;
+        case Expression::Kind::ChannelSend: {
+            auto* e = static_cast<ChannelSendExpression*>(expr);
+            analyze_escape_and_borrow_expression(e->value.get());
+            break;
+        }
+        case Expression::Kind::ChannelSelect: {
+            auto* e = static_cast<ChannelSelectExpression*>(expr);
+            for (auto& c : e->cases) {
+                analyze_escape_and_borrow_expression(c.value.get());
+                analyze_escape_and_borrow_expression(c.action.get());
+            }
+            analyze_escape_and_borrow_expression(e->default_case.get());
+            break;
+        }
+        default:
+            break;
     }
 }
 

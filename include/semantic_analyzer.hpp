@@ -92,6 +92,19 @@ inline OwnershipKind map_qualifier_to_ownership(ParameterQualifier qualifier) {
     }
 }
 
+inline ParameterQualifier canonicalize_parameter_qualifier_for_semantics(
+    const std::vector<ParameterQualifier>& qualifiers) {
+    if (qualifiers.empty()) {
+        return ParameterQualifier::None;
+    }
+    // TODO: If unqualified params become implicit 'in', change effective qualifier here.
+    return qualifiers.front();
+}
+
+inline bool qualifier_is_explicit(const std::vector<ParameterQualifier>& qualifiers) {
+    return !qualifiers.empty();
+}
+
 class SemanticAnalyzer {
 public:
     SemanticAnalyzer();
@@ -162,6 +175,12 @@ private:
     // Phase 7: Arena allocation
     void analyze_scope_for_arena(Scope* scope, BlockStatement* block);
     std::size_t next_arena_id = 1;
+
+    // Phase 3/4 skeleton pass: explicit non-invasive traversal hooks
+    void analyze_escape_and_borrow(AST& ast);
+    void analyze_escape_and_borrow_declaration(Declaration* decl);
+    void analyze_escape_and_borrow_statement(Statement* stmt);
+    void analyze_escape_and_borrow_expression(Expression* expr);
 
     // Template handling
     void check_template_parameters(TemplateStatement* tmpl);
