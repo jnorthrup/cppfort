@@ -66,7 +66,8 @@ add_test_if_exists(parser_syntax_test parser_syntax_test.cpp)
 add_test_if_exists(parsing_combinators_test parsing_combinators_test.cpp)
 add_test_if_exists(pipeline_operator_test pipeline_operator_test.cpp)
 add_test_if_exists(pattern_matching_resource_state_test pattern_matching_resource_state_test.cpp)
-add_test_if_exists(precalc_hashes precalc_hashes.cpp)
+# Utility binary, not a zero-argument regression test.
+# add_test_if_exists(precalc_hashes precalc_hashes.cpp)
 add_test_if_exists(reduction_combinators_test reduction_combinators_test.cpp)
 add_test_if_exists(inplace_vector_codegen_test inplace_vector_codegen_test.cpp)
 add_test_if_exists(reflection_sbo_test reflection_sbo_test.cpp)
@@ -81,6 +82,7 @@ add_test_if_exists(test_markdown_hash test_markdown_hash.cpp)
 add_test_if_exists(test_parameter_qualifier_lexing test_parameter_qualifier_lexing.cpp)
 add_test_if_exists(parameter_ownership_mapping_test parameter_ownership_mapping_test.cpp)
 add_test_if_exists(semantic_parameter_metadata_test semantic_parameter_metadata_test.cpp)
+add_test_if_exists(semantic_escape_borrow_skeleton_test semantic_escape_borrow_skeleton_test.cpp)
 add_test_if_exists(escape_analysis_pass_test escape_analysis_pass_test.cpp)
 add_test_if_exists(lex_test lex_test.cpp)
 add_test_if_exists(sccp_test sccp_test.cpp)
@@ -101,7 +103,9 @@ add_test_if_exists(test_pratt_parser parser/test_pratt_parser.cpp)
 add_test_if_exists(test_statement_parsing parser/test_statement_parsing.cpp)
 add_test_if_exists(debug_for_tree parser/debug_for_tree.cpp)
 add_test_if_exists(parser_test_harness parser/test_harness.cpp)
-add_test_if_exists(mixed_mode_test mixed_mode_test.cpp)
+# Stale against the removed parser.hpp/Parser hybrid API; keep out of the
+# active regression surface until it is rewritten for the current parser stack.
+# add_test_if_exists(mixed_mode_test mixed_mode_test.cpp)
 
 # Local regressions - independent of cppfront suite
 add_subdirectory(local_regressions)

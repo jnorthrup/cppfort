@@ -1,192 +1,89 @@
 # cppfort
 
-**Cpp2 → C++ transpiler with MLIR-based Sea-of-Nodes IR pipeline**
+**Cpp2 -> C++ transpiler with MLIR/Sea-of-Nodes work fed by Clang semantics and the cppfront corpus**
 
-## Overview
+## Policy
 
-Cppfort is an experimental compiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a Sea-of-Nodes (SoN) intermediate representation using MLIR. It combines:
+- `cmake` and `ninja` are the only sanctioned build tools.
+- `ninja -C build conveyor` is the authoritative end-to-end workflow.
+- Ad hoc scripts under `tools/` and `tools/inference/` are cheats and illegal. They are implementation details and debugging aids, not supported entrypoints.
 
-- **Traditional AST pipeline**: Direct Cpp2 → C++ transpilation
-- **SoN/MLIR pipeline**: Graph-based optimization with MLIR dialect
-- **Clang AST mapping**: Inverse inference from C++ AST to MLIR regions
+## What the conveyor does
 
-## Key Components
+The built executable `cppfront_conveyor` enforces the corpus pipeline:
 
-### MLIR Dialect (`include/Cpp2Dialect.td`)
-TableGen-defined dialect with ops for:
-- Control flow: `if`, `for`, `while`, `loop`, `return`
-- Data flow: `constant`, `add`, `sub`, `mul`, `div`, `phi`, `binop`
-- Functions: `func`, `call`, `ufcs_call`
-- Memory: `new`, `load`, `store` with alias classes
-- Cpp2 features: `contract`, `metafunction`, `var`
+1. Requires `third_party/cppfront` to exist and be clean.
+2. Syncs `third_party/cppfront/regression-tests` into `tests/regression-tests` and `corpus/inputs`.
+3. Runs `ctest` so the repo regression surface stays current.
+4. Builds the primary corpus by transpiling `.cpp2` with `cppfront`.
+5. Transpiles that same primary corpus with `cppfort`.
+6. Dumps Clang ASTs for both outputs.
+7. Scores transpile accuracy from AST isomorphs / semantic loss.
+8. Emits Clang-derived semantic mappings so chunk ownership can be assigned back into the transpiler.
 
-### Mapping Tools (`tools/inference/`)
-Python toolchain for extracting Clang AST → MLIR op mappings:
-- **emit_mappings.py**: Extract mapping candidates from C++ source
-- **batch_emit_mappings.py**: Process multiple files, aggregate results
-- **validate_against_dialect.py**: Validate mappings against dialect
-- **run_inference.sh**: Wrapper with libclang configuration
+Reflective semantics come from Clang. Reflective grammar comes from the built cppfront corpus.
 
-### Documentation
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design
-- **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification
-- **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition
-- **[docs/MAPPING_PROGRESS.md](docs/MAPPING_PROGRESS.md)**: Implementation status
-- **[docs/sea-of-nodes/](docs/sea-of-nodes/)**: 24 chapters from Cliff Click's book
-
-## Quick Start
-
-### Generate Mappings
-
-```bash
-# Single file
-./tools/inference/run_inference.sh tools/inference/emit_mappings.py \
-  -i tools/inference/samples/sample_son.cpp \
-  -o mappings.json -- -std=c++20
-
-# Batch process
-python3 tools/inference/batch_emit_mappings.py \
-  -i corpus/inputs \
-  -o output_dir \
-  --limit 10 \
-  --aggregate
-```
-
-### Validate Mappings
-
-```bash
-python3 tools/inference/validate_against_dialect.py \
-  -m mappings.json \
-  -d include/Cpp2Dialect.td
-```
-
-## Building
+## Build
 
 ### Prerequisites
 
 ```bash
-# macOS (Homebrew LLVM)
-brew install llvm ninja cmake
-
-# Set LLVM in PATH (add to ~/.zshrc or ~/.bashrc)
+brew install llvm cmake ninja
 export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
 ```
 
-### Build Commands
+### Spartan workflow
 
 ```bash
-# Configure with CMake (Homebrew LLVM, Ninja)
-cmake -B build -G Ninja .
-
-# Build main targets
-ninja -C build cppfort              # Main transpiler executable
-ninja -C build Cpp2Transpiler       # Transpiler library
-ninja -C build cppfront             # Cpp2 transpiler (from cppfront)
-
-# Build and run tests
-ninja -C build test                 # Run all CTest suites
-./build/tests/cpp26_contracts_test  # Run specific test
-
-# Corpus processing (requires cppfront)
-ninja -C build corpus_transpile     # Transpile .cpp2 → .cpp
-ninja -C build corpus_ast           # Generate AST dumps
-ninja -C build corpus_reference     # Combined transpile + AST
-
-# Clean build
-rm -rf build && cmake -B build -G Ninja . && ninja -C build
+cmake -S . -B build -G Ninja
+ninja -C build conveyor
 ```
 
-### CMake Targets
+That target builds `cppfront`, builds `cppfort`, runs tests, populates the regression corpus, produces cppfront reference outputs, runs cppfort against the same corpus, scores AST isomorph loss, and emits semantic mappings.
 
-| Target | Description |
-|--------|-------------|
-| `cppfort` | Main transpiler executable |
-| `Cpp2Transpiler` | Transpiler library |
-| `cppfront` | Cpp2 reference transpiler |
-| `corpus_transpile` | Transpile 189 .cpp2 files |
-| `corpus_ast` | Generate AST dumps |
-| `corpus_reference` | Combined corpus processing |
-| `test` | Run all test suites |
+### Useful targets
 
-### Running the Transpiler
+| Target | Purpose |
+| --- | --- |
+| `cppfront` | Build the bundled cppfront reference transpiler |
+| `cppfort` | Build the current cppfort transpiler |
+| `cppfront_conveyor` | Build the authoritative conveyor executable |
+| `conveyor` | Run the full corpus/test/inference conveyor |
+| `test` | Run CTest suites |
 
-```bash
-# Transpile a Cpp2 file
-./build/src/cppfort input.cpp2 -o output.cpp
+## Outputs
 
-# Generate MLIR
-./build/src/cppfort input.cpp2 --emit-mlir -o output.mlir
-```
+The conveyor writes artifacts under `build/conveyor/`:
 
-## Project Status
+- `candidate_cpp/`: cppfort-generated C++
+- `candidate_ast/`: Clang ASTs for cppfort output
+- `scores/`: AST isomorph and semantic-loss artifacts
+- `mappings/`: aggregated Clang semantic mappings
+- `CONVEYOR_SUMMARY.md`: run summary and artifact locations
 
-### Completed
-- ✅ MLIR dialect with 24 ops (control flow, data flow, memory, cpp2-specific)
-- ✅ Mapping extraction toolchain
-- ✅ Schema validation (6,301 mappings, 100% pass rate)
-- ✅ Sample corpus and test infrastructure
-- ✅ Documentation and usage guides
+Primary reference corpus outputs are written under:
 
-### In Progress
-- 🔄 MLIR emitter (template → MLIR IR code generation)
-- 🔄 Cpp2 file transpilation integration
-- 🔄 Full corpus validation
-
-### Planned
-- 📋 CI/CD pipeline
-- 📋 Sea-of-Nodes chapter pattern extraction
-- 📋 Roundtrip validation (C++ → AST → MLIR → C++)
-
-## Validation Results
-
-Latest validation (sample_son.cpp, 6,301 mappings):
-- **call**: 2,170 mappings (CallExpr)
-- **func**: 1,497 mappings (FunctionDecl)
-- **return**: 1,021 mappings (ReturnStmt)
-- **var**: 677 mappings (VarDecl)
-- **binop**: 599 mappings (BinaryOperator)
-- **if**: 249 mappings (IfStmt)
-- **while**: 46 mappings (WhileStmt)
-- **for**: 42 mappings (ForStmt)
-
-All mappings validate successfully against the dialect definition.
+- `corpus/reference/`
+- `corpus/reference_ast/`
 
 ## Architecture
 
-```
-C++ Source (.cpp2) 
-    ↓
-[cppfront transpiler] → C++ (.cpp)
-    ↓
-[Clang AST parser]
-    ↓
-[Mapping Extractor] → Mapping Artifacts (JSON)
-    ↓
-[MLIR Emitter] → cpp2 Dialect Ops
-    ↓
-[SoN Optimizer] → Optimized MLIR
-    ↓
-[Code Generator] → Target Code
+```text
+cppfront regression corpus (.cpp2)
+  -> cppfront reference C++
+  -> Clang AST + semantic sections
+  -> isomorph / semantic-loss scoring
+  -> mapping inference
+  -> chunk-assigned semantic mappings for cppfort
 ```
 
-## Dependencies
+## Notes for internals
 
-- **LLVM/MLIR**: 21.1+ (Homebrew LLVM on macOS)
-- **Clang**: 21.1+ (from Homebrew LLVM)
-- **CMake**: 3.28+ (for build system)
-- **Ninja**: (recommended build tool)
-- **Python**: 3.10+ with libclang bindings (for mapping tools)
+- The Python files in `tools/inference/` still implement the mapping engine, but the supported way to run them is through `cppfront_conveyor`.
+- If you are touching the internals, keep the contract intact: cppfront corpus first, Clang semantics second, transpiler mappings last.
 
 ## References
 
-- [cppfront](https://github.com/hsutter/cppfront) - Herb Sutter's Cpp2 transpiler
-- [Sea of Nodes IR](https://github.com/SeaOfNodes/Simple) - Cliff Click's SoN book/reference
-- [MLIR](https://mlir.llvm.org/) - Multi-Level IR framework
-
-## License
-
-[License details to be determined]
-
-## Contributing
-
-See [.github/copilot-instructions.md](.github/copilot-instructions.md) for development guidelines.
+- [cppfront](https://github.com/hsutter/cppfront)
+- [MLIR](https://mlir.llvm.org/)
+- [Sea of Nodes IR](https://github.com/SeaOfNodes/Simple)

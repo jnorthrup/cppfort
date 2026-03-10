@@ -1,116 +1,92 @@
 import json
-import tempfile
 from pathlib import Path
 import sys
-import os
 
-# Set up libclang if available
-if "LIBCLANG_PATH" in os.environ:
+try:
     from clang import cindex
-    cindex.Config.set_library_file(os.environ["LIBCLANG_PATH"])
+    from clang_support import configure_libclang
+    configure_libclang(cindex)
+except Exception:
+    pass
 
-import pytest
-
-# Import after libclang setup
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from emit_mappings import emit_mapping_candidates, Mapping
+from emit_mappings import emit_mapping_candidates
 from parse_and_infer import parse_file
+from batch_emit_mappings import aggregate_mappings
+
+
+def load_mappings(sample_name: str):
+    src = Path(__file__).parent.parent / "samples" / sample_name
+    root = parse_file(str(src), ["-std=c++20"])
+    return src, emit_mapping_candidates(root, str(src))
 
 
 def test_emit_mappings_schema():
-    """Verify emitted mappings conform to MAPPING_SPEC schema."""
-    src = Path(__file__).parent.parent / "samples" / "sample1.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    assert len(mappings) > 0, "Should emit at least one mapping"
-    
-    required_fields = {"id", "source_sample", "ast_kind", "son_node", 
-                       "mlir_template", "pattern", "confidence", "examples", "notes"}
-    
-    for m in mappings:
-        assert isinstance(m, dict)
-        assert required_fields.issubset(m.keys()), f"Missing fields in {m.get('id')}"
-        assert isinstance(m["confidence"], (int, float))
-        assert 0.0 <= m["confidence"] <= 1.0
-        assert isinstance(m["examples"], list)
+    src, mappings = load_mappings("sample1.cpp")
+
+    assert mappings, "Should emit at least one mapping"
+
+    required_fields = {
+        "id",
+        "source_sample",
+        "ast_kind",
+        "son_node",
+        "mlir_template",
+        "pattern",
+        "semantic_signature",
+        "grammar_fingerprint",
+        "semantic_sections",
+        "semantics_source",
+        "grammar_source",
+        "confidence",
+        "examples",
+        "notes",
+    }
+
+    for mapping in mappings:
+        assert required_fields.issubset(mapping.keys()), f"Missing fields in {mapping.get('id')}"
+        assert mapping["source_sample"]["file"] == str(src)
+        assert mapping["semantics_source"] == "clang"
+        assert mapping["grammar_source"] == "normalized_ast_shape"
+        assert 0.0 <= mapping["confidence"] <= 1.0
 
 
-def test_function_decl_mapping():
-    """Verify FunctionDecl emits correct mapping."""
-    src = Path(__file__).parent.parent / "samples" / "sample1.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    func_mappings = [m for m in mappings if m["ast_kind"] == "FunctionDecl"]
-    assert len(func_mappings) >= 1, "Should have at least one function"
-    
-    fm = func_mappings[0]
-    assert "cpp2.func" in fm["mlir_template"]
-    assert fm["son_node"] == "RegionNode"
-    assert fm["confidence"] >= 0.8
+def test_emit_mappings_attach_semantic_and_grammar_signatures():
+    _, mappings = load_mappings("sample1.cpp")
+
+    by_kind = {}
+    for mapping in mappings:
+        by_kind.setdefault(mapping["ast_kind"], []).append(mapping)
+
+    function_mapping = by_kind["FunctionDecl"][0]
+    assert function_mapping["semantic_signature"] == "function$arity=2|body=compound|controls=if+for|returns=1"
+    assert function_mapping["semantic_sections"] == ["declaration", "callable", "return", "control-flow"]
+
+    if_mapping = by_kind["IfStmt"][0]
+    assert if_mapping["semantic_signature"] == "if|condition=binary|else=no"
+    assert if_mapping["grammar_fingerprint"].startswith("if(binary)->")
+
+    for_mapping = by_kind["ForStmt"][0]
+    assert for_mapping["semantic_sections"] == ["control-flow", "loop"]
+    assert for_mapping["grammar_fingerprint"].startswith("for(")
+
+    return_mapping = by_kind["ReturnStmt"][0]
+    assert return_mapping["semantic_signature"] == "return|value=name"
 
 
-def test_if_stmt_mapping():
-    """Verify IfStmt emits correct mapping."""
-    src = Path(__file__).parent.parent / "samples" / "sample1.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    if_mappings = [m for m in mappings if m["ast_kind"] == "IfStmt"]
-    assert len(if_mappings) >= 1, "sample1.cpp has if statement"
-    
-    im = if_mappings[0]
-    assert "cpp2.if" in im["mlir_template"]
-    assert im["son_node"] == "IfNode"
-    assert "branches" in im["pattern"] or "region" in im["pattern"]
+def test_aggregate_mappings_tracks_support_counts(tmp_path):
+    for sample_name in ("sample1.cpp", "sample_son.cpp"):
+        src, mappings = load_mappings(sample_name)
+        output = tmp_path / f"{src.stem}_mappings.json"
+        output.write_text(json.dumps({"mappings": mappings}, indent=2))
 
+    aggregated = aggregate_mappings(tmp_path)
 
-def test_for_stmt_mapping():
-    """Verify ForStmt emits correct mapping."""
-    src = Path(__file__).parent.parent / "samples" / "sample1.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    for_mappings = [m for m in mappings if m["ast_kind"] == "ForStmt"]
-    assert len(for_mappings) >= 1, "sample1.cpp has for loop"
-    
-    fm = for_mappings[0]
-    assert "cpp2.for" in fm["mlir_template"]
-    assert fm["son_node"] == "LoopNode"
-
-
-def test_return_stmt_mapping():
-    """Verify ReturnStmt emits correct mapping."""
-    src = Path(__file__).parent.parent / "samples" / "sample1.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    ret_mappings = [m for m in mappings if m["ast_kind"] == "ReturnStmt"]
-    assert len(ret_mappings) >= 1, "sample1.cpp has return statements"
-    
-    rm = ret_mappings[0]
-    assert "cpp2.return" in rm["mlir_template"]
-    assert rm["son_node"] == "ReturnNode"
-
-
-def test_mapping_deduplication():
-    """Verify batch aggregator deduplicates by (ast_kind, pattern)."""
-    src = Path(__file__).parent.parent / "samples" / "sample_son.cpp"
-    root = parse_file(str(src), ["-std=c++20"])
-    mappings = emit_mapping_candidates(root, str(src))
-    
-    # Count unique (ast_kind, pattern) pairs
-    unique_keys = set((m["ast_kind"], m["pattern"]) for m in mappings)
-    
-    # Should have one unique pattern per AST kind despite multiple instances
-    from collections import Counter
-    kind_counts = Counter(m["ast_kind"] for m in mappings)
-    
-    # We have multiple functions but only one unique FunctionDecl pattern
-    assert kind_counts["FunctionDecl"] >= 5  # sample_son has 6 functions
-    
-    # But only one unique (FunctionDecl, pattern) pair
-    func_patterns = {(m["ast_kind"], m["pattern"]) 
-                     for m in mappings if m["ast_kind"] == "FunctionDecl"}
-    assert len(func_patterns) == 1
+    return_mapping = next(
+        mapping
+        for mapping in aggregated
+        if mapping["ast_kind"] == "ReturnStmt"
+        and mapping["semantic_signature"] == "return|value=name"
+    )
+    assert return_mapping["support_count"] >= 2
+    assert len(return_mapping["supporting_files"]) >= 2

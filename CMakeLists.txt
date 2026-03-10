@@ -9,24 +9,44 @@ if(APPLE)
   # --------------------------------------------------------------
   # 1️⃣ Use the system AppleClang (bundled with Xcode / CLT)
   # --------------------------------------------------------------
-  find_program(SYSTEM_CLANG clang)
-  find_program(SYSTEM_CLANGXX clang++)
+  execute_process(
+    COMMAND xcrun --find clang
+    OUTPUT_VARIABLE SYSTEM_CLANG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  execute_process(
+    COMMAND xcrun --find clang++
+    OUTPUT_VARIABLE SYSTEM_CLANGXX
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
   if(NOT SYSTEM_CLANG OR NOT SYSTEM_CLANGXX)
     message(FATAL_ERROR "System clang not found")
   endif()
-  set(CMAKE_C_COMPILER   "${SYSTEM_CLANG}"   CACHE FILEPATH "Clang compiler")
-  set(CMAKE_CXX_COMPILER "${SYSTEM_CLANGXX}" CACHE FILEPATH "Clang++ compiler")
+  set(CMAKE_C_COMPILER   "${SYSTEM_CLANG}"   CACHE FILEPATH "Clang compiler" FORCE)
+  set(CMAKE_CXX_COMPILER "${SYSTEM_CLANGXX}" CACHE FILEPATH "Clang++ compiler" FORCE)
 
   # --------------------------------------------------------------
   # 2️⃣ Prepend the system libc++ include directory (must be first)
   # --------------------------------------------------------------
-  set(SYSTEM_LIBCXX_INCLUDE "/Library/Developer/CommandLineTools/usr/include/c++/v1")
-  add_compile_options("-I${SYSTEM_LIBCXX_INCLUDE}" "-stdlib=libc++" "-nostdinc")
+  get_filename_component(SYSTEM_CLANGXX_BIN_DIR "${SYSTEM_CLANGXX}" DIRECTORY)
+  get_filename_component(SYSTEM_TOOLCHAIN_USR_DIR "${SYSTEM_CLANGXX_BIN_DIR}/.." ABSOLUTE)
+  execute_process(
+    COMMAND xcrun --sdk macosx --show-sdk-path
+    OUTPUT_VARIABLE MACOS_SDK_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  set(SYSTEM_LIBCXX_INCLUDE "${SYSTEM_TOOLCHAIN_USR_DIR}/include/c++/v1")
+  if(NOT EXISTS "${SYSTEM_LIBCXX_INCLUDE}/algorithm")
+    set(SYSTEM_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
+  endif()
+  if(NOT EXISTS "${SYSTEM_LIBCXX_INCLUDE}/algorithm")
+    message(FATAL_ERROR "System libc++ headers not found under toolchain or SDK")
+  endif()
+  add_compile_options("-I${SYSTEM_LIBCXX_INCLUDE}" "-stdlib=libc++" "-nostdinc++")
 
   # --------------------------------------------------------------
   # 3️⃣ Add the SDK's *C* headers explicitly (no -isysroot)
   # --------------------------------------------------------------
-  set(MACOS_SDK_PATH "/Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk")
   if(EXISTS "${MACOS_SDK_PATH}")
     include_directories(BEFORE SYSTEM "${MACOS_SDK_PATH}/usr/include")
   endif()
@@ -231,6 +251,26 @@ add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 # Subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
+
+# Authoritative conveyor executable: build with CMake/Ninja, not ad hoc scripts.
+add_executable(cppfront_conveyor tools/cppfront_conveyor.cpp)
+target_compile_features(cppfront_conveyor PRIVATE cxx_std_23)
+target_compile_definitions(cppfront_conveyor PRIVATE
+  CPPFORT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+  CPPFORT_BINARY_DIR="${CMAKE_BINARY_DIR}"
+  CPPFORT_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
+)
+set_target_properties(cppfront_conveyor PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
+add_custom_target(conveyor
+  COMMAND $<TARGET_FILE:cppfront_conveyor>
+  DEPENDS cppfront cppfort cppfront_conveyor
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  USES_TERMINAL
+  COMMENT "Running the authoritative cppfront/cppfort conveyor"
+)
 
 # Testing
 enable_testing()

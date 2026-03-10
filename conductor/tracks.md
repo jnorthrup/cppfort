@@ -54,9 +54,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Unified semantic representation (SemanticInfo attached to all AST nodes)
 
 **Immediate Session Focus**:
-- Parameter semantic metadata wiring on `FunctionDeclaration::Parameter`
-- `SemanticAnalyzer::check_parameter_types(...)` population
-- Focused semantic analyzer tests + targeted validation
+- Escape/borrow traversal skeleton pass wiring (`analyze_escape_and_borrow`)
+- Placeholder metadata coverage tests (non-invasive)
+- Next: Phase 4 borrow/ownership placeholder events and regression coverage
 
 **Target Metrics**:
 - Parameter semantics: 0% → 100%

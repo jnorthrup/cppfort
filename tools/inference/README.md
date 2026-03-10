@@ -1,5 +1,7 @@
 # Inverse Inference Prototype
 
+Policy: `ninja -C build conveyor` is the supported entrypoint. Direct script runs in this folder are cheats and illegal, kept only for development and debugging of the inference internals.
+
 This folder contains tools that parse C/C++ source with libclang and perform
 "inverse inference" to map AST subtrees to MLIR-like region/op templates.
 The goal is to bootstrap mappings from Clang AST to `cppfront`/`cppfort`
@@ -10,28 +12,31 @@ front IRs using tree structures rather than string patterns.
 - **parse_and_infer.py**: Basic AST→regions inference (original prototype)
 - **emit_mappings.py**: Emits mapping candidates per `docs/MAPPING_SPEC.md`
 - **batch_emit_mappings.py**: Batch process multiple files and aggregate mappings
-- **run_inference.sh**: Wrapper script that configures libclang paths and venv
+- **run_inference.sh**: Legacy wrapper whose logic is now folded into `cppfront_conveyor`
 
-## Quick start
+## Supported workflow
 
-1. Run on a single C++ file:
-
-```bash
-./tools/inference/run_inference.sh tools/inference/emit_mappings.py \
-  -i tools/inference/samples/sample_son.cpp \
-  -o /tmp/mappings.json -- -std=c++20
-```
-
-2. Batch process multiple files:
+Use the built conveyor:
 
 ```bash
-python3 tools/inference/batch_emit_mappings.py \
-  -i tools/inference/samples \
-  -o /tmp/batch_output \
-  --aggregate
+cmake -S . -B build -G Ninja
+ninja -C build conveyor
 ```
 
-3. Run tests:
+That path will:
+
+- build `cppfront`
+- build `cppfort`
+- sync the cppfront corpus
+- emit reference and candidate ASTs
+- score semantic loss from isomorphs
+- aggregate Clang-derived semantic mappings
+
+## Internal development
+
+If you are modifying the inference internals, the direct scripts still exist for iteration. They are not the contract of the repo.
+
+Run tests with:
 
 ```bash
 pytest -q
@@ -44,6 +49,9 @@ Emitted mappings follow the schema in `docs/MAPPING_SPEC.md`:
 - **ast_kind**: Clang AST cursor kind (e.g., `FunctionDecl`, `IfStmt`)
 - **son_node**: Sea-of-Nodes concept (e.g., `RegionNode`, `IfNode`)
 - **mlir_template**: MLIR text template with placeholders
+- **semantic_signature**: Clang-derived semantic summary used for stable inference
+- **grammar_fingerprint**: Normalized AST shape used to collapse corpus spelling noise
+- **semantic_sections**: High-level semantic tags such as `control-flow`, `loop`, `return`
 - **confidence**: Heuristic confidence score (0.0-1.0)
 - **examples**: Representative input/output snippets
 
@@ -59,6 +67,6 @@ Emitted mappings follow the schema in `docs/MAPPING_SPEC.md`:
 
 ## Next steps
 
-- Extend heuristics to handle cpp2 semantics (after cppfront transpilation)
+- Extend heuristics to correlate these Clang semantic signatures with cppfront corpus grammar
 - Validate mappings against `corpus` examples
 - Integrate with MLIR emitter pipeline

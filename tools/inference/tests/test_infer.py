@@ -1,9 +1,5 @@
-import os
 import json
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from tools.inference import parse_and_infer as pai
 
@@ -16,6 +12,11 @@ def test_parse_and_infer_roundtrip(tmp_path):
     assert out.exists()
     data = json.loads(out.read_text())
     assert data["file"].endswith("sample1.cpp")
-    # One function region found
     regions = data["regions"]
-    assert any(r.get("type") == "function" and r.get("name") == "add" for r in regions)
+    add_region = next(
+        r for r in regions
+        if r.get("type") == "function" and r.get("name") == "add"
+    )
+    assert add_region["semantic_signature"] == "function$arity=2|body=compound|controls=if+for|returns=1"
+    assert add_region["grammar_fingerprint"] == "function(param,param)->compound[decl,if,for,return]"
+    assert add_region["semantic_sections"] == ["declaration", "callable", "return", "control-flow"]

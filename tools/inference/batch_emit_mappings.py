@@ -56,15 +56,40 @@ def aggregate_mappings(output_dir: Path):
             data = json.load(f)
             all_mappings.extend(data.get("mappings", []))
     
-    # Deduplicate by (ast_kind, pattern)
-    seen = set()
+    # Deduplicate by stable semantic + grammar signatures and accumulate support.
     unique_mappings = []
+    seen = {}
     for m in all_mappings:
-        key = (m.get("ast_kind"), m.get("pattern"))
+        key = (
+            m.get("ast_kind"),
+            m.get("semantic_signature"),
+            m.get("grammar_fingerprint"),
+        )
+        source_file = m.get("source_sample", {}).get("file")
         if key not in seen:
-            seen.add(key)
-            unique_mappings.append(m)
-    
+            merged = dict(m)
+            merged["support_count"] = 1
+            merged["supporting_files"] = [source_file] if source_file else []
+            unique_mappings.append(merged)
+            seen[key] = merged
+            continue
+
+        merged = seen[key]
+        merged["support_count"] += 1
+        if source_file and source_file not in merged["supporting_files"]:
+            merged["supporting_files"].append(source_file)
+        merged["confidence"] = max(merged.get("confidence", 0.0), m.get("confidence", 0.0))
+        for example in m.get("examples", []):
+            if example not in merged["examples"]:
+                merged["examples"].append(example)
+
+    unique_mappings.sort(
+        key=lambda m: (
+            m.get("ast_kind", ""),
+            m.get("semantic_signature", ""),
+            m.get("grammar_fingerprint", ""),
+        )
+    )
     return unique_mappings
 
 

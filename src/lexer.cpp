@@ -1,27 +1,26 @@
 #include "lexer.hpp"
 
-// Detect mixed‑mode source files (legacy C++1 + Cpp2). Simple heuristic:
-//   - presence of "#pragma mixed-mode" (or any line containing "MIXED_MODE")
-//   - this function is O(N) and does not allocate beyond a temporary string.
-// Returns true if the file should be parsed in hybrid mode.
-static bool isMixedMode(const std::string& src) {
-    // Look for the pragma marker (case‑insensitive) or a comment marker.
-    const std::string marker = "#pragma mixed-mode";
-    const std::string comment = "// MIXED_MODE";
-    std::string lower;
-    lower.reserve(src.size());
-    for (char c : src) lower.push_back(std::tolower(static_cast<unsigned char>(c)));
-    if (lower.find(marker) != std::string::npos) return true;
-    if (lower.find(comment) != std::string::npos) return true;
-    return false;
-}
-
 #include "utils.hpp"
 #include <unordered_map>
 #include <cassert>
 #include <cctype>
 
 namespace cpp2_transpiler {
+
+// Detect mixed-mode source files (legacy C++1 + Cpp2) using a cheap
+// string heuristic before tokenization begins.
+bool Lexer::isMixedMode(const std::string& src) {
+    const std::string marker = "#pragma mixed-mode";
+    const std::string comment = "// MIXED_MODE";
+    std::string lower;
+    lower.reserve(src.size());
+    for (char c : src) {
+        lower.push_back(std::tolower(static_cast<unsigned char>(c)));
+    }
+    if (lower.find(marker) != std::string::npos) return true;
+    if (lower.find(comment) != std::string::npos) return true;
+    return false;
+}
 
 Lexer::Lexer(std::string_view source)
     : source(source), current(0), line(1), column(1), start(0) {}
@@ -34,15 +33,6 @@ std::vector<Token> Lexer::tokenize() {
     // Convert the source view to a string for the detection heuristic.
     std::string src_str(source);
     m_is_mixed = isMixedMode(src_str);
-
-    while (!is_at_end()) {
-        start = current;
-        scan_token();
-    }
-
-    tokens.emplace_back(TokenType::EndOfFile, "", line, column, current);
-    return tokens;
-}
 
     while (!is_at_end()) {
         start = current;
@@ -374,7 +364,7 @@ void Lexer::add_token(TokenType type) {
                 case TokenType::Out:          // out
                 case TokenType::Move:         // move
                 case TokenType::Forward:      // forward
-                case TokenType::CoAwait:      // co_await (if represented)
+                case TokenType::Await:
                 case TokenType::Inspect:      // inspect
                 case TokenType::When:        // when
                 case TokenType::As:           // as

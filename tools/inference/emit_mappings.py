@@ -15,14 +15,31 @@ from typing import List, Dict, Any, Optional
 
 try:
     from clang import cindex
-    # Configure libclang path if provided
-    if "LIBCLANG_PATH" in os.environ:
-        cindex.Config.set_library_file(os.environ["LIBCLANG_PATH"])
+    try:
+        from .clang_support import configure_libclang
+    except ImportError:
+        from clang_support import configure_libclang
+    configure_libclang(cindex)
 except Exception:
     print("ERROR: clang python bindings not found. Install with `pip install clang`.")
     sys.exit(2)
 
-from parse_and_infer import parse_file, Node
+try:
+    from .parse_and_infer import (
+        parse_file,
+        Node,
+        semantic_signature,
+        grammar_fingerprint,
+        semantic_sections,
+    )
+except ImportError:
+    from parse_and_infer import (
+        parse_file,
+        Node,
+        semantic_signature,
+        grammar_fingerprint,
+        semantic_sections,
+    )
 
 
 @dataclass
@@ -48,142 +65,140 @@ def emit_mapping_candidates(root: Node, filename: str) -> List[Dict]:
         counter["id"] += 1
         return f"{prefix}_{counter['id']}"
 
+    def make_mapping(prefix: str,
+                     node: Node,
+                     ast_kind: str,
+                     son_node: Optional[str],
+                     mlir_template: str,
+                     confidence: float,
+                     examples: List[Dict[str, str]],
+                     notes: str) -> Dict[str, Any]:
+        signature = semantic_signature(node)
+        fingerprint = grammar_fingerprint(node)
+        return {
+            "id": next_id(prefix),
+            "source_sample": {
+                "file": filename,
+                "span": {"start": node.start, "end": node.end},
+            },
+            "ast_kind": ast_kind,
+            "son_node": son_node,
+            "mlir_template": mlir_template,
+            "pattern": f"{signature} @ {fingerprint}",
+            "semantic_signature": signature,
+            "grammar_fingerprint": fingerprint,
+            "semantic_sections": semantic_sections(node),
+            "semantics_source": "clang",
+            "grammar_source": "normalized_ast_shape",
+            "confidence": confidence,
+            "examples": examples,
+            "notes": notes,
+        }
+
     def visit(n: Node, parent=None):
         # FunctionDecl → cpp2.region
         if n.kind == "FUNCTION_DECL":
-            mappings.append({
-                "id": next_id("func_decl_to_region"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "FunctionDecl",
-                "son_node": "RegionNode",
-                "mlir_template": "cpp2.func @{name}(%args) -> %results { %body }",
-                "pattern": "FunctionDecl with optional CompoundStmt body",
-                "confidence": 0.9,
-                "examples": [{"input": f"function {n.spelling}(...)", "output": f"cpp2.func @{n.spelling}"}],
-                "notes": "Map function signature to region with entry block"
-            })
+            mappings.append(make_mapping(
+                "func_decl_to_region",
+                n,
+                "FunctionDecl",
+                "RegionNode",
+                "cpp2.func @{name}(%args) -> %results { %body }",
+                0.9,
+                [{"input": f"function {n.spelling}(...)", "output": f"cpp2.func @{n.spelling}"}],
+                "Map function signature to region with entry block."
+            ))
 
         # IfStmt → cpp2.if
         elif n.kind == "IF_STMT":
-            mappings.append({
-                "id": next_id("ifstmt_to_cpp2_if"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "IfStmt",
-                "son_node": "IfNode",
-                "mlir_template": "cpp2.if %cond { %then_region } else { %else_region }",
-                "pattern": "IfStmt with then/else branches",
-                "confidence": 0.95,
-                "examples": [{"input": "if (x>0) {...} else {...}", "output": "cpp2.if %cond { ... }"}],
-                "notes": "Split branches into regions; handle missing else"
-            })
+            mappings.append(make_mapping(
+                "ifstmt_to_cpp2_if",
+                n,
+                "IfStmt",
+                "IfNode",
+                "cpp2.if %cond { %then_region } else { %else_region }",
+                0.95,
+                [{"input": "if (x > 0) {...} else {...}", "output": "cpp2.if %cond { ... }"}],
+                "Split branches into regions and preserve branch semantics."
+            ))
 
         # ForStmt → cpp2.for
         elif n.kind == "FOR_STMT":
-            mappings.append({
-                "id": next_id("forstmt_to_cpp2_for"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "ForStmt",
-                "son_node": "LoopNode",
-                "mlir_template": "cpp2.for %init, %cond, %inc { %body }",
-                "pattern": "ForStmt with init/cond/inc/body",
-                "confidence": 0.85,
-                "examples": [{"input": "for (int i=0; i<n; i++)", "output": "cpp2.for ..."}],
-                "notes": "Map loop components to region parameters"
-            })
+            mappings.append(make_mapping(
+                "forstmt_to_cpp2_for",
+                n,
+                "ForStmt",
+                "LoopNode",
+                "cpp2.for %init, %cond, %inc { %body }",
+                0.85,
+                [{"input": "for (int i = 0; i < n; ++i)", "output": "cpp2.for ..."}],
+                "Map loop init, condition, increment, and body as separate semantic parts."
+            ))
 
         # WhileStmt → cpp2.while
         elif n.kind == "WHILE_STMT":
-            mappings.append({
-                "id": next_id("whilestmt_to_cpp2_while"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "WhileStmt",
-                "son_node": "LoopNode",
-                "mlir_template": "cpp2.while %cond { %body }",
-                "pattern": "WhileStmt with condition and body",
-                "confidence": 0.9,
-                "examples": [{"input": "while (x>0) {...}", "output": "cpp2.while %cond { ... }"}],
-                "notes": "Map condition to block argument"
-            })
+            mappings.append(make_mapping(
+                "whilestmt_to_cpp2_while",
+                n,
+                "WhileStmt",
+                "LoopNode",
+                "cpp2.while %cond { %body }",
+                0.9,
+                [{"input": "while (x > 0) {...}", "output": "cpp2.while %cond { ... }"}],
+                "Map the loop condition and body while preserving typed control semantics."
+            ))
 
         # ReturnStmt → cpp2.return
         elif n.kind == "RETURN_STMT":
-            mappings.append({
-                "id": next_id("returnstmt_to_cpp2_return"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "ReturnStmt",
-                "son_node": "ReturnNode",
-                "mlir_template": "cpp2.return %value : %type",
-                "pattern": "ReturnStmt with optional value",
-                "confidence": 0.95,
-                "examples": [{"input": "return x;", "output": "cpp2.return %x"}],
-                "notes": "Handle void returns"
-            })
+            mappings.append(make_mapping(
+                "returnstmt_to_cpp2_return",
+                n,
+                "ReturnStmt",
+                "ReturnNode",
+                "cpp2.return %value : %type",
+                0.95,
+                [{"input": "return x;", "output": "cpp2.return %x"}],
+                "Handle value and void returns as the same semantic operation."
+            ))
 
         # VarDecl → cpp2.var
         elif n.kind == "VAR_DECL":
-            mappings.append({
-                "id": next_id("vardecl_to_cpp2_var"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "VarDecl",
-                "son_node": "VarDeclNode",
-                "mlir_template": "cpp2.var @{name} : %type = %init",
-                "pattern": "VarDecl with optional initializer",
-                "confidence": 0.88,
-                "examples": [{"input": f"{n.spelling}: type = value", "output": f"cpp2.var @{n.spelling}"}],
-                "notes": "Map type and init expr"
-            })
+            mappings.append(make_mapping(
+                "vardecl_to_cpp2_var",
+                n,
+                "VarDecl",
+                "VarDeclNode",
+                "cpp2.var @{name} : %type = %init",
+                0.88,
+                [{"input": f"{n.spelling}: type = value", "output": f"cpp2.var @{n.spelling}"}],
+                "Map typed storage and initializer semantics."
+            ))
 
         # CallExpr → cpp2.call
-        elif n.kind == "CALL_EXPR":
-            mappings.append({
-                "id": next_id("callexpr_to_cpp2_call"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "CallExpr",
-                "son_node": "CallNode",
-                "mlir_template": "cpp2.call @{callee}(%args) : %result_type",
-                "pattern": "CallExpr with callee and arguments",
-                "confidence": 0.92,
-                "examples": [{"input": "func(a, b)", "output": "cpp2.call @func(%a, %b)"}],
-                "notes": "Handle UFCS and method calls"
-            })
+        elif n.kind in {"CALL_EXPR", "CXX_MEMBER_CALL_EXPR"}:
+            mappings.append(make_mapping(
+                "callexpr_to_cpp2_call",
+                n,
+                "CallExpr",
+                "CallNode",
+                "cpp2.call @{callee}(%args) : %result_type",
+                0.92,
+                [{"input": "func(a, b)", "output": "cpp2.call @func(%a, %b)"}],
+                "Handle free calls and member-shaped calls through one semantic call path."
+            ))
 
         # BinaryOperator → cpp2.binop
         elif n.kind == "BINARY_OPERATOR":
-            mappings.append({
-                "id": next_id("binop_to_cpp2_binop"),
-                "source_sample": {
-                    "file": filename,
-                    "span": {"start": n.start, "end": n.end}
-                },
-                "ast_kind": "BinaryOperator",
-                "son_node": "BinOpNode",
-                "mlir_template": "cpp2.binop {op} %lhs, %rhs : %type",
-                "pattern": "BinaryOperator with operator and operands",
-                "confidence": 0.93,
-                "examples": [{"input": "a + b", "output": "cpp2.binop add %a, %b"}],
-                "notes": "Map operator tokens to MLIR ops"
-            })
+            mappings.append(make_mapping(
+                "binop_to_cpp2_binop",
+                n,
+                "BinaryOperator",
+                "BinOpNode",
+                "cpp2.binop {op} %lhs, %rhs : %type",
+                0.93,
+                [{"input": "a + b", "output": "cpp2.binop add %a, %b"}],
+                "Map typed binary data flow independent of surface spelling."
+            ))
 
         for c in n.children:
             visit(c, n)
@@ -201,7 +216,11 @@ def main(argv):
     parser.add_argument("--clang-args", nargs="*", default=[])
     args, unknown = parser.parse_known_args(argv)
 
-    root = parse_file(args.input, args.clang_args or unknown)
+    clang_args = args.clang_args or unknown
+    if clang_args and clang_args[0] == "--":
+        clang_args = clang_args[1:]
+
+    root = parse_file(args.input, clang_args)
     mappings = emit_mapping_candidates(root, args.input)
 
     out = {

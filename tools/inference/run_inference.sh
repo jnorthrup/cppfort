@@ -31,9 +31,14 @@ echo "Using libclang: $LIBCLANG_PATH"
 export LIBCLANG_PATH
 
 # Ensure venv
-if [ ! -d "$VENV_DIR" ]; then
+if [ ! -x "$VENV_DIR/bin/python" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    python3 -m venv "$VENV_DIR" 2>/dev/null || true
+fi
+
+if [ ! -x "$VENV_DIR/bin/python" ]; then
+    echo "ERROR: failed to initialize virtual environment at $VENV_DIR"
+    exit 1
 fi
 
 # Activate and ensure deps

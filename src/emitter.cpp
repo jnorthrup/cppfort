@@ -79,6 +79,45 @@ class TreeEmitter {
     return result;
   }
 
+  std::string token_range_text(uint32_t start, uint32_t end) const {
+    std::string result;
+    for (uint32_t i = start; i < end && i < tokens_.size(); ++i) {
+      if (!result.empty() && !tokens_[i].lexeme.empty()) {
+        char prev = result.back();
+        char next = tokens_[i].lexeme[0];
+        if (std::isalnum(static_cast<unsigned char>(prev)) &&
+            std::isalnum(static_cast<unsigned char>(next))) {
+          result += ' ';
+        }
+      }
+      result += tokens_[i].lexeme;
+    }
+    return result;
+  }
+
+  uint32_t find_initializer_token(const Node &n) const {
+    for (uint32_t i = n.token_start; i < n.token_end && i < tokens_.size(); ++i) {
+      std::string_view lex = token_text(i);
+      if (lex == ":=" || lex == "=") {
+        return i;
+      }
+    }
+    return tokens_.size();
+  }
+
+  std::string fallback_initializer_text(const Node &n) const {
+    const uint32_t init_token = find_initializer_token(n);
+    if (init_token >= tokens_.size()) {
+      return {};
+    }
+
+    uint32_t end = n.token_end;
+    while (end > init_token + 1 && token_text(end - 1) == ";") {
+      --end;
+    }
+    return trim(token_range_text(init_token + 1, end));
+  }
+
   bool is_string_literal_node(const Node &n) const {
     if (n.kind != NodeKind::Literal) {
       return false;
@@ -2069,15 +2108,7 @@ private:
 
     // Fallback: simple variable with := initialization
     emit_indent();
-    // Check if we have an expression child for initialization
-    std::string init;
-    for (const auto &child : tree_.children(n)) {
-      if (meta::is_expression(child.kind) ||
-          child.kind == NodeKind::AssignmentExpression) {
-        init = node_text(child);
-        break;
-      }
-    }
+    std::string init = fallback_initializer_text(n);
 
     if (!init.empty()) {
       out_ << "auto " << name << " = " << init << ";\n";
@@ -3615,9 +3646,16 @@ private:
       }
     }
 
-    out_ << type << " " << name;
+    std::string init;
     if (init_expr) {
-      std::string init = emit_initializer_text(*init_expr);
+      init = trim(emit_initializer_text(*init_expr));
+    }
+    if ((init.empty() || init == name) && find_initializer_token(n) < tokens_.size()) {
+      init = fallback_initializer_text(n);
+    }
+
+    out_ << type << " " << name;
+    if (!init.empty()) {
       if (type == "auto") {
         out_ << " = " << init;
       } else if (!init.empty() && init.front() == '{' && init.back() == '}') {
@@ -3695,8 +3733,15 @@ private:
     } else {
       out_ << type << " " << emitted_name;
     }
+    std::string init;
     if (init_expr) {
-      std::string init = emit_initializer_text(*init_expr);
+      init = trim(emit_initializer_text(*init_expr));
+    }
+    if ((init.empty() || init == emitted_name) &&
+        find_initializer_token(suffix) < tokens_.size()) {
+      init = fallback_initializer_text(suffix);
+    }
+    if (!init.empty()) {
       if (type == "auto") {
         out_ << " = " << init;
       } else if (!init.empty() && init.front() == '{' && init.back() == '}') {
