@@ -186,7 +186,6 @@ set(CPPFRONT_BINARY_DIR "${CMAKE_BINARY_DIR}/bin")
 
 add_executable(cppfront
     "${CPPFRONT_SOURCE_DIR}/cppfront.cpp"
-        src/parser.cpp
 )
 
 target_include_directories(cppfront PRIVATE
@@ -249,8 +248,14 @@ endforeach()
 add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
 
 # Subdirectories
-add_subdirectory(src)
-add_subdirectory(tests)
+if(EXISTS "${CMAKE_SOURCE_DIR}/src/CMakeLists.txt")
+  add_subdirectory(src)
+  add_subdirectory(tests)
+endif()
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/selfhost/CMakeLists.txt")
+  add_subdirectory(selfhost)
+endif()
 
 # Authoritative conveyor executable: build with CMake/Ninja, not ad hoc scripts.
 add_executable(cppfront_conveyor tools/cppfront_conveyor.cpp)
@@ -264,13 +269,15 @@ set_target_properties(cppfront_conveyor PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-add_custom_target(conveyor
-  COMMAND $<TARGET_FILE:cppfront_conveyor>
-  DEPENDS cppfront cppfort cppfront_conveyor
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-  USES_TERMINAL
-  COMMENT "Running the authoritative cppfront/cppfort conveyor"
-)
+if(TARGET cppfort)
+  add_custom_target(conveyor
+    COMMAND $<TARGET_FILE:cppfront_conveyor>
+    DEPENDS cppfront cppfort cppfront_conveyor
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    USES_TERMINAL
+    COMMENT "Running the authoritative cppfront/cppfort conveyor"
+  )
+endif()
 
 # Testing
 enable_testing()

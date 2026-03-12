@@ -1,86 +1,55 @@
 # cppfort
 
-**Cpp2 -> C++ transpiler with MLIR/Sea-of-Nodes work fed by Clang semantics and the cppfront corpus**
+`cppfort` is currently being restarted through `selfhost/`.
 
-## Policy
+The active direction is to bring TrikeShed-style abstractions over as a `cpp2` port, because that is the simpler path to a coherent compiler restart than trying to clean everything up first at the LLVM compilation layer. MLIR, Sea-of-Nodes, and the earlier `cppfront` corpus conveyor still matter as downstream architectural intent and project history, but they are not the current top-level operating contract.
 
-- `cmake` and `ninja` are the only sanctioned build tools.
-- `ninja -C build conveyor` is the authoritative end-to-end workflow.
-- Ad hoc scripts under `tools/` and `tools/inference/` are cheats and illegal. They are implementation details and debugging aids, not supported entrypoints.
+## Current contract
 
-## What the conveyor does
+- Use `cmake` and `ninja` as the supported build tools.
+- Treat `selfhost/` as the live restart path and current source of truth.
+- Use `selfhost_bootstrap_smoke` as the authoritative top-level build target.
+- Treat `old/cppfort` only as a temporary bootstrap bridge used by the current smoke target.
+- Treat the conveyor/`cppfront` corpus workflow as historical or downstream work, not the main entrypoint today.
 
-The built executable `cppfront_conveyor` enforces the corpus pipeline:
+## What `manifold` means here
 
-1. Requires `third_party/cppfront` to exist and be clean.
-2. Syncs `third_party/cppfront/regression-tests` into `tests/regression-tests` and `corpus/inputs`.
-3. Runs `ctest` so the repo regression surface stays current.
-4. Builds the primary corpus by transpiling `.cpp2` with `cppfront`.
-5. Transpiles that same primary corpus with `cppfort`.
-6. Dumps Clang ASTs for both outputs.
-7. Scores transpile accuracy from AST isomorphs / semantic loss.
-8. Emits Clang-derived semantic mappings so chunk ownership can be assigned back into the transpiler.
+In this repo, `manifold` means compiler-process guidance:
 
-Reflective semantics come from Clang. Reflective grammar comes from the built cppfront corpus.
+- charts, atlases, and coordinates for describing program forms
+- transitions that guide normalization and lowering
+- a way to organize movement between representations without losing intent
+
+It does **not** mean:
+
+- model training
+- learned classification
+- embeddings
+- statistical inference
 
 ## Build
 
-### Prerequisites
-
-```bash
-brew install llvm cmake ninja
-export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-```
-
-### Spartan workflow
+The verified build path today is:
 
 ```bash
 cmake -S . -B build -G Ninja
-ninja -C build conveyor
+ninja -C build selfhost_bootstrap_smoke
 ```
 
-That target builds `cppfront`, builds `cppfort`, runs tests, populates the regression corpus, produces cppfront reference outputs, runs cppfort against the same corpus, scores AST isomorph loss, and emits semantic mappings.
+That path exercises the active self-host restart flow. At the moment, the smoke target still reaches through `old/cppfort` as a bootstrap bridge, but that bridge is transitional rather than authoritative.
 
-### Useful targets
+## Repo layout
 
-| Target | Purpose |
-| --- | --- |
-| `cppfront` | Build the bundled cppfront reference transpiler |
-| `cppfort` | Build the current cppfort transpiler |
-| `cppfront_conveyor` | Build the authoritative conveyor executable |
-| `conveyor` | Run the full corpus/test/inference conveyor |
-| `test` | Run CTest suites |
+- `selfhost/`: the live restart path and the directory to treat as current work
+- `old/`: archived and bootstrap-compatibility material; useful for bridging, not source truth
+- `old/cppfort`: temporary bootstrap support currently used by `selfhost_bootstrap_smoke`
+- `src/`: retired in the current worktree and not the active implementation path
 
-## Outputs
+## Architectural direction
 
-The conveyor writes artifacts under `build/conveyor/`:
+The near-term goal is to recover a clean self-hosting path around the `selfhost/` restart and the `cpp2`/TrikeShed abstraction port. Once that path is solid, the longer arc still points toward richer normalization and lowering work, including MLIR and Sea-of-Nodes style back-end structure.
 
-- `candidate_cpp/`: cppfort-generated C++
-- `candidate_ast/`: Clang ASTs for cppfort output
-- `scores/`: AST isomorph and semantic-loss artifacts
-- `mappings/`: aggregated Clang semantic mappings
-- `CONVEYOR_SUMMARY.md`: run summary and artifact locations
-
-Primary reference corpus outputs are written under:
-
-- `corpus/reference/`
-- `corpus/reference_ast/`
-
-## Architecture
-
-```text
-cppfront regression corpus (.cpp2)
-  -> cppfront reference C++
-  -> Clang AST + semantic sections
-  -> isomorph / semantic-loss scoring
-  -> mapping inference
-  -> chunk-assigned semantic mappings for cppfort
-```
-
-## Notes for internals
-
-- The Python files in `tools/inference/` still implement the mapping engine, but the supported way to run them is through `cppfront_conveyor`.
-- If you are touching the internals, keep the contract intact: cppfront corpus first, Clang semantics second, transpiler mappings last.
+The earlier conveyor flow built around the `cppfront` corpus remains useful as downstream validation, historical context, and potential future integration surface. It is no longer the first workflow to understand or the first cleanup target to optimize.
 
 ## References
 

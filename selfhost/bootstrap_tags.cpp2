@@ -1,0 +1,10 @@
+join_tag := 1;
+indexed_tag := 2;
+coordinates_tag := 3;
+chart_project_tag := 4;
+chart_embed_tag := 5;
+atlas_locate_tag := 6;
+transition_tag := 7;
+lower_dense_tag := 8;
+normalize_tag := 9;
+canonical_ast_tag := 10;

@@ -186,16 +186,19 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./conductor/tracks/trikeshed_surface_restart_20260311/](./conductor/tracks/trikeshed_surface_restart_20260311/)*
 *Status: ACTIVE* - restart cppfort’s TrikeShed migration from the real transpiler repo and its working parser/emitter harnesses
 
-**Purpose:** Treat `../TrikeShed` as the semantic/source-text reference and land the smallest real parser/emitter slices in cppfort, starting from the beginning with harness-backed surface deltas instead of speculative sibling-repo narration.
+**Purpose:** Treat `../TrikeShed` as the semantic/source-text reference and restart cppfort around a smaller cpp2-owned bootstrap nucleus, with `old/` kept archive-only and semantic normalization prioritized over legacy surface recovery.
 
 **Immediate Focus:**
 - External signal only: `/Users/jim/work/TrikeShed/conductor/grok_share_bGVnYWN5_21edd44f-9e25-434b-9bcb-2d036feee2dc.md`
 - External spec input only: `/Users/jim/work/TrikeShed/conductor/tracks/cpp2-surface-transition_20260311/expanded_cpp2_spec.md`
-- Local truth owner: `grammar/cpp2.ebnf`, `src/parser.cpp`, `src/emitter.cpp`, and parser tests under `tests/`
+- Archive-only legacy corpus: `old/` is retained for bootstrap compatibility only and is not the implementation truth
+- Current implementation owner: `selfhost/` for new cpp2-native bootstrap surfaces, plus root `CMakeLists.txt` as the routing point
 - Verified slices:
-  - multi-expression subscript syntax now parses and emits for `coords[1.0, 2.0]` through existing slim parser/emitter harnesses
-  - canonical grammar truth and annotated harness coverage now encode that accepted multi-expression subscript surface
-- Active slice: prove chained projection after multi-expression subscripts for Cursor-shaped surfaces such as `cursor[i, j].value`
+  - multi-expression subscript syntax now parses and emits for `coords[1.0, 2.0]` through the legacy slim parser/emitter harnesses
+  - canonical grammar truth and annotated harness coverage encode that accepted `coords[...]` surface as historical evidence
+  - cpp2-owned bootstrap nucleus now exists under `selfhost/`, with canonical node tags and a dedicated smoke target that uses `old/cppfort` only as a temporary transpilation bridge
+- Process meaning: `manifold` here is algebraic guidance for compiler phase alignment and legal semantic transitions, not model training, token classification, or statistical inference
+- Active slice: replace integer-only bootstrap tags with the smallest richer selfhost surface that encodes manifold-guided process phases and semantic transition boundaries without reviving `src/*`
 
 ---
 
