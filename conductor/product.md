@@ -165,3 +165,32 @@ constexpr struct CASPool {
 4. **SoN does the work**: Constant propagation, alias analysis, effect recovery in MLIR
 5. **Templates, not constexpr**: Raw generics stay in source; compiler smashes to constants
 6. **No safe language arena**: No constexpr factories, reflection gymnastics, or Python/TableGen
+
+---
+
+## Implementation Status (2026-03-12)
+
+### What's Actually Implemented
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Parser API contract | **HEADER ONLY** - no implementation | [`cppfort_parser.h`](cppfort_parser.h) |
+| Canonical type templates | **DECLARED** - not wired into build | [`selfhost/canonical_types.cpp2`](selfhost/canonical_types.cpp2) |
+| Bootstrap tags | **BUILT** - integer constants only | [`selfhost/bootstrap_tags.cpp2`](selfhost/bootstrap_tags.cpp2) |
+| MLIR SoN dialect | **TABLEGEN DEFINED** - disabled in build | [`include/Cpp2SONDialect.td`](include/Cpp2SONDialect.td) |
+| CAS internment types | **HEADER ONLY** - no implementation | [`cppfort_parser.h:114-132`](cppfort_parser.h:114) |
+
+### Critical Gaps
+
+1. **Parser has no implementation**: `Parser::Impl` has no definition. `src/` directory is empty.
+2. **MLIR dialect disabled**: LLVM 21 FieldParser issue blocks SoN dialect compilation.
+3. **Bootstrap transpilation limited**: `old/cppfort` binary can only handle trivial declarations.
+4. **No canonical → SoN lowering**: No wired path from `canonical_types.cpp2` to MLIR operations.
+
+### Rewrite Merit
+
+A fresh start would:
+- Implement parser from `cppfort_parser.h` contract forward
+- Fix or bypass LLVM 21 issue to enable MLIR dialect
+- Wire `canonical_types.cpp2` into build with actual C++ transpilation
+- Start with one working SoN op lowering, not full pipeline

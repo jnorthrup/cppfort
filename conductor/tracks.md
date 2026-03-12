@@ -141,6 +141,25 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## GAP ANALYSIS NOTES (2026-03-12)
+
+**Critical insight from specification vs. implementation review:**
+
+The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
+
+1. **Parser implementation is missing** - `cppfort_parser.h` is header-only API, no source
+2. **MLIR SoN dialect is disabled** - blocked by LLVM 21 FieldParser issue
+3. **Bootstrap nucleus is minimal** - only integer tag constants, not transpilable C++
+4. **No working end-to-end pipeline** - no path from Cpp2 source → canonical AST → SoN → C++
+
+**Recommended track additions:**
+- `llvm21_fieldparser_fix` - unblock MLIR dialect compilation
+- `parser_implementation` - implement cppfort_parser.h contract
+- `canonical_wiring` - connect selfhost/canonical_types.cpp2 to build system
+- `minimal_son_lowering` - one working SoN op from canonical type
+
+---
+
 ## [-] Track: Java Memory Model Integration for Cpp2 SON Dialect
 *Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
 *Status: BLOCKED (2026-01-10)* - Phase 1 implementation complete, testing blocked by SON dialect disabled in build (LLVM 21 FieldParser issue)

@@ -93,3 +93,17 @@ cppfort/
 - Semantic identity must stay distinct from dense views
 - No training or model-language concepts in accepted truth
 - External spec informs design, but acceptance requires repo code/tests
+
+## Honest Implementation Tracking
+
+**DO NOT claim implementation exists until:**
+- Source files with actual logic exist (not just headers)
+- CMake target builds successfully
+- Test validates the feature works end-to-end
+
+**Current state (2026-03-12):**
+- ❌ Parser: header-only API, no implementation
+- ❌ MLIR SoN dialect: TableGen defined but disabled in build
+- ❌ CAS internment: declared in headers, not implemented
+- ✅ Bootstrap tags: integer constants that build
+- ❌ Canonical types: declared in .cpp2, not wired to transpilation

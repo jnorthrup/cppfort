@@ -1,22 +1,29 @@
 {
-  "last_successful_step": "4.3_son_passes_implemented",
+  "last_successful_step": "gap_analysis_20260312",
+  "gap_analysis_summary": "Parser implementation missing, MLIR SoN dialect disabled, bootstrap is minimal integer tags only",
   "implemented_components": [
-    "cppfort_parser.h - Public API contract with canonical types, gradient protocol, CAS internment",
-    "selfhost/bootstrap_tags.cpp2 - Expanded with manifold guidance, additional tags",
-    "selfhost_bootstrap_smoke - Verified build passes",
-    "cpp2.indexed operation in Cpp2SONDialect.td",
-    "cpp2.series operation in Cpp2SONDialect.td",
-    "cpp2.tensor operation in Cpp2SONDialect.td",
-    "cpp2.dense_tensor operation in Cpp2SONDialect.td",
-    "cpp2.atlas operation in Cpp2SONDialect.td",
-    "cpp2.manifold operation in Cpp2SONDialect.td",
-    "cpp2.grad_diff operation in Cpp2SONDialect.td",
-    "cpp2.jacobian operation in Cpp2SONDialect.td",
-    "cpp2.matrix_mul operation in Cpp2SONDialect.td",
-    "SONGradADLowering pass implemented - Lower gradient protocol to arithmetic operations",
-    "SONJacobianMatrixMulLowering pass implemented - Lower Jacobian and matrix multiplication to optimized operations"
+    "cppfort_parser.h - Public API contract (HEADER ONLY - no implementation)",
+    "selfhost/bootstrap_tags.cpp - Integer tag constants that build",
+    "cpp2.indexed operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED in build)",
+    "cpp2.series operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.tensor operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.dense_tensor operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.atlas operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.manifold operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.grad_diff operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.jacobian operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
+    "cpp2.matrix_mul operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)"
+  ],
+  "missing_components": [
+    "Parser implementation - Parser::Impl has no definition",
+    "MLIR SoN dialect compilation - blocked by LLVM 21 FieldParser issue",
+    "CAS internment implementation - declared in headers only",
+    "Canonical types transpilation - canonical_types.cpp2 not wired to build",
+    "Lowering passes - exist in old/ but not integrated",
+    "End-to-end pipeline - no working path from Cpp2 to SoN to C++"
   ],
   "active_track": "trikeshed_surface_restart_20260311",
   "active_slice": "trike-restart-05",
-  "slice_status": "complete"
+  "slice_status": "complete_but_bootstrap_is_minimal",
+  "honest_note": "The bootstrap nucleus is only integer constants. Cannot transpile actual canonical type templates. This is a spec-forward project with minimal working implementation."
 }
