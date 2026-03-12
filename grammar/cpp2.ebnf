@@ -456,7 +456,7 @@ member_op           = "." member_name [ call_op ] ;
 
 explicit_member_op  = ".." IDENTIFIER [ call_op ] ;
 
-subscript_op        = "[" expression "]" ;
+subscript_op        = "[" expression_list "]" ;
 
 postfix_deref       = "*" ;  (* only when followed by delimiter *)
 

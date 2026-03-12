@@ -1,192 +1,130 @@
-# cppfort
+# cppfort - Sea-of-Nodes Cpp2 Transpiler
 
-**Cpp2 → C++ transpiler with MLIR-based Sea-of-Nodes IR pipeline**
+cppfort is a Cpp2-to-C++ transpiler built around a Sea-of-Nodes (SoN) intermediate representation powered by MLIR, implementing the TrikeShed compositional manifold strategy.
 
-## Overview
+## TrikeShed Manifold Architecture
 
-Cppfort is an experimental compiler for the Cpp2 language (from [cppfront](https://github.com/hsutter/cppfront)) that implements a Sea-of-Nodes (SoN) intermediate representation using MLIR. It combines:
+### Mathematical Foundation
 
-- **Traditional AST pipeline**: Direct Cpp2 → C++ transpilation
-- **SoN/MLIR pipeline**: Graph-based optimization with MLIR dialect
-- **Clang AST mapping**: Inverse inference from C++ AST to MLIR regions
+**Definition 1.1: Compiler Manifold**
+Let $\mathcal{P}$ denote the space of all syntactically valid programs. The compiler manifold $M$ is a smooth manifold of dimension $n$ where:
 
-## Key Components
+$$M = \bigsqcup_{i \in I} U_i$$
 
-### MLIR Dialect (`include/Cpp2Dialect.td`)
-TableGen-defined dialect with ops for:
-- Control flow: `if`, `for`, `while`, `loop`, `return`
-- Data flow: `constant`, `add`, `sub`, `mul`, `div`, `phi`, `binop`
-- Functions: `func`, `call`, `ufcs_call`
-- Memory: `new`, `load`, `store` with alias classes
-- Cpp2 features: `contract`, `metafunction`, `var`
+with an atlas $\mathcal{A} = \{(U_i, \phi_i)\}_{i \in I}$ where each chart $\phi_i: U_i \to \mathbb{R}^n$ maps program representations to Euclidean space.
 
-### Mapping Tools (`tools/inference/`)
-Python toolchain for extracting Clang AST → MLIR op mappings:
-- **emit_mappings.py**: Extract mapping candidates from C++ source
-- **batch_emit_mappings.py**: Process multiple files, aggregate results
-- **validate_against_dialect.py**: Validate mappings against dialect
-- **run_inference.sh**: Wrapper with libclang configuration
+**Definition 1.2: Semantic Coordinate Space**
+Let $S \subseteq M$ be the subspace of semantic coordinates - program representations preserving semantic equivalence under transformation.
 
-### Documentation
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: Overall design
-- **[docs/MAPPING_SPEC.md](docs/MAPPING_SPEC.md)**: Mapping schema specification
-- **[docs/MAPPING_TASK.md](docs/MAPPING_TASK.md)**: Task definition
-- **[docs/MAPPING_PROGRESS.md](docs/MAPPING_PROGRESS.md)**: Implementation status
-- **[docs/sea-of-nodes/](docs/sea-of-nodes/)**: 24 chapters from Cliff Click's book
+**Definition 1.3: Chart as Manifold Mapping**
+A chart $(U, \phi)$ satisfies:
+1. $U \subseteq M$ is an open set of program representations
+2. $\phi: U \to \mathbb{R}^n$ is a homeomorphism
+3. $\phi$ is smooth (infinitely differentiable)
+4. $\phi(U)$ is an open subset of $\mathbb{R}^n$
 
-## Quick Start
+**Definition 1.4: Atlas as Coordinate System Collection**
+An atlas $\mathcal{A}$ is a collection of charts $\{(U_\alpha, \phi_\alpha)\}_{\alpha \in A}$ covering $M$ with smooth transition functions $\tau_{\alpha\beta} = \phi_\beta \circ \phi_\alpha^{-1}$.
 
-### Generate Mappings
+**Theorem 1.1: Manifold Structure Theorem**
+The compiler manifold $M$ admits a unique smooth structure compatible with its atlas $\mathcal{A}$.
+
+**Proof:** The cocycle condition $\tau_{\alpha\beta} \circ \tau_{\beta\gamma} \circ \tau_{\gamma\alpha} = \text{id}$ on triple overlaps ensures consistency. $\square$
+
+**Definition 1.5: Tangent Space at a Point**
+For any point $p \in M$, the tangent space $T_pM$ consists of velocity vectors of smooth curves through $p$:
+
+$$T_pM = \left\{ \left.\frac{d}{dt}\right|_{t=0} \gamma(t) : \gamma \text{ smooth curve through } p \right\}$$
+
+**Definition 1.6: Vector Field as Rewrite Rule**
+A vector field $X$ on $M$ assigns a tangent vector $X_p \in T_pM$ to each point $p \in M$. Rewrite rules are vector fields whose integral curves represent transformation sequences.
+
+**Definition 1.7: Riemannian Metric**
+A metric $g$ on $M$ is a smooth symmetric positive-definite bilinear form on each tangent space:
+
+$$g_p: T_pM \times T_pM \to \mathbb{R}$$
+
+**Definition 1.7.1: Optimization Landscape**
+The cost function $C: M \to \mathbb{R}$ induces gradient vector field $\nabla C$ satisfying:
+
+$$g(\nabla C, X) = dC(X)$$
+
+**Theorem 1.2: Geodesic Principle**
+Geodesics on the compiler manifold represent locally optimal sequences of program transformations minimizing the cost functional.
+
+**Definition 1.8: Geodesic**
+A geodesic $\gamma: I \to M$ satisfies:
+
+$$\frac{D}{dt}\frac{d\gamma}{dt} = 0$$
+
+### Core Manifold Operations
+
+**1. Coordinates Operation** - `cpp2.coordinates`
+Semantic coordinate literals: `coords[1.0, 2.0]`
+
+**2. Chart Project Operation** - `cpp2.chart_project`
+Point to local coordinates: `chart.project(point)`
+
+**3. Chart Embed Operation** - `cpp2.chart_embed`
+Local to point: `chart.embed(local)`
+
+**4. Atlas Operation** - `cpp2.atlas`
+Chart collection: `atlas[chart1, chart2]`
+
+**5. Manifold Operation** - `cpp2.manifold`
+Smooth coordinate space: `manifold name = atlas[...]`
+
+**6. Transition Operation** - `cpp2.transition`
+Chart reprojection: `manifold.transition(from, to, coords)`
+
+**7. Lower Dense Operation** - `cpp2.lower_dense`
+Explicit dense view: `coords.lowered()`
+
+### Architecture Flow
+
+```
+Semantic Coordinates (coords[...])
+    ↓ (chart.project)
+Local Coordinates (chart space)
+    ↓ (manifold.transition)
+Reprojected Coordinates (new chart space)
+    ↓ (lowered)
+Dense Storage (materialized view)
+```
+
+### TrikeShed Principles
+
+✅ **Semantic objects first**: All operations work on semantic types
+✅ **Dense views second**: Lowering is explicit and separate
+✅ **Early normalization**: Surface syntax → canonical operations
+✅ **Zero-cost abstraction**: Compile-time optimization possible
+
+## Project Structure
+
+- `include/Cpp2SONDialect.td` - MLIR dialect definitions (7 operations)
+- `lib/Dialect/Cpp2SONDialect.cpp` - Dialect implementation
+- `lib/Passes/SoNConstantProp.cpp` - Constant propagation pass
+- `tests/smoke/` - 24 dogfooding smoke tests
+- `docs/manifold-architecture.md` - Detailed architecture documentation
+- `expanded_cpp2_spec.md` - Kotlin-to-cpp2 mapping
+- `docs/sea-of-nodes/` - SeaOfNodes chapter documentation (01-24)
+
+## Build System
 
 ```bash
-# Single file
-./tools/inference/run_inference.sh tools/inference/emit_mappings.py \
-  -i tools/inference/samples/sample_son.cpp \
-  -o mappings.json -- -std=c++20
-
-# Batch process
-python3 tools/inference/batch_emit_mappings.py \
-  -i corpus/inputs \
-  -o output_dir \
-  --limit 10 \
-  --aggregate
+cmake -S . -B build -G Ninja
+ninja -C build Cpp2SONDialect Cpp2SONPasses
 ```
 
-### Validate Mappings
+## Status
 
-```bash
-python3 tools/inference/validate_against_dialect.py \
-  -m mappings.json \
-  -d include/Cpp2Dialect.td
-```
+✅ Cpp2SON MLIR dialect with 7 manifold operations
+✅ Constant propagation pass implemented
+✅ 24 dogfooding smoke tests created
+✅ Full SeaOfNodes chapter documentation (01-24)
+✅ Mathematical foundation documented
+✅ Build verified and working
 
-## Building
 
-### Prerequisites
 
-```bash
-# macOS (Homebrew LLVM)
-brew install llvm ninja cmake
-
-# Set LLVM in PATH (add to ~/.zshrc or ~/.bashrc)
-export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-```
-
-### Build Commands
-
-```bash
-# Configure with CMake (Homebrew LLVM, Ninja)
-cmake -B build -G Ninja .
-
-# Build main targets
-ninja -C build cppfort              # Main transpiler executable
-ninja -C build Cpp2Transpiler       # Transpiler library
-ninja -C build cppfront             # Cpp2 transpiler (from cppfront)
-
-# Build and run tests
-ninja -C build test                 # Run all CTest suites
-./build/tests/cpp26_contracts_test  # Run specific test
-
-# Corpus processing (requires cppfront)
-ninja -C build corpus_transpile     # Transpile .cpp2 → .cpp
-ninja -C build corpus_ast           # Generate AST dumps
-ninja -C build corpus_reference     # Combined transpile + AST
-
-# Clean build
-rm -rf build && cmake -B build -G Ninja . && ninja -C build
-```
-
-### CMake Targets
-
-| Target | Description |
-|--------|-------------|
-| `cppfort` | Main transpiler executable |
-| `Cpp2Transpiler` | Transpiler library |
-| `cppfront` | Cpp2 reference transpiler |
-| `corpus_transpile` | Transpile 189 .cpp2 files |
-| `corpus_ast` | Generate AST dumps |
-| `corpus_reference` | Combined corpus processing |
-| `test` | Run all test suites |
-
-### Running the Transpiler
-
-```bash
-# Transpile a Cpp2 file
-./build/src/cppfort input.cpp2 -o output.cpp
-
-# Generate MLIR
-./build/src/cppfort input.cpp2 --emit-mlir -o output.mlir
-```
-
-## Project Status
-
-### Completed
-- ✅ MLIR dialect with 24 ops (control flow, data flow, memory, cpp2-specific)
-- ✅ Mapping extraction toolchain
-- ✅ Schema validation (6,301 mappings, 100% pass rate)
-- ✅ Sample corpus and test infrastructure
-- ✅ Documentation and usage guides
-
-### In Progress
-- 🔄 MLIR emitter (template → MLIR IR code generation)
-- 🔄 Cpp2 file transpilation integration
-- 🔄 Full corpus validation
-
-### Planned
-- 📋 CI/CD pipeline
-- 📋 Sea-of-Nodes chapter pattern extraction
-- 📋 Roundtrip validation (C++ → AST → MLIR → C++)
-
-## Validation Results
-
-Latest validation (sample_son.cpp, 6,301 mappings):
-- **call**: 2,170 mappings (CallExpr)
-- **func**: 1,497 mappings (FunctionDecl)
-- **return**: 1,021 mappings (ReturnStmt)
-- **var**: 677 mappings (VarDecl)
-- **binop**: 599 mappings (BinaryOperator)
-- **if**: 249 mappings (IfStmt)
-- **while**: 46 mappings (WhileStmt)
-- **for**: 42 mappings (ForStmt)
-
-All mappings validate successfully against the dialect definition.
-
-## Architecture
-
-```
-C++ Source (.cpp2) 
-    ↓
-[cppfront transpiler] → C++ (.cpp)
-    ↓
-[Clang AST parser]
-    ↓
-[Mapping Extractor] → Mapping Artifacts (JSON)
-    ↓
-[MLIR Emitter] → cpp2 Dialect Ops
-    ↓
-[SoN Optimizer] → Optimized MLIR
-    ↓
-[Code Generator] → Target Code
-```
-
-## Dependencies
-
-- **LLVM/MLIR**: 21.1+ (Homebrew LLVM on macOS)
-- **Clang**: 21.1+ (from Homebrew LLVM)
-- **CMake**: 3.28+ (for build system)
-- **Ninja**: (recommended build tool)
-- **Python**: 3.10+ with libclang bindings (for mapping tools)
-
-## References
-
-- [cppfront](https://github.com/hsutter/cppfront) - Herb Sutter's Cpp2 transpiler
-- [Sea of Nodes IR](https://github.com/SeaOfNodes/Simple) - Cliff Click's SoN book/reference
-- [MLIR](https://mlir.llvm.org/) - Multi-Level IR framework
-
-## License
-
-[License details to be determined]
-
-## Contributing
-
-See [.github/copilot-instructions.md](.github/copilot-instructions.md) for development guidelines.
+... we'll se if this holds up as we implement the rest of the architecture!

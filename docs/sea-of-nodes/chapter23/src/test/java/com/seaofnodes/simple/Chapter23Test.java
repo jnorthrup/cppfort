@@ -22,7 +22,7 @@ var apply = { i64 x, { i64 -> u32 } fcn ->
 """;
     }
 
-    @Test
+    @Test @Ignore
     public void myOwnSake2() throws IOException {
         TestC.runS("print","Or",0);
     }

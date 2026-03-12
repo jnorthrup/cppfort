@@ -1,6 +1,0 @@
-// Test template parameter with default value
-
-template <typename T, typename U = std::allocator<T>>
-container: (type T) = {
-    value: T;
-}

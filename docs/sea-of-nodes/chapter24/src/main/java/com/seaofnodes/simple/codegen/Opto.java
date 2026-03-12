@@ -53,7 +53,7 @@ abstract public class Opto {
         unlinkStart(wholeWorld,code);
 
 
-        // OPTIMISTIC INTERPROCEDURAL SCCO
+        // OPTIMISTIC INTERPROCEDURAL SCCP
         sccp(code, oldTypes);
 
         // After SCCP add everything changed to the worklist and see if

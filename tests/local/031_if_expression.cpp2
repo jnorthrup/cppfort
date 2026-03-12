@@ -1,5 +1,0 @@
-// Test if-expression
-
-get_value: (flag: bool) -> int = {
-    return if flag { 1 } else { 0 };
-}

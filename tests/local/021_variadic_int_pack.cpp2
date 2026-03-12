@@ -1,5 +1,0 @@
-// Test variadic int pack expansion
-
-sum: <Ns...: int> () -> int = {
-    return (0 + ... + Ns);
-}

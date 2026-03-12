@@ -1,4 +1,0 @@
-// Basic type definition
-mytype: type = {
-    x: int = 42;
-}

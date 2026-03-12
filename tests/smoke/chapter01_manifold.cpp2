@@ -1,0 +1,25 @@
+// Chapter 01: Simple manifold operations
+// Dogfooding test for Cpp2SON dialect
+
+// Basic coordinate operations
+let coords1 = coords[1.0, 2.0];
+let coords2 = coords[0.0, 0.0];
+
+// Basic chart operations
+let chart1 = chart identity(point: f64) {
+  contains point <= 20.0
+  project -> coords[point]
+  embed(local) -> local[0]
+}
+
+// Create manifold from atlas
+let line = manifold line = atlas[chart1]
+
+// Transition operation
+let local_coords = line.transition("chart1", "chart1", coords[17.0])
+
+// Dense view
+let dense = local_coords.lowered()
+
+// Return the dense coordinates
+return dense;

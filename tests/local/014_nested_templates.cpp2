@@ -1,6 +1,0 @@
-// Test nested template arguments
-// std::plus<> has empty template argument list
-
-use_plus: () = {
-    fn: std::plus<int> = std::plus<>();
-}

@@ -1,7 +1,7 @@
 # Chapter 23: Methods and Revisiting Types
 
 In this chapter add *methods*, functions defined in structs which take a
-hiddent `self` argument and can access the struct fields.  Here is an
+hidden `self` argument and can access the struct fields.  Here is an
 `indexOf` method in a String-like class:
 
 ```java

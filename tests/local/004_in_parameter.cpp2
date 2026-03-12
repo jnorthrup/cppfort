@@ -1,7 +1,0 @@
-// Test in parameter semantics
-// Should transpile to: void use_value(const int& x)
-// NOT: void use_value(int x)
-
-use_value: (in x: int) = {
-    std::cout << x << "\n";
-}

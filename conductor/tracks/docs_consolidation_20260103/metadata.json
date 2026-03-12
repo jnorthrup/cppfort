@@ -1,8 +1,0 @@
-{
-  "track_id": "docs_consolidation_20260103",
-  "type": "chore",
-  "status": "new",
-  "created_at": "2026-01-03T17:30:00Z",
-  "updated_at": "2026-01-03T17:30:00Z",
-  "description": "Consolidate all documentation into conductor/ - EBNF design creates EBNF mappings to combinator parsers/lexers and tracks the EBNF standard for cppfort and allows idempotent cppfront AST dumps to score loss against isomorph normalizations"
-}

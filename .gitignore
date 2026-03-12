@@ -173,6 +173,7 @@ docs/_build/
 tmp/
 temp/
 .cache/
+.venv/
 
 # Regression test artifacts
 tests/regression-tests/*.out
@@ -381,3 +382,4 @@ Icon
 .directory
 .Trash-*
 .nfs*logs/
+__pycache__/

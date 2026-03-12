@@ -6,18 +6,62 @@ project(cppfort LANGUAGES C CXX VERSION 1.0.0)
 # Platform-specific toolchain setup
 # ============================================================================
 if(APPLE)
-  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm" CACHE PATH "Homebrew LLVM installation")
-  set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "Clang compiler")
-  set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "Clang++ compiler")
-  set(HOMEBREW_LLVM_LIB "${HOMEBREW_LLVM_PREFIX}/lib")
+  # --------------------------------------------------------------
+  # 1️⃣ Use the system AppleClang (bundled with Xcode / CLT)
+  # --------------------------------------------------------------
+  execute_process(
+    COMMAND xcrun --find clang
+    OUTPUT_VARIABLE SYSTEM_CLANG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  execute_process(
+    COMMAND xcrun --find clang++
+    OUTPUT_VARIABLE SYSTEM_CLANGXX
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(NOT SYSTEM_CLANG OR NOT SYSTEM_CLANGXX)
+    message(FATAL_ERROR "System clang not found")
+  endif()
+  set(CMAKE_C_COMPILER   "${SYSTEM_CLANG}"   CACHE FILEPATH "Clang compiler" FORCE)
+  set(CMAKE_CXX_COMPILER "${SYSTEM_CLANGXX}" CACHE FILEPATH "Clang++ compiler" FORCE)
 
-  # Use Homebrew's libc++ before SDK paths
-  include_directories(BEFORE SYSTEM "${HOMEBREW_LLVM_PREFIX}/include/c++/v1")
-  add_compile_options(-stdlib=libc++)
-  add_link_options(-stdlib=libc++ -L${HOMEBREW_LLVM_LIB}/c++ -L${HOMEBREW_LLVM_LIB}/unwind -lunwind)
+  # --------------------------------------------------------------
+  # 2️⃣ Prepend the system libc++ include directory (must be first)
+  # --------------------------------------------------------------
+  get_filename_component(SYSTEM_CLANGXX_BIN_DIR "${SYSTEM_CLANGXX}" DIRECTORY)
+  get_filename_component(SYSTEM_TOOLCHAIN_USR_DIR "${SYSTEM_CLANGXX_BIN_DIR}/.." ABSOLUTE)
+  execute_process(
+    COMMAND xcrun --sdk macosx --show-sdk-path
+    OUTPUT_VARIABLE MACOS_SDK_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  set(SYSTEM_LIBCXX_INCLUDE "${SYSTEM_TOOLCHAIN_USR_DIR}/include/c++/v1")
+  if(NOT EXISTS "${SYSTEM_LIBCXX_INCLUDE}/algorithm")
+    set(SYSTEM_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
+  endif()
+  if(NOT EXISTS "${SYSTEM_LIBCXX_INCLUDE}/algorithm")
+    message(FATAL_ERROR "System libc++ headers not found under toolchain or SDK")
+  endif()
+  add_compile_options("-I${SYSTEM_LIBCXX_INCLUDE}" "-stdlib=libc++" "-nostdinc++")
 
-  set(CMAKE_INSTALL_RPATH "${HOMEBREW_LLVM_LIB}/c++" "${HOMEBREW_LLVM_LIB}/unwind")
-  set(CMAKE_BUILD_RPATH "${CMAKE_INSTALL_RPATH}")
+  # --------------------------------------------------------------
+  # 3️⃣ Add the SDK's *C* headers explicitly (no -isysroot)
+  # --------------------------------------------------------------
+  if(EXISTS "${MACOS_SDK_PATH}")
+    include_directories(BEFORE SYSTEM "${MACOS_SDK_PATH}/usr/include")
+  endif()
+
+  # --------------------------------------------------------------
+  # 4️⃣ No extra library search paths – link against system libc++
+  # --------------------------------------------------------------
+  add_link_options("-stdlib=libc++")
+
+  # --------------------------------------------------------------
+  # 5️⃣ Keep Homebrew LLVM/MLIR binaries but strip any libc++ includes they may export
+  # --------------------------------------------------------------
+  set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
+  set(LLVM_DIR "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+  set(MLIR_DIR "${HOMEBREW_LLVM_PREFIX}/lib/cmake/mlir")
 endif()
 
 # Set cache directory for generated files
@@ -55,6 +99,9 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 endif()
 
+# Workaround for macOS SDK + libc++ availability conflicts
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_LIBCPP_DISABLE_AVAILABILITY")
+
 # Find required packages
 find_package(PkgConfig REQUIRED)
 
@@ -69,6 +116,22 @@ list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
+
+# Strip Homebrew libc++ include directories from the imported MLIR/LLVM targets
+if(TARGET MLIR::MLIR)
+  get_target_property(_inc MLIR::MLIR INTERFACE_INCLUDE_DIRECTORIES)
+  if(_inc)
+    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+    set_target_properties(MLIR::MLIR PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+  endif()
+endif()
+if(TARGET LLVM::LLVM)
+  get_target_property(_inc LLVM::LLVM INTERFACE_INCLUDE_DIRECTORIES)
+  if(_inc)
+    list(FILTER _inc EXCLUDE REGEX "${HOMEBREW_LLVM_PREFIX}/include/c\\+\\+/v1")
+    set_target_properties(LLVM::LLVM PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_inc}")
+  endif()
+endif()
 
 # Check for required MLIR components
 include(HandleLLVMOptions)
@@ -87,7 +150,8 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 # ============================================================================
 # MLIR Dialect TableGen
 # ============================================================================
-foreach(DIALECT_SPEC "Cpp2Ops;include/Cpp2Dialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc" "Cpp2FIROps;include/Cpp2FIRDialect.td;cpp2fir;" "Cpp2SONOps;include/Cpp2SONDialect.td;sond;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
+# Only build Cpp2SON dialect (TrikeShed Sea-of-Nodes)
+foreach(DIALECT_SPEC "Cpp2SONOps;include/Cpp2SONDialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
   list(GET DIALECT_SPEC 0 DIALECT_NAME)
   list(GET DIALECT_SPEC 1 TD_FILE)
   list(GET DIALECT_SPEC 2 DIALECT_NS)
@@ -116,108 +180,38 @@ endforeach()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# Cppfront build integration
-# Build cppfront from third_party/cppfront with Homebrew Clang
-set(CPPFRONT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/source")
-set(CPPFRONT_BINARY_DIR "${CMAKE_BINARY_DIR}/bin")
+# cppfront Role: Benchmark/Validator Only (No Build Dependency)
+# cppfront is used as a temporary benchmark/validator, not a build dependency.
+# No cppfront linking, calling, or inclusion in the build process.
+# cppfront can be installed system-wide for validation runs, but is NOT required for building cppfort.
 
-add_executable(cppfront
-    "${CPPFRONT_SOURCE_DIR}/cppfront.cpp"
-        src/parser.cpp
-)
-
-target_include_directories(cppfront PRIVATE
-    "${CPPFRONT_SOURCE_DIR}"
-)
-
-target_compile_features(cppfront PRIVATE cxx_std_23)
-
-# Ensure cppfront uses Homebrew Clang and libc++
-# Force -O0 for AST determinism in corpus comparisons
-# Increase template instantiation depth for Clang 21
-if(APPLE)
-    target_compile_options(cppfront PRIVATE
-        -stdlib=libc++
-        -Wno-date-time
-        -O0
-        -ftemplate-depth=2048
-        -ftemplate-backtrace-limit=0
-        -ferror-limit=10
-        -Wno-error
-        -Wno-unused-parameter
-        -Wno-unused-variable
-    )
-    target_link_options(cppfront PRIVATE
-        -stdlib=libc++
-        -L${HOMEBREW_LLVM_LIB}/c++
-        -L${HOMEBREW_LLVM_LIB}/unwind
-        -lunwind
-    )
-    set_target_properties(cppfront PROPERTIES
-        OUTPUT_NAME "cppfront"
-        RUNTIME_OUTPUT_DIRECTORY "${CPPFRONT_BINARY_DIR}"
-    )
-endif()
-
-# Custom target to build cppfront (for use with ninja)
-add_custom_target(cppfront_build DEPENDS cppfront)
-
-# Corpus processing
-set(CPP2_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests")
-set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
-file(MAKE_DIRECTORY ${CORPUS_OUTPUT_DIR})
-
-file(GLOB_RECURSE CPP2_FILES "${CPP2_DIR}/*.cpp2")
-list(FILTER CPP2_FILES EXCLUDE REGEX "-error\\.cpp2$")
-
-foreach(cpp2_file ${CPP2_FILES})
-  get_filename_component(base_name ${cpp2_file} NAME_WE)
-  set(output_cpp "${CORPUS_OUTPUT_DIR}/${base_name}.cpp")
-  set(output_ast "${CORPUS_OUTPUT_DIR}/${base_name}.ast")
-
-  add_custom_command(
-    OUTPUT ${output_cpp} ${output_ast}
-    COMMAND cppfront ${cpp2_file} -o ${output_cpp}
-    COMMAND gsed -i -e /^#include "cpp2util.h"/d -e /^#line /d ${output_cpp}
-    COMMAND ${CMAKE_CXX_COMPILER} -Xclang -ast-dump -fsyntax-only -std=c++23 ${output_cpp} > ${output_ast}
-    DEPENDS cppfront
-    COMMENT "Corpus: ${base_name}"
-  )
-  list(APPEND CORPUS_OUTPUTS ${output_cpp} ${output_ast})
-endforeach()
-
-add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
+# Note: The following targets have been removed:
+# - cppfront executable build
+# - cppfront_build custom target
+# - corpus_transpile target (requires cppfront)
+#
+# Rationale: cppfront is a temporary bootstrap mechanism. The native parser (in progress)
+# will replace cppfront for all transpilation needs. cppfront remains available as a
+# benchmark/validator for comparing outputs, but is not part of the critical build path.
 
 # Subdirectories
-add_subdirectory(src)
-add_subdirectory(tests)
-if(EXISTS "${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt")
-  add_subdirectory(examples)
-else()
-  message(STATUS "No examples CMakeLists found; skipping examples/")
+if(EXISTS "${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt")
+  add_subdirectory(lib)
 endif()
 
-# Installation
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(EXISTS "${CMAKE_SOURCE_DIR}/src/CMakeLists.txt")
+  add_subdirectory(src)
+  if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+  endif()
+endif()
 
-# Package configuration
-configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppfortConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfig.cmake"
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cppfort
-)
+if(EXISTS "${CMAKE_SOURCE_DIR}/selfhost/CMakeLists.txt")
+  add_subdirectory(selfhost)
+endif()
 
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfig.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/cppfortConfigVersion.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cppfort
-)
+# Conveyor target removed: cppfront_conveyor depends on cppfront which is no longer built.
+# The conveyor concept will be reimplemented using native parser once available.
 
 # Testing
 enable_testing()

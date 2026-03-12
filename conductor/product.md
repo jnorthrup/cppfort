@@ -1,132 +1,246 @@
-# Product Guide
+# Product
 
-## Vision
+## cppfort - Sea-of-Nodes Cpp2 Transpiler
 
-Comprehensive Cpp2-to-C++ transpiler with MLIR Front-IR, Sea-of-Nodes backend, and semantic preservation via Clang AST analysis.
+cppfort is a Cpp2-to-C++ transpiler built around a Sea-of-Nodes (SoN) intermediate representation powered by MLIR. It implements the TrikeShed architectural course correction: **semantic objects first, dense lowered views second**.
 
-## Core Objectives
+### TrikeShed Strategy: Front-End Sugar as Zero-Cost Abstraction Core
 
-1. **Full Cpp2 Language Support**: All major features (UFCS, contracts, metafunctions, pattern matching)
-2. **Semantic Isomorphism**: Preserve Cpp2 semantics in generated C++ via Clang AST diffusion from cppfront reference
-3. **MLIR Front-IR Pipeline**: Cpp2 → FIR dialect → SON dialect → optimizations → C++
-4. **Safety-First**: Escape analysis, borrowing, bounds checking, contract validation
-5. **Performance**: SCCP optimization, Sea-of-Nodes IR, lifecycle-based memory management
+**Core Principle**: Front-end sugar IS the abstraction mechanism. The compiler's job is not to "compile away" syntax but to **normalize it to canonical forms** while preserving semantic intent.
 
-## Architecture (5 Layers)
-
+**Architecture**:
 ```
-Cpp2 Source
-    ↓
-[Lexer/Parser] → Cpp2 AST (with SemanticInfo)
-    ↓
-[Semantic Analysis] → Escape/Borrow/Ownership tracking
-    ↓
-[MLIR FIR Dialect] → Front-IR (expression-level)
-    ↓
-[MLIR SON Dialect] → Sea-of-Nodes IR (SSA, control flow)
-    ↓
-[SCCP + Optimizations] → Dead code elimination, constant propagation
-    ↓
-[Code Generator] → C++20/23 output
+TrikeShed Surface Syntax (front-end sugar)
+    ↓ (early normalization - semantic preservation)
+Canonical AST (small, repo-owned, zero-cost)
+    ↓ (Sea-of-Nodes + constant propagation)
+Optimized IR (zero-cost abstractions proven)
+    ↓ (MLIR lowering)
+Target Code (optimal, no abstraction overhead)
 ```
 
-## Current State
+**Key Insights**:
+1. **Zero-cost means**: Type alias = free hoisted vtable in real-world front IR
+2. **Front-end sugar is core**: Operators, underscore patterns, manifold notation are PRIMARY user interface
+3. **Normalization is semantic preservation**: Transform surface syntax to canonical AST without losing intent
+4. **SoN does the optimization**: Constant propagation, alias analysis, effect recovery happens in MLIR
+5. **Manifold applicability**: Unique challenge for SoN compilation and lifecycle memory management without the maths
 
-### ✅ Working
-- **Lexer/Parser**: Full Cpp2 grammar (pure2 mode)
-  - Grammar: `conductor/PARSER_ORCHESTRATION.md` (EBNF → combinator mappings, single source of truth)
-  - EBNF: `grammar/cpp2.ebnf` (formal grammar)
-- **AST**: Complete node definitions with semantic info scaffolding
-- **Type System**: Deduction, templates, UFCS resolution
-- **MLIR Dialects**: FIR (Front-IR) + SON (Sea-of-Nodes) operational
-- **SCCP Pass**: Sparse Conditional Constant Propagation (72.9% code coverage)
-- **Code Generation**: pure2 files transpile successfully
-- **Safety Checks**: Bounds, null, division-by-zero, integer overflow warnings
-- **Metafunctions**: 14+ implemented (@value, @ordered, @interface, @regex, @autodiff, etc.)
-- **Test Infrastructure**: 17 unit tests passing, regression framework operational
-- **Reference Corpus**: Lazy-cached cppfront output + Clang AST dumps in `tests/reference/`
-- **Semantic Analysis**: Escape analysis, borrowing, ownership, channels, external memory
-- **Corpus Validation**: 178/189 (93.7%) passing, 0.124 avg semantic loss
+**cppfront as Temporary Benchmark**:
+- cppfront is used as a **benchmark/validator only**, not a build dependency
+- No cppfront linking, calling, or inclusion in the build process
+- Temporary ride for bootstrap compatibility, removable once native parser lands
 
-### 🔧 In Progress
-- **Code Quality**: Reducing output noise, improving formatting
+### Current Status and Architecture
 
-### 📊 Corpus Analysis
-- **Reference Corpus**: 158 transpiled tests in `tests/reference/` (lazy-cached via `tools/reference_corpus.sh`)
-- **Head-to-Head**: 178/189 (93.7%) passing against cppfront (`VALIDATION_REPORT.md`, `SEMANTIC_PRESERVATION_REPORT.md`)
-- **AST Database**: 1.4M isomorphs extracted, 13.5K unique patterns, 100% MLIR region coverage
-- **Semantic Loss**: 0.124 (Avg), 0 High Loss Files (>0.15)
-- **Failure Categories**: 2 known feature gaps (`pure2-last-use`, `pure2-print`)
+**Active Architecture**:
+- **Front-end sugar as core**: TrikeShed surface syntax is the primary abstraction mechanism
+- **Early normalization**: Surface sugar normalizes immediately to canonical AST
+- **SoN optimization**: Sea-of-Nodes + constant propagation does the heavy lifting
+- **MLIR lowering**: Canonical AST → SoN → target code with zero abstraction overhead
 
-## Guiding Principles
+**Implementation Status**:
+- **Live restart path**: `selfhost/` is the current source of truth
+- **Build target**: `selfhost_bootstrap_smoke` is the authoritative top-level build target
+- **cppfront role**: Temporary benchmark/validator only (not a build dependency)
 
-1. **Semantic Intent over Syntax**: Preserve Cpp2's safety and ownership semantics in C++
-2. **Developer Experience**: TypeScript-like ergonomics, not traditional C++ idioms
-3. **Isomorphic Mapping**: Clang AST from cppfront output guides Cpp2 semantic assignments
-4. **Safety by Default**: Escape analysis, borrow checking, bounds validation automatic
-5. **Performance Through IR**: Sea-of-Nodes enables aggressive optimization
+**Manifold Clarification**:
+- **Compiler-process guidance**: Charts, atlases, coordinates for program forms
+- **Semantic transitions**: Guides normalization and lowering phases
+- **NOT**: Model training, learned classification, embeddings, or statistical inference
 
-## Key Features
+**I/O Strategy Decision**:
+- **stdio/mmap vs. channelized reactor**: For clarity, use simple stdio between build stages
+- **Rationale**: Channelized reactor adds complexity for marginal benefit in a compiler pipeline
+- **Exception**: Use memory-mapped I/O only for large intermediate representations
 
-### Language Support
-- Unified declaration syntax (`name: type = value`)
-- Parameter qualifiers (`in`, `out`, `inout`, `move`, `forward`)
-- UFCS (Unified Function Call Syntax)
-- Contracts (preconditions, postconditions, assertions)
-- Metafunctions (compile-time code generation)
-- Template support
-- String interpolation
+## Core Architecture
 
-### Safety Features (Implemented)
-- Null pointer checking
-- Array bounds checking
-- Division by zero prevention
-- Mixed-sign arithmetic warnings
-- Use-after-move detection
-- Integer overflow warnings (Safety 6)
-- Escape Analysis (Heap/Return/Channel/GPU/DMA)
-- Borrow Checking (Exclusive mutable borrows)
-- Channel Safety (Ownership transfer, data race detection)
-- External Memory Safety (Async DMA aliasing checks)
-- Lifetime Regions (Borrow outlives owner enforcement)
-- Scope-Inferred Arenas (JIT memory management via ArenaInferencePass)
-- Coroutine Frame Elision (Stack allocation for non-escaping frames)
-- C++26 Integration (Reflection SBO sizing, Contracts, Pattern matching)
+### Canonical Semantic Layer (Templates)
 
-### Advanced Features
-- **CAS-Driven Modules**: Markdown block comments trigger C++20 module generation
-- **Fractal JIT**: Content-addressable caching for JIT-compiled code
-- **Concurrency**: Kotlin-style channels, coroutine scopes, spawn/await
-- **GPU Kernels**: Parallel loops with launch config, memory policy annotations
-- **External Memory Pipeline**: DMA buffers, memory regions (CPU/GPU global/shared/constant)
+The foundation is a small set of template-based canonical types that normalize early and feed directly into SoN:
 
-## Target Users
+```cpp2
+// indexed<I, F> - function from domain I to value type
+template<typename I, typename F>
+class indexed {
+    I domain;
+    F at;
+public:
+    using value_type = decltype(at(declval<I>()));
+    operator[](i: I) -> value_type = at(i);
+    size() -> I = domain;
+};
 
-C++ developers seeking:
-- Modern syntax with safety guarantees
-- Migration from C++ to Cpp2
-- Performance-critical systems with memory safety
-- Concurrent/parallel programming with channels
-- GPU kernel development
+// series<F> - indexed sequence (indexed<int, F>)
+template<typename F>
+using series = indexed<int, F>;
 
-## Success Metrics
+// tensor<K, F> - sparse tensor with coordinate keys
+template<typename K, typename F>
+class tensor {
+    series<axis<K>> axes;
+    F at;  // coord<K> -> T
+};
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| pure2 tests passing | 127/129 (98.4%) | >95% |
-| mixed tests passing | 50/50 (100%) | 50/50 |
-| Parameter semantics correct | 100% | 100% |
-| Average corpus semantic loss | 0.124 | <0.15 |
-| SCCP code coverage | 72.9% | >80% |
-| Escape analysis coverage | 100% | 100% |
+// dense_tensor<K, T> - dense array with semantic shape + lowered strides
+template<typename K, typename T>
+class dense_tensor {
+    series<axis<K>> axes;    // semantic shape
+    series<int> strides;     // lowering
+    span<T> data;            // dense backing
+    operator[](flat: int) -> T& = data[flat];
+};
 
-## Documentation
+// atlas<C, Chart> - chart management for manifolds
+template<typename C, typename Chart>
+class atlas {
+    indexed<C, Chart> charts;
+    operator()(c: C) -> Chart = charts[c];
+};
 
-- **conductor/PARSER_ORCHESTRATION.md**: EBNF design → combinator mappings → AST isomorphs → loss scoring (single source of truth)
-- **conductor/tech-stack.md**: Tools and infrastructure
-- **conductor/workflow.md**: Development process and quality gates
-- **conductor/tracks.md**: Active feature tracks
-- **docs/cpp2/**: Cpp2 language reference (external)
-- **docs/cppfront/**: Cppfront reference (external)
-- **docs/sea-of-nodes/**: Sea-of-Nodes reference (external)
-- **docs/Simple/**: Simple IR reference (external)
+// manifold<C, Chart> - smooth coordinate space
+template<typename C, typename Chart>
+using manifold = atlas<C, Chart>;
+```
+
+### Gradient Protocol
+
+Differentiable programming support via protocol, not library capture:
+
+```cpp2
+template<typename E>
+concept grad_expr = requires(E e) {
+    { e + e } -> same_as<E>;
+    { e - e } -> same_as<E>;
+    { e * e } -> same_as<E>;
+    { e / e } -> same_as<E>;
+};
+
+template<typename E, typename V>
+struct grad_backend {
+    auto constant(double) -> E;
+    auto variable(std::string_view) -> V;
+    auto diff(E, V) -> E;
+    auto eval(E, bindings) -> double;
+};
+```
+
+## MLIR SoN Pipeline
+
+### Dialect Operations
+
+The canonical types lower to MLIR SoN operations:
+
+- `cpp2.indexed` - coordinate-based indexing
+- `cpp2.series` - indexed sequence
+- `cpp2.tensor` - sparse tensor
+- `cpp2.dense_tensor` - dense array with contracts
+- `cpp2.atlas` - chart management
+- `cpp2.manifold` - smooth coordinate spaces
+- `cpp2.grad_diff` - automatic differentiation
+- `cpp2.jacobian` - Jacobian matrix computation
+- `cpp2.matrix_mul` - chain rule aggregation
+
+### SoN Passes
+
+- **SoNConstantProp**: Template parameter folding, dead code elimination
+- **GradADLowering**: Protocol-to-arithmetic lowering for AD
+- **JacobianMatrixMulLowering**: Manifold chain rule to fused multiply-add
+
+## Parser Architecture
+
+### Public API (cppfort_parser.h)
+
+100% hand-written parser contract:
+
+```cpp
+struct ParseResult {
+    std::unique_ptr<CanonicalAST> ast;
+    std::vector<std::string> errors;
+    bool success() const;
+};
+
+class Parser {
+    static ParseResult parse(std::string_view source, std::string_view filename);
+    static ParseResult parse_with_trikeshed(std::string_view source,
+                                           bool enable_operators = true,
+                                           bool enable_underscores = true);
+    static bool can_self_parse();
+};
+```
+
+### Normalization Flow
+
+```
+TrikeShed sugar (text)
+    ↓ (LLM transpiler)
+pure Cpp2 using canonical types
+    ↓ (cppfront bootstrap)
+C++23 modules + CAS pool
+    ↓
+Parser::parse_with_trikeshed
+    ↓
+CanonicalAST (indexed/series/tensor/dense_tensor/atlas)
+    ↓
+Sea-of-Nodes + MLIR
+    ↓
+Dense lowered views
+```
+
+## CAS Linker Internments
+
+Java classfile analog for compile-time constant deduplication:
+
+```cpp
+[[gnu::section(".cas_pool")]]
+constexpr struct CASPool {
+    const char* strings[4096];
+    // type IDs, series literals, axis constants, grad_expr nodes
+} cas_pool = { };
+```
+
+## Build System
+
+- CMake-based build with Ninja generator
+- MLIR/LLVM integration via llvm-project
+- Self-host bootstrap under `selfhost/`
+- Archive legacy at `old/cppfort`
+
+## Key Principles
+
+1. **Semantic objects first**: Canonical types represent the mathematical/algorithmic intent
+2. **Dense lowered views second**: Separate representation for optimized runtime data
+3. **Early normalization**: Surface sugar normalizes immediately to small canonical AST
+4. **SoN does the work**: Constant propagation, alias analysis, effect recovery in MLIR
+5. **Templates, not constexpr**: Raw generics stay in source; compiler smashes to constants
+6. **No safe language arena**: No constexpr factories, reflection gymnastics, or Python/TableGen
+
+---
+
+## Implementation Status (2026-03-12)
+
+### What's Actually Implemented
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Parser API contract | **HEADER ONLY** - no implementation | [`cppfort_parser.h`](cppfort_parser.h) |
+| Canonical type templates | **DECLARED** - not wired into build | [`selfhost/canonical_types.cpp2`](selfhost/canonical_types.cpp2) |
+| Bootstrap tags | **BUILT** - integer constants only | [`selfhost/bootstrap_tags.cpp2`](selfhost/bootstrap_tags.cpp2) |
+| MLIR SoN dialect | **TABLEGEN DEFINED** - disabled in build | [`include/Cpp2SONDialect.td`](include/Cpp2SONDialect.td) |
+| CAS internment types | **HEADER ONLY** - no implementation | [`cppfort_parser.h:114-132`](cppfort_parser.h:114) |
+
+### Critical Gaps
+
+1. **Parser has no implementation**: `Parser::Impl` has no definition. `src/` directory is empty.
+2. **MLIR dialect disabled**: LLVM 21 FieldParser issue blocks SoN dialect compilation.
+3. **Bootstrap transpilation limited**: `old/cppfort` binary can only handle trivial declarations.
+4. **No canonical → SoN lowering**: No wired path from `canonical_types.cpp2` to MLIR operations.
+
+### Rewrite Merit
+
+A fresh start would:
+- Implement parser from `cppfort_parser.h` contract forward
+- Fix or bypass LLVM 21 issue to enable MLIR dialect
+- Wire `canonical_types.cpp2` into build with actual C++ transpilation
+- Start with one working SoN op lowering, not full pipeline

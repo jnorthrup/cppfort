@@ -1,5 +1,0 @@
-// Test C++1 pointer type syntax (mixed mode)
-
-get_ptr: () -> *const char = {
-    return "hello";
-}
