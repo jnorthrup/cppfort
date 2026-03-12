@@ -4,6 +4,27 @@
 
 cppfort is a Cpp2-to-C++ transpiler built around a Sea-of-Nodes (SoN) intermediate representation powered by MLIR. It implements the TrikeShed architectural course correction: **semantic objects first, dense lowered views second**.
 
+### Current Status and Architectural Direction
+
+Based on [`README.md`](../README.md:1), the project is currently being restarted through `selfhost/`:
+
+- **Active direction**: Bring TrikeShed-style abstractions over as a `cpp2` port
+- **Current contract**: Use `cmake` and `ninja` as supported build tools
+- **Live restart path**: `selfhost/` is the current source of truth
+- **Build target**: `selfhost_bootstrap_smoke` is the authoritative top-level build target
+- **Bootstrap bridge**: `old/cppfort` is used temporarily by the smoke target
+
+**Architectural direction**:
+- Near-term goal: Recover a clean self-hosting path around the `selfhost/` restart and `cpp2`/TrikeShed abstraction port
+- Longer arc: Richer normalization and lowering work, including MLIR and Sea-of-Nodes style back-end structure
+- Historical context: The earlier conveyor flow around `cppfront` corpus remains useful as downstream validation
+
+**What `manifold` means here**:
+- Compiler-process guidance: charts, atlases, coordinates for program forms
+- Transitions that guide normalization and lowering
+- Organizing movement between representations without losing intent
+- **Does NOT mean**: model training, learned classification, embeddings, or statistical inference
+
 ## Core Architecture
 
 ### Canonical Semantic Layer (Templates)

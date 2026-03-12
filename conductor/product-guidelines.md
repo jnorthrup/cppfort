@@ -62,6 +62,44 @@ consteval auto make_indexed(...) { ... }  // No constexpr factories
 - NOT: learned embeddings, token classification, statistical inference
 - Charts, atlases, coordinates, transitions describe semantic routing
 
+## Tooling and Standards
+
+### Build Tools
+
+- **Supported**: `cmake` and `ninja` as the primary build tools
+- **Build target**: `selfhost_bootstrap_smoke` is the authoritative top-level build target
+- **Verified build path**:
+  ```bash
+  cmake -S . -B build -G Ninja
+  ninja -C build selfhost_bootstrap_smoke
+  ```
+
+### Contribution Standards
+
+Based on [`CONTRIBUTING.md`](../CONTRIBUTING.md:1):
+
+- **Contributor License Agreement**: Required for all contributions
+  - Sign at [cla.developers.google.com](https://cla.developers.google.com/)
+  - Retains copyright, grants permission to use and redistribute
+
+- **Community Guidelines**: Follow [Google's Open Source Community Guidelines](https://opensource.google/conduct/)
+
+- **Code Review Process**:
+  - All submissions require review via GitHub pull requests
+  - Project members also require review
+
+### Tooling Options
+
+- **Parser Combinators**: Complete implementation available
+  - 121 grammar rules, 815 lines
+  - Follows NarseseBbcursive pattern
+  - Next: AST construction, error recovery, integration
+
+- **Semantic Preservation**: Validated with 99% accuracy
+  - Average semantic loss: 0.124 (target: < 0.15)
+  - 189 regression tests
+  - Production-grade fidelity confirmed
+
 ## File Organization
 
 ```

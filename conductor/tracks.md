@@ -141,6 +141,26 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## References
+
+### Semantic Preservation
+
+- **[`SEMANTIC_PRESERVATION_REPORT.md`](../SEMANTIC_PRESERVATION_REPORT.md:1)**: Validates semantic fidelity of `cppfort` transpiler against `cppfront` reference
+  - Average semantic loss: **0.124** (target: < 0.15)
+  - 189 regression tests, 99% semantic isomorphism
+  - Confirms production-grade semantic preservation
+
+### Parser Implementation
+
+- **[`PARSER_COMBINATORS_COMPLETE.md`](../PARSER_COMBINATORS_COMPLETE.md:1)**: Complete parser combinators implementation
+  - 121 grammar rules implemented (815 lines)
+  - Follows NarseseBbcursive pattern
+  - Core infrastructure: TokenStream, Rule, ParseFn
+  - Combinator operators: `>>`, `|`, `opt`, `many`, `some`, `ref`
+  - Next steps: AST construction, error recovery, integration
+
+---
+
 ## GAP ANALYSIS NOTES (2026-03-12)
 
 **Critical insight from specification vs. implementation review:**

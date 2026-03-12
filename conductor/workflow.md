@@ -4,6 +4,39 @@
 
 Implement the next incomplete Conductor track by completing a small, testable subset of tasks, updating the track plan as you go, and leaving a clear handoff note for the next session.
 
+## One-Slice Loop Principles
+
+Based on [`program.md`](../program.md:1), the workflow follows a bounded one-slice loop:
+
+1. **Read the current failure surface** - Identify the specific issue or gap
+2. **Pick one bounded owner** - Select a single canonical owner (grammar, semantic, emission)
+3. **Edit only that slice** - Make changes to one bounded compiler slice at a time
+4. **Run validation** - Execute `python3 train.py` or targeted tests
+5. **Inspect results** - Read `runs/<run-id>/result.json` or test output
+6. **Keep or rollback** - Apply the "Keep Rule" to decide whether to keep changes
+
+### Keep Rule
+Keep a change only if one of these improves honestly:
+- `metrics.cppfort_transpiles_on_primary_corpus` increases
+- `metrics.cppfort_failures_on_primary_corpus` decreases
+- `metrics.average_combined_semantic_loss` decreases
+- Same score, simpler code
+
+## External Loop Operations
+
+The external loop operates on one bounded compiler slice at a time:
+
+**Mutable Surface** (change one canonical owner only):
+- Grammar and parsing: `include/parser_grammar.hpp`, `include/parser/*`, parser sources
+- Semantic ownership: `include/ast.hpp`, semantic analyzer sources
+- Emission/codegen: emitter/codegen sources
+- Conveyor contract only when the failure is in the conveyor itself
+
+**Fixed Surface** (do not change):
+- `train.py` is the measurement harness
+- Do not use upstream cppfront as the transpiler under test
+- Do not replace candidate output with oracle artifacts
+
 ## Task Workflow
 
 1. Read the selected track `plan.md` and `spec.md`.
