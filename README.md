@@ -124,3 +124,7 @@ ninja -C build Cpp2SONDialect Cpp2SONPasses
 ✅ Full SeaOfNodes chapter documentation (01-24)
 ✅ Mathematical foundation documented
 ✅ Build verified and working
+
+
+
+... we'll se if this holds up as we implement the rest of the architecture!
