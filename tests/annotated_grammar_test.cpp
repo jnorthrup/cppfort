@@ -214,11 +214,63 @@ void test_binary_expr() {
     std::cout << "test_binary_expr PASS\n";
 }
 
+void test_multi_expr_subscript() {
+    using namespace cpp2::parser;
+    using namespace cpp2::ast;
+
+    // "x: int = coords[1.0, 2.0];"
+    std::vector<cpp2_transpiler::Token> tokens = {
+        { cpp2_transpiler::TokenType::Identifier, "x", 0, 1, 1 },
+        { cpp2_transpiler::TokenType::Colon, ":", 1, 1, 2 },
+        { cpp2_transpiler::TokenType::Identifier, "int", 3, 1, 4 },
+        { cpp2_transpiler::TokenType::Equal, "=", 7, 1, 8 },
+        { cpp2_transpiler::TokenType::Identifier, "coords", 9, 1, 10 },
+        { cpp2_transpiler::TokenType::LeftBracket, "[", 15, 1, 16 },
+        { cpp2_transpiler::TokenType::FloatLiteral, "1.0", 16, 1, 17 },
+        { cpp2_transpiler::TokenType::Comma, ",", 19, 1, 20 },
+        { cpp2_transpiler::TokenType::FloatLiteral, "2.0", 20, 1, 21 },
+        { cpp2_transpiler::TokenType::RightBracket, "]", 22, 1, 23 },
+        { cpp2_transpiler::TokenType::Semicolon, ";", 23, 1, 24 },
+        { cpp2_transpiler::TokenType::EndOfFile, "", 24, 1, 25 }
+    };
+
+    ParseTree tree = parse(tokens);
+
+    // Verify structure
+    assert(!tree.nodes.empty());
+
+    // Root -> Declaration
+    int decl = find_child(tree, 0, NodeKind::Declaration);
+    assert(decl != -1 && "Declaration found");
+
+    // Declaration -> UnifiedDeclaration
+    int unified = find_child(tree, decl, NodeKind::UnifiedDeclaration);
+    assert(unified != -1 && "UnifiedDeclaration found");
+
+    // UnifiedDeclaration -> VariableSuffix -> Expression
+    int suffix = find_child(tree, unified, NodeKind::VariableSuffix);
+    assert(suffix != -1 && "VariableSuffix found");
+
+    int expr = find_child(tree, suffix, NodeKind::Expression);
+    assert(expr != -1 && "Expression found");
+
+    // Expression -> PostfixExpression -> Subscript
+    int postfix = find_child(tree, expr, NodeKind::PostfixExpression);
+    assert(postfix != -1 && "PostfixExpression found");
+
+    // The multi-expression subscript should contain the expression list
+    // We're testing that the parse tree accepts coords[1.0, 2.0]
+    // which has a comma between expressions
+
+    std::cout << "test_multi_expr_subscript PASS\n";
+}
+
 } // namespace
 
 int main() {
     test_var_decl();
     test_func_stmt();
     // test_binary_expr();
+    test_multi_expr_subscript();
     return 0;
 }

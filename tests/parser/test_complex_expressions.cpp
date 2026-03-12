@@ -77,6 +77,8 @@ int main() {
              "Subscript string");
   check_emit("x: int = vec[i + 1];", {"int x = vec[i + 1];", "int x {vec[i + 1]};"},
              "Subscript expression");
+  check_emit("x: int = coords[1.0, 2.0];", "int x = coords[1.0, 2.0];",
+             "Multi-expression subscript");
 
   // Binary Operators
   check_emit("x: bool = a && b || c;", {"bool x = a && b || c;", "bool x {a && b || c};"}, "Logical ops");

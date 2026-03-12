@@ -697,6 +697,7 @@ auto parse_atom(TokenStream input)
     return ebnf::Result<std::monostate, TokenStream>::fail(input);
   input = primary.remaining();
 
+<<<<<<< Updated upstream
   // Combinator-based postfix parsing
   // IMPORTANT: call arguments must not treat ',' as an expression operator,
   // otherwise we consume the entire argument list as a single expression.
@@ -712,6 +713,98 @@ auto parse_atom(TokenStream input)
       with_binary(NodeKind::ScopeOp); // scope resolution
   static auto inc = (lit("++") | "--" | "~") % with_node(NodeKind::BinaryOp) %
                     with_binary(NodeKind::PostfixOp);
+=======
+  // Postfix operators
+  while (!input.empty() && is_postfix_start(input.peek())) {
+    const auto &tok = input.peek();
+
+    if (tok.lexeme == "(") {
+      // Function call
+      begin(NodeKind::CallOp, input.pos);
+      input = input.next(); // consume (
+      // Parse arguments (comma-separated expressions)
+      if (!input.empty() && input.peek().lexeme != ")") {
+        begin(NodeKind::Expression, input.pos);
+        auto arg = parse_pratt(input, ASSIGN);
+        if (arg.success()) {
+          end(arg.remaining().pos);
+          input = arg.remaining();
+          while (!input.empty() && input.peek().lexeme == ",") {
+            input = input.next(); // consume ,
+            begin(NodeKind::Expression, input.pos);
+            arg = parse_pratt(input, ASSIGN);
+            if (!arg.success())
+              break;
+            end(arg.remaining().pos);
+            input = arg.remaining();
+          }
+        } else {
+          // Failed to parse first arg, unwind Expression
+          // Actually if failed, we return fail below or consume nothing?
+          // g_builder stack unwind mismatch if we don't close?
+          // Parser combinator usually relies on transaction or backtrack.
+          // Here we modify state.
+          // But if failure, we default to fail.
+          // We should close the checking node or rely on cleanup.
+          // Assuming fail propagates.
+        }
+      }
+      if (input.empty() || input.peek().lexeme != ")")
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      input = input.next(); // consume )
+      end(input.pos);
+    } else if (tok.lexeme == "[") {
+      // Subscript
+      begin(NodeKind::SubscriptOp, input.pos);
+      input = input.next(); // consume [
+      if (!input.empty() && input.peek().lexeme != "]") {
+        begin(NodeKind::Expression, input.pos);
+        auto idx = parse_pratt(input, ASSIGN);
+        if (!idx.success())
+          return ebnf::Result<std::monostate, TokenStream>::fail(input);
+        input = idx.remaining();
+        end(input.pos);
+        while (!input.empty() && input.peek().lexeme == ",") {
+          input = input.next(); // consume ,
+          begin(NodeKind::Expression, input.pos);
+          idx = parse_pratt(input, ASSIGN);
+          if (!idx.success())
+            return ebnf::Result<std::monostate, TokenStream>::fail(input);
+          input = idx.remaining();
+          end(input.pos);
+        }
+      }
+      if (input.empty() || input.peek().lexeme != "]")
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      input = input.next(); // consume ]
+      end(input.pos);
+    } else if (tok.lexeme == ".") {
+      // Member access
+      begin(NodeKind::MemberOp, input.pos);
+      input = input.next(); // consume .
+      if (input.empty() || input.peek().type != TT::Identifier)
+        return ebnf::Result<std::monostate, TokenStream>::fail(input);
+      input = input.next(); // consume member name
+      end(input.pos);
+    } else if (tok.lexeme == "++" || tok.lexeme == "--") {
+      // Unambiguous postfix
+      begin(NodeKind::PostfixOp, input.pos);
+      input = input.next();
+      end(input.pos);
+    } else if (tok.lexeme == "*" || tok.lexeme == "&") {
+      // Ambiguous postfix (vs binary * or &)
+      // It is postfix primarily if the NEXT token does NOT look like the start
+      // of an operand. If the next token IS an operand (id, literal, prefix op,
+      // etc), then this * or & is binary. "operand start" = Identifier,
+      // Literal, '(', 'true', 'false', 'this', 'that', '_' OR prefix operator
+      // (+, -, !, ~, ++, --, *, &) - but wait! `a * * b` -> `a * (*b)` (bin *
+      // prefix) So if next is prefix safe, it's binary.
+
+      // Heuristic: If next token is ';', ')', ']', ',', or an operator that
+      // cannot be prefix, it is postfix. Simplification: Peek next. If it's a
+      // binary-only operator or terminator, it's postfix. Otherwise assume
+      // binary (falling through loop).
+>>>>>>> Stashed changes
 
   struct PostfixPtrCheckWrapper {
     ebnf::Result<std::monostate, TokenStream> parse(TokenStream input) const {

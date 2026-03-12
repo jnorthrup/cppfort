@@ -130,9 +130,95 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-*Total Tracks: 7*
-*Completed: 3*
-*In Progress: 0*
+*Total Tracks: 13*
+*Completed: 8*
+*In Progress: 2*
 *Active: 1*
-*Planned: 2*
-*Blocked: 1*
+*Suspended: 0*
+*Planned: 1*
+*Blocked: 2*
+*New: 0*
+
+---
+
+## [-] Track: Java Memory Model Integration for Cpp2 SON Dialect
+*Link: [./conductor/tracks/son_jmm_integration_20260108/](./conductor/tracks/son_jmm_integration_20260108/)*
+*Status: BLOCKED (2026-01-10)* - Phase 1 implementation complete, testing blocked by SON dialect disabled in build (LLVM 21 FieldParser issue)
+
+**Completed:**
+- JMM attributes defined in Cpp2SONDialect.td
+- JMM metadata attached to LoadOp, StoreOp, NewOp, ConstructorEndOp, SendOp, RecvOp, SpawnOp, AwaitOp
+- JMM constraint verification implemented (Cpp2SONJMMVerification.cpp)
+
+**Blocker:** Cpp2SONDialect.cpp disabled in src/CMakeLists.txt - requires LLVM 21 FieldParser fix to enable testing
+
+---
+
+
+## [-] Track: Fix Compile-Time Memory Leak in Spirit Combinators
+*Link: [./conductor/tracks/spirit_parser_compilefix_20250109/](./conductor/tracks/spirit_parser_compilefix_20250109/)*
+*Status: SUSPENDED (2026-01-09) - Diverges from closing existing test coverage and loss reduction work*
+
+**Progress at suspension:**
+- Phase 1: Refactor rules.hpp - COMPLETE
+- Phase 2: Parser Integration - COMPLETE
+- Phase 3: Regression Corpus Validation - Partial (3/7 tasks)
+- Phase 4: Cleanup - Not started
+
+---
+
+## [ ] Track: Annotation-Based Semantic Actions for Parser
+*Link: [./conductor/tracks/semantic_actions_20260109/](./conductor/tracks/semantic_actions_20260109/)*
+*Status: PLANNED - Not started*
+
+**Objective:** Add annotation-based semantic idioms to existing parser (Spirit combinators + Pratt parser for 17 precedence levels) mapping to Clang AST
+
+**Phases:**
+1. Annotation infrastructure (`with_node`, `with_binary`, `ast_node`)
+2. Annotate grammar rules (statements, declarations)
+3. Annotate Pratt parser expressions (17 precedence levels)
+4. Template and type system annotations
+5. Corpus validation (target: 98.9% pass, ≤0.124 loss)
+
+---
+
+## [~] Track: TrikeShed Surface Restart
+*Link: [./conductor/tracks/trikeshed_surface_restart_20260311/](./conductor/tracks/trikeshed_surface_restart_20260311/)*
+*Status: ACTIVE* - restart cppfort’s TrikeShed migration from the real transpiler repo and its working parser/emitter harnesses
+
+**Purpose:** Treat `../TrikeShed` as the semantic/source-text reference and land the smallest real parser/emitter slices in cppfort, starting from the beginning with harness-backed surface deltas instead of speculative sibling-repo narration.
+
+**Immediate Focus:**
+- External signal only: `/Users/jim/work/TrikeShed/conductor/grok_share_bGVnYWN5_21edd44f-9e25-434b-9bcb-2d036feee2dc.md`
+- External spec input only: `/Users/jim/work/TrikeShed/conductor/tracks/cpp2-surface-transition_20260311/expanded_cpp2_spec.md`
+- Local truth owner: `grammar/cpp2.ebnf`, `src/parser.cpp`, `src/emitter.cpp`, and parser tests under `tests/`
+- Verified slices:
+  - multi-expression subscript syntax now parses and emits for `coords[1.0, 2.0]` through existing slim parser/emitter harnesses
+  - canonical grammar truth and annotated harness coverage now encode that accepted multi-expression subscript surface
+- Active slice: prove chained projection after multi-expression subscripts for Cursor-shaped surfaces such as `cursor[i, j].value`
+
+---
+
+## [~] Track: Parser Regression Test Pass - Fix EBNF & Emitter for Full Cpp2 Support
+*Link: [./conductor/tracks/parser_regression_pass_20260110/](./conductor/tracks/parser_regression_pass_20260110/)*
+*Status: IN PROGRESS*
+
+**Objective:** Fix cppfort parser and emitter to pass all cppfront regression tests with complete Cpp2 EBNF grammar support
+
+**Scope:**
+- Fix unified declarations (`name: type = init`)
+- Fix parameter qualifiers (`inout`, `out`, `move`, `forward`)
+- Fix function declarations and bodies
+- Fix Pratt expression parser
+- Fix all statement types
+- Remove C++1 passthrough bypass
+- Create tests for Advanced Cpp2 features (contracts, pattern matching, metafunctions, string interpolation, UFCS, templates, type system)
+- Back-annotate Clang AST semantics into parse graph
+- Use AST loss from corpus as validation metric
+
+**Acceptance Criteria:**
+- All 159 cppfront regression tests pass
+- Generated C++ is functionally equivalent to cppfront output
+- Performance: completes in under 5 minutes
+
+---

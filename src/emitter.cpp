@@ -5519,6 +5519,7 @@ private:
           has_regular_args = true;
           break;
         }
+<<<<<<< Updated upstream
         if (!has_regular_args) {
           std::string callee_text = trim(emit_expression_text(callee));
           size_t dot_pos = callee_text.rfind(".ssize");
@@ -5528,6 +5529,87 @@ private:
             if (!receiver.empty()) {
               out_ << "std::ssize(" << receiver << ")";
               return;
+=======
+        out_ << ";\n";
+    }
+
+    void emit_type(const std::string& name, const Node& /*suffix*/) {
+        out_ << "struct " << name << " {\n";
+        out_ << "    // TODO: type body\n";
+        out_ << "};\n\n";
+    }
+
+    bool is_infix_expression(NodeKind k) const {
+        using K = NodeKind;
+        if (k < K::MultiplicativeExpression || k > K::AssignmentExpression) return false;
+        return k != K::TernaryExpression && 
+               k != K::PipelineExpression && 
+               k != K::RangeExpression && 
+               k != K::AssignmentOp;
+    }
+
+    void emit_expression(const Node& n) {
+        if (n.kind == NodeKind::Literal || n.kind == NodeKind::Identifier) {
+            out_ << node_text(n);
+        } else if (n.kind == NodeKind::Expression) {
+            for (const auto& child : tree_.children(n)) {
+                emit_expression(child);
+            }
+        } else if (is_infix_expression(n.kind)) {
+            bool first = true;
+            for (const auto& child : tree_.children(n)) {
+                if (child.kind == NodeKind::BinaryOp || 
+                    child.kind == NodeKind::AssignmentOp || 
+                    (child.token_start < child.token_end && is_operator(token_text(child.token_start)))) {
+                    
+                    out_ << " " << node_text(child) << " ";
+                } else {
+                    emit_expression(child);
+                }
+            }
+
+        } else if (n.kind == NodeKind::CallOp) { // If we are recursing or node kind is CallOp
+             out_ << "(";
+             bool first = true;
+             for (const auto& child : tree_.children(n)) {
+                 if (!first) out_ << ", ";
+                 emit_expression(child);
+                 first = false;
+             }
+             out_ << ")";
+        } else if (n.kind == NodeKind::MemberOp) {
+            out_ << node_text(n);
+        } else if (n.kind == NodeKind::SubscriptOp) {
+            out_ << "[";
+            bool first = true;
+            for (const auto& child : tree_.children(n)) {
+                if (!first) out_ << ", ";
+                emit_expression(child);
+                first = false;
+            }
+            out_ << "]";
+        } else if (n.kind == NodeKind::TernaryExpression) {
+             out_ << " ? ";
+             int i = 0;
+             for (const auto& child : tree_.children(n)) {
+                 if (i == 1) out_ << " : ";
+                 emit_expression(child);
+                 i++;
+             }
+        } else if (n.kind == NodeKind::GroupedExpression) {
+             out_ << "(";
+             for (const auto& child : tree_.children(n)) {
+                 emit_expression(child);
+             }
+             out_ << ")";
+        } else if (n.kind == NodeKind::PrefixExpression) {
+             for (const auto& child : tree_.children(n)) {
+                if (child.kind == NodeKind::PrefixOp) {
+                    out_ << node_text(child);
+                } else {
+                    emit_expression(child);
+                }
+>>>>>>> Stashed changes
             }
           }
         }
