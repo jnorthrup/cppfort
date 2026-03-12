@@ -50,6 +50,16 @@ std::unique_ptr<Pass> createSONCSEPass();
 /// Handles loop invariant code motion, strength reduction, etc.
 std::unique_ptr<Pass> createSONLoopOptPass();
 
+/// Create gradient AD lowering pass for SON
+/// Lowers gradient protocol operations (grad_diff) to arithmetic operations.
+/// Implements forward-mode automatic differentiation using the chain rule.
+std::unique_ptr<Pass> createSONGradADLoweringPass();
+
+/// Create Jacobian/matrix multiplication lowering pass for SON
+/// Lowers Jacobian matrix computations to fused multiply-add operations.
+/// Optimizes matrix multiplication with FMA when possible.
+std::unique_ptr<Pass> createSONJacobianMatrixMulLoweringPass();
+
 /// Create concurrency analysis pass for SON
 /// Analyzes SON IR for concurrency optimizations including lock elision,
 /// memory barrier elimination, async-to-sync conversion, and parallel region detection.

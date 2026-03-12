@@ -1,0 +1,33 @@
+{
+  "artifacts": {
+    "cppfort_failures": "/Users/jim/work/cppfort/build/conveyor/cppfort_failures.txt",
+    "cppfront_failures": "/Users/jim/work/cppfort/build/conveyor/cppfront_failures.txt",
+    "summary": "/Users/jim/work/cppfort/build/conveyor/CONVEYOR_SUMMARY.md"
+  },
+  "command_log": "/Users/jim/work/cppfort/runs/1773292111-64328/command.log",
+  "controller": {
+    "hypothesis": "",
+    "mutation_tag": "",
+    "parent_run_id": ""
+  },
+  "exit_code": 1,
+  "failure_kind": "build_or_target",
+  "host": "jims-MBP.lan",
+  "hypothesis": "",
+  "materialized_preconditions": [],
+  "metrics": {
+    "cppfort_failure_list_count": null,
+    "cppfront_failure_list_count": null,
+    "has_conveyor_binary_target": true,
+    "has_conveyor_target": false
+  },
+  "mutation_tag": "",
+  "objective": "grow cppfort by one honest bounded slice",
+  "parent_run_id": "",
+  "pid": 64328,
+  "repo_root": "/Users/jim/work/cppfort",
+  "run_dir": "/Users/jim/work/cppfort/runs/1773292111-64328",
+  "run_id": "1773292111-64328",
+  "status": "failed",
+  "timestamp": 1773292113.535927
+}

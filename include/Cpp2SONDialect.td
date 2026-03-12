@@ -1003,3 +1003,163 @@ def Cpp2SON_AwaitOp : Cpp2SON_Op<"await"> {
   let results = (outs AnyType:$out_ctrl, AnyType:$out_mem, AnyType:$result);
   let assemblyFormat = "$task_handle `ctrl` $ctrl `mem` $mem attr-dict `:` type($ctrl) `,` type($mem) `,` type($task_handle) `->` type($out_ctrl) `,` type($out_mem) `,` type($result)";
 }
+
+//===----------------------------------------------------------------------===//
+// Indexed/Series/Tensor Operations (cppfort canonical types)
+//===----------------------------------------------------------------------===//
+
+def Cpp2SON_IndexedOp : Cpp2SON_Op<"indexed", [Pure]> {
+  let summary = "Indexed function from domain I to value type (coordinate-based indexing)";
+  let description = [{
+    Represents a function from domain I to value type T.
+    The 'at' callable takes an index and returns a value.
+    
+    Canonical cppfort type: indexed<I, F> where F is a callable I -> T
+    Domain types: i1, i8, i16, i32, i64, i128, isize
+  }];
+  let arguments = (ins
+    TypeAttr:$domain_type,  // I: the domain type (i32, i64, etc.)
+    AnyType:$at            // F: the callable function
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$domain_type `at` $at attr-dict `:` type($result)";
+}
+
+def Cpp2SON_SeriesOp : Cpp2SON_Op<"series", [Pure]> {
+  let summary = "Indexed sequence (alias for indexed<int, F>)";
+  let description = [{
+    Represents an indexed sequence of values.
+    This is an alias for indexed<int, F> where F is a callable int -> T.
+    
+    Canonical cppfort type: series<F> = indexed<int, F>
+  }];
+  let arguments = (ins
+    AnyType:$size,          // The size/length of the series
+    AnyType:$at            // The callable for element access
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$size `at` $at attr-dict `:` type($result)";
+}
+
+def Cpp2SON_TensorOp : Cpp2SON_Op<"tensor", [Pure]> {
+  let summary = "Sparse tensor with coordinate keys";
+  let description = [{
+    Represents a sparse tensor with coordinate-based keys.
+    The axes describe the coordinate space, and 'at' maps coordinates to values.
+    
+    Canonical cppfort type: tensor<K, F> where K is key type, F is coord -> T
+  }];
+  let arguments = (ins
+    AnyType:$axes,         // Series of axis descriptors
+    AnyType:$at            // Callable: coord -> value
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$axes `at` $at attr-dict `:` type($result)";
+}
+
+def Cpp2SON_DenseTensorOp : Cpp2SON_Op<"dense_tensor", [Pure, MemoryEffects<[MemRead, MemWrite]>]> {
+  let summary = "Dense array with semantic shape + lowered strides";
+  let description = [{
+    Represents a dense tensor with semantic shape and computed strides.
+    The data is a contiguous memory buffer with offset computed from strides.
+    
+    Canonical cppfort type: dense_tensor<K, T>
+    - axes: semantic shape
+    - strides: lowered memory layout
+    - data: the actual contiguous storage
+  }];
+  let arguments = (ins
+    AnyType:$axes,         // Semantic shape
+    AnyType:$strides,      // Computed strides
+    AnyType:$data         // The data buffer
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$axes `,` $strides `,` $data attr-dict `:` type($axes) `,` type($strides) `,` type($data) `->` type($result)";
+}
+
+def Cpp2SON_AtlasOp : Cpp2SON_Op<"atlas", [Pure]> {
+  let summary = "Chart management for manifolds";
+  let description = [{
+    Represents a collection of charts that cover a manifold.
+    Each chart provides a coordinate mapping from the manifold to Euclidean space.
+    
+    Canonical cppfort type: atlas<C, Chart> where C is coord type, Chart is the chart function
+  }];
+  let arguments = (ins
+    AnyType:$charts,       // Indexed collection of charts
+    AnyType:$coord         // Coordinate type
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$charts `coord` $coord attr-dict `:` type($charts) `,` type($coord) `->` type($result)";
+}
+
+def Cpp2SON_ManifoldOp : Cpp2SON_Op<"manifold", [Pure]> {
+  let summary = "Smooth coordinate space (alias for atlas)";
+  let description = [{
+    Represents a smooth manifold with coordinate charts.
+    This is an alias for atlas<C, Chart>.
+    
+    Canonical cppfort type: manifold<C, Chart> = atlas<C, Chart>
+  }];
+  let arguments = (ins
+    AnyType:$charts,       // Chart collection
+    AnyType:$coord         // Coordinate type
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$charts `coord` $coord attr-dict `:` type($charts) `,` type($coord) `->` type($result)";
+}
+
+//===----------------------------------------------------------------------===//
+// Automatic Differentiation Operations
+//===----------------------------------------------------------------------===//
+
+def Cpp2SON_GradDiffOp : Cpp2SON_Op<"grad_diff", [Pure]> {
+  let summary = "Automatic differentiation - gradient computation";
+  let description = [{
+    Computes the gradient of an expression with respect to a variable.
+    Implements reverse-mode automatic differentiation.
+    
+    Canonical cppfort: grad_backend protocol
+    - expr: the expression to differentiate
+    - variable: the variable to differentiate with respect to
+  }];
+  let arguments = (ins
+    AnyType:$expr,         // Expression to differentiate
+    AnyType:$variable      // Variable to differentiate w.r.t.
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$expr `,` $variable attr-dict `:` type($expr) `,` type($variable) `->` type($result)";
+}
+
+def Cpp2SON_JacobianOp : Cpp2SON_Op<"jacobian", [Pure]> {
+  let summary = "Jacobian matrix computation";
+  let description = [{
+    Computes the Jacobian matrix of a vector-valued function.
+    The Jacobian contains all first-order partial derivatives.
+    
+    Used in chain rule for manifold differentiation:
+    grad(manifold) = jacobian * inner_grad
+  }];
+  let arguments = (ins
+    AnyType:$expr,         // Vector-valued expression
+    AnyType:$variables     // List of variables
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$expr `,` $variables attr-dict `:` type($expr) `,` type($variables) `->` type($result)";
+}
+
+def Cpp2SON_MatrixMulOp : Cpp2SON_Op<"matrix_mul", [Pure]> {
+  let summary = "Matrix multiplication";
+  let description = [{
+    Performs matrix multiplication of two matrices/vectors.
+    Used for Jacobian-vector products in AD and general linear algebra.
+    
+    Represents: result = lhs * rhs
+  }];
+  let arguments = (ins
+    AnyType:$lhs,          // Left-hand matrix/vector
+    AnyType:$rhs          // Right-hand matrix/vector
+  );
+  let results = (outs AnyType:$result);
+  let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)";
+}
