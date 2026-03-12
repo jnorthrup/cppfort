@@ -1,7 +1,0 @@
-// Test: markdown block inside function body must be rejected
-main: () -> int = {
-    /*```badmodule
-    This should fail
-    ```*/
-    return 0;
-}

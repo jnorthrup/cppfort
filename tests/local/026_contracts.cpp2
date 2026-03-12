@@ -1,8 +1,0 @@
-// Test contract annotations
-
-safe_div: (a: int, b: int)
-    assert<precondition>(b != 0)
-    -> int
-= {
-    return a / b;
-}

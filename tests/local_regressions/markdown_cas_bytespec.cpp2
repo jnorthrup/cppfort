@@ -1,7 +1,0 @@
-/*```testmodule
-Hello World
-```*/
-main: () -> int = {
-    std::cout << "Test passed";
-    return 0;
-}

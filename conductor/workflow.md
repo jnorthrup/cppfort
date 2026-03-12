@@ -32,10 +32,16 @@ The external loop operates on one bounded compiler slice at a time:
 - Emission/codegen: emitter/codegen sources
 - Conveyor contract only when the failure is in the conveyor itself
 
+**I/O Strategy**:
+- **Between build stages**: Use stdio for clarity (not channelized reactor)
+- **Large intermediate representations**: Use memory-mapped I/O only when necessary
+- **Rationale**: Simplicity over marginal performance gains in a compiler pipeline
+
 **Fixed Surface** (do not change):
 - `train.py` is the measurement harness
 - Do not use upstream cppfront as the transpiler under test
 - Do not replace candidate output with oracle artifacts
+- cppfront is a benchmark/validator only, not a build dependency
 
 ## Task Workflow
 

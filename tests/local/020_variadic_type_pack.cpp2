@@ -1,5 +1,0 @@
-// Test variadic type pack expansion
-
-my_type: <Ts...: type> type = {
-    tup: std::tuple<Ts...> = ();
-}

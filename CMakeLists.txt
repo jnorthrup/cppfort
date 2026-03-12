@@ -150,7 +150,8 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 # ============================================================================
 # MLIR Dialect TableGen
 # ============================================================================
-foreach(DIALECT_SPEC "Cpp2Ops;include/Cpp2Dialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc" "Cpp2FIROps;include/Cpp2FIRDialect.td;cpp2fir;" "Cpp2SONOps;include/Cpp2SONDialect.td;sond;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
+# Only build Cpp2SON dialect (TrikeShed Sea-of-Nodes)
+foreach(DIALECT_SPEC "Cpp2SONOps;include/Cpp2SONDialect.td;cpp2;OpsTypes.h.inc;OpsTypes.cpp.inc;OpsAttrDefs.h.inc;OpsAttrDefs.cpp.inc")
   list(GET DIALECT_SPEC 0 DIALECT_NAME)
   list(GET DIALECT_SPEC 1 TD_FILE)
   list(GET DIALECT_SPEC 2 DIALECT_NS)
@@ -179,105 +180,38 @@ endforeach()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# Cppfront build integration
-# Build cppfront from third_party/cppfront with Homebrew Clang
-set(CPPFRONT_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/source")
-set(CPPFRONT_BINARY_DIR "${CMAKE_BINARY_DIR}/bin")
+# cppfront Role: Benchmark/Validator Only (No Build Dependency)
+# cppfront is used as a temporary benchmark/validator, not a build dependency.
+# No cppfront linking, calling, or inclusion in the build process.
+# cppfront can be installed system-wide for validation runs, but is NOT required for building cppfort.
 
-add_executable(cppfront
-    "${CPPFRONT_SOURCE_DIR}/cppfront.cpp"
-)
-
-target_include_directories(cppfront PRIVATE
-    "${CPPFRONT_SOURCE_DIR}"
-)
-
-target_compile_features(cppfront PRIVATE cxx_std_23)
-
-# Ensure cppfront uses Homebrew Clang and libc++
-# Force -O0 for AST determinism in corpus comparisons
-# Increase template instantiation depth for Clang 21
-if(APPLE)
-    target_compile_options(cppfront PRIVATE
-        -stdlib=libc++
-        -Wno-date-time
-        -O0
-        -ftemplate-depth=2048
-        -ftemplate-backtrace-limit=0
-        -ferror-limit=10
-        -Wno-error
-        -Wno-unused-parameter
-        -Wno-unused-variable
-    )
-    target_link_options(cppfront PRIVATE
-        -stdlib=libc++
-    )
-    set_target_properties(cppfront PROPERTIES
-        OUTPUT_NAME "cppfront"
-        RUNTIME_OUTPUT_DIRECTORY "${CPPFRONT_BINARY_DIR}"
-    )
-endif()
-
-# Custom target to build cppfront (for use with ninja)
-add_custom_target(cppfront_build DEPENDS cppfront)
-
-# Corpus processing
-set(CPP2_DIR "${CMAKE_SOURCE_DIR}/third_party/cppfront/regression-tests")
-set(CORPUS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/corpus")
-file(MAKE_DIRECTORY ${CORPUS_OUTPUT_DIR})
-
-file(GLOB_RECURSE CPP2_FILES "${CPP2_DIR}/*.cpp2")
-list(FILTER CPP2_FILES EXCLUDE REGEX "-error\\.cpp2$")
-
-foreach(cpp2_file ${CPP2_FILES})
-  get_filename_component(base_name ${cpp2_file} NAME_WE)
-  set(output_cpp "${CORPUS_OUTPUT_DIR}/${base_name}.cpp")
-  set(output_ast "${CORPUS_OUTPUT_DIR}/${base_name}.ast")
-
-  add_custom_command(
-    OUTPUT ${output_cpp} ${output_ast}
-    COMMAND cppfront ${cpp2_file} -o ${output_cpp}
-    COMMAND gsed -i -e /^#include "cpp2util.h"/d -e /^#line /d ${output_cpp}
-    COMMAND ${CMAKE_CXX_COMPILER} -Xclang -ast-dump -fsyntax-only -std=c++23 ${output_cpp} > ${output_ast}
-    DEPENDS cppfront
-    COMMENT "Corpus: ${base_name}"
-  )
-  list(APPEND CORPUS_OUTPUTS ${output_cpp} ${output_ast})
-endforeach()
-
-add_custom_target(corpus_transpile DEPENDS ${CORPUS_OUTPUTS})
+# Note: The following targets have been removed:
+# - cppfront executable build
+# - cppfront_build custom target
+# - corpus_transpile target (requires cppfront)
+#
+# Rationale: cppfront is a temporary bootstrap mechanism. The native parser (in progress)
+# will replace cppfront for all transpilation needs. cppfront remains available as a
+# benchmark/validator for comparing outputs, but is not part of the critical build path.
 
 # Subdirectories
+if(EXISTS "${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt")
+  add_subdirectory(lib)
+endif()
+
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/CMakeLists.txt")
   add_subdirectory(src)
-  add_subdirectory(tests)
+  if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+  endif()
 endif()
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/selfhost/CMakeLists.txt")
   add_subdirectory(selfhost)
 endif()
 
-# Authoritative conveyor executable: build with CMake/Ninja, not ad hoc scripts.
-add_executable(cppfront_conveyor tools/cppfront_conveyor.cpp)
-target_compile_features(cppfront_conveyor PRIVATE cxx_std_23)
-target_compile_definitions(cppfront_conveyor PRIVATE
-  CPPFORT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
-  CPPFORT_BINARY_DIR="${CMAKE_BINARY_DIR}"
-  CPPFORT_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
-)
-set_target_properties(cppfront_conveyor PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-)
-
-if(TARGET cppfort)
-  add_custom_target(conveyor
-    COMMAND $<TARGET_FILE:cppfront_conveyor>
-    DEPENDS cppfront cppfort cppfront_conveyor
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    USES_TERMINAL
-    COMMENT "Running the authoritative cppfront/cppfort conveyor"
-  )
-endif()
+# Conveyor target removed: cppfront_conveyor depends on cppfront which is no longer built.
+# The conveyor concept will be reimplemented using native parser once available.
 
 # Testing
 enable_testing()

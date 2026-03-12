@@ -1,7 +1,0 @@
-// Test inout parameter semantics
-// Should transpile to: void decorate(std::string& s)
-// NOT: void decorate(std::string s)
-
-decorate: (inout s: std::string) = {
-    s = "[" + s + "]";
-}

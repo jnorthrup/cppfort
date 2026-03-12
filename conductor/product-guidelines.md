@@ -2,9 +2,22 @@
 
 ## Implementation Rules
 
-### 1. Template-Based Canonical Types
+### 1. Zero-Cost Abstractions via Front-End Sugar
 
-- Use raw C++ templates for canonical semantic types, not constexpr factories
+**Core Principle**: Front-end sugar IS the abstraction mechanism. Surface syntax (operators, underscore patterns, manifold notation) is the PRIMARY user interface and must compile to zero-cost abstractions.
+
+**Zero-Cost Definition**: 
+- Type alias = free hoisted vtable in real-world front IR
+- Surface syntax normalization produces optimal code with no abstraction overhead
+- SoN optimization proves zero-cost through constant propagation and alias analysis
+
+**Front-End Sugar as Core**:
+- TrikeShed operators (`j`, `α`, `**`, `++`, `*[]`) are semantic primitives
+- Manifold notation (`coords[...]`, `chart.project()`, `manifold.transition()`) is first-class
+- Early normalization preserves semantic intent while enabling SoN optimization
+
+**Canonical AST Design**:
+- Small, repo-owned types: `indexed`, `series`, `tensor`, `dense_tensor`, `atlas`, `manifold`
 - Templates normalize cleanly into SoN without source changes
 - SoN/MLIR does the smashing at compile time
 

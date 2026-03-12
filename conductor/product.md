@@ -4,26 +4,55 @@
 
 cppfort is a Cpp2-to-C++ transpiler built around a Sea-of-Nodes (SoN) intermediate representation powered by MLIR. It implements the TrikeShed architectural course correction: **semantic objects first, dense lowered views second**.
 
-### Current Status and Architectural Direction
+### TrikeShed Strategy: Front-End Sugar as Zero-Cost Abstraction Core
 
-Based on [`README.md`](../README.md:1), the project is currently being restarted through `selfhost/`:
+**Core Principle**: Front-end sugar IS the abstraction mechanism. The compiler's job is not to "compile away" syntax but to **normalize it to canonical forms** while preserving semantic intent.
 
-- **Active direction**: Bring TrikeShed-style abstractions over as a `cpp2` port
-- **Current contract**: Use `cmake` and `ninja` as supported build tools
+**Architecture**:
+```
+TrikeShed Surface Syntax (front-end sugar)
+    ↓ (early normalization - semantic preservation)
+Canonical AST (small, repo-owned, zero-cost)
+    ↓ (Sea-of-Nodes + constant propagation)
+Optimized IR (zero-cost abstractions proven)
+    ↓ (MLIR lowering)
+Target Code (optimal, no abstraction overhead)
+```
+
+**Key Insights**:
+1. **Zero-cost means**: Type alias = free hoisted vtable in real-world front IR
+2. **Front-end sugar is core**: Operators, underscore patterns, manifold notation are PRIMARY user interface
+3. **Normalization is semantic preservation**: Transform surface syntax to canonical AST without losing intent
+4. **SoN does the optimization**: Constant propagation, alias analysis, effect recovery happens in MLIR
+5. **Manifold applicability**: Unique challenge for SoN compilation and lifecycle memory management without the maths
+
+**cppfront as Temporary Benchmark**:
+- cppfront is used as a **benchmark/validator only**, not a build dependency
+- No cppfront linking, calling, or inclusion in the build process
+- Temporary ride for bootstrap compatibility, removable once native parser lands
+
+### Current Status and Architecture
+
+**Active Architecture**:
+- **Front-end sugar as core**: TrikeShed surface syntax is the primary abstraction mechanism
+- **Early normalization**: Surface sugar normalizes immediately to canonical AST
+- **SoN optimization**: Sea-of-Nodes + constant propagation does the heavy lifting
+- **MLIR lowering**: Canonical AST → SoN → target code with zero abstraction overhead
+
+**Implementation Status**:
 - **Live restart path**: `selfhost/` is the current source of truth
 - **Build target**: `selfhost_bootstrap_smoke` is the authoritative top-level build target
-- **Bootstrap bridge**: `old/cppfort` is used temporarily by the smoke target
+- **cppfront role**: Temporary benchmark/validator only (not a build dependency)
 
-**Architectural direction**:
-- Near-term goal: Recover a clean self-hosting path around the `selfhost/` restart and `cpp2`/TrikeShed abstraction port
-- Longer arc: Richer normalization and lowering work, including MLIR and Sea-of-Nodes style back-end structure
-- Historical context: The earlier conveyor flow around `cppfront` corpus remains useful as downstream validation
+**Manifold Clarification**:
+- **Compiler-process guidance**: Charts, atlases, coordinates for program forms
+- **Semantic transitions**: Guides normalization and lowering phases
+- **NOT**: Model training, learned classification, embeddings, or statistical inference
 
-**What `manifold` means here**:
-- Compiler-process guidance: charts, atlases, coordinates for program forms
-- Transitions that guide normalization and lowering
-- Organizing movement between representations without losing intent
-- **Does NOT mean**: model training, learned classification, embeddings, or statistical inference
+**I/O Strategy Decision**:
+- **stdio/mmap vs. channelized reactor**: For clarity, use simple stdio between build stages
+- **Rationale**: Channelized reactor adds complexity for marginal benefit in a compiler pipeline
+- **Exception**: Use memory-mapped I/O only for large intermediate representations
 
 ## Core Architecture
 

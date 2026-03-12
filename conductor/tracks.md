@@ -161,7 +161,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## GAP ANALYSIS NOTES (2026-03-12)
+## GAP ANALYSIS NOTES (2026-03-12) - TRIKESHED CONSOLIDATION
 
 **Critical insight from specification vs. implementation review:**
 
@@ -172,11 +172,20 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 3. **Bootstrap nucleus is minimal** - only integer tag constants, not transpilable C++
 4. **No working end-to-end pipeline** - no path from Cpp2 source → canonical AST → SoN → C++
 
+**TrikeShed-Specific Gaps:**
+1. **Front-end sugar normalization**: No implementation of TrikeShed operator/underscore pattern normalization
+2. **Manifold SoN integration**: No wiring of manifold guidance to SoN compilation phases
+3. **Lifecycle memory management**: No SoN-based lifecycle analysis for manifold types
+4. **Zero-cost abstraction verification**: No proof that surface syntax compiles to optimal code
+
 **Recommended track additions:**
 - `llvm21_fieldparser_fix` - unblock MLIR dialect compilation
-- `parser_implementation` - implement cppfort_parser.h contract
+- `parser_implementation` - implement cppfort_parser.h contract with TrikeShed sugar support
 - `canonical_wiring` - connect selfhost/canonical_types.cpp2 to build system
 - `minimal_son_lowering` - one working SoN op from canonical type
+- `trikeshed_sugar_normalization` - implement front-end sugar to canonical AST normalization
+- `manifold_son_integration` - wire manifold guidance to SoN compilation phases
+- `lifecycle_soN_analysis` - SoN-based lifecycle memory management for manifold types
 
 ---
 

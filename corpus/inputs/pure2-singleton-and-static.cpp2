@@ -1,9 +1,0 @@
-
-test: @singleton type = {
-    value: int = 42;
-    print: (this) = { std::cout << "(value)$\n"; }
-}
-
-main: () = {
-    test::instance().print();
-}

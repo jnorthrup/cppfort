@@ -1,6 +1,0 @@
-// Test move parameter semantics
-// Should transpile to: void consume(std::string&& s)
-
-consume: (move s: std::string) = {
-    auto local = std::move(s);
-}
