@@ -272,6 +272,9 @@ ParseResult Parser::parse(std::string_view source) {
     while (peek() != '\0') {
         auto stmt = parse_statement();
         if (stmt) {
+            // Consume trailing semicolon
+            skip_whitespace();
+            match(';');
             statements.push_back(std::move(stmt));
         } else {
             skip_whitespace();

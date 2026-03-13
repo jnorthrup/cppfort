@@ -3,9 +3,11 @@
 
 int main() {
     cppfort::Parser parser;
-    std::string_view source = "chart foo(x) { }";
+    std::string_view source = R"(
+let chart1 = chart identity(x: f64) { };
+)";
     
-    std::cout << "=== Testing: " << source << " ===" << std::endl;
+    std::cout << "=== Parsing multi-line TrikeShed ===" << std::endl;
     
     auto result = parser.parse(source);
     
