@@ -13,9 +13,9 @@ class indexed {
     I domain;
     F at;
 public:
-    using value_type = decltype(at(declval<I>()));
-    operator[](i: I) -> value_type = at(i);
-    size() -> I = domain;
+    using value_type = decltype(at(std::declval<I>()));
+    auto operator[](I i) -> value_type { return at(i); }
+    auto size() -> I { return domain; }
 };
 
 // series<F> - indexed sequence (indexed<int, F>)
@@ -44,11 +44,11 @@ template<typename K, typename T>
 class dense_tensor {
     series<axis<K>> axes;      // semantic shape
     series<int> strides;        // lowering
-    span<T> data;              // dense backing
+    T* data;              // dense backing
 public:
-    operator[](flat: int) -> T& = data[flat];
-    [[contiguous, non_aliasing, pure]]
-    auto data_view() -> span<T>;
+    auto operator[](int flat) -> T& { return data[flat]; }
+    // [[contiguous, non_aliasing, pure]]
+    auto data_view() -> T* { return data; }
 };
 
 // atlas<C, Chart> - chart management for manifolds
@@ -58,7 +58,7 @@ class atlas {
     indexed<C, Chart> charts;
 public:
     using coord_type = C;
-    operator()(c: C) -> Chart = charts[c];
+    auto operator()(C c) -> Chart { return charts[c]; }
 };
 
 // manifold<C, Chart> - smooth coordinate space (alias for atlas)
@@ -99,7 +99,7 @@ struct grad_backend {
 template<int Rank>
 struct coord {
     int values[Rank];
-    operator[](i: int) -> int = values[i];
+    auto operator[](int i) -> int& { return values[i]; }
 };
 
 // coordinate range descriptor
@@ -115,39 +115,39 @@ struct range {
 // These tags identify canonical node types in the semantic layer
 // ============================================================================
 
-join_tag := 1;
-indexed_tag := 2;
-coordinates_tag := 3;
-chart_project_tag := 4;
-chart_embed_tag := 5;
-atlas_locate_tag := 6;
-transition_tag := 7;
-lower_dense_tag := 8;
-normalize_tag := 9;
-canonical_ast_tag := 10;
+join_tag : int = 1;
+indexed_tag : int = 2;
+coordinates_tag : int = 3;
+chart_project_tag : int = 4;
+chart_embed_tag : int = 5;
+atlas_locate_tag : int = 6;
+transition_tag : int = 7;
+lower_dense_tag : int = 8;
+normalize_tag : int = 9;
+canonical_ast_tag : int = 10;
 
 // Gradient protocol tags
-grad_expr_tag := 11;
-grad_backend_tag := 12;
+grad_expr_tag : int = 11;
+grad_backend_tag : int = 12;
 
 // Parser API tags
-parser_parse_tag := 100;
-parser_normalize_tag := 101;
-parser_lower_to_son_tag := 102;
+parser_parse_tag : int = 100;
+parser_normalize_tag : int = 101;
+parser_lower_to_son_tag : int = 102;
 
 // Shape descriptors for tensor operations
-shape_tag := 20;
-stride_tag := 21;
-rank_tag := 22;
+shape_tag : int = 20;
+stride_tag : int = 21;
+rank_tag : int = 22;
 
 // Jacobian and gradient computation
-jacobian_tag := 30;
-matrix_mul_tag := 31;
-gradient_aggregate_tag := 32;
+jacobian_tag : int = 30;
+matrix_mul_tag : int = 31;
+gradient_aggregate_tag : int = 32;
 
 // CAS Internment tags
-intern_string_tag := 40;
-intern_constant_tag := 41;
+intern_string_tag : int = 40;
+intern_constant_tag : int = 41;
 
 // ============================================================================
 // MANIFOLD GUIDANCE DOCUMENTATION

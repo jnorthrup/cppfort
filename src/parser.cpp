@@ -439,9 +439,10 @@ std::unique_ptr<ASTNode> Parser::parse_unified_declaration(std::string_view name
     decl->line = current_line_;
     decl->column = current_column_;
 
-    // Parse param list: ()
+    // Parse param list: () OR type specifier
     skip_whitespace();
     if (match('(')) {
+        // Function with params
         auto params = std::make_unique<ASTNode>(NodeTag::indexed_tag, "params");
         skip_whitespace();
         if (!match(')')) {
@@ -477,25 +478,38 @@ std::unique_ptr<ASTNode> Parser::parse_unified_declaration(std::string_view name
             }
         }
         decl->children.push_back(std::move(params));
-    }
-
-    // Parse return type: -> int
-    skip_whitespace();
-    if (match("->")) {
+        
+        // Function return type: -> int
         skip_whitespace();
-        size_t rstart = position_;
+        if (match("->")) {
+            skip_whitespace();
+            size_t rstart = position_;
+            while (position_ < source_.size() &&
+                   (std::isalpha(source_[position_]) || source_[position_] == '_')) {
+                position_++;
+            }
+            if (position_ > rstart) {
+                auto rettype = std::make_unique<ASTNode>(NodeTag::coordinates_tag,
+                    source_.substr(rstart, position_ - rstart));
+                decl->children.push_back(std::move(rettype));
+            }
+        }
+    } else {
+        // Variable: type specifier only (no params)
+        // Parse type: int, string, etc.
+        size_t tstart = position_;
         while (position_ < source_.size() &&
-               (std::isalpha(source_[position_]) || source_[position_] == '_')) {
+               (std::isalnum(source_[position_]) || source_[position_] == '_')) {
             position_++;
         }
-        if (position_ > rstart) {
-            auto rettype = std::make_unique<ASTNode>(NodeTag::coordinates_tag,
-                source_.substr(rstart, position_ - rstart));
-            decl->children.push_back(std::move(rettype));
+        if (position_ > tstart) {
+            auto type = std::make_unique<ASTNode>(NodeTag::coordinates_tag,
+                source_.substr(tstart, position_ - tstart));
+            decl->children.push_back(std::move(type));
         }
     }
 
-    // Parse body: = { ... } or = expression
+    // Parse body/initializer: = { ... } or = expression or just ;
     skip_whitespace();
     if (match('=')) {
         skip_whitespace();

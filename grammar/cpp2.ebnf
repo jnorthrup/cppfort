@@ -649,5 +649,41 @@ cpp1_template       = "template" "<" ? C++1 template params ? ">" cpp1_passthrou
  *)
 
 (* ============================================================================ *)
-(* END OF GRAMMAR                                                               *)
+(* TRIKESHED SURFACE SYNTAX EXTENSIONS *)
+(* Per trikeshed_signals.md: "TrikeShed Notation as Front-End Sugar Only" *)
+(* Normalize early into a small canonical AST *)
+(* ============================================================================ *)
+
+(* --- TrikeShed core lib port (minimal) --- *)
+join = expression "j" expression ;
+indexed = domain "j" accessor ;
+series = indexed "<" "int" ">" ;
+alpha = expression "α" transform ;
+fold = series "." "fold" "(" init "," accumulator ")" ;
+slice = series "[" from ".." to "]" ;
+cursor = series "<" series ">" ;
+
+(* --- Original language additions --- *)
+series_literal = "_s" "[" expression { "," expression } "]" ;
+elementwise_mul = expression "**" expression ;
+elementwise_add = expression "++" expression ;
+indexed_view = expression "*[" expression "]" ;
+grad_diff = "grad" "(" expression "," var ")" ;
+dense_view = "dense" "(" series_expression ")" ;
+
+(* --- Semantic coordinates (manifold) --- *)
+coordinate_literal = "coords" "[" expression_list "]" ;
+chart_decl = "chart" identifier "(" parameter_list ")" block ;
+atlas_literal = "atlas" "[" expression_list "]" ;
+manifold_decl = "manifold" identifier "=" expression ;
+transition_expr = expression "." "transition" "(" expression "," expression "," expression ")" ;
+
+(* --- Manifold chart structure --- *)
+chart_body = "{" { chart_member } "}" ;
+chart_member = "contains" expression ";"
+| "project" "->" expression ";"
+| "embed" "(" identifier ")" "->" expression ";" ;
+
+(* ============================================================================ *)
+(* END OF GRAMMAR *)
 (* ============================================================================ *)

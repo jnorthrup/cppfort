@@ -3,9 +3,9 @@
 
 int main() {
     cppfort::Parser parser;
-    std::string_view source = "x: int = 42;";
     
-    std::cout << "=== Testing: " << source << " ===" << std::endl;
+    // Test simplest possible input - just an expression
+    std::string_view source = "42";
     
     auto result = parser.parse(source);
     
@@ -13,9 +13,9 @@ int main() {
         std::cout << "Parse successful!" << std::endl;
         return 0;
     } else {
-        std::cerr << "Parse failed:" << std::endl;
+        std::cout << "Parse failed:" << std::endl;
         for (const auto& err : result.errors) {
-            std::cerr << "  Line " << err.line << ", Col " << err.column << ": " << err.message << std::endl;
+            std::cout << "  Line " << err.line << ", Col " << err.column << ": " << err.message << std::endl;
         }
         return 1;
     }

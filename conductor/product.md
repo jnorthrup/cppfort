@@ -40,7 +40,7 @@ Target Code (optimal, no abstraction overhead)
 - **MLIR lowering**: Canonical AST → SoN → target code with zero abstraction overhead
 
 **Implementation Status**:
-- **Live restart path**: `selfhost/` is the current source of truth
+- **Live restart path**: `src/selfhost/` is the current source of truth
 - **Build target**: `selfhost_bootstrap_smoke` is the authoritative top-level build target
 - **cppfront role**: Temporary benchmark/validator only (not a build dependency)
 
@@ -224,11 +224,11 @@ constexpr struct CASPool {
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Parser API contract | **HEADER ONLY** - no implementation | [`cppfort_parser.h`](cppfort_parser.h) |
-| Canonical type templates | **DECLARED** - not wired into build | [`selfhost/canonical_types.cpp2`](selfhost/canonical_types.cpp2) |
-| Bootstrap tags | **BUILT** - integer constants only | [`selfhost/bootstrap_tags.cpp2`](selfhost/bootstrap_tags.cpp2) |
+| Parser API contract | **HEADER ONLY** - no implementation | [`include/cppfort_parser.h`](include/cppfort_parser.h) (missing) |
+| Canonical type templates | **DECLARED** - not wired into build | [`src/selfhost/canonical_types.cpp2`](src/selfhost/canonical_types.cpp2) |
+| Bootstrap tags | **BUILT** - integer constants only | [`src/selfhost/bootstrap_tags.cpp2`](src/selfhost/bootstrap_tags.cpp2) |
 | MLIR SoN dialect | **TABLEGEN DEFINED** - disabled in build | [`include/Cpp2SONDialect.td`](include/Cpp2SONDialect.td) |
-| CAS internment types | **HEADER ONLY** - no implementation | [`cppfort_parser.h:114-132`](cppfort_parser.h:114) |
+| CAS internment types | **HEADER ONLY** - no implementation | `cppfort_parser.h` (missing) |
 
 ### Critical Gaps
 

@@ -156,5 +156,6 @@ cppfort/
 - ❌ Parser: header-only API, no implementation
 - ❌ MLIR SoN dialect: TableGen defined but disabled in build
 - ❌ CAS internment: declared in headers, not implemented
-- ✅ Bootstrap tags: integer constants that build
-- ❌ Canonical types: declared in .cpp2, not wired to transpilation
+- ✅ Bootstrap tags: integer constants that build (in `src/selfhost/bootstrap_tags.cpp2`)
+- ❌ Canonical types: declared in `src/selfhost/canonical_types.cpp2`, not wired to transpilation
+- ❌ Transpiler: `old/cppfort` binary missing (should exist per spec but doesn't)

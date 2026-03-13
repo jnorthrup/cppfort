@@ -19,51 +19,36 @@
 // These tags identify canonical node types in the semantic layer
 // ============================================================================
 
-join_tag := 1;
-indexed_tag := 2;
-coordinates_tag := 3;
-chart_project_tag := 4;
-chart_embed_tag := 5;
-atlas_locate_tag := 6;
-transition_tag := 7;
-lower_dense_tag := 8;
-normalize_tag := 9;
-canonical_ast_tag := 10;
+join_tag : int = 1;
+indexed_tag : int = 2;
+coordinates_tag : int = 3;
+chart_project_tag : int = 4;
+chart_embed_tag : int = 5;
+atlas_locate_tag : int = 6;
+transition_tag : int = 7;
+lower_dense_tag : int = 8;
+normalize_tag : int = 9;
+canonical_ast_tag : int = 10;
 
 // Gradient protocol tags
-grad_expr_tag := 11;
-grad_backend_tag := 12;
+grad_expr_tag : int = 11;
+grad_backend_tag : int = 12;
 
 // Parser API tags
-parser_parse_tag := 100;
-parser_normalize_tag := 101;
-parser_lower_to_son_tag := 102;
-
-// ============================================================================
-// MANIFOLD GUIDANCE DOCUMENTATION
-// ============================================================================
-// 
-// The 'manifold' concept here is algebraic/process structure for the compiler:
-// - charts: individual coordinate patches
-// - atlases: collections of charts with overlap/transitions
-// - coordinates: values within a chart's domain
-// - transitions: smooth mappings between chart patches
-// - metric: distance/inner-product structure
-//
-// Dense lowering is a separate explicit boundary from semantic representation.
-// This is NOT learned embeddings or statistical inference.
-// ============================================================================
+parser_parse_tag : int = 100;
+parser_normalize_tag : int = 101;
+parser_lower_to_son_tag : int = 102;
 
 // Shape descriptors for tensor operations
-shape_tag := 20;
-stride_tag := 21;
-rank_tag := 22;
+shape_tag : int = 20;
+stride_tag : int = 21;
+rank_tag : int = 22;
 
 // Jacobian and gradient computation
-jacobian_tag := 30;
-matrix_mul_tag := 31;
-gradient_aggregate_tag := 32;
+jacobian_tag : int = 30;
+matrix_mul_tag : int = 31;
+gradient_aggregate_tag : int = 32;
 
 // CAS Internment tags
-intern_string_tag := 40;
-intern_constant_tag := 41;
+intern_string_tag : int = 40;
+intern_constant_tag : int = 41;
