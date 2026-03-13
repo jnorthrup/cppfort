@@ -45,3 +45,13 @@ add_custom_command(
 )
 
 add_custom_target(selfhost_bootstrap_smoke DEPENDS "${BOOTSTRAP_OBJ}")
+
+# Add canonical_types as a header library
+# This is C++ template code that maps to MLIR SoN operations
+add_library(cppfort_canonical_types INTERFACE)
+target_include_directories(cppfort_canonical_types INTERFACE
+  ${CMAKE_SOURCE_DIR}/src/selfhost
+)
+target_sources(cppfort_canonical_types INTERFACE
+  ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_types.cpp2
+)

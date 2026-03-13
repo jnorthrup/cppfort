@@ -123,8 +123,18 @@ ninja -C build Cpp2SONDialect Cpp2SONPasses
 ✅ 24 dogfooding smoke tests created
 ✅ Full SeaOfNodes chapter documentation (01-24)
 ✅ Mathematical foundation documented
-✅ Build verified and working
 
+**In Progress:**
+- Parser implementation (hand-written, 1650+ lines)
+- End-to-end test pipeline
 
+**Working:**
+- Expression parsing: `42`, `x`, `x = 42`
+- Unified declaration: `main: () -> int = { return 42; }` ✅ DOGFOODING MINIMUM
+- MLIR dialect builds
+- CMake configuration
 
+**Next:**
+- Colon declaration syntax: `main: () -> int = { return 42; }`
+- Full TrikeShed surface syntax
 ... we'll se if this holds up as we implement the rest of the architecture!
