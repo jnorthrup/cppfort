@@ -259,7 +259,7 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 
 ## [~] Track: TrikeShed Surface Restart
 *Link: [./conductor/tracks/trikeshed_surface_restart_20260311/](./conductor/tracks/trikeshed_surface_restart_20260311/)*
-*Status: ACTIVE* - restart cppfort’s TrikeShed migration from the real transpiler repo and its working parser/emitter harnesses. Source files located at `src/selfhost/`.
+*Status: ACTIVE* - selfhost dogfood is green for atlas/manifold, chart clause, `transition`, and `join` surfaces; the next bounded slice remains `alpha` on `src/selfhost/rbcursive.cpp2`, but 2026-03-13 execution is still blocked because the requested kilo delegation route panics before worker start.
 
 **Purpose:** Treat `../TrikeShed` as the semantic/source-text reference and restart cppfort around a smaller cpp2-owned bootstrap nucleus, with `old/` kept archive-only and semantic normalization prioritized over legacy surface recovery.
 
@@ -267,13 +267,17 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 - External signal only: `/Users/jim/work/TrikeShed/conductor/grok_share_bGVnYWN5_21edd44f-9e25-434b-9bcb-2d036feee2dc.md`
 - External spec input only: `/Users/jim/work/TrikeShed/conductor/tracks/cpp2-surface-transition_20260311/expanded_cpp2_spec.md`
 - Archive-only legacy corpus: `old/` is retained for bootstrap compatibility only and is not the implementation truth
-- Current implementation owner: `selfhost/` for new cpp2-native bootstrap surfaces, plus root `CMakeLists.txt` as the routing point
+- Current implementation owner: `src/selfhost/` for new cpp2-native bootstrap surfaces, plus root `CMakeLists.txt` and `src/selfhost/CMakeLists.txt` as the routing point
 - Verified slices:
   - multi-expression subscript syntax now parses and emits for `coords[1.0, 2.0]` through the legacy slim parser/emitter harnesses
   - canonical grammar truth and annotated harness coverage encode that accepted `coords[...]` surface as historical evidence
-  - cpp2-owned bootstrap nucleus now exists under `selfhost/`, with canonical node tags and a dedicated smoke target that uses `old/cppfort` only as a temporary transpilation bridge
+  - cpp2-owned bootstrap nucleus now exists under `src/selfhost/`, with canonical node tags and a dedicated smoke target; the current temporary transpilation bridge for the pure cpp2 dogfood surface is local `cppfront`
+  - `selfhost_rbcursive_smoke` now verifies atlas/manifold declarations, `coords[...]` and `local[...]` element projection, and chart `contains`/`project`/`embed(local)` clause diagnostics through the repo-owned pure cpp2 bootstrap surface
+  - `selfhost_rbcursive_smoke` now also verifies `line.transition("identity", "shifted", coords[17.0])` plus stable diagnostics for missing commas, missing `)`, and incomplete nested coords payloads
+  - `selfhost_rbcursive_smoke` now also verifies `a j b` and `embed(local) -> a j b` plus stable diagnostics for missing rhs and malformed operator placement
 - Process meaning: `manifold` here is algebraic guidance for compiler phase alignment and legal semantic transitions, not model training, token classification, or statistical inference
-- Active slice: replace integer-only bootstrap tags with the smallest richer selfhost surface that encodes manifold-guided process phases and semantic transition boundaries without reviving `src/*`
+- Active slice: add `alpha` transform coverage to the selfhost dogfood surface without widening beyond `src/selfhost/rbcursive.cpp2` and `tests/selfhost_rbcursive_smoke.cpp`
+- Current blocker (2026-03-13): the requested `using kilo` route resolves only as `codex exec -m kilo --full-auto --sandbox workspace-write -C /Users/jim/work/cppfort`, and that worker still panics in `system-configuration` before execution; there is no standalone `kilo` CLI in PATH, while `claude`, `qwen`, `opencode`, and `copilot` remain unusable as alternate delegated surfaces
 
 ---
 

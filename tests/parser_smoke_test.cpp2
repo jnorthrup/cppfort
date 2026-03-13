@@ -1,0 +1,271 @@
+#include "cppfort_parser.h"
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+#ifndef CPPFORT_SOURCE_DIR
+#error "CPPFORT_SOURCE_DIR must be defined for parser smoke fixtures"
+#endif
+
+using namespace cppfort;
+
+fixture_path: (name: std::string_view) -> std::string = {
+    return std::string(CPPFORT_SOURCE_DIR) + "/tests/smoke/" + std::string(name);
+}
+
+print_errors: (label: std::string_view, errors: std::vector<ParseError>) -> int = {
+    std::cerr << "FAIL: " << label << "\n";
+    i: int = 0;
+    while i < errors.ssize() {
+        std::cerr << "  Error at "
+                  << errors[i].line
+                  << ":"
+                  << errors[i].column
+                  << ": "
+                  << errors[i].message
+                  << "\n";
+        i = i + 1;
+    }
+    return 1;
+}
+
+program_child: (ast: *CanonicalAST) -> *ASTNode = {
+    root: *ASTNode = ast*.root();
+    if root == nullptr || root*.children.size() != 1 {
+        return nullptr;
+    }
+    return root*.children[0].get();
+}
+
+child_at: (node: *ASTNode, index: int) -> *ASTNode = {
+    if node == nullptr || index < 0 || index >= node*.children.ssize() {
+        return nullptr;
+    }
+    return node*.children[index].get();
+}
+
+main: () -> int = {
+    std::cout << "Testing cppfort_parser...\n";
+
+    {
+        coords_result: ParseResult = Parser().parse_file(fixture_path("parser_restart_coords.cpp2"));
+        if !coords_result.success() {
+            return print_errors("parser_restart_coords.cpp2 parse failed", coords_result.errors);
+        }
+
+        std::cout << "PASS: parser_restart_coords.cpp2 parsed successfully\n";
+        coords_ast: *CanonicalAST = coords_result.ast.get();
+        coords: *ASTNode = program_child(coords_ast);
+        if coords == nullptr || coords*.tag != NodeTag::coordinates_tag {
+            std::cerr << "FAIL: coords fixture did not produce coordinates_tag\n";
+            return 1;
+        }
+        if coords*.children.size() != 2 {
+            std::cerr << "FAIL: coords fixture child count mismatch\n";
+            return 1;
+        }
+
+        coords_x: *ASTNode = child_at(coords, 0);
+        coords_y: *ASTNode = child_at(coords, 1);
+        if coords_x == nullptr || coords_y == nullptr
+           || coords_x*.text != "1.0" || coords_y*.text != "2.0" {
+            std::cerr << "FAIL: coords fixture child text mismatch\n";
+            return 1;
+        }
+
+        norm_result: ParseResult = Parser().parse_file(fixture_path("parser_restart_coords.cpp2"));
+        if !norm_result.success() {
+            return print_errors("parser_restart_coords.cpp2 normalization parse failed", norm_result.errors);
+        }
+        normalized: std::unique_ptr<CanonicalAST> = Parser().normalize(norm_result.ast.get());
+        normalized_ast: *CanonicalAST = normalized.get();
+        if normalized_ast == nullptr || normalized_ast*.root() == nullptr {
+            std::cerr << "FAIL: coords normalization failed\n";
+            return 1;
+        }
+        std::cout << "PASS: coords[1.0, 2.0] normalized successfully\n";
+    }
+
+    {
+        join_result: ParseResult = Parser().parse_file(fixture_path("parser_restart_join.cpp2"));
+        if !join_result.success() {
+            return print_errors("parser_restart_join.cpp2 parse failed", join_result.errors);
+        }
+
+        std::cout << "PASS: parser_restart_join.cpp2 parsed successfully\n";
+        join_ast: *CanonicalAST = join_result.ast.get();
+        join: *ASTNode = program_child(join_ast);
+        if join == nullptr || join*.tag != NodeTag::join_tag {
+            std::cerr << "FAIL: join fixture did not produce join_tag\n";
+            return 1;
+        }
+        if join*.children.size() != 2 {
+            std::cerr << "FAIL: join fixture child count mismatch\n";
+            return 1;
+        }
+
+        join_lhs: *ASTNode = child_at(join, 0);
+        join_rhs: *ASTNode = child_at(join, 1);
+        if join_lhs == nullptr || join_rhs == nullptr
+           || join_lhs*.text != "a" || join_rhs*.text != "b" {
+            std::cerr << "FAIL: join fixture child text mismatch\n";
+            return 1;
+        }
+    }
+
+    {
+        transition_result: ParseResult = Parser().parse_file(fixture_path("parser_restart_transition.cpp2"));
+        if !transition_result.success() {
+            return print_errors("parser_restart_transition.cpp2 parse failed", transition_result.errors);
+        }
+
+        std::cout << "PASS: parser_restart_transition.cpp2 parsed successfully\n";
+        transition_ast: *CanonicalAST = transition_result.ast.get();
+        transition: *ASTNode = program_child(transition_ast);
+        if transition == nullptr || transition*.tag != NodeTag::transition_tag {
+            std::cerr << "FAIL: transition fixture did not produce transition_tag\n";
+            return 1;
+        }
+        if transition*.children.size() != 4 {
+            std::cerr << "FAIL: transition fixture child count mismatch\n";
+            return 1;
+        }
+
+        transition_subject: *ASTNode = child_at(transition, 0);
+        transition_from: *ASTNode = child_at(transition, 1);
+        transition_to: *ASTNode = child_at(transition, 2);
+        transition_coords: *ASTNode = child_at(transition, 3);
+        if transition_subject == nullptr || transition_from == nullptr
+           || transition_to == nullptr || transition_coords == nullptr {
+            std::cerr << "FAIL: transition fixture missing children\n";
+            return 1;
+        }
+        if transition_subject*.text != "line"
+           || transition_from*.text != "identity"
+           || transition_to*.text != "shifted" {
+            std::cerr << "FAIL: transition fixture text mismatch\n";
+            return 1;
+        }
+        if transition_coords*.tag != NodeTag::coordinates_tag {
+            std::cerr << "FAIL: transition fixture final child was not coordinates_tag\n";
+            return 1;
+        }
+        if transition_coords*.children.size() != 1 {
+            std::cerr << "FAIL: transition fixture coordinate payload size mismatch\n";
+            return 1;
+        }
+
+        transition_coord: *ASTNode = child_at(transition_coords, 0);
+        if transition_coord == nullptr || transition_coord*.text != "17.0" {
+            std::cerr << "FAIL: transition fixture coordinate payload mismatch\n";
+            return 1;
+        }
+    }
+
+    {
+        chart_result: ParseResult = Parser().parse("chart identity(point) { }");
+        if !chart_result.success() {
+            return print_errors("chart declaration parse failed", chart_result.errors);
+        }
+
+        std::cout << "PASS: chart identity(point) parsed successfully\n";
+        chart_ast: *CanonicalAST = chart_result.ast.get();
+        chart: *ASTNode = program_child(chart_ast);
+        if chart == nullptr || chart*.tag != NodeTag::chart_project_tag {
+            std::cerr << "FAIL: chart declaration did not produce chart_project_tag\n";
+            return 1;
+        }
+        if chart*.children.size() != 2 {
+            std::cerr << "FAIL: chart declaration payload mismatch\n";
+            return 1;
+        }
+
+        chart_name: *ASTNode = child_at(chart, 0);
+        chart_param: *ASTNode = child_at(chart, 1);
+        if chart_name == nullptr || chart_param == nullptr
+           || chart_name*.text != "identity"
+           || chart_param*.text != "point" {
+            std::cerr << "FAIL: chart declaration payload mismatch\n";
+            return 1;
+        }
+    }
+
+    {
+        atlas_result: ParseResult = Parser().parse("atlas[shifted, identity]");
+        if !atlas_result.success() {
+            return print_errors("atlas parse failed", atlas_result.errors);
+        }
+
+        std::cout << "PASS: atlas[shifted, identity] parsed successfully\n";
+        atlas_ast: *CanonicalAST = atlas_result.ast.get();
+        atlas: *ASTNode = program_child(atlas_ast);
+        if atlas == nullptr || atlas*.tag != NodeTag::atlas_locate_tag {
+            std::cerr << "FAIL: atlas literal did not produce atlas_locate_tag\n";
+            return 1;
+        }
+        if atlas*.children.size() != 2 {
+            std::cerr << "FAIL: atlas literal payload mismatch\n";
+            return 1;
+        }
+
+        atlas_first: *ASTNode = child_at(atlas, 0);
+        atlas_second: *ASTNode = child_at(atlas, 1);
+        if atlas_first == nullptr || atlas_second == nullptr
+           || atlas_first*.text != "shifted"
+           || atlas_second*.text != "identity" {
+            std::cerr << "FAIL: atlas literal payload mismatch\n";
+            return 1;
+        }
+    }
+
+    {
+        manifold_result: ParseResult = Parser().parse("manifold line = atlas[shifted, identity]");
+        if !manifold_result.success() {
+            return print_errors("manifold declaration parse failed", manifold_result.errors);
+        }
+
+        std::cout << "PASS: manifold line = atlas[...] parsed successfully\n";
+        manifold_ast: *CanonicalAST = manifold_result.ast.get();
+        manifold: *ASTNode = program_child(manifold_ast);
+        if manifold == nullptr || manifold*.children.size() != 2 {
+            std::cerr << "FAIL: manifold declaration payload mismatch\n";
+            return 1;
+        }
+
+        manifold_name: *ASTNode = child_at(manifold, 0);
+        manifold_atlas: *ASTNode = child_at(manifold, 1);
+        if manifold_name == nullptr || manifold_atlas == nullptr
+           || manifold_name*.text != "line"
+           || manifold_atlas*.tag != NodeTag::atlas_locate_tag {
+            std::cerr << "FAIL: manifold declaration child mismatch\n";
+            return 1;
+        }
+    }
+
+    {
+        add_result: ParseResult = Parser().parse("x + y");
+        if !add_result.success() {
+            return print_errors("x + y parse failed", add_result.errors);
+        }
+
+        std::cout << "PASS: x + y parsed successfully\n";
+        add_ast: *CanonicalAST = add_result.ast.get();
+        add: *ASTNode = program_child(add_ast);
+        if add == nullptr || add*.text != "+" || add*.children.size() != 2 {
+            std::cerr << "FAIL: additive expression payload mismatch\n";
+            return 1;
+        }
+
+        add_lhs: *ASTNode = child_at(add, 0);
+        add_rhs: *ASTNode = child_at(add, 1);
+        if add_lhs == nullptr || add_rhs == nullptr
+           || add_lhs*.text != "x" || add_rhs*.text != "y" {
+            std::cerr << "FAIL: additive expression child mismatch\n";
+            return 1;
+        }
+    }
+
+    std::cout << "\nAll tests passed!\n";
+    return 0;
+}

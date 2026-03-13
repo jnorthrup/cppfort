@@ -1,10 +1,10 @@
 {
-  "last_successful_step": "selfhost_rbcursive_dogfood_20260313",
-  "gap_analysis_summary": "Selfhost scanner dogfood path exists via cppfront bootstrap; broader parser grammar and SoN lowering remain incomplete",
+  "last_successful_step": "selfhost_join_surface_20260313",
+  "gap_analysis_summary": "Selfhost scanner dogfood path now covers atlas/manifold plus chart contains/project/embed/local, transition, and join feature streams via cppfront bootstrap; alpha remains incomplete and the requested kilo delegation route still panics before worker execution",
   "implemented_components": [
     "selfhost/bootstrap_tags.cpp - Integer tag constants that build",
-    "selfhost/rbcursive.cpp2 - Pure cpp2 scanner/combinator nucleus",
-    "selfhost_rbcursive_smoke - cppfront-boosted dogfood target and ctest case",
+    "selfhost/rbcursive.cpp2 - Pure cpp2 scanner/combinator nucleus with atlas/manifold/chart/transition/join feature-stream coverage",
+    "selfhost_rbcursive_smoke - cppfront-boosted dogfood target and ctest case covering atlas/manifold, coords/local literals, chart contains/project/embed clauses, transition expressions, and join diagnostics",
     "cpp2.indexed operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED in build)",
     "cpp2.series operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
     "cpp2.tensor operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
@@ -16,7 +16,7 @@
     "cpp2.matrix_mul operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)"
   ],
   "missing_components": [
-    "Parser grammar growth beyond current selfhost keyword/group dogfood slice",
+    "Alpha transformation surface in selfhost bootstrap",
     "MLIR SoN dialect compilation - blocked by LLVM 21 FieldParser issue",
     "CAS internment implementation - no active selfhost path yet",
     "Canonical types transpilation - canonical_types.cpp2 remains inventory only",
@@ -24,7 +24,7 @@
     "End-to-end pipeline - no working path from Cpp2 to SoN to C++"
   ],
   "active_track": "trikeshed_surface_restart_20260311",
-  "active_slice": "selfhost-rbcursive-dogfood",
-  "slice_status": "dogfood_green_keyword_group_only",
-  "honest_note": "The repo now has a repo-owned dogfood path for the pure cpp2 scanner via cppfront bootstrap, but it is still a narrow feature-stream slice rather than a self-hosting parser."
+  "active_slice": "selfhost-alpha-surface",
+  "slice_status": "blocked_worker_runtime_kilo_codex_panic_20260313",
+  "honest_note": "The repo now has a repo-owned selfhost dogfood path for atlas/manifold plus chart contains/project/embed/local, `line.transition(...)`, and `a j b` surfaces through cppfront bootstrap, but alpha remains outside the verified selfhost corpus and the only host-resolved `using kilo` route here (`codex exec -m kilo ...`) still panics in `system-configuration` before touching repo files."
 }

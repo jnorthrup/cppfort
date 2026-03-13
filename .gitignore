@@ -383,3 +383,5 @@ Icon
 .Trash-*
 .nfs*logs/
 __pycache__/
+build/
+build-alpha/

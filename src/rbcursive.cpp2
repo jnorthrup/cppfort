@@ -1,0 +1,234 @@
+// rbcursive.cpp2 - Parser Combinators in Cpp2
+// TrikeShed Manifold-based parsing with Sea-of-Nodes IR
+// Ported from literbike/src/rbcursive/combinators.rs
+
+// ============================================================================
+// SIGNAL - Coarse-grained parser outcome
+// ============================================================================
+
+signal: type = enum {
+    accept: (),
+    need_more: ();
+    reject: ();
+}
+
+// ============================================================================
+// PARSE RESULT - Continuation-aware result
+// ============================================================================
+
+parse_result: type = (T: type) => struct {
+    signal: signal;
+    value: T?;          // valid when accept
+    consumed: int;     // bytes consumed
+    error: string?;    // valid when reject
+}
+
+// ============================================================================
+// PARSER TRAIT - Core parser interface
+// ============================================================================
+
+parser: type = (T: type, E: type) => concept {
+    parse: (self, input: []u8) -> parse_result(T);
+}
+
+// ============================================================================
+// MANIFOLD SIGNAL MAPPING - TrikeShed semantic preservation
+// ============================================================================
+
+// Signal as manifold point - each signal is a chart in the parser manifold
+signal_as_chart: (s: signal) -> int = s -> {
+    when s {
+        accept     => 0;
+        need_more  => 1;
+        reject     => 2;
+    }
+}
+
+// ============================================================================
+// BASIC PARSERS
+// ============================================================================
+
+// Byte parser - match exact byte
+byte_parser: (target: u8) -> impl parser(u8, string) = target -> {
+    (input) -> {
+        when input.len() {
+            0 => signal.need_more!();
+            _ => {
+                when input[0] == target {
+                    true => (signal.accept!, input[0], 1, none);
+                    false => (signal.reject!, none, 0, "byte mismatch");
+                }
+            }
+        }
+    }
+}
+
+// Take exact count
+take_parser: (count: int) -> impl parser([]u8, string) = count -> {
+    (input) -> {
+        when input.len() < count {
+            true => (signal.need_more!, none, input.len(), none);
+            false => (signal.accept!, input[0..count], count, none);
+        }
+    }
+}
+
+// Take while predicate
+take_while: (pred: (u8) -> bool) -> impl parser([]u8, string) = pred -> {
+    (input) -> {
+        len: int = 0;
+        while len < input.len() && pred(input[len]) {
+            len = len + 1;
+        }
+        when len {
+            0 => (signal.reject!, none, 0, "no matching bytes");
+            _ => (signal.accept!, input[0..len], len, none);
+        }
+    }
+}
+
+// Take until delimiter
+take_until: (delim: u8) -> impl parser([]u8, string) = delim -> {
+    (input) -> {
+        i: int = 0;
+        while i < input.len() && input[i] != delim {
+            i = i + 1;
+        }
+        when i < input.len() {
+            true => (signal.accept!, input[0..i], i + 1, none);
+            false => (signal.need_more!, none, input.len(), none);
+        }
+    }
+}
+
+// ============================================================================
+// CONFLIX PARSER - Nested matching (brackets, parens, etc)
+// ============================================================================
+
+conflix_parser: (open: u8, close: u8, allow_nested: bool) -> impl parser([]u8, string) = (open, close, nested) -> {
+    (input) -> {
+        when input.len() == 0 || input[0] != open {
+            true => (signal.reject!, none, 0, "missing open delimiter");
+            false => {
+                depth: int = 1;
+                i: int = 1;
+                while i < input.len() {
+                    when input[i] == open && nested {
+                        true => depth = depth + 1;
+                        false => {};
+                    }
+                    when input[i] == close {
+                        true => {
+                            depth = depth - 1;
+                            when depth == 0 {
+                                true => return (signal.accept!, input[0..=i], i + 1, none);
+                                false => {};
+                            }
+                        }
+                        false => {};
+                    }
+                    i = i + 1;
+                }
+                (signal.need_more!, none, input.len(), none);
+            }
+        }
+    }
+}
+
+// ============================================================================
+// COMBINATORS - Parser algebra
+// ============================================================================
+
+// Map - transform successful parse
+map: (p: impl parser(T, E), f: (T) -> U) -> impl parser(U, E) = (p, f) -> {
+    (input) -> {
+        r = p.parse(input);
+        when r.signal {
+            accept => (signal.accept!, f(r.value!), r.consumed, none);
+            need_more => (signal.need_more!, none, r.consumed, none);
+            reject => (signal.reject!, none, r.consumed, r.error);
+        }
+    }
+}
+
+// And_then - chain parsers
+and_then: (p: impl parser(T, E), f: (T) -> impl parser(U, E)) -> impl parser(U, E) = (p, f) -> {
+    (input) -> {
+        r = p.parse(input);
+        when r.signal {
+            accept => {
+                next = f(r.value!);
+                next.parse(input[r.consumed..]);
+            }
+            need_more => (signal.need_more!, none, r.consumed, none);
+            reject => (signal.reject!, none, r.consumed, r.error);
+        }
+    }
+}
+
+// Or - alternate parsers
+or: (p: impl parser(T, E), q: impl parser(T, E)) -> impl parser(T, E) = (p, q) -> {
+    (input) -> {
+        r = p.parse(input);
+        when r.signal {
+            accept => r;
+            need_more => {
+                // Try alternate on same input
+                r2 = q.parse(input);
+                when r2.signal {
+                    accept => r2;
+                    _ => r; // prefer need_more over reject
+                }
+            }
+            reject => q.parse(input); // try alternate
+        }
+    }
+}
+
+// Many - zero or more
+many: (p: impl parser(T, E)) -> impl parser([]T, E) = p -> {
+    (input) -> {
+        results: []T = [];
+        pos: int = 0;
+        while pos < input.len() {
+            r = p.parse(input[pos..]);
+            when r.signal {
+                accept => {
+                    results.push_back(r.value!);
+                    pos = pos + r.consumed;
+                }
+                _ => break;
+            }
+        }
+        (signal.accept!, results, pos, none);
+    }
+}
+
+// ============================================================================
+// MANIFOLD COORDINATES - Semantic to dense lowering
+// ============================================================================
+
+// Lower signal to dense representation for optimization
+signal_to_dense: (s: signal) -> []u8 = s -> {
+    when s {
+        accept     => coords[0u8];
+        need_more  => coords[1u8];
+        reject     => coords[2u8];
+    }
+}
+
+// ============================================================================
+// EXAMPLE: HTTP-like parser using combinators
+// ============================================================================
+
+crlf: impl parser([]u8, string) = take_until(0x0DU);  // \r
+
+// ============================================================================
+// CHART PROJECTION - Surface to canonical
+// ============================================================================
+
+// Project surface syntax to canonical parser AST
+project_to_canonical: (surface: []u8) -> parse_result([]u8) = surface -> {
+    // Use manifold coordinates to preserve structure
+    confix_parser(0x28, 0x29, false).parse(surface);  // ( )
+}
