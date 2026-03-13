@@ -1,9 +1,10 @@
 {
-  "last_successful_step": "gap_analysis_20260312",
-  "gap_analysis_summary": "Parser implementation missing, MLIR SoN dialect disabled, bootstrap is minimal integer tags only",
+  "last_successful_step": "selfhost_rbcursive_dogfood_20260313",
+  "gap_analysis_summary": "Selfhost scanner dogfood path exists via cppfront bootstrap; broader parser grammar and SoN lowering remain incomplete",
   "implemented_components": [
-    "cppfort_parser.h - Public API contract (HEADER ONLY - no implementation)",
     "selfhost/bootstrap_tags.cpp - Integer tag constants that build",
+    "selfhost/rbcursive.cpp2 - Pure cpp2 scanner/combinator nucleus",
+    "selfhost_rbcursive_smoke - cppfront-boosted dogfood target and ctest case",
     "cpp2.indexed operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED in build)",
     "cpp2.series operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
     "cpp2.tensor operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)",
@@ -15,15 +16,15 @@
     "cpp2.matrix_mul operation in Cpp2SONDialect.td (TABLEGEN DEFINED - DISABLED)"
   ],
   "missing_components": [
-    "Parser implementation - Parser::Impl has no definition",
+    "Parser grammar growth beyond current selfhost keyword/group dogfood slice",
     "MLIR SoN dialect compilation - blocked by LLVM 21 FieldParser issue",
-    "CAS internment implementation - declared in headers only",
-    "Canonical types transpilation - canonical_types.cpp2 not wired to build",
+    "CAS internment implementation - no active selfhost path yet",
+    "Canonical types transpilation - canonical_types.cpp2 remains inventory only",
     "Lowering passes - exist in old/ but not integrated",
     "End-to-end pipeline - no working path from Cpp2 to SoN to C++"
   ],
   "active_track": "trikeshed_surface_restart_20260311",
-  "active_slice": "trike-restart-05",
-  "slice_status": "complete_but_bootstrap_is_minimal",
-  "honest_note": "The bootstrap nucleus is only integer constants. Cannot transpile actual canonical type templates. This is a spec-forward project with minimal working implementation."
+  "active_slice": "selfhost-rbcursive-dogfood",
+  "slice_status": "dogfood_green_keyword_group_only",
+  "honest_note": "The repo now has a repo-owned dogfood path for the pure cpp2 scanner via cppfront bootstrap, but it is still a narrow feature-stream slice rather than a self-hosting parser."
 }

@@ -1,0 +1,1592 @@
+// rbcursive.cpp2 - Pure cpp2 scanner combinator nucleus
+// Keep the bootstrap surface honest: valid pure2, feature stream first,
+// diagnostics side-channel explicit, retained tree deferred.
+
+// ============================================================================
+// COARSE RESULT SIGNAL
+// ============================================================================
+
+scan_signal: @enum type = {
+    accept;
+    need_more;
+    reject;
+}
+
+// ============================================================================
+// LOW-LEVEL SCAN CLASSIFICATION
+// Mirrored after the TrikeShed JSON split: lexical facts first, structural facts
+// separately, richer interpretation later.
+// ============================================================================
+
+delimiter_event: @enum type = {
+    unchanged;
+    group_open;
+    group_close;
+    value_delim;
+}
+
+lexer_event: @enum type = {
+    unchanged;
+    whitespace;
+    identifier;
+    digit;
+    sign;
+    quote;
+    escape;
+    utf_continuation;
+}
+
+trace_trait: @flag_enum<u8> type = {
+    debug;
+    backtracking;
+    skipper;
+}
+
+feature_kind: @enum type = {
+    group;
+    identifier;
+    integer;
+    keyword;
+    surface;
+}
+
+diagnostic_severity: @enum type = {
+    error;
+    incomplete;
+}
+
+// ============================================================================
+// FEATURE + DIAGNOSTIC SIDE CHANNEL
+// ============================================================================
+
+trace_event: @struct type = {
+    rule: std::string = ();
+    start: int = 0;
+    stop: int = 0;
+    outcome: scan_signal = ();
+    traits: trace_trait = ();
+}
+
+feature_record: @struct type = {
+    kind: feature_kind = ();
+    start: int = 0;
+    stop: int = 0;
+    semantic: std::string = ();
+}
+
+diagnostic_record: @struct type = {
+    rule: std::string = ();
+    start: int = 0;
+    stop: int = 0;
+    severity: diagnostic_severity = ();
+    message: std::string = ();
+}
+
+scan_result: @struct <T: type> type = {
+    outcome: scan_signal = ();
+    value: std::optional<T> = ();
+    consumed: int = 0;
+    message: std::string = ();
+}
+
+scan_session: @struct type = {
+    traces: std::vector<trace_event> = ();
+    features: std::vector<feature_record> = ();
+    diagnostics: std::vector<diagnostic_record> = ();
+    active_traits: trace_trait = ();
+
+    note_trace: (inout this, rule: std::string_view, start: int, stop: int, outcome: scan_signal) = {
+        rule_text: std::string = rule;
+        event: trace_event = (rule_text, start, stop, outcome, active_traits);
+        traces.push_back(event);
+    }
+
+    note_feature: (
+        inout this,
+        kind: feature_kind,
+        start: int,
+        stop: int,
+        semantic: std::string_view = ""
+    ) = {
+        semantic_text: std::string = semantic;
+        feature: feature_record = (kind, start, stop, semantic_text);
+        features.push_back(feature);
+    }
+
+    note_diagnostic: (
+        inout this,
+        rule: std::string_view,
+        start: int,
+        stop: int,
+        severity: diagnostic_severity,
+        message: std::string_view
+    ) = {
+        rule_text: std::string = rule;
+        message_text: std::string = message;
+        diagnostic: diagnostic_record = (rule_text, start, stop, severity, message_text);
+        diagnostics.push_back(diagnostic);
+    }
+}
+
+predicate: type == std::function<(ch: char) -> bool>;
+
+parser_of: <T: type> type == std::function<
+    (input: std::string_view, start: int, inout session: scan_session) -> scan_result<T>
+>;
+
+emit_trace: (
+    inout session: scan_session,
+    rule: std::string_view,
+    start: int,
+    stop: int,
+    outcome: scan_signal
+) = {
+    session.note_trace(rule, start, stop, outcome);
+}
+
+record_feature: (
+    inout session: scan_session,
+    kind: feature_kind,
+    start: int,
+    stop: int,
+    semantic: std::string_view = ""
+) = {
+    session.note_feature(kind, start, stop, semantic);
+}
+
+record_diagnostic: (
+    inout session: scan_session,
+    rule: std::string_view,
+    start: int,
+    stop: int,
+    severity: diagnostic_severity,
+    message: std::string_view
+) = {
+    session.note_diagnostic(rule, start, stop, severity, message);
+}
+
+diagnostic_for_outcome: (
+    outcome: scan_signal
+) -> diagnostic_severity = {
+    if outcome == scan_signal::need_more {
+        return diagnostic_severity::incomplete;
+    }
+    return diagnostic_severity::error;
+}
+
+clamp_stop: (
+    input: std::string_view,
+    start: int,
+    consumed: int
+) -> int = {
+    stop := start + consumed;
+    if stop < start {
+        return start;
+    }
+    if stop > input.ssize() {
+        return input.ssize();
+    }
+    return stop;
+}
+
+record_surface_failure: (
+    input: std::string_view,
+    inout session: scan_session,
+    rule: std::string_view,
+    start: int,
+    consumed: int,
+    outcome: scan_signal,
+    message: std::string_view
+) = {
+    if outcome == scan_signal::accept {
+        return;
+    }
+
+    stop := clamp_stop(input, start, consumed);
+    record_diagnostic(
+        session,
+        rule,
+        start,
+        stop,
+        diagnostic_for_outcome(outcome),
+        message
+    );
+}
+
+surface_failure_result: <T: type>(
+    input: std::string_view,
+    inout session: scan_session,
+    rule: std::string_view,
+    start: int,
+    consumed: int,
+    outcome: scan_signal,
+    message: std::string_view
+) -> scan_result<T> = {
+    record_surface_failure(
+        input,
+        session,
+        rule,
+        start,
+        consumed,
+        outcome,
+        message
+    );
+
+    emit_trace(
+        session,
+        rule,
+        start,
+        clamp_stop(input, start, consumed),
+        outcome
+    );
+
+    if outcome == scan_signal::need_more {
+        return need_more_result<T>(consumed, message);
+    }
+
+    return reject_result<T>(message, consumed);
+}
+
+accept_result: <T: type>(
+    value: T,
+    consumed: int,
+    message: std::string_view = ""
+) -> scan_result<T> = {
+    text: std::string = message;
+    return (scan_signal::accept, value, consumed, text);
+}
+
+need_more_result: <T: type>(
+    consumed: int,
+    message: std::string_view = ""
+) -> scan_result<T> = {
+    text: std::string = message;
+    empty: std::optional<T> = ();
+    return (scan_signal::need_more, empty, consumed, text);
+}
+
+reject_result: <T: type>(
+    message: std::string_view,
+    consumed: int = 0
+) -> scan_result<T> = {
+    text: std::string = message;
+    empty: std::optional<T> = ();
+    return (scan_signal::reject, empty, consumed, text);
+}
+
+// ============================================================================
+// BYTE CLASSIFIERS
+// ============================================================================
+
+is_space: (ch: char) -> bool =
+    ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
+
+is_digit: (ch: char) -> bool =
+    ch >= '0' && ch <= '9';
+
+is_upper: (ch: char) -> bool =
+    ch >= 'A' && ch <= 'Z';
+
+is_lower: (ch: char) -> bool =
+    ch >= 'a' && ch <= 'z';
+
+is_identifier_head: (ch: char) -> bool =
+    is_upper(ch) || is_lower(ch) || ch == '_';
+
+is_identifier_tail: (ch: char) -> bool =
+    is_identifier_head(ch) || is_digit(ch);
+
+classify_delimiter_event: (ch: char) -> delimiter_event = {
+    if ch == '(' || ch == '[' || ch == '{' {
+        return delimiter_event::group_open;
+    }
+    if ch == ')' || ch == ']' || ch == '}' {
+        return delimiter_event::group_close;
+    }
+    if ch == ',' {
+        return delimiter_event::value_delim;
+    }
+    return delimiter_event::unchanged;
+}
+
+classify_lexer_event: (ch: char) -> lexer_event = {
+    if is_space(ch) {
+        return lexer_event::whitespace;
+    }
+    if is_identifier_head(ch) {
+        return lexer_event::identifier;
+    }
+    if is_digit(ch) {
+        return lexer_event::digit;
+    }
+    if ch == '+' || ch == '-' {
+        return lexer_event::sign;
+    }
+    if ch == '"' {
+        return lexer_event::quote;
+    }
+    if ch == '\\' {
+        return lexer_event::escape;
+    }
+    if ch >= '\x80' {
+        return lexer_event::utf_continuation;
+    }
+    return lexer_event::unchanged;
+}
+
+starts_with_at: (
+    input: std::string_view,
+    start: int,
+    token: std::string_view
+) -> bool = {
+    if start < 0 || start > input.ssize() {
+        return false;
+    }
+    if start + token.ssize() > input.ssize() {
+        return false;
+    }
+    return input.substr(start, token.ssize()) == token;
+}
+
+keyword_or_prefix_at: (
+    input: std::string_view,
+    start: int,
+    token: std::string_view
+) -> bool = {
+    if start < 0 || start > input.ssize() {
+        return false;
+    }
+
+    remaining := input.ssize() - start;
+    if remaining >= token.ssize() {
+        if !starts_with_at(input, start, token) {
+            return false;
+        }
+
+        next := start + token.ssize();
+        if next >= input.ssize() {
+            return true;
+        }
+        return !is_identifier_tail(input[next]);
+    }
+
+    return token.substr(0, remaining) == input.substr(start, remaining);
+}
+
+// ============================================================================
+// PRIMITIVE PARSERS
+// ============================================================================
+
+skip_ws: () -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        cursor := start;
+        while cursor < input.ssize() && is_space(input[cursor]) {
+            cursor = cursor + 1;
+        }
+
+        emit_trace(session, "skip_ws", start, cursor, scan_signal::accept);
+        return accept_result<std::string_view>(
+            input.substr(start, cursor - start),
+            cursor - start
+        );
+    };
+}
+
+take_while_1: (
+    rule: std::string_view,
+    pred: predicate
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start >= input.ssize() {
+            emit_trace(session, rule$, start, start, scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "input exhausted");
+        }
+
+        cursor := start;
+        while cursor < input.ssize() && pred$(input[cursor]) {
+            cursor = cursor + 1;
+        }
+
+        if cursor == start {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("predicate rejected at head");
+        }
+
+        emit_trace(session, rule$, start, cursor, scan_signal::accept);
+        return accept_result<std::string_view>(
+            input.substr(start, cursor - start),
+            cursor - start
+        );
+    };
+}
+
+literal: (
+    rule: std::string_view,
+    token: std::string_view,
+    semantic: std::string_view = ""
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start + token$.ssize() > input.ssize() {
+            emit_trace(session, rule$, start, input.ssize(), scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "literal needs more input");
+        }
+
+        if !starts_with_at(input, start, token$) {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("literal mismatch");
+        }
+
+        stop := start + token$.ssize();
+        label: std::string_view = semantic$;
+        if label.empty() {
+            label = token$;
+        }
+
+        emit_trace(session, rule$, start, stop, scan_signal::accept);
+        record_feature(session, feature_kind::keyword, start, stop, label);
+        return accept_result<std::string_view>(
+            input.substr(start, token$.ssize()),
+            token$.ssize()
+        );
+    };
+}
+
+arrow_parser: (
+    rule: std::string_view = "arrow"
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start + 2 > input.ssize() {
+            emit_trace(session, rule$, start, input.ssize(), scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "arrow token expected");
+        }
+
+        if !starts_with_at(input, start, "->") {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("arrow token expected");
+        }
+
+        stop := start + 2;
+        emit_trace(session, rule$, start, stop, scan_signal::accept);
+        return accept_result<std::string_view>(
+            input.substr(start, 2),
+            2
+        );
+    };
+}
+
+balanced_group: (
+    open: char,
+    close: char,
+    rule: std::string_view = "balanced_group",
+    semantic: std::string_view = "balanced_group"
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start >= input.ssize() {
+            emit_trace(session, rule$, start, start, scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "group open delimiter missing");
+        }
+
+        if classify_delimiter_event(input[start]) != delimiter_event::group_open || input[start] != open$ {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("unexpected group opener");
+        }
+
+        depth := 1;
+        cursor := start + 1;
+        while cursor < input.ssize() {
+            if input[cursor] == open$ {
+                depth = depth + 1;
+            }
+            else if input[cursor] == close$ {
+                depth = depth - 1;
+                if depth == 0 {
+                    stop := cursor + 1;
+                    emit_trace(session, rule$, start, stop, scan_signal::accept);
+                    record_feature(session, feature_kind::group, start, stop, semantic$);
+                    return accept_result<std::string_view>(
+                        input.substr(start, stop - start),
+                        stop - start
+                    );
+                }
+            }
+            cursor = cursor + 1;
+        }
+
+        emit_trace(session, rule$, start, input.ssize(), scan_signal::need_more);
+        return need_more_result<std::string_view>(
+            input.ssize() - start,
+            "group close delimiter missing"
+        );
+    };
+}
+
+line_expression_surface: (
+    rule: std::string_view,
+    semantic: std::string_view
+) -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            round_depth := 0;
+            square_depth := 0;
+            brace_depth := 0;
+            stop := start;
+            saw_payload := false;
+
+            while cursor < input.ssize() {
+                ch := input[cursor];
+                if (ch == '\n' || ch == '\r') &&
+                   round_depth == 0 &&
+                   square_depth == 0 &&
+                   brace_depth == 0 {
+                    break;
+                }
+
+                if ch == '}' &&
+                   round_depth == 0 &&
+                   square_depth == 0 &&
+                   brace_depth == 0 {
+                    break;
+                }
+
+                if !is_space(ch) {
+                    saw_payload = true;
+                    stop = cursor + 1;
+                }
+
+                if ch == '(' {
+                    round_depth = round_depth + 1;
+                }
+                else if ch == ')' {
+                    if round_depth == 0 {
+                        break;
+                    }
+                    round_depth = round_depth - 1;
+                }
+                else if ch == '[' {
+                    square_depth = square_depth + 1;
+                }
+                else if ch == ']' {
+                    if square_depth == 0 {
+                        break;
+                    }
+                    square_depth = square_depth - 1;
+                }
+                else if ch == '{' {
+                    brace_depth = brace_depth + 1;
+                }
+                else if ch == '}' {
+                    if brace_depth == 0 {
+                        break;
+                    }
+                    brace_depth = brace_depth - 1;
+                }
+
+                cursor = cursor + 1;
+            }
+
+            consumed := cursor - start;
+            if round_depth != 0 || square_depth != 0 || brace_depth != 0 {
+                emit_trace(session, rule$, start, cursor, scan_signal::need_more);
+                return need_more_result<std::string_view>(
+                    consumed,
+                    "expression group incomplete"
+                );
+            }
+
+            if !saw_payload {
+                outcome := scan_signal::reject;
+                if cursor >= input.ssize() {
+                    outcome = scan_signal::need_more;
+                }
+
+                emit_trace(session, rule$, start, cursor, outcome);
+                if outcome == scan_signal::need_more {
+                    return need_more_result<std::string_view>(
+                        consumed,
+                        "clause expression expected"
+                    );
+                }
+
+                return reject_result<std::string_view>(
+                    "clause expression expected",
+                    consumed
+                );
+            }
+
+            emit_trace(session, rule$, start, cursor, scan_signal::accept);
+            record_feature(session, feature_kind::surface, start, stop, semantic$);
+            return accept_result<std::string_view>(
+                input.substr(start, stop - start),
+                consumed
+            );
+        }
+    );
+}
+
+// ============================================================================
+// COMBINATORS
+// ============================================================================
+
+with_traits: <T: type>(
+    traits: trace_trait,
+    p: parser_of<T>
+) -> parser_of<T> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<T> = {
+        saved := session.active_traits;
+        session.active_traits = saved | traits$;
+        result := p$(input, start, session);
+        session.active_traits = saved;
+        return result;
+    };
+}
+
+choice: <T: type>(
+    rule: std::string_view,
+    left: parser_of<T>,
+    right: parser_of<T>
+) -> parser_of<T> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<T> = {
+        first := left$(input, start, session);
+        if first.outcome != scan_signal::reject {
+            emit_trace(session, rule$, start, start + first.consumed, first.outcome);
+            return first;
+        }
+
+        second := right$(input, start, session);
+        emit_trace(session, rule$, start, start + second.consumed, second.outcome);
+        return second;
+    };
+}
+
+followed_by: <L: type, R: type>(
+    rule: std::string_view,
+    left: parser_of<L>,
+    right: parser_of<R>
+) -> parser_of<R> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<R> = {
+        first := left$(input, start, session);
+        if first.outcome == scan_signal::need_more {
+            emit_trace(session, rule$, start, start + first.consumed, scan_signal::need_more);
+            return need_more_result<R>(first.consumed, first.message);
+        }
+        if first.outcome == scan_signal::reject {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<R>(first.message, first.consumed);
+        }
+
+        second := right$(input, start + first.consumed, session);
+        total := first.consumed + second.consumed;
+
+        if second.outcome == scan_signal::accept {
+            emit_trace(session, rule$, start, start + total, scan_signal::accept);
+            return accept_result<R>(second.value.value(), total, second.message);
+        }
+        if second.outcome == scan_signal::need_more {
+            emit_trace(session, rule$, start, start + total, scan_signal::need_more);
+            return need_more_result<R>(total, second.message);
+        }
+
+        emit_trace(session, rule$, start, start + total, scan_signal::reject);
+        return reject_result<R>(second.message, total);
+    };
+}
+
+trimmed: <T: type>(
+    rule: std::string_view,
+    p: parser_of<T>
+) -> parser_of<T> = {
+    return with_traits<T>(
+        trace_trait::skipper,
+        followed_by<std::string_view, T>(rule, skip_ws(), p)
+    );
+}
+
+many: <T: type>(
+    rule: std::string_view,
+    p: parser_of<T>
+) -> parser_of<std::vector<T>> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::vector<T>> = {
+        values: std::vector<T> = ();
+        cursor := start;
+
+        while cursor < input.ssize() {
+            next := p$(input, cursor, session);
+            if next.outcome == scan_signal::accept {
+                if next.consumed == 0 {
+                    emit_trace(session, rule$, start, cursor, scan_signal::reject);
+                    return reject_result<std::vector<T>>("many() inner parser consumed nothing");
+                }
+                values.push_back(next.value.value());
+                cursor = cursor + next.consumed;
+            }
+            else if next.outcome == scan_signal::need_more {
+                emit_trace(session, rule$, start, cursor, scan_signal::need_more);
+                return need_more_result<std::vector<T>>(cursor - start, next.message);
+            }
+            else {
+                break;
+            }
+        }
+
+        emit_trace(session, rule$, start, cursor, scan_signal::accept);
+        return accept_result<std::vector<T>>(values, cursor - start);
+    };
+}
+
+// ============================================================================
+// PURE2-FIRST SCANNER SURFACES
+// Feature stream first, richer retained tree later, mixed mode later still.
+// ============================================================================
+
+identifier_parser: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            if start >= input.ssize() {
+                emit_trace(session, "identifier", start, start, scan_signal::need_more);
+                return need_more_result<std::string_view>(0, "identifier head expected");
+            }
+
+            if !is_identifier_head(input[start]) {
+                emit_trace(session, "identifier", start, start, scan_signal::reject);
+                return reject_result<std::string_view>("identifier head expected");
+            }
+
+            cursor := start + 1;
+            while cursor < input.ssize() && is_identifier_tail(input[cursor]) {
+                cursor = cursor + 1;
+            }
+
+            slice := input.substr(start, cursor - start);
+            emit_trace(session, "identifier", start, cursor, scan_signal::accept);
+            record_feature(session, feature_kind::identifier, start, cursor, slice);
+            return accept_result<std::string_view>(slice, cursor - start);
+        }
+    );
+}
+
+integer_parser: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            if start >= input.ssize() {
+                emit_trace(session, "integer", start, start, scan_signal::need_more);
+                return need_more_result<std::string_view>(0, "integer digits expected");
+            }
+
+            cursor := start;
+            if classify_lexer_event(input[cursor]) == lexer_event::sign {
+                cursor = cursor + 1;
+            }
+
+            digits_start := cursor;
+            while cursor < input.ssize() && is_digit(input[cursor]) {
+                cursor = cursor + 1;
+            }
+
+            if digits_start == cursor {
+                emit_trace(session, "integer", start, start, scan_signal::reject);
+                return reject_result<std::string_view>("integer digits expected");
+            }
+
+            slice := input.substr(start, cursor - start);
+            emit_trace(session, "integer", start, cursor, scan_signal::accept);
+            record_feature(session, feature_kind::integer, start, cursor, slice);
+            return accept_result<std::string_view>(slice, cursor - start);
+        }
+    );
+}
+
+keyword_parser: (keyword: std::string_view) -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        literal("keyword", keyword, keyword)
+    );
+}
+
+pure2_surface_head: () -> parser_of<std::string_view> = {
+    return trimmed<std::string_view>(
+        "pure2_surface_head",
+        choice<std::string_view>(
+            "surface_head_choice",
+            keyword_parser("chart"),
+            choice<std::string_view>(
+                "surface_head_tail",
+                keyword_parser("atlas"),
+                keyword_parser("manifold")
+            )
+        )
+    );
+}
+
+pure2_keyword_group: (keyword: std::string_view) -> parser_of<std::string_view> = {
+    return followed_by<std::string_view, std::string_view>(
+        "pure2_keyword_group",
+        trimmed<std::string_view>("pure2_keyword", keyword_parser(keyword)),
+        trimmed<std::string_view>("pure2_group", balanced_group('(', ')'))
+    );
+}
+
+pure2_chart_declaration_head: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "chart_decl_keyword",
+                keyword_parser("chart")
+            );
+            name := trimmed<std::string_view>(
+                "chart_decl_name",
+                identifier_parser()
+            );
+            parameters := trimmed<std::string_view>(
+                "chart_decl_parameters",
+                balanced_group('(', ')', "chart_decl_parameter_group", "chart_parameters")
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                message: std::string_view = "chart keyword expected";
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_declaration_head",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    message
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            name_result := name(input, cursor, session);
+            if name_result.outcome != scan_signal::accept {
+                total := cursor - start + name_result.consumed;
+                message: std::string_view = "chart name expected";
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_declaration_head",
+                    start,
+                    total,
+                    name_result.outcome,
+                    message
+                );
+            }
+            cursor = cursor + name_result.consumed;
+
+            parameter_result := parameters(input, cursor, session);
+            total := cursor - start + parameter_result.consumed;
+            if parameter_result.outcome != scan_signal::accept {
+                message: std::string_view = "chart parameter group incomplete";
+                if parameter_result.outcome == scan_signal::reject {
+                    message = "chart parameter group expected";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_declaration_head",
+                    start,
+                    total,
+                    parameter_result.outcome,
+                    message
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_chart_declaration_head",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_chart_definition: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            head := pure2_chart_declaration_head();
+            body := trimmed<std::string_view>(
+                "chart_decl_body",
+                pure2_chart_body()
+            );
+
+            head_result := head(input, cursor, session);
+            if head_result.outcome != scan_signal::accept {
+                total := cursor - start + head_result.consumed;
+                emit_trace(
+                    session,
+                    "pure2_chart_definition",
+                    start,
+                    clamp_stop(input, start, total),
+                    head_result.outcome
+                );
+                if head_result.outcome == scan_signal::need_more {
+                    return need_more_result<std::string_view>(total, head_result.message);
+                }
+                return reject_result<std::string_view>(head_result.message, total);
+            }
+            cursor = cursor + head_result.consumed;
+
+            body_result := body(input, cursor, session);
+            total := cursor - start + body_result.consumed;
+            if body_result.outcome != scan_signal::accept {
+                emit_trace(
+                    session,
+                    "pure2_chart_definition",
+                    start,
+                    clamp_stop(input, start, total),
+                    body_result.outcome
+                );
+                if body_result.outcome == scan_signal::need_more {
+                    return need_more_result<std::string_view>(total, body_result.message);
+                }
+                return reject_result<std::string_view>(body_result.message, total);
+            }
+
+            emit_trace(
+                session,
+                "pure2_chart_definition",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_coords_literal: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "coords_literal_keyword",
+                keyword_parser("coords")
+            );
+            elements := trimmed<std::string_view>(
+                "coords_literal_elements",
+                balanced_group('[', ']', "coords_literal_group", "coords_elements")
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_coords_literal",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    "coords keyword expected"
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            element_result := elements(input, cursor, session);
+            total := cursor - start + element_result.consumed;
+            if element_result.outcome != scan_signal::accept {
+                message: std::string_view = "coords element group incomplete";
+                if element_result.outcome == scan_signal::reject {
+                    message = "coords element group expected";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_coords_literal",
+                    start,
+                    total,
+                    element_result.outcome,
+                    message
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_coords_literal",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_chart_contains_clause: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "chart_contains_keyword",
+                literal("chart_contains_literal", "contains", "contains")
+            );
+            expression := trimmed<std::string_view>(
+                "chart_contains_expression",
+                line_expression_surface(
+                    "chart_contains_expression_surface",
+                    "chart_contains_expression"
+                )
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_contains_clause",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    "contains keyword expected"
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            expression_result := expression(input, cursor, session);
+            total := cursor - start + expression_result.consumed;
+            if expression_result.outcome != scan_signal::accept {
+                message: std::string_view = "contains expression expected";
+                if expression_result.message == "expression group incomplete" {
+                    message = "contains expression incomplete";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_contains_clause",
+                    start,
+                    total,
+                    expression_result.outcome,
+                    message
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_chart_contains_clause",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_chart_project_clause: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "chart_project_keyword",
+                literal("chart_project_literal", "project", "project")
+            );
+            arrow := trimmed<std::string_view>(
+                "chart_project_arrow",
+                arrow_parser("chart_project_arrow_token")
+            );
+            coordinates := trimmed<std::string_view>(
+                "chart_project_coordinates",
+                pure2_coords_literal()
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_project_clause",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    "project keyword expected"
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            arrow_result := arrow(input, cursor, session);
+            if arrow_result.outcome != scan_signal::accept {
+                total := cursor - start + arrow_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_project_clause",
+                    start,
+                    total,
+                    arrow_result.outcome,
+                    "project arrow expected"
+                );
+            }
+            cursor = cursor + arrow_result.consumed;
+
+            coordinate_result := coordinates(input, cursor, session);
+            total := cursor - start + coordinate_result.consumed;
+            if coordinate_result.outcome != scan_signal::accept {
+                emit_trace(
+                    session,
+                    "pure2_chart_project_clause",
+                    start,
+                    clamp_stop(input, start, total),
+                    coordinate_result.outcome
+                );
+                if coordinate_result.outcome == scan_signal::need_more {
+                    return need_more_result<std::string_view>(
+                        total,
+                        coordinate_result.message
+                    );
+                }
+                return reject_result<std::string_view>(
+                    coordinate_result.message,
+                    total
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_chart_project_clause",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_chart_embed_clause: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "chart_embed_keyword",
+                literal("chart_embed_literal", "embed", "embed")
+            );
+            bindings := trimmed<std::string_view>(
+                "chart_embed_bindings",
+                balanced_group('(', ')', "chart_embed_binding_group", "chart_embed_parameters")
+            );
+            arrow := trimmed<std::string_view>(
+                "chart_embed_arrow",
+                arrow_parser("chart_embed_arrow_token")
+            );
+            expression := trimmed<std::string_view>(
+                "chart_embed_expression",
+                line_expression_surface(
+                    "chart_embed_expression_surface",
+                    "chart_embed_expression"
+                )
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_embed_clause",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    "embed keyword expected"
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            binding_result := bindings(input, cursor, session);
+            if binding_result.outcome != scan_signal::accept {
+                total := cursor - start + binding_result.consumed;
+                message: std::string_view = "embed parameter group incomplete";
+                if binding_result.outcome == scan_signal::reject {
+                    message = "embed parameter group expected";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_embed_clause",
+                    start,
+                    total,
+                    binding_result.outcome,
+                    message
+                );
+            }
+            cursor = cursor + binding_result.consumed;
+
+            arrow_result := arrow(input, cursor, session);
+            if arrow_result.outcome != scan_signal::accept {
+                total := cursor - start + arrow_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_embed_clause",
+                    start,
+                    total,
+                    arrow_result.outcome,
+                    "embed arrow expected"
+                );
+            }
+            cursor = cursor + arrow_result.consumed;
+
+            expression_result := expression(input, cursor, session);
+            total := cursor - start + expression_result.consumed;
+            if expression_result.outcome != scan_signal::accept {
+                message: std::string_view = "embed expression expected";
+                if expression_result.message == "expression group incomplete" {
+                    message = "embed expression incomplete";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_embed_clause",
+                    start,
+                    total,
+                    expression_result.outcome,
+                    message
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_chart_embed_clause",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+pure2_chart_body: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            if start >= input.ssize() {
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_body",
+                    start,
+                    0,
+                    scan_signal::need_more,
+                    "chart body expected"
+                );
+            }
+
+            if input[start] != '{' {
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_chart_body",
+                    start,
+                    0,
+                    scan_signal::reject,
+                    "chart body expected"
+                );
+            }
+
+            cursor := start + 1;
+            while true {
+                ws_result := skip_ws()(input, cursor, session);
+                cursor = cursor + ws_result.consumed;
+
+                if cursor >= input.ssize() {
+                    total := cursor - start;
+                    return surface_failure_result<std::string_view>(
+                        input,
+                        session,
+                        "pure2_chart_body",
+                        start,
+                        total,
+                        scan_signal::need_more,
+                        "chart body incomplete"
+                    );
+                }
+
+                if input[cursor] == '}' {
+                    stop := cursor + 1;
+                    emit_trace(
+                        session,
+                        "pure2_chart_body",
+                        start,
+                        stop,
+                        scan_signal::accept
+                    );
+                    record_feature(session, feature_kind::group, start, stop, "chart_body");
+                    return accept_result<std::string_view>(
+                        input.substr(start, stop - start),
+                        stop - start
+                    );
+                }
+
+                clause: parser_of<std::string_view> = ();
+                if keyword_or_prefix_at(input, cursor, "contains") {
+                    clause = pure2_chart_contains_clause();
+                }
+                else if keyword_or_prefix_at(input, cursor, "project") {
+                    clause = pure2_chart_project_clause();
+                }
+                else if keyword_or_prefix_at(input, cursor, "embed") {
+                    clause = pure2_chart_embed_clause();
+                }
+                else {
+                    total := cursor - start;
+                    return surface_failure_result<std::string_view>(
+                        input,
+                        session,
+                        "pure2_chart_body",
+                        start,
+                        total,
+                        scan_signal::reject,
+                        "chart clause expected"
+                    );
+                }
+
+                clause_result := clause(input, cursor, session);
+                total := cursor - start + clause_result.consumed;
+                if clause_result.outcome != scan_signal::accept {
+                    emit_trace(
+                        session,
+                        "pure2_chart_body",
+                        start,
+                        clamp_stop(input, start, total),
+                        clause_result.outcome
+                    );
+                    if clause_result.outcome == scan_signal::need_more {
+                        return need_more_result<std::string_view>(
+                            total,
+                            clause_result.message
+                        );
+                    }
+                    return reject_result<std::string_view>(
+                        clause_result.message,
+                        total
+                    );
+                }
+
+                cursor = cursor + clause_result.consumed;
+            }
+        }
+    );
+}
+
+pure2_atlas_literal: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            keyword := trimmed<std::string_view>(
+                "atlas_literal_keyword",
+                keyword_parser("atlas")
+            );
+            elements := trimmed<std::string_view>(
+                "atlas_literal_elements",
+                balanced_group('[', ']', "atlas_literal_group", "atlas_elements")
+            );
+
+            keyword_result := keyword(input, cursor, session);
+            if keyword_result.outcome != scan_signal::accept {
+                total := cursor - start + keyword_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_atlas_literal",
+                    start,
+                    total,
+                    keyword_result.outcome,
+                    "atlas keyword expected"
+                );
+            }
+            cursor = cursor + keyword_result.consumed;
+
+            element_result := elements(input, cursor, session);
+            total := cursor - start + element_result.consumed;
+            if element_result.outcome != scan_signal::accept {
+                message: std::string_view = "atlas element group incomplete";
+                if element_result.outcome == scan_signal::reject {
+                    message = "atlas element group expected";
+                }
+
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_atlas_literal",
+                    start,
+                    total,
+                    element_result.outcome,
+                    message
+                );
+            }
+
+            emit_trace(
+                session,
+                "pure2_atlas_literal",
+                start,
+                start + total,
+                scan_signal::accept
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
+project_to_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    head := pure2_surface_head();
+    return head(source, 0, session);
+}
+
+project_chart_declaration_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    declaration := pure2_chart_declaration_head();
+    return declaration(source, 0, session);
+}
+
+project_chart_definition_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    definition := pure2_chart_definition();
+    return definition(source, 0, session);
+}
+
+project_chart_body_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    body := pure2_chart_body();
+    return body(source, 0, session);
+}
+
+project_atlas_literal_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    literal := pure2_atlas_literal();
+    return literal(source, 0, session);
+}

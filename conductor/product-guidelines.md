@@ -34,10 +34,10 @@ consteval auto make_indexed(...) { ... }  // No constexpr factories
 
 ### 2. Parser API Contract
 
-- `cppfort_parser.h` is the public API contract
-- Must be 100% hand-written (no LLM-generated parser internals)
-- Internal parser implementation lives in `src/parser.cpp` (archived to `old/`)
-- New parser work goes in `selfhost/` as cpp2-native bootstrap
+- Legacy `cppfort_parser.h` / `src/parser.cpp` path has been removed
+- Active parser bootstrap lives in `src/selfhost/` as pure cpp2
+- Dogfood route is `cppfront`-boosted: transpile selfhost cpp2 into the build tree, then host-compile and run smoke coverage
+- Must be 100% hand-written in parser logic (no LLM-generated parser internals)
 
 ### 3. Early Normalization
 

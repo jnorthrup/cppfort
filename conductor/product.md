@@ -150,25 +150,14 @@ The canonical types lower to MLIR SoN operations:
 
 ## Parser Architecture
 
-### Public API (cppfort_parser.h)
+### Current Parser Bootstrap
 
-100% hand-written parser contract:
+The active parser bootstrap is the pure cpp2 selfhost surface in `src/selfhost/rbcursive.cpp2`.
 
-```cpp
-struct ParseResult {
-    std::unique_ptr<CanonicalAST> ast;
-    std::vector<std::string> errors;
-    bool success() const;
-};
-
-class Parser {
-    static ParseResult parse(std::string_view source, std::string_view filename);
-    static ParseResult parse_with_trikeshed(std::string_view source,
-                                           bool enable_operators = true,
-                                           bool enable_underscores = true);
-    static bool can_self_parse();
-};
-```
+- Retained artifact: feature stream plus diagnostics side channel
+- Bootstrap route: transpile with `cppfront`, then host-compile generated C++
+- Repo-owned dogfood executable/test: `selfhost_rbcursive_smoke`
+- Current covered slice: keyword heads and balanced groups for pure2-first declaration growth
 
 ### Normalization Flow
 
@@ -224,15 +213,15 @@ constexpr struct CASPool {
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Parser API contract | **HEADER ONLY** - no implementation | [`include/cppfort_parser.h`](include/cppfort_parser.h) (missing) |
+| Selfhost parser bootstrap | **DOGFOODED** - keyword/group slice green | `src/selfhost/rbcursive.cpp2`, `tests/selfhost_rbcursive_smoke.cpp` |
 | Canonical type templates | **DECLARED** - not wired into build | [`src/selfhost/canonical_types.cpp2`](src/selfhost/canonical_types.cpp2) |
 | Bootstrap tags | **BUILT** - integer constants only | [`src/selfhost/bootstrap_tags.cpp2`](src/selfhost/bootstrap_tags.cpp2) |
 | MLIR SoN dialect | **TABLEGEN DEFINED** - disabled in build | [`include/Cpp2SONDialect.td`](include/Cpp2SONDialect.td) |
-| CAS internment types | **HEADER ONLY** - no implementation | `cppfort_parser.h` (missing) |
+| CAS internment types | **NOT WIRED** - no active selfhost path yet | selfhost work pending |
 
 ### Critical Gaps
 
-1. **Parser has no implementation**: `Parser::Impl` has no definition. `src/` directory is empty.
+1. **Parser breadth is still narrow**: selfhost dogfood only covers the current keyword/group scanner slice.
 2. **MLIR dialect disabled**: LLVM 21 FieldParser issue blocks SoN dialect compilation.
 3. **Bootstrap transpilation limited**: `old/cppfort` binary can only handle trivial declarations.
 4. **No canonical → SoN lowering**: No wired path from `canonical_types.cpp2` to MLIR operations.
@@ -240,7 +229,7 @@ constexpr struct CASPool {
 ### Rewrite Merit
 
 A fresh start would:
-- Implement parser from `cppfort_parser.h` contract forward
+- Extend the selfhost dogfood parser from `src/selfhost/rbcursive.cpp2` forward
 - Fix or bypass LLVM 21 issue to enable MLIR dialect
 - Wire `canonical_types.cpp2` into build with actual C++ transpilation
 - Start with one working SoN op lowering, not full pipeline

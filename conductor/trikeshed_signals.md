@@ -34,8 +34,8 @@ Extracted from `/Users/jim/work/TrikeShed/conductor/grok_share_bGVnYWN5_21edd44f
 
 ### 6. 100% Hand-Written Parser
 - No LLM-generated parser internals
-- Public API contract in `cppfort_parser.h`
-- Internal implementation in `src/parser.cpp`
+- Active parser logic lives in `src/selfhost/rbcursive.cpp2`
+- Current dogfood path is `cppfront`-boosted selfhost smoke
 
 ## Front-End Sugar as Zero-Cost Abstraction Core
 

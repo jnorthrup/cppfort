@@ -46,12 +46,60 @@ add_custom_command(
 
 add_custom_target(selfhost_bootstrap_smoke DEPENDS "${BOOTSTRAP_OBJ}")
 
-# Add canonical_types as a header library
-# This is C++ template code that maps to MLIR SoN operations
-add_library(cppfort_canonical_types INTERFACE)
-target_include_directories(cppfort_canonical_types INTERFACE
+# Keep pure cpp2 selfhost sources as inventory only.
+# They are not part of the C++ `.h` parser contract and are not linked into it.
+add_library(cppfort_selfhost_cpp2_inventory INTERFACE)
+target_include_directories(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost
 )
-target_sources(cppfort_canonical_types INTERFACE
+target_sources(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_types.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/rbcursive.cpp2
 )
+
+find_program(CPPFRONT_EXECUTABLE NAMES cppfront)
+if(CPPFRONT_EXECUTABLE)
+  get_filename_component(CPPFRONT_EXECUTABLE_REAL "${CPPFRONT_EXECUTABLE}" REALPATH)
+  get_filename_component(CPPFRONT_SOURCE_DIR "${CPPFRONT_EXECUTABLE_REAL}" DIRECTORY)
+  get_filename_component(CPPFRONT_ROOT_DIR "${CPPFRONT_SOURCE_DIR}/.." REALPATH)
+  set(CPPFRONT_INCLUDE_DIR "${CPPFRONT_ROOT_DIR}/include")
+  set(RBCURSIVE_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/rbcursive.cpp2")
+  set(RBCURSIVE_CPP "${SELFHOST_DIR}/rbcursive.cpp")
+
+  if(EXISTS "${CPPFRONT_INCLUDE_DIR}/cpp2util.h")
+    add_custom_command(
+      OUTPUT "${RBCURSIVE_CPP}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${RBCURSIVE_CPP}" "${RBCURSIVE_SOURCE}"
+      DEPENDS "${RBCURSIVE_SOURCE}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      COMMENT "Transpiling selfhost rbcursive cpp2 surface"
+      VERBATIM
+    )
+
+    add_custom_target(selfhost_rbcursive_cpp DEPENDS "${RBCURSIVE_CPP}")
+
+    add_executable(selfhost_rbcursive_smoke
+      ${CMAKE_SOURCE_DIR}/tests/selfhost_rbcursive_smoke.cpp
+    )
+    add_dependencies(selfhost_rbcursive_smoke selfhost_rbcursive_cpp)
+    add_dependencies(selfhost_bootstrap_smoke selfhost_rbcursive_smoke)
+    target_include_directories(selfhost_rbcursive_smoke PRIVATE
+      ${SELFHOST_DIR}
+      ${CPPFRONT_INCLUDE_DIR}
+    )
+    set_target_properties(selfhost_rbcursive_smoke PROPERTIES
+      CXX_STANDARD 20
+      CXX_STANDARD_REQUIRED ON
+      CXX_EXTENSIONS OFF
+    )
+    target_compile_options(selfhost_rbcursive_smoke PRIVATE
+      -U__cpp_lib_modules
+    )
+
+    add_test(NAME selfhost_rbcursive_smoke COMMAND $<TARGET_FILE:selfhost_rbcursive_smoke>)
+  else()
+    message(STATUS "cppfront found but cpp2util.h missing; skipping selfhost_rbcursive_smoke")
+  endif()
+else()
+  message(STATUS "cppfront not found; skipping selfhost_rbcursive_smoke")
+endif()

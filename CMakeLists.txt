@@ -180,19 +180,14 @@ endforeach()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# cppfront Role: Benchmark/Validator Only (No Build Dependency)
-# cppfront is used as a temporary benchmark/validator, not a build dependency.
-# No cppfront linking, calling, or inclusion in the build process.
-# cppfront can be installed system-wide for validation runs, but is NOT required for building cppfort.
+# cppfront Role: Optional Selfhost Bootstrap Accelerator
+# cppfront is not linked into cppfort, but when present it is used to transpile
+# pure cpp2 selfhost smoke surfaces in src/selfhost/. The main C++ parser/header
+# path has been removed from the build; the current dogfood route is the
+# cppfront-boosted selfhost smoke target.
 
-# Note: The following targets have been removed:
-# - cppfront executable build
-# - cppfront_build custom target
-# - corpus_transpile target (requires cppfront)
-#
-# Rationale: cppfront is a temporary bootstrap mechanism. The native parser (in progress)
-# will replace cppfront for all transpilation needs. cppfront remains available as a
-# benchmark/validator for comparing outputs, but is not part of the critical build path.
+# Testing
+enable_testing()
 
 # Subdirectories
 if(EXISTS "${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt")
@@ -212,6 +207,3 @@ endif()
 
 # Conveyor target removed: cppfront_conveyor depends on cppfront which is no longer built.
 # The conveyor concept will be reimplemented using native parser once available.
-
-# Testing
-enable_testing()
