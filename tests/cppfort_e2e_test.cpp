@@ -3,7 +3,7 @@
 
 int main() {
     cppfort::Parser parser;
-    std::string_view source = "x: int = 42;";
+    std::string_view source = "chart foo(x) { }";
     
     std::cout << "=== Testing: " << source << " ===" << std::endl;
     
