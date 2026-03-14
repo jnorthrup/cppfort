@@ -95,6 +95,9 @@ if(CPPFRONT_EXECUTABLE)
     target_compile_options(selfhost_rbcursive_smoke PRIVATE
       -U__cpp_lib_modules
     )
+    target_compile_definitions(selfhost_rbcursive_smoke PRIVATE
+      CPPFORT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
+    )
 
     add_test(NAME selfhost_rbcursive_smoke COMMAND $<TARGET_FILE:selfhost_rbcursive_smoke>)
   else()

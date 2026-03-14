@@ -1,8 +1,14 @@
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 
 #include "rbcursive.cpp"
+
+#ifndef CPPFORT_SOURCE_DIR
+#define CPPFORT_SOURCE_DIR "."
+#endif
 
 int main() {
     {
@@ -430,6 +436,94 @@ int main() {
         if (session.diagnostics[0].message != std::string{"manifold '=' expected"}) {
             std::cerr << "FAIL: rejected manifold declaration diagnostic message mismatch\n";
             return 175;
+        }
+    }
+
+    {
+        constexpr std::string_view source = " join_tag : int = 1;";
+        scan_session session{};
+        auto result = project_tag_declaration_feature_stream(source, session);
+
+        if (!(result.outcome == scan_signal::accept)) {
+            std::cerr << "FAIL: tag declaration surface did not accept a bootstrap tag binding\n";
+            return 235;
+        }
+        if (!result.value.has_value() || result.value.value() != source) {
+            std::cerr << "FAIL: tag declaration surface returned the wrong matched slice\n";
+            return 236;
+        }
+        if (result.consumed != static_cast<int>(source.size())) {
+            std::cerr << "FAIL: tag declaration surface did not consume the full declaration\n";
+            return 237;
+        }
+        if (session.features.size() != 4) {
+            std::cerr << "FAIL: expected tag name + type + integer + declaration surface features, got "
+                      << session.features.size() << "\n";
+            return 238;
+        }
+        if (!(session.features[0].kind == feature_kind::identifier &&
+              session.features[1].kind == feature_kind::keyword &&
+              session.features[2].kind == feature_kind::integer &&
+              session.features[3].kind == feature_kind::surface)) {
+            std::cerr << "FAIL: tag declaration feature sequence did not preserve name -> type -> integer -> surface\n";
+            return 239;
+        }
+        if (session.features[0].semantic != std::string{"join_tag"}) {
+            std::cerr << "FAIL: tag declaration name semantic label mismatch\n";
+            return 240;
+        }
+        if (session.features[1].semantic != std::string{"int"}) {
+            std::cerr << "FAIL: tag declaration type semantic label mismatch\n";
+            return 241;
+        }
+        if (session.features[2].semantic != std::string{"1"}) {
+            std::cerr << "FAIL: tag declaration integer semantic label mismatch\n";
+            return 242;
+        }
+        if (session.features[3].semantic != std::string{"bootstrap_tag_declaration"}) {
+            std::cerr << "FAIL: tag declaration surface semantic label mismatch\n";
+            return 243;
+        }
+        if (!session.diagnostics.empty()) {
+            std::cerr << "FAIL: complete tag declaration emitted unexpected diagnostics\n";
+            return 244;
+        }
+    }
+
+    {
+        constexpr std::string_view source = " join_tag : int = ";
+        scan_session session{};
+        auto result = project_tag_declaration_feature_stream(source, session);
+
+        if (!(result.outcome == scan_signal::need_more)) {
+            std::cerr << "FAIL: incomplete tag declaration did not request more input\n";
+            return 245;
+        }
+        if (result.message != std::string{"tag integer initializer expected"}) {
+            std::cerr << "FAIL: incomplete tag declaration returned wrong message: "
+                      << result.message << "\n";
+            return 246;
+        }
+        if (session.features.size() != 2) {
+            std::cerr << "FAIL: incomplete tag declaration should preserve the name and type features\n";
+            return 247;
+        }
+        if (!(session.features[0].kind == feature_kind::identifier &&
+              session.features[1].kind == feature_kind::keyword)) {
+            std::cerr << "FAIL: incomplete tag declaration feature sequence was unstable\n";
+            return 248;
+        }
+        if (session.diagnostics.size() != 1) {
+            std::cerr << "FAIL: incomplete tag declaration should emit exactly one diagnostic\n";
+            return 249;
+        }
+        if (!(session.diagnostics[0].severity == diagnostic_severity::incomplete)) {
+            std::cerr << "FAIL: incomplete tag declaration diagnostic severity was not incomplete\n";
+            return 250;
+        }
+        if (session.diagnostics[0].message != std::string{"tag integer initializer expected"}) {
+            std::cerr << "FAIL: incomplete tag declaration diagnostic message mismatch\n";
+            return 251;
         }
     }
 
@@ -1502,6 +1596,69 @@ int main() {
         if (!session.diagnostics.empty()) {
             std::cerr << "FAIL: complete translation unit emitted unexpected diagnostics\n";
             return 226;
+        }
+    }
+
+    {
+        const std::string source_path =
+            std::string{CPPFORT_SOURCE_DIR} + "/src/selfhost/bootstrap_tags.cpp2";
+        std::ifstream input(source_path);
+        if (!input) {
+            std::cerr << "FAIL: could not open bootstrap tag source at " << source_path << "\n";
+            return 252;
+        }
+
+        std::ostringstream buffer;
+        buffer << input.rdbuf();
+        const std::string source = buffer.str();
+
+        scan_session session{};
+        auto result = project_translation_unit_feature_stream(source, session);
+
+        if (!(result.outcome == scan_signal::accept)) {
+            std::cerr << "FAIL: translation unit did not accept bootstrap_tags.cpp2\n";
+            return 253;
+        }
+        if (!result.value.has_value() || result.value.value() != source) {
+            std::cerr << "FAIL: bootstrap tag translation unit returned the wrong matched slice\n";
+            return 254;
+        }
+        if (result.consumed != static_cast<int>(source.size())) {
+            std::cerr << "FAIL: bootstrap tag translation unit did not consume the full source\n";
+            return 255;
+        }
+        if (session.features.size() != 93) {
+            std::cerr << "FAIL: expected 23 tag declarations plus translation unit feature, got "
+                      << session.features.size() << "\n";
+            return 256;
+        }
+
+        int declaration_count = 0;
+        for (const auto& feature : session.features) {
+            if (feature.kind == feature_kind::surface &&
+                feature.semantic == std::string{"bootstrap_tag_declaration"}) {
+                declaration_count += 1;
+            }
+        }
+        if (declaration_count != 23) {
+            std::cerr << "FAIL: expected 23 bootstrap tag declaration surfaces, got "
+                      << declaration_count << "\n";
+            return 257;
+        }
+        if (session.features[0].semantic != std::string{"join_tag"} ||
+            session.features[1].semantic != std::string{"int"} ||
+            session.features[2].semantic != std::string{"1"} ||
+            session.features[3].semantic != std::string{"bootstrap_tag_declaration"}) {
+            std::cerr << "FAIL: bootstrap tag translation unit did not preserve first declaration features\n";
+            return 258;
+        }
+        if (session.features[92].semantic != std::string{"translation_unit"}) {
+            std::cerr << "FAIL: bootstrap tag translation unit outer group semantic label mismatch\n";
+            return 259;
+        }
+        if (!session.diagnostics.empty()) {
+            std::cerr << "FAIL: bootstrap tag translation unit emitted unexpected diagnostics\n";
+            return 260;
         }
     }
 

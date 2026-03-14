@@ -424,6 +424,31 @@ transition_candidate_at: (
     return keyword_or_prefix_at(input, cursor + 1, "transition");
 }
 
+tag_declaration_candidate_at: (
+    input: std::string_view,
+    start: int
+) -> bool = {
+    if start < 0 || start >= input.ssize() {
+        return false;
+    }
+    if !is_identifier_head(input[start]) {
+        return false;
+    }
+
+    cursor := start + 1;
+    while cursor < input.ssize() && is_identifier_tail(input[cursor]) {
+        cursor = cursor + 1;
+    }
+    while cursor < input.ssize() && is_space(input[cursor]) {
+        cursor = cursor + 1;
+    }
+
+    if cursor >= input.ssize() {
+        return true;
+    }
+    return input[cursor] == ':';
+}
+
 // ============================================================================
 // PRIMITIVE PARSERS
 // ============================================================================
@@ -435,8 +460,24 @@ skip_ws: () -> parser_of<std::string_view> = {
         inout session: scan_session
     ) -> scan_result<std::string_view> = {
         cursor := start;
-        while cursor < input.ssize() && is_space(input[cursor]) {
-            cursor = cursor + 1;
+        while true {
+            while cursor < input.ssize() && is_space(input[cursor]) {
+                cursor = cursor + 1;
+            }
+
+            if cursor + 1 < input.ssize() &&
+               input[cursor] == '/' &&
+               input[cursor + 1] == '/' {
+                cursor = cursor + 2;
+                while cursor < input.ssize() &&
+                      input[cursor] != '\n' &&
+                      input[cursor] != '\r' {
+                    cursor = cursor + 1;
+                }
+                continue;
+            }
+
+            break;
         }
 
         emit_trace(session, "skip_ws", start, cursor, scan_signal::accept);
@@ -557,6 +598,60 @@ equals_parser: (
         if input[start] != '=' {
             emit_trace(session, rule$, start, start, scan_signal::reject);
             return reject_result<std::string_view>("assignment token expected");
+        }
+
+        stop := start + 1;
+        emit_trace(session, rule$, start, stop, scan_signal::accept);
+        return accept_result<std::string_view>(
+            input.substr(start, 1),
+            1
+        );
+    };
+}
+
+colon_parser: (
+    rule: std::string_view = "colon"
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start >= input.ssize() {
+            emit_trace(session, rule$, start, start, scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "':' expected");
+        }
+
+        if input[start] != ':' {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("':' expected");
+        }
+
+        stop := start + 1;
+        emit_trace(session, rule$, start, stop, scan_signal::accept);
+        return accept_result<std::string_view>(
+            input.substr(start, 1),
+            1
+        );
+    };
+}
+
+semicolon_parser: (
+    rule: std::string_view = "semicolon"
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        if start >= input.ssize() {
+            emit_trace(session, rule$, start, start, scan_signal::need_more);
+            return need_more_result<std::string_view>(0, "';' expected");
+        }
+
+        if input[start] != ';' {
+            emit_trace(session, rule$, start, start, scan_signal::reject);
+            return reject_result<std::string_view>("';' expected");
         }
 
         stop := start + 1;
@@ -3193,6 +3288,152 @@ pure2_manifold_declaration: () -> parser_of<std::string_view> = {
     );
 }
 
+pure2_tag_declaration: () -> parser_of<std::string_view> = {
+    return with_traits<std::string_view>(
+        trace_trait::debug,
+        :(
+            input: std::string_view,
+            start: int,
+            inout session: scan_session
+        ) -> scan_result<std::string_view> = {
+            cursor := start;
+            name := trimmed<std::string_view>(
+                "tag_decl_name",
+                identifier_parser()
+            );
+            separator := trimmed<std::string_view>(
+                "tag_decl_separator",
+                colon_parser("tag_decl_colon")
+            );
+            type_name := trimmed<std::string_view>(
+                "tag_decl_type",
+                keyword_parser("int")
+            );
+            assignment := trimmed<std::string_view>(
+                "tag_decl_assignment",
+                equals_parser("tag_decl_equals")
+            );
+            initializer := trimmed<std::string_view>(
+                "tag_decl_initializer",
+                integer_parser()
+            );
+            terminator := trimmed<std::string_view>(
+                "tag_decl_terminator",
+                semicolon_parser("tag_decl_semicolon")
+            );
+
+            name_result := name(input, cursor, session);
+            if name_result.outcome != scan_signal::accept {
+                total := cursor - start + name_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    name_result.outcome,
+                    "tag name expected"
+                );
+            }
+            cursor = cursor + name_result.consumed;
+
+            separator_result := separator(input, cursor, session);
+            if separator_result.outcome != scan_signal::accept {
+                total := cursor - start + separator_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    separator_result.outcome,
+                    "tag ':' expected"
+                );
+            }
+            cursor = cursor + separator_result.consumed;
+
+            type_result := type_name(input, cursor, session);
+            if type_result.outcome != scan_signal::accept {
+                total := cursor - start + type_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    type_result.outcome,
+                    "tag type 'int' expected"
+                );
+            }
+            cursor = cursor + type_result.consumed;
+
+            assignment_result := assignment(input, cursor, session);
+            if assignment_result.outcome != scan_signal::accept {
+                total := cursor - start + assignment_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    assignment_result.outcome,
+                    "tag '=' expected"
+                );
+            }
+            cursor = cursor + assignment_result.consumed;
+
+            initializer_result := initializer(input, cursor, session);
+            if initializer_result.outcome != scan_signal::accept {
+                total := cursor - start + initializer_result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    initializer_result.outcome,
+                    "tag integer initializer expected"
+                );
+            }
+            cursor = cursor + initializer_result.consumed;
+
+            terminator_result := terminator(input, cursor, session);
+            total := cursor - start + terminator_result.consumed;
+            if terminator_result.outcome != scan_signal::accept {
+                return surface_failure_result<std::string_view>(
+                    input,
+                    session,
+                    "pure2_tag_declaration",
+                    start,
+                    total,
+                    terminator_result.outcome,
+                    "tag ';' expected"
+                );
+            }
+
+            stop := start + total;
+            emit_trace(
+                session,
+                "pure2_tag_declaration",
+                start,
+                stop,
+                scan_signal::accept
+            );
+            record_feature(
+                session,
+                feature_kind::surface,
+                start,
+                stop,
+                "bootstrap_tag_declaration"
+            );
+            return accept_result<std::string_view>(
+                input.substr(start, total),
+                total
+            );
+        }
+    );
+}
+
 pure2_top_level_surface: () -> parser_of<std::string_view> = {
     return with_traits<std::string_view>(
         trace_trait::debug,
@@ -3221,6 +3462,9 @@ pure2_top_level_surface: () -> parser_of<std::string_view> = {
             }
             else if join_candidate_at(input, cursor) {
                 surface = pure2_join_expression();
+            }
+            else if tag_declaration_candidate_at(input, cursor) {
+                surface = pure2_tag_declaration();
             }
             else {
                 return surface_failure_result<std::string_view>(
@@ -3379,6 +3623,14 @@ project_manifold_declaration_feature_stream: (
     inout session: scan_session
 ) -> scan_result<std::string_view> = {
     declaration := pure2_manifold_declaration();
+    return declaration(source, 0, session);
+}
+
+project_tag_declaration_feature_stream: (
+    source: std::string_view,
+    inout session: scan_session
+) -> scan_result<std::string_view> = {
+    declaration := pure2_tag_declaration();
     return declaration(source, 0, session);
 }
 

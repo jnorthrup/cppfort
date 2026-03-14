@@ -1,6 +1,6 @@
 {
-  "last_successful_step": "selfhost_join_surface_20260313",
-  "gap_analysis_summary": "Selfhost scanner dogfood path now covers atlas/manifold plus chart contains/project/embed/local, transition, and join feature streams via cppfront bootstrap; alpha remains incomplete and the requested kilo delegation route still panics before worker execution",
+  "last_successful_step": "selfhost_bootstrap_tag_translation_unit_20260314",
+  "gap_analysis_summary": "Bootstrap-tag translation-unit authenticity is fresh again through ninja/ctest after the Homebrew LLVM repair, but alpha remains untouched because kilo and qwen still fail on outbound API connectivity and gemini never produced a worker rendezvous",
   "implemented_components": [
     "selfhost/bootstrap_tags.cpp - Integer tag constants that build",
     "selfhost/rbcursive.cpp2 - Pure cpp2 scanner/combinator nucleus with atlas/manifold/chart/transition/join feature-stream coverage",
@@ -25,6 +25,6 @@
   ],
   "active_track": "trikeshed_surface_restart_20260311",
   "active_slice": "selfhost-alpha-surface",
-  "slice_status": "blocked_worker_runtime_kilo_codex_panic_20260313",
-  "honest_note": "The repo now has a repo-owned selfhost dogfood path for atlas/manifold plus chart contains/project/embed/local, `line.transition(...)`, and `a j b` surfaces through cppfront bootstrap, but alpha remains outside the verified selfhost corpus and the only host-resolved `using kilo` route here (`codex exec -m kilo ...`) still panics in `system-configuration` before touching repo files."
+  "slice_status": "blocked_delegate_runtime_connectivity_20260314",
+  "honest_note": "The bootstrap-tag translation-unit edits in `src/selfhost/rbcursive.cpp2`, `tests/selfhost_rbcursive_smoke.cpp`, and `src/selfhost/CMakeLists.txt` are freshly authenticated again on this host: `/opt/homebrew/opt/llvm` now points at `../Cellar/llvm/22.1.1`, `ninja -C build selfhost_rbcursive_smoke` succeeds after regenerating the build tree, `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure` passes, and the direct `cppfront` + `clang++` fallback also passes through `/tmp/selfhost_rbcursive_smoke_manual`. The remaining blocker is delegated runtime connectivity only: `XDG_DATA_HOME=/tmp/kilo-data kilo run --print-logs --auto --format json --dir /Users/jim/work/cppfort -m openai/gpt-5.1-codex-mini ...` still dies before worker output because the sandbox cannot reach `https://auth.openai.com/oauth/token` (`ConnectionRefused` / `FailedToOpenSocket`), `qwen -y ...` exits with `[API Error: Connection error.]`, and the user-directed `gemini -y -p ...` attempt produced no worker rendezvous before the user redirected back to qwen. Alpha remains the next untouched slice on `src/selfhost/rbcursive.cpp2` plus `tests/selfhost_rbcursive_smoke.cpp` until one delegated worker can actually execute."
 }

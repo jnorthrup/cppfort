@@ -259,7 +259,7 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 
 ## [~] Track: TrikeShed Surface Restart
 *Link: [./conductor/tracks/trikeshed_surface_restart_20260311/](./conductor/tracks/trikeshed_surface_restart_20260311/)*
-*Status: ACTIVE* - selfhost dogfood is green for atlas/manifold, chart clause, `transition`, and `join` surfaces; the next bounded slice remains `alpha` on `src/selfhost/rbcursive.cpp2`, but 2026-03-13 execution is still blocked because the requested kilo delegation route panics before worker start.
+*Status: ACTIVE* - the bootstrap-tag translation-unit slice is freshly authentic again (`ninja -C build selfhost_rbcursive_smoke` plus `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure` both pass after the Homebrew LLVM repair), but `alpha` remains the next untouched product slice because every delegated worker route still fails closed before repo edits.
 
 **Purpose:** Treat `../TrikeShed` as the semantic/source-text reference and restart cppfort around a smaller cpp2-owned bootstrap nucleus, with `old/` kept archive-only and semantic normalization prioritized over legacy surface recovery.
 
@@ -268,6 +268,7 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 - External spec input only: `/Users/jim/work/TrikeShed/conductor/tracks/cpp2-surface-transition_20260311/expanded_cpp2_spec.md`
 - Archive-only legacy corpus: `old/` is retained for bootstrap compatibility only and is not the implementation truth
 - Current implementation owner: `src/selfhost/` for new cpp2-native bootstrap surfaces, plus root `CMakeLists.txt` and `src/selfhost/CMakeLists.txt` as the routing point
+- Active slice: add `alpha` transform coverage to the selfhost dogfood surface without widening beyond `src/selfhost/rbcursive.cpp2` and `tests/selfhost_rbcursive_smoke.cpp`
 - Verified slices:
   - multi-expression subscript syntax now parses and emits for `coords[1.0, 2.0]` through the legacy slim parser/emitter harnesses
   - canonical grammar truth and annotated harness coverage encode that accepted `coords[...]` surface as historical evidence
@@ -275,9 +276,11 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
   - `selfhost_rbcursive_smoke` now verifies atlas/manifold declarations, `coords[...]` and `local[...]` element projection, and chart `contains`/`project`/`embed(local)` clause diagnostics through the repo-owned pure cpp2 bootstrap surface
   - `selfhost_rbcursive_smoke` now also verifies `line.transition("identity", "shifted", coords[17.0])` plus stable diagnostics for missing commas, missing `)`, and incomplete nested coords payloads
   - `selfhost_rbcursive_smoke` now also verifies `a j b` and `embed(local) -> a j b` plus stable diagnostics for missing rhs and malformed operator placement
+  - `selfhost_rbcursive_smoke` now also accepts `src/selfhost/bootstrap_tags.cpp2` as a translation unit after `skip_ws()` learned `//` comments, top-level routing recognizes `name : int = integer;` bootstrap tag declarations, and the smoke test reads the source through `CPPFORT_SOURCE_DIR`
 - Process meaning: `manifold` here is algebraic guidance for compiler phase alignment and legal semantic transitions, not model training, token classification, or statistical inference
-- Active slice: add `alpha` transform coverage to the selfhost dogfood surface without widening beyond `src/selfhost/rbcursive.cpp2` and `tests/selfhost_rbcursive_smoke.cpp`
-- Current blocker (2026-03-13): the requested `using kilo` route resolves only as `codex exec -m kilo --full-auto --sandbox workspace-write -C /Users/jim/work/cppfort`, and that worker still panics in `system-configuration` before execution; there is no standalone `kilo` CLI in PATH, while `claude`, `qwen`, `opencode`, and `copilot` remain unusable as alternate delegated surfaces
+- Next untouched product slice: add `alpha` transform coverage to the selfhost dogfood surface without widening beyond `src/selfhost/rbcursive.cpp2` and `tests/selfhost_rbcursive_smoke.cpp`
+- Delegation route: `XDG_DATA_HOME=/tmp/kilo-data kilo run --auto --format json --dir /Users/jim/work/cppfort -m openai/gpt-5.1-codex-mini`
+- Current blocker (2026-03-14): host verification recovered after `/opt/homebrew/opt/llvm` moved to a real `llvm/22.1.1` install with MLIR CMake files again, but the delegated product route is still unavailable: `kilo` dies on outbound OpenAI auth (`ConnectionRefused` / `FailedToOpenSocket` to `https://auth.openai.com/oauth/token`), `qwen -y ...` exits with `[API Error: Connection error.]`, and the user-directed `gemini -y -p ...` attempt produced no worker rendezvous before the user redirected back to qwen. `cmake -S . -B build -G Ninja` is no longer blocked on `find_package(MLIR)`, although it still trips Ninja's `failed recompaction: No such file or directory`; rerunning `ninja -C build selfhost_rbcursive_smoke` regenerates cleanly and `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure` passes
 
 ---
 
