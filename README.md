@@ -106,6 +106,7 @@ Dense Storage (materialized view)
 - `lib/Passes/SoNConstantProp.cpp` - Constant propagation pass
 - `tests/smoke/` - 24 dogfooding smoke tests
 - `docs/manifold-architecture.md` - Detailed architecture documentation
+- `docs/cpp2/golden_surface_grammar.md` - Golden human-readable grammar reference
 - `expanded_cpp2_spec.md` - Kotlin-to-cpp2 mapping
 - `docs/sea-of-nodes/` - SeaOfNodes chapter documentation (01-24)
 

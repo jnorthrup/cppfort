@@ -1531,6 +1531,41 @@ pure2_keyword_group: (keyword: std::string_view) -> parser_of<std::string_view> 
     );
 }
 
+// ============================================================================
+// CONFIRMED SURFACE GRAMMAR
+// This is the active grammar carried by the JSON feature-stream scanner below.
+// Keep this block aligned with the pure2_* surfaces and the selfhost smoke test.
+//
+// translation_unit    ::= { top_level }
+// top_level           ::= chart_definition
+//                       | manifold_decl
+//                       | atlas_literal
+//                       | coords_literal
+//                       | transition_expr
+//                       | join_expr
+//                       | tag_declaration
+//
+// chart_definition    ::= chart_decl chart_body
+// chart_decl          ::= "chart" identifier "(" parameter_text ")"
+// chart_body          ::= "{" { chart_clause } "}"
+// chart_clause        ::= contains_clause | project_clause | embed_clause
+// contains_clause     ::= "contains" identifier relation scalar
+// project_clause      ::= "project" "->" coords_literal
+// embed_clause        ::= "embed" "(" identifier ")" "->" embed_expr
+// embed_expr          ::= transition_expr | join_expr | line_expr
+//
+// atlas_literal       ::= "atlas" "[" identifier { "," identifier } "]"
+// manifold_decl       ::= "manifold" identifier "=" atlas_literal
+// coords_literal      ::= "coords" "[" coords_element { "," coords_element } "]"
+// coords_element      ::= scalar | line_expr
+// join_expr           ::= identifier "j" identifier
+// transition_expr     ::= identifier "." "transition"
+//                         "(" string "," string "," coords_literal ")"
+// tag_declaration     ::= identifier ":" "int" "=" integer ";"
+//
+// next_slice          ::= expression "α" "(" identifier ")" "=>" expression
+// ============================================================================
+
 pure2_chart_declaration_head: () -> parser_of<std::string_view> = {
     return with_traits<std::string_view>(
         trace_trait::debug,
