@@ -24,6 +24,7 @@ target_link_libraries(Cpp2SONDialect
 # Add passes library
 add_library(Cpp2SONPasses
   Passes/SoNConstantProp.cpp
+  Passes/SoNAlgebraicOpt.cpp
 )
 
 target_include_directories(Cpp2SONPasses

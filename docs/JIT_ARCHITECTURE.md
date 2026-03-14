@@ -16,10 +16,10 @@ cppfort uses a **multi-stage IR pipeline** with MLIR as the optimization infrast
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          PARSER (parser.cpp)                                │
+│                PARSER (selfhost rbcursive.cpp2 via cppfront)                │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │ Lexical Analysis → Combinator Parsing → AST Construction             │  │
-│  │   (lexer.cpp)      (combinators/)         (ast.hpp)                   │  │
+│  │ Feature-Stream Scanning → Pure cpp2 bootstrap parsing → Smoke gate   │  │
+│  │   (rbcursive.cpp2)        (selfhost surface)            (ctest)      │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────┬───────────────────────────────────────────────┘
                               │

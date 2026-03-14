@@ -1,100 +1,116 @@
 ---
 name: conductor
-description: Use when the user wants to setup a new project, create a new feature, write a spec, plan a feature, fix a bug with a plan, start a new track, check project status, implement next task, or revert changes. Also use when user mentions "conductor", "track", or "spec-driven development". If conductor is not yet configured in the project, start with setup.
+description: Use in cppfort when work must follow repo-local conductor truth under /conductor, especially to choose the next bounded compiler slice, reconcile stale track state, implement through delegated workers, or verify and close a slice without widening scope. Also use when the user mentions conductor, track, plan, spec, implement, next slice, bounded corpus, delegated worker routing, or status.
 ---
 
 # Conductor
 
-Conductor is a Context-Driven Development (CDD) framework that transforms AI agents into proactive project managers. The philosophy is "Measure twice, code once" - every feature follows a strict protocol: **Context -> Spec & Plan -> Implement**.
+Conductor in this repo is not a generic planner. It is the scheduler and truth authority for bounded compiler work.
 
-## Core Concepts
+## Read First
 
-- **Track**: A unit of work (feature or bug fix) with its own spec and plan
-- **Spec**: Detailed requirements document (`spec.md`)
-- **Plan**: Phased task list with checkboxes (`plan.md`)
-- **Workflow**: Rules for task lifecycle, TDD, commits, and quality gates
+Start with the repo-local truth, in this order:
 
-## Directory Structure
+1. `conductor/tracks.md`
+2. `conductor/workflow.md`
+3. `conductor/setup_state.json`
+4. The active track's `plan.md` and `spec.md`
 
-When initialized, Conductor creates this structure in the project:
+If the active track says to consult TrikeShed, treat `/Users/jim/work/TrikeShed` as read-only reference only.
 
+## Truth Ownership
+
+- `conductor/` is the source of truth.
+- The master edits `conductor/` directly when track state is stale, missing, or overstated.
+- Delegated workers own product-file edits outside `conductor/`.
+- If no open bounded slice exists, create or repair one in `conductor/` and immediately assign it.
+
+## Implement Contract
+
+`implement` means one bounded slice, one exact corpus, one honest verification surface.
+
+The minimum acceptable sequence is:
+
+1. Name the slice.
+2. Pin the bounded corpus.
+3. Delegate product edits to one worker.
+4. Verify raw diffs and real command output.
+5. Update `conductor/` truth.
+
+Do not widen scope just because adjacent debt exists.
+
+## Dining-Philosophers Lock
+
+Treat the workflow as a lock order:
+
+- Conductor holds the truth fork.
+- At most one worker may hold the product-code fork for a given corpus.
+- Verification starts only after the writer releases that corpus.
+- Final polish starts only after verification is green.
+- Never let two writers co-edit the same files.
+
+If a worker dies before repo edits, reopen the same slice. Do not widen scope and do not narrate success.
+
+## Worker Cast
+
+Use the local `.kilocode` skills as a staged cast, not a swarm:
+
+- `algebraic-optimizer`: read-only proof advisor for rewrite or IR algebra. Skip it unless the slice is really about semantic rewrite rules.
+- `ir-architect`: primary writer for compiler and parser slices.
+- `equivalence-verifier`: post-write verification only. No product edits.
+- `code-polisher`: final writer after green verification.
+
+Default lock order for compiler work:
+
+`ir-architect -> equivalence-verifier -> code-polisher`
+
+For the current selfhost parser work, `algebraic-optimizer` is usually unnecessary.
+
+## Current cppfort Focus
+
+The active selfhost dogfood path lives in:
+
+- `src/selfhost/rbcursive.cpp2`
+- `tests/selfhost_rbcursive_smoke.cpp`
+- `src/selfhost/CMakeLists.txt`
+
+The current untouched bounded slice is the alpha surface:
+
+- `series alpha (x) => expr`
+
+Keep that slice bounded to the selfhost parser and smoke corpus unless the track truth explicitly expands it.
+
+## Verification Surfaces
+
+Prefer repo-owned verification first:
+
+```bash
+ninja -C build selfhost_rbcursive_smoke
+ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure
 ```
-conductor/
-├── product.md              # Product vision and goals
-├── product-guidelines.md   # UX/brand guidelines
-├── tech-stack.md           # Technology choices
-├── workflow.md             # Development workflow rules
-├── tracks.md               # Master list of all tracks
-├── code_styleguides/       # Language-specific style guides
-├── tracks/                 # Active tracks
-│   └── <track_id>/
-│       ├── metadata.json
-│       ├── spec.md
-│       └── plan.md
-└── archive/                # Completed tracks
+
+If CMake regeneration is flaky but the track allows fallback, use the direct bridge:
+
+```bash
+/Users/jim/.local/bin/cppfront -p -q -o build/selfhost/rbcursive.cpp src/selfhost/rbcursive.cpp2
+/usr/bin/clang++ -std=c++20 -U__cpp_lib_modules -DCPPFORT_SOURCE_DIR=\"/Users/jim/work/cppfort\" -I/Users/jim/work/cppfort/build/selfhost -I/Users/jim/work/cppfront/include tests/selfhost_rbcursive_smoke.cpp -o /tmp/selfhost_rbcursive_smoke_manual
+/tmp/selfhost_rbcursive_smoke_manual
 ```
 
-## Available Commands
+Always record which route actually passed.
 
-| Command | Purpose |
-|---------|---------|
-| **Setup** | Initialize Conductor in a project (new or existing) |
-| **New Track** | Create a new feature/bug track with spec and plan |
-| **Implement** | Execute tasks from a track's plan following TDD workflow |
-| **Status** | Show progress overview of all tracks |
-| **Revert** | Git-aware rollback of tracks, phases, or tasks |
+## Runtime Handling
 
-## Protocol References
+Delegated execution is required for product-file edits in normal operation.
 
-The detailed protocols are in TOML format. Read the `prompt` field from each file:
+- If a worker runtime is broken, say exactly how it failed.
+- Distinguish runtime failure from build failure from product failure.
+- Do not pretend a blocked worker is equivalent to a completed slice.
 
-| Action | Protocol File |
-|--------|---------------|
-| Setup project | `commands/conductor/setup.toml` |
-| Create new track | `commands/conductor/newTrack.toml` |
-| Implement tasks | `commands/conductor/implement.toml` |
-| Check status | `commands/conductor/status.toml` |
-| Revert changes | `commands/conductor/revert.toml` |
+## Do Not
 
-**How to read**: Each `.toml` file has a `prompt` field containing the full protocol instructions.
-
-## Task Status Markers
-
-- `[ ]` - Pending
-- `[~]` - In Progress
-- `[x]` - Completed
-
-## Key Workflow Principles
-
-1. **The Plan is Source of Truth**: All work tracked in `plan.md`
-2. **Test-Driven Development**: Write tests before implementing
-3. **High Code Coverage**: Target >80% coverage
-4. **Commit After Each Task**: With git notes for traceability
-5. **Phase Checkpoints**: Manual verification at phase completion
-
-## When to Use Each Protocol
-
-- **"set up conductor" or "initialize project"** -> Read `commands/conductor/setup.toml`
-- **"new feature", "new track", "plan a feature"** -> Read `commands/conductor/newTrack.toml`
-- **"implement", "start working", "next task"** -> Read `commands/conductor/implement.toml`
-- **"status", "progress", "where are we"** -> Read `commands/conductor/status.toml`
-- **"revert", "undo", "rollback"** -> Read `commands/conductor/revert.toml`
-
-## Integration: Copilot Agent & Homedir Setup
-
-This repository includes a per-project Copilot agent scaffold in `copilot-agent/` that exposes Conductor commands as Copilot actions (see `copilot-agent/agent-manifest.json`). It also provides an idempotent homedir installer `copilot-agent/scripts/homedir-setup.sh` which installs a `conductor-agent` wrapper to `~/.local/bin` and uses `skill/scripts/run-conductor.sh` as a fallback invoker when the `conductor` CLI is not available.
-
-Add example prompts in `copilot-agent/examples/prompts.md` to guide users and AI agents on how to invoke the conductor actions.
-
-## Assets
-
-- **Code Styleguides**: `templates/code_styleguides/` (general, go, python, javascript, typescript, html-css)
-- **Workflow Template**: `templates/workflow.md`
-
-## Critical Rules
-
-1. **Validate every tool call** - If any fails, halt and report to user
-2. **Sequential questions** - Ask one question at a time, wait for response
-3. **User confirmation required** - Before writing files or making changes
-4. **Check setup first** - Verify `conductor/` exists before any operation
-5. **Agnostic language** - Do not suggest slash commands like `/conductor:xxx`. Instead, tell the user to ask you directly (e.g., "to start implementing, just ask me" instead of "run /conductor:implement")
+- Do not push track mechanics back to the user.
+- Do not modify TrikeShed.
+- Do not let verifier and writer co-own the same step.
+- Do not mark a slice complete without a real passing verification command.
+- Do not treat broad rediscovery as progress after the slice is already named.

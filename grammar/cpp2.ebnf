@@ -1,8 +1,8 @@
 (* ============================================================================ *)
 (* CPP2 GRAMMAR SPECIFICATION - FORMAL EBNF                                    *)
 (* ============================================================================ *)
-(* Extracted from cppfort/src/parser.cpp (5,801 lines, 73 parser methods)      *)
-(* This is the authoritative grammar for EBNF-driven parser generation         *)
+(* Repo-owned grammar surface retained after the legacy parser.cpp removal      *)
+(* Use as canonical grammar truth, not as a mirror of deleted C++ parser code  *)
 (* ============================================================================ *)
 
 (* ============================================================================ *)

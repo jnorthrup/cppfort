@@ -163,7 +163,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 
-1. **Parser implementation is missing** - `cppfort_parser.h` is header-only API, no source [UNCHANGED]
+1. **Legacy parser path is gone by design** - `cppfort_parser.h` / `src/parser.cpp` were removed so selfhost `src/selfhost/` remains the only active parser surface
 2. **MLIR SoN dialect is DISABLED** - BLOCKED by LLVM 21 FieldParser issue [RESOLVED 2026-03-12: Now builds successfully with LLVM 21.1.8]
 3. **Bootstrap nucleus is minimal** - only integer tag constants, not transpilable C++ [UNCHANGED]
 4. **No working end-to-end pipeline** - no path from Cpp2 source → canonical AST → SoN → C++ [UNCHANGED]
@@ -181,7 +181,7 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 
 **Recommended track additions:**
 - `llvm21_fieldparser_fix` - unblock MLIR dialect compilation
-- `parser_implementation` - implement cppfort_parser.h contract with TrikeShed sugar support
+- `selfhost_alpha_surface` - extend `src/selfhost/rbcursive.cpp2` with the remaining alpha transform dogfood slice
 - `canonical_wiring` - connect selfhost/canonical_types.cpp2 to build system
 - `minimal_son_lowering` - one working SoN op from canonical type
 - `trikeshed_sugar_normalization` - implement front-end sugar to canonical AST normalization
@@ -233,27 +233,22 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 
 ## [x] Track: Hand-Written Parser Implementation
 *Link: [./conductor/tracks/parser_implementation_20260312/](./conductor/tracks/parser_implementation_20260312/)*
-*Status: COMPLETE - 2026-03-12*
+*Status: COMPLETE - 2026-03-12; retired on 2026-03-13 when the legacy parser path was deleted*
 
 **Objective:** Implement 100% hand-written parser per TrikeShed gospel with TrikeShed sugar support
 
-**Gospel Constraints Met:**
-- ✅ 100% Hand-Written Parser - No LLM-generated parser internals
-- ✅ Public API contract in `cppfort_parser.h`
-- ✅ Internal implementation in `src/parser.cpp`
-- ✅ TrikeShed Notation as Front-End Sugar Only - Normalize early to canonical AST
+**Historical Note:**
+- This track produced a temporary hand-written C++ parser path.
+- That path was later removed to keep the repo honest about dogfooding the selfhost parser surface under `src/selfhost/`.
 
-**Implementation Summary:**
-- Created `include/cppfort_parser.h` - Public API header (~200 lines)
-- Created `src/parser.cpp` - Hand-written parser (~1520 lines)
-- Updated `grammar/cpp2.ebnf` - Added TrikeShed grammar extensions
-- Created `tests/parser_smoke_test.cpp` - 6 test cases, all passing
-- Updated `src/CMakeLists.txt` - Added parser library and smoke test
+**Implementation Summary (historical):**
+- Created a temporary `cppfort_parser.h` API and `src/parser.cpp` implementation
+- Added TrikeShed grammar extensions and a parser smoke harness
+- The entire legacy parser path has since been deleted from the live build
 
-**Verification:**
-- Build: `ninja -C build parser_smoke_test` succeeds
-- Tests: All 6 smoke tests pass
-- Coverage: coords[...], a j b, chart, atlas, manifold, expressions
+**Replacement Reality:**
+- Active parser bootstrap now lives under `src/selfhost/`
+- Live verification route is `ninja -C build selfhost_rbcursive_smoke` plus `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure`
 
 ---
 
@@ -280,7 +275,7 @@ The tracks above assume legacy infrastructure is usable. Gap analysis reveals:
 - Process meaning: `manifold` here is algebraic guidance for compiler phase alignment and legal semantic transitions, not model training, token classification, or statistical inference
 - Next untouched product slice: add `alpha` transform coverage to the selfhost dogfood surface without widening beyond `src/selfhost/rbcursive.cpp2` and `tests/selfhost_rbcursive_smoke.cpp`
 - Delegation route: `XDG_DATA_HOME=/tmp/kilo-data kilo run --auto --format json --dir /Users/jim/work/cppfort -m openai/gpt-5.1-codex-mini`
-- Current blocker (2026-03-14): host verification recovered after `/opt/homebrew/opt/llvm` moved to a real `llvm/22.1.1` install with MLIR CMake files again, but the delegated product route is still unavailable: `kilo` dies on outbound OpenAI auth (`ConnectionRefused` / `FailedToOpenSocket` to `https://auth.openai.com/oauth/token`), `qwen -y ...` exits with `[API Error: Connection error.]`, and the user-directed `gemini -y -p ...` attempt produced no worker rendezvous before the user redirected back to qwen. `cmake -S . -B build -G Ninja` is no longer blocked on `find_package(MLIR)`, although it still trips Ninja's `failed recompaction: No such file or directory`; rerunning `ninja -C build selfhost_rbcursive_smoke` regenerates cleanly and `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure` passes
+- Current blocker (2026-03-14): host verification recovered after `/opt/homebrew/opt/llvm` moved to a real `llvm/22.1.1` install with MLIR CMake files again, but the delegated product route is still unavailable. A fresh `XDG_DATA_HOME=/tmp/kilo-data kilo run --print-logs --auto --format json --dir /Users/jim/work/cppfort -m openai/gpt-5.1-codex-mini ...` attempt now confirms the writable-db fix holds, yet kilo still fails closed before any worker rendezvous because it cannot refresh `models.dev` / `https://api.kilo.ai/api/openrouter/models` and then dies on outbound OpenAI auth (`ConnectionRefused` / `FailedToOpenSocket` to `https://auth.openai.com/oauth/token`). `qwen -y ...` exits with `[API Error: Connection error.]`, and the user-directed `gemini -y -p ...` attempt produced no worker rendezvous before the user redirected back to qwen. `cmake -S . -B build -G Ninja` is no longer blocked on `find_package(MLIR)`, although it still trips Ninja's `failed recompaction: No such file or directory`; rerunning `ninja -C build selfhost_rbcursive_smoke` regenerates cleanly and `ctest --test-dir build -R selfhost_rbcursive_smoke --output-on-failure` passes
 
 ---
 

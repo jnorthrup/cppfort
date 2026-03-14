@@ -95,7 +95,7 @@
 flowchart TD
     Source["CPP2 SOURCE CODE<br/>main.cpp2"]
     
-    Parser["PARSER (parser.cpp)<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>Lexical Analysis → Combinator Parsing → AST Construction<br/>(lexer.cpp) → (combinators/) → (ast.hpp)"]
+    Parser["PARSER (selfhost rbcursive.cpp2 via cppfront)<br/>━━━━━━━━━━━━━━━━━━━━━━<br/>Feature-Stream Scanning → Pure cpp2 bootstrap parsing → Smoke gate<br/>(rbcursive.cpp2) → (selfhost surface) → (ctest)"]
     
     Semantic["SEMANTIC ANALYSIS (semantic_analyzer.cpp)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>Type Checking → Escape Analysis → Borrow Checking → Lifetime<br/>(Phase 1-2) → (Phase 1-2) → (Phase 2) → (Phase 2)<br/><br/>ATTACHES SemanticInfo to AST nodes:<br/>• escape_info: EscapeKind<br/>• borrow: OwnershipKind<br/>• memory_transfer: GPU/DMA tracking<br/>• channel_transfer: Send/recv tracking<br/>• arena: ArenaRegion<br/>• coroutine_frame: CoroutineFrameStrategy"]
     
