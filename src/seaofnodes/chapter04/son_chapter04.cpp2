@@ -1,0 +1,911 @@
+// son_chapter04.cpp2 - Sea of Nodes Chapter 4 implementation
+// External Variables and Comparison Operators
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// EXTENDED NODE REGISTRY (from Chapter 3)
+// ============================================================================
+// Chapter 4 adds: comparison operators and external variables (arg parameter)
+
+// Operation types for Chapter 4
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+    OP_VAR_DECL;
+    OP_VAR_USE;
+    OP_VAR_ASSIGN;
+    OP_PHI;
+    OP_EQ;      // Equality comparison ==
+    OP_NE;      // Not equal comparison !=
+    OP_LT;      // Less than <
+    OP_LE;      // Less than or equal <=
+    OP_GT;      // Greater than >
+    OP_GE;      // Greater than or equal >=
+    OP_NOT;     // Logical not
+    OP_PROJ;    // Projection node (for arg access)
+    OP_PARAMETER; // Parameter node (external input)
+}
+
+node_record: @struct type = {
+    nid: int = ();
+    input_ids: std::vector<int> = ();
+    output_ids: std::vector<int> = ();
+    is_cfg: bool = ();
+    op: op_type = ();
+}
+
+// Global node registry - initialized as empty vector
+node_registry: std::vector<node_record> = ();
+
+// Global constant value registry - initialized as empty vector
+constant_values: std::vector<long> = ();
+
+// ============================================================================
+// VARIABLE TRACKING (from Chapter 3)
+// ============================================================================
+
+var_record: @struct type = {
+    name: std::string = ();
+    current_value: int = ();
+}
+
+scope_record: @struct type = {
+    level: int = ();
+    variables: std::vector<var_record> = ();
+}
+
+scope_stack: std::vector<scope_record> = ();
+
+// Factory function for creating a node
+make_node: (input_ids: std::vector<int>, is_cfg: bool, operation: op_type) -> int = {
+    nid: int = unchecked_narrow<int>(node_registry.ssize());
+    record: node_record = ();
+    record.nid = nid;
+    record.input_ids = input_ids;
+    record.output_ids = std::vector<int>();
+    record.is_cfg = is_cfg;
+    record.op = operation;
+
+    node_registry.push_back(record);
+
+    i: int = 0;
+    while (i < input_ids.ssize()) {
+        input_id: int = input_ids[i];
+        if (input_id >= 0 && input_id < node_registry.ssize()) {
+            node_registry[input_id].output_ids.push_back(nid);
+        }
+        i++;
+    }
+
+    return nid;
+}
+
+// Helper to get operation type of a node
+node_op: (nid: int) -> op_type = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return op_type::OP_CONSTANT;
+    }
+    return node_registry[nid].op;
+}
+
+// Accessors
+node_in: (nid: int, i: int) -> int = {
+    return node_registry[nid].input_ids[i];
+}
+
+node_nins: (nid: int) -> int = {
+    return node_registry[nid].input_ids.ssize();
+}
+
+node_nouts: (nid: int) -> int = {
+    return node_registry[nid].output_ids.ssize();
+}
+
+node_is_unused: (nid: int) -> bool = {
+    return node_registry[nid].output_ids.empty();
+}
+
+node_is_cfg: (nid: int) -> bool = {
+    return node_registry[nid].is_cfg;
+}
+
+// Reset registry (for testing)
+reset_nodes: () -> void = {
+    node_registry.clear();
+    constant_values.clear();
+    scope_stack.clear();
+}
+
+// Constant value operations
+set_constant_value: (nid: int, val: long) -> void = {
+    while (nid >= node_registry.ssize()) {
+        constant_values.push_back(0);
+    }
+    constant_values[nid] = val;
+    
+    if (nid >= 0 && nid < node_registry.ssize()) {
+        node_registry[nid].op = op_type::OP_CONSTANT;
+    }
+}
+
+get_constant_value: (nid: int) -> long = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return 0;
+    }
+    return constant_values[nid];
+}
+
+// ============================================================================
+// SCOPE MANAGEMENT (from Chapter 3)
+// ============================================================================
+
+enter_scope: () -> void = {
+    new_level: int = unchecked_narrow<int>(scope_stack.ssize());
+    new_scope: scope_record = ();
+    new_scope.level = new_level;
+    scope_stack.push_back(new_scope);
+}
+
+exit_scope: () -> void = {
+    if (!scope_stack.empty()) {
+        scope_stack.pop_back();
+    }
+}
+
+declare_variable: (name: std::string, value_nid: int) -> bool = {
+    if (scope_stack.empty()) {
+        return false;
+    }
+    
+    current_scope: scope_record = scope_stack.back();
+    i: int = 0;
+    while (i < current_scope.variables.ssize()) {
+        if (current_scope.variables[i].name == name) {
+            return false;
+        }
+        i++;
+    }
+    
+    var: var_record = ();
+    var.name = name;
+    var.current_value = value_nid;
+    scope_stack.back().variables.push_back(var);
+    
+    return true;
+}
+
+lookup_variable: (name: std::string) -> int = {
+    i: int = unchecked_narrow<int>(scope_stack.ssize());
+    while (i > 0) {
+        i--;
+        scope: scope_record = scope_stack[i];
+        j: int = 0;
+        while (j < scope.variables.ssize()) {
+            if (scope.variables[j].name == name) {
+                return scope.variables[j].current_value;
+            }
+            j++;
+        }
+    }
+    
+    // Special case: look up 'arg' as parameter
+    if (name == "arg") {
+        return lookup_variable("__arg__");
+    }
+    
+    return -1;
+}
+
+update_variable: (name: std::string, new_value: int) -> bool = {
+    // Special case: update 'arg' as parameter
+    actual_name: std::string = name;
+    if (name == "arg") {
+        actual_name = "__arg__";
+    }
+    
+    i: int = unchecked_narrow<int>(scope_stack.ssize());
+    while (i > 0) {
+        i--;
+        scope: scope_record = scope_stack[i];
+        j: int = 0;
+        while (j < scope.variables.ssize()) {
+            if (scope.variables[j].name == actual_name) {
+                scope.variables[j].current_value = new_value;
+                return true;
+            }
+            j++;
+        }
+    }
+    
+    return false;
+}
+
+// ============================================================================
+// CHAPTER 4 NODE FACTORIES
+// ============================================================================
+
+// Comparison Nodes
+make_eq_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_EQ);
+}
+
+make_ne_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_NE);
+}
+
+make_lt_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_LT);
+}
+
+make_le_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_LE);
+}
+
+make_gt_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_GT);
+}
+
+make_ge_node: (op1: int, op2: int) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, op_type::OP_GE);
+}
+
+// Not Node (unary)
+make_not_node: (op: int) -> int = {
+    inputs: std::vector<int> = (op);
+    return make_node(inputs, false, op_type::OP_NOT);
+}
+
+// Parameter Node (external input - the 'arg' variable)
+make_parameter_node: (ctrl: int) -> int = {
+    inputs: std::vector<int> = (ctrl);
+    return make_node(inputs, false, op_type::OP_PARAMETER);
+}
+
+// Projection Node (for accessing parameter projections)
+make_proj_node: (input_node: int, idx: int) -> int = {
+    inputs: std::vector<int> = (input_node);
+    nid: int = make_node(inputs, false, op_type::OP_PROJ);
+    return nid;
+}
+
+// ============================================================================
+// EXISTING NODE FACTORIES (from Chapters 1-3)
+// ============================================================================
+
+make_start_node: () -> int = {
+    inputs: std::vector<int> = ();
+    return make_node(inputs, true, op_type::OP_START);
+}
+
+make_return_node: (ctrl: int, data: int) -> int = {
+    inputs: std::vector<int> = (ctrl, data);
+    return make_node(inputs, true, op_type::OP_RETURN);
+}
+
+make_constant_node: (val: long, start_node_id: int) -> int = {
+    inputs: std::vector<int> = (start_node_id);
+    nid: int = make_node(inputs, false, op_type::OP_CONSTANT);
+    set_constant_value(nid, val);
+    return nid;
+}
+
+make_binary_node: (op1: int, op2: int, operation: op_type) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, operation);
+}
+
+make_add_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_ADD);
+}
+
+make_sub_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_SUB);
+}
+
+make_mul_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_MUL);
+}
+
+make_div_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_DIV);
+}
+
+make_minus_node: (op: int) -> int = {
+    inputs: std::vector<int> = (op);
+    return make_node(inputs, false, op_type::OP_MINUS);
+}
+
+make_var_decl_node: (ctrl: int, initial_value: int) -> int = {
+    inputs: std::vector<int> = (ctrl, initial_value);
+    return make_node(inputs, true, op_type::OP_VAR_DECL);
+}
+
+make_var_use_node: (ctrl: int, var_node: int) -> int = {
+    inputs: std::vector<int> = (ctrl, var_node);
+    return make_node(inputs, false, op_type::OP_VAR_USE);
+}
+
+make_var_assign_node: (ctrl: int, new_value: int) -> int = {
+    inputs: std::vector<int> = (ctrl, new_value);
+    return make_node(inputs, true, op_type::OP_VAR_ASSIGN);
+}
+
+make_phi_node: (ctrl: int, values: std::vector<int>) -> int = {
+    inputs: std::vector<int> = (ctrl);
+    i: int = 0;
+    while (i < values.ssize()) {
+        inputs.push_back(values[i]);
+        i++;
+    }
+    return make_node(inputs, false, op_type::OP_PHI);
+}
+
+// ============================================================================
+// CONSTANT FOLDING (from Chapter 2)
+// ============================================================================
+
+try_evaluate_constant: (nid: int) -> std::pair<bool, long> = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return std::make_pair(false, 0);
+    }
+    if (node_nins(nid) == 1 && node_is_cfg(node_in(nid, 0))) {
+        return std::make_pair(true, get_constant_value(nid));
+    }
+    return std::make_pair(false, 0);
+}
+
+// Helper to compute comparison result
+compute_comparison: (op: op_type, left: long, right: long) -> long = {
+    if (op == op_type::OP_EQ) {
+        if (left == right) { return 1; }
+        return 0;
+    }
+    if (op == op_type::OP_NE) {
+        if (left != right) { return 1; }
+        return 0;
+    }
+    if (op == op_type::OP_LT) {
+        if (left < right) { return 1; }
+        return 0;
+    }
+    if (op == op_type::OP_LE) {
+        if (left <= right) { return 1; }
+        return 0;
+    }
+    if (op == op_type::OP_GT) {
+        if (left > right) { return 1; }
+        return 0;
+    }
+    if (op == op_type::OP_GE) {
+        if (left >= right) { return 1; }
+        return 0;
+    }
+    return 0;
+}
+
+// Evaluate comparison at compile time
+try_evaluate_comparison: (nid: int) -> std::pair<bool, long> = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return std::make_pair(false, 0);
+    }
+    
+    // Check if both operands are constants
+    if (node_nins(nid) != 2) {
+        return std::make_pair(false, 0);
+    }
+    
+    left_result: std::pair<bool, long> = try_evaluate_constant(node_in(nid, 0));
+    if (!left_result.first) {
+        return std::make_pair(false, 0);
+    }
+    
+    right_result: std::pair<bool, long> = try_evaluate_constant(node_in(nid, 1));
+    if (!right_result.first) {
+        return std::make_pair(false, 0);
+    }
+    
+    operation: op_type = node_op(nid);
+    left_val: long = left_result.second;
+    right_val: long = right_result.second;
+    
+    result_val: long = compute_comparison(operation, left_val, right_val);
+    return std::make_pair(true, result_val);
+}
+
+// ============================================================================
+// LEXER (extended from Chapter 3)
+// ============================================================================
+
+lexer: @struct type = {
+    input: std::string = ();
+    position: int = ();
+}
+
+make_lexer: (source: std::string) -> lexer = {
+    l: lexer = ();
+    l.input = source;
+    l.position = 0;
+    return l;
+}
+
+lexer_is_eof: (inout l: lexer) -> bool = {
+    return l.position >= l.input.ssize();
+}
+
+lexer_peek: (inout l: lexer) -> char = {
+    if (lexer_is_eof(l)) {
+        return '\0';
+    }
+    return l.input[l.position];
+}
+
+lexer_next_char: (inout l: lexer) -> char = {
+    ch: char = lexer_peek(l);
+    if (!lexer_is_eof(l)) {
+        l.position++;
+    }
+    return ch;
+}
+
+lexer_is_whitespace: (inout l: lexer) -> bool = {
+    ch: char = lexer_peek(l);
+    return ch <= ' ' && ch != '\0';
+}
+
+lexer_skip_whitespace: (inout l: lexer) -> void = {
+    while (lexer_is_whitespace(l)) {
+        l.position++;
+    }
+}
+
+lexer_match: (inout l: lexer, syntax: std::string) -> bool = {
+    lexer_skip_whitespace(l);
+    len: int = unchecked_narrow<int>(syntax.ssize());
+    if (l.position + len > l.input.ssize()) {
+        return false;
+    }
+    i: int = 0;
+    while (i < len) {
+        if (l.input[l.position + i] != syntax[i]) {
+            return false;
+        }
+        i++;
+    }
+    l.position += len;
+    return true;
+}
+
+lexer_matchx: (inout l: lexer, syntax: std::string) -> bool = {
+    if (!lexer_match(l, syntax)) {
+        return false;
+    }
+    next_ch: char = lexer_peek(l);
+    if (lexer_is_id_letter(next_ch)) {
+        l.position -= syntax.ssize();
+        return false;
+    }
+    return true;
+}
+
+lexer_is_digit: (ch: char) -> bool = {
+    return ch >= '0' && ch <= '9';
+}
+
+lexer_is_number: (inout l: lexer) -> bool = {
+    return lexer_is_digit(lexer_peek(l));
+}
+
+lexer_parse_number_string: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_digit(lexer_next_char(l))) {
+    }
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+lexer_parse_number: (inout l: lexer) -> long = {
+    snum: std::string = lexer_parse_number_string(l);
+    if (snum.ssize() > 1 && snum[0] == '0') {
+        throw (std::runtime_error("Syntax error: integer values cannot start with '0'"));
+    }
+    return std::stol(snum);
+}
+
+lexer_is_id_start: (ch: char) -> bool = {
+    return std::isalpha(ch) || ch == '_';
+}
+
+lexer_is_id_letter: (ch: char) -> bool = {
+    return std::isalnum(ch) || ch == '_';
+}
+
+lexer_parse_id: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_id_letter(lexer_next_char(l))) {
+    }
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+lexer_is_punctuation: (ch: char) -> bool = {
+    punct: std::string = "=;[]<>(){}+-/*!";
+    return punct.find(ch) != std::string::npos;
+}
+
+lexer_parse_punctuation: (inout l: lexer) -> std::string = {
+    ch: char = lexer_next_char(l);
+    return std::string(1, ch);
+}
+
+lexer_get_any_next_token: (inout l: lexer) -> std::string = {
+    if (lexer_is_eof(l)) {
+        return "";
+    }
+    ch: char = lexer_peek(l);
+    if (lexer_is_id_start(ch)) {
+        return lexer_parse_id(l);
+    }
+    if (lexer_is_digit(ch)) {
+        return lexer_parse_number_string(l);
+    }
+    if (lexer_is_punctuation(ch)) {
+        return lexer_parse_punctuation(l);
+    }
+    return std::string(1, ch);
+}
+
+// ============================================================================
+// PARSER (Chapter 4 - with comparison operators)
+// ============================================================================
+
+parser: @struct type = {
+    lexer_instance: lexer = ();
+    start_node: int = ();
+    has_parameter: bool = ();
+}
+
+make_parser: (source: std::string) -> parser = {
+    p: parser = ();
+    p.lexer_instance = make_lexer(source);
+    p.start_node = make_start_node();
+    p.has_parameter = false;
+    return p;
+}
+
+parser_parse: (inout p: parser) -> int = {
+    reset_nodes();
+    enter_scope();
+    
+    ret: int = parser_parse_block(p);
+    
+    if (!lexer_is_eof(p.lexer_instance)) {
+        throw (parser_error(p, "Syntax error, unexpected " + lexer_get_any_next_token(p.lexer_instance)));
+    }
+    
+    exit_scope();
+    return ret;
+}
+
+parser_parse_block: (inout p: parser) -> int = {
+    last_expr: int = -1;
+    
+    while (!lexer_is_eof(p.lexer_instance)) {
+        lexer_skip_whitespace(p.lexer_instance);
+        
+        if (lexer_match(p.lexer_instance, "}")) {
+            break;
+        }
+        
+        last_expr = parser_parse_statement(p);
+    }
+    
+    return last_expr;
+}
+
+parser_parse_statement: (inout p: parser) -> int = {
+    lexer_skip_whitespace(p.lexer_instance);
+    
+    if (lexer_matchx(p.lexer_instance, "int")) {
+        return parser_parse_var_decl(p);
+    }
+    
+    if (lexer_matchx(p.lexer_instance, "return")) {
+        return parser_parse_return(p);
+    }
+    
+    if (lexer_is_id_start(lexer_peek(p.lexer_instance))) {
+        id_start: int = p.lexer_instance.position;
+        id: std::string = lexer_parse_id(p.lexer_instance);
+        lexer_skip_whitespace(p.lexer_instance);
+        if (lexer_match(p.lexer_instance, "=")) {
+            return parser_parse_assignment(p, id);
+        } else {
+            p.lexer_instance.position = id_start;
+        }
+    }
+    
+    if (lexer_match(p.lexer_instance, "{")) {
+        enter_scope();
+        result: int = parser_parse_block(p);
+        exit_scope();
+        return result;
+    }
+    
+    expr: int = parser_parse_expression(p);
+    if (lexer_match(p.lexer_instance, ";")) {
+        return expr;
+    }
+    
+    throw (parser_error_syntax(p, "statement"));
+}
+
+parser_parse_var_decl: (inout p: parser) -> int = {
+    lexer_skip_whitespace(p.lexer_instance);
+    
+    if (!lexer_is_id_start(lexer_peek(p.lexer_instance))) {
+        throw (parser_error(p, "Expected variable name after 'int'"));
+    }
+    name: std::string = lexer_parse_id(p.lexer_instance);
+    
+    lexer_skip_whitespace(p.lexer_instance);
+    if (!lexer_match(p.lexer_instance, "=")) {
+        throw (parser_error_syntax(p, "= after variable name"));
+    }
+    
+    value: int = parser_parse_expression(p);
+    
+    if (!lexer_match(p.lexer_instance, ";")) {
+        throw (parser_error_syntax(p, ";"));
+    }
+    
+    var_decl: int = make_var_decl_node(p.start_node, value);
+    
+    if (!declare_variable(name, var_decl)) {
+        throw (std::runtime_error("Redefining name '" + name + "'"));
+    }
+    
+    return var_decl;
+}
+
+parser_parse_assignment: (inout p: parser, name: std::string) -> int = {
+    existing_var: int = lookup_variable(name);
+    if (existing_var < 0) {
+        throw (std::runtime_error("Undefined name '" + name + "'"));
+    }
+    
+    value: int = parser_parse_expression(p);
+    
+    if (!lexer_match(p.lexer_instance, ";")) {
+        throw (parser_error_syntax(p, ";"));
+    }
+    
+    assign: int = make_var_assign_node(p.start_node, value);
+    update_variable(name, assign);
+    
+    return assign;
+}
+
+parser_parse_return: (inout p: parser) -> int = {
+    expr: int = parser_require(p, parser_parse_expression(p), ";");
+    return make_return_node(p.start_node, expr);
+}
+
+parser_parse_expression: (inout p: parser) -> int = {
+    return parser_parse_comparison(p);
+}
+
+// Parse comparison expression: ==, !=, <, >, <=, >=
+parser_parse_comparison: (inout p: parser) -> int = {
+    lhs: int = parser_parse_addition(p);
+    
+    if (lexer_match(p.lexer_instance, "==")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_eq_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    } else if (lexer_match(p.lexer_instance, "!=")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_ne_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    } else if (lexer_match(p.lexer_instance, "<=")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_le_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    } else if (lexer_match(p.lexer_instance, "<")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_lt_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    } else if (lexer_match(p.lexer_instance, ">=")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_ge_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    } else if (lexer_match(p.lexer_instance, ">")) {
+        rhs: int = parser_parse_comparison(p);
+        lhs = make_gt_node(lhs, rhs);
+        lhs = parser_try_comparison_fold(p, lhs);
+    }
+    
+    return lhs;
+}
+
+parser_parse_addition: (inout p: parser) -> int = {
+    lhs: int = parser_parse_multiplication(p);
+    
+    while (true) {
+        if (lexer_match(p.lexer_instance, "+")) {
+            rhs: int = parser_parse_addition(p);
+            lhs = make_add_node(lhs, rhs);
+            lhs = parser_try_constant_fold(p, lhs);
+        } else if (lexer_match(p.lexer_instance, "-")) {
+            rhs: int = parser_parse_addition(p);
+            lhs = make_sub_node(lhs, rhs);
+            lhs = parser_try_constant_fold(p, lhs);
+        } else {
+            break;
+        }
+    }
+    
+    return lhs;
+}
+
+parser_parse_multiplication: (inout p: parser) -> int = {
+    lhs: int = parser_parse_unary(p);
+    
+    while (true) {
+        if (lexer_match(p.lexer_instance, "*")) {
+            rhs: int = parser_parse_multiplication(p);
+            lhs = make_mul_node(lhs, rhs);
+            lhs = parser_try_constant_fold(p, lhs);
+        } else if (lexer_match(p.lexer_instance, "/")) {
+            rhs: int = parser_parse_multiplication(p);
+            lhs = make_div_node(lhs, rhs);
+            lhs = parser_try_constant_fold(p, lhs);
+        } else {
+            break;
+        }
+    }
+    
+    return lhs;
+}
+
+parser_parse_unary: (inout p: parser) -> int = {
+    if (lexer_match(p.lexer_instance, "-")) {
+        operand: int = parser_parse_unary(p);
+        return parser_try_unary_minus_fold(p, operand);
+    }
+    if (lexer_match(p.lexer_instance, "!")) {
+        operand: int = parser_parse_unary(p);
+        return make_not_node(operand);
+    }
+    return parser_parse_primary(p);
+}
+
+parser_parse_primary: (inout p: parser) -> int = {
+    lexer_skip_whitespace(p.lexer_instance);
+    
+    if (lexer_is_number(p.lexer_instance)) {
+        return parser_parse_integer_literal(p);
+    }
+    
+    if (lexer_is_id_start(lexer_peek(p.lexer_instance))) {
+        name: std::string = lexer_parse_id(p.lexer_instance);
+        
+        // Check for parameter access
+        if (name == "arg") {
+            if (!p.has_parameter) {
+                p.has_parameter = true;
+                param_node: int = make_parameter_node(p.start_node);
+                declare_variable("__arg__", param_node);
+                return param_node;
+            }
+            return lookup_variable("__arg__");
+        }
+        
+        var_node: int = lookup_variable(name);
+        if (var_node < 0) {
+            throw (std::runtime_error("Undefined name '" + name + "'"));
+        }
+        return var_node;
+    }
+    
+    if (lexer_match(p.lexer_instance, "(")) {
+        expr: int = parser_parse_expression(p);
+        return parser_require(p, expr, ")");
+    }
+    
+    throw (parser_error(p, "Syntax error, expected integer literal, identifier, or '('"));
+}
+
+parser_parse_integer_literal: (inout p: parser) -> int = {
+    value: long = lexer_parse_number(p.lexer_instance);
+    return make_constant_node(value, p.start_node);
+}
+
+parser_require: (inout p: parser, n: int, syntax: std::string) -> int = {
+    if (lexer_match(p.lexer_instance, syntax)) {
+        return n;
+    }
+    throw (parser_error_syntax(p, syntax));
+}
+
+parser_try_constant_fold: (inout p: parser, nid: int) -> int = {
+    if (node_nins(nid) == 2) {
+        left_id: int = node_in(nid, 0);
+        right_id: int = node_in(nid, 1);
+        
+        left_result: std::pair<bool, long> = try_evaluate_constant(left_id);
+        if (!left_result.first) {
+            return nid;
+        }
+        
+        right_result: std::pair<bool, long> = try_evaluate_constant(right_id);
+        if (!right_result.first) {
+            return nid;
+        }
+        
+        operation: op_type = node_op(nid);
+        left_val: long = left_result.second;
+        right_val: long = right_result.second;
+        
+        if (operation == op_type::OP_ADD) {
+            result: long = left_val + right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_SUB) {
+            result: long = left_val - right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_MUL) {
+            result: long = left_val * right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_DIV) {
+            if (right_val == 0) {
+                throw (std::runtime_error("Division by zero"));
+            }
+            result: long = left_val / right_val;
+            return make_constant_node(result, p.start_node);
+        } else {
+            return nid;
+        }
+    }
+    
+    return nid;
+}
+
+parser_try_unary_minus_fold: (inout p: parser, operand: int) -> int = {
+    const_result: std::pair<bool, long> = try_evaluate_constant(operand);
+    if (const_result.first) {
+        return make_constant_node(-const_result.second, p.start_node);
+    }
+    
+    return make_minus_node(operand);
+}
+
+parser_try_comparison_fold: (inout p: parser, nid: int) -> int = {
+    result: std::pair<bool, long> = try_evaluate_comparison(nid);
+    if (result.first) {
+        return make_constant_node(result.second, p.start_node);
+    }
+    return nid;
+}
+
+parser_error_syntax: (inout p: parser, syntax: std::string) -> std::runtime_error = {
+    return parser_error(p, "Syntax error, expected " + syntax + ": " + lexer_get_any_next_token(p.lexer_instance));
+}
+
+parser_error: (inout p: parser, message: std::string) -> std::runtime_error = {
+    return std::runtime_error(message);
+}

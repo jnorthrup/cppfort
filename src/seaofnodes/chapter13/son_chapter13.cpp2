@@ -1,0 +1,458 @@
+// son_chapter13.cpp2 - Sea of Nodes Chapter 13 implementation
+// Chapter 13: References - Forward references, self-referential types, null safety
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+#include <memory>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// OPERATION TYPES
+// ============================================================================
+
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_STOP;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+    OP_VAR_DECL;
+    OP_VAR_USE;
+    OP_VAR_ASSIGN;
+    OP_PHI;
+    OP_EQ;
+    OP_NE;
+    OP_LT;
+    OP_LE;
+    OP_GT;
+    OP_GE;
+    OP_NOT;
+    OP_PROJ;
+    OP_PARAMETER;
+    OP_IF;
+    OP_REGION;
+    OP_TRUE;
+    OP_FALSE;
+    OP_LOOP;
+    OP_LOOP_BODY;
+    OP_LOOP_END;
+    OP_BREAK;
+    OP_CONTINUE;
+    OP_NEW;
+    OP_STORE;
+    OP_LOAD;
+    OP_CAST;
+    OP_STRUCT_DECL;
+    OP_FIELD_ACCESS;
+    // Chapter 13: Reference operations
+    OP_LOAD_REF;
+    OP_STORE_REF;
+    OP_NULL_CHECK;
+}
+
+// ============================================================================
+// TYPE LATTICE - Extended for Chapter 13
+// ============================================================================
+
+type_kind: @enum type = {
+    TYPE_CONTROL;
+    TYPE_INTEGER;
+    TYPE_STRUCT;
+    TYPE_POINTER;
+    TYPE_MEMORY;
+    TYPE_BOTTOM;
+    TYPE_TOP;
+    TYPE_FLOAT;
+    TYPE_REFERENCE;  // Chapter 13: Reference type
+    TYPE_NULL;       // Chapter 13: Null reference
+}
+
+// Forward declaration for struct type
+struct_decl: @struct type = {
+    name: std::string = "";
+    fields: std::map<std::string, type_kind> = ();
+    is_forward_ref: bool = false;  // Chapter 13: Forward reference flag
+    is_nullable: bool = false;      // Chapter 13: Nullable reference
+}
+
+type_lattice: @struct type = {
+    kind: type_kind = ();
+    is_nullable: bool = false;
+    struct_name: std::string = "";      // Chapter 13: Struct type name
+    const_int_val: std::optional<long> = std::nullopt;
+}
+
+// ============================================================================
+// CHAPTER 13: FORWARD REFERENCE REGISTRY
+// ============================================================================
+
+type_registry: @struct type = {
+    types: std::map<std::string, struct_decl> = ();
+}
+
+global_types: type_registry = ();
+
+// Get || create a type (supports forward references)
+get_or_create_type: (name: std::string) -> struct_decl = {
+    it: std::map<std::string, struct_decl>::iterator = global_types.types.find(name);
+    
+    if it == global_types.types.end() {
+        // Create forward reference
+        new_decl: struct_decl = ();
+        new_decl.name = name;
+        new_decl.is_forward_ref = true;
+        new_decl.fields = std::map<std::string, type_kind>();
+        global_types.types[name] = new_decl;
+        return new_decl;
+    }
+    
+    return it*.second;
+}
+
+// Define a struct type (resolves forward reference if exists)
+define_struct_type: (name: std::string, fields: std::map<std::string, type_kind>) -> struct_decl = {
+    decl: struct_decl = get_or_create_type(name);
+    
+    // Update the type in the registry (not just the local copy)
+    global_types.types[name].fields = fields;
+    global_types.types[name].is_forward_ref = false;  // No longer a forward ref
+    
+    return global_types.types[name];
+}
+
+// ============================================================================
+// CHAPTER 13: REFERENCE TYPE SUPPORT
+// ============================================================================
+
+is_reference: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_REFERENCE;
+}
+
+is_null_type: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_NULL;
+}
+
+make_reference_type: (struct_name: std::string, nullable: bool) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_REFERENCE;
+    result.struct_name = struct_name;
+    result.is_nullable = nullable;
+    return result;
+}
+
+make_null_type: () -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_NULL;
+    result.is_nullable = true;
+    return result;
+}
+
+// ============================================================================
+// CHAPTER 13: NULL SAFETY
+// ============================================================================
+
+can_dereference: (ref: type_lattice) -> bool = {
+    if not is_reference(ref) {
+        return false;
+    }
+    
+    if ref.is_nullable {
+        // Need runtime null check
+        return false;  // Conservative: assume might be null
+    }
+    
+    return true;  // Non-nullable reference is safe
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+test_forward_reference: () -> bool = {
+    println("Test 1: Forward reference declaration");
+
+    // Simulate: struct Person { FamilyTree? tree; }
+    // FamilyTree not yet defined
+    
+    // Create forward reference for FamilyTree
+    family_tree_ref: struct_decl = get_or_create_type("FamilyTree");
+    
+    std::cout << "  Initial: is_forward_ref=" << family_tree_ref.is_forward_ref << "\n";
+    
+    if not family_tree_ref.is_forward_ref {
+        println("  FAIL: Should be marked as forward reference");
+        return false;
+    }
+    
+    // Now define FamilyTree
+    family_tree_fields: std::map<std::string, type_kind> = ();
+    family_tree_fields["root"] = type_kind::TYPE_REFERENCE;
+    family_tree_decl: struct_decl = define_struct_type("FamilyTree", family_tree_fields);
+    
+    std::cout << "  After define: is_forward_ref=" << family_tree_decl.is_forward_ref << " fields=" << family_tree_decl.fields.size() << "\n";
+    
+    // Forward reference should be resolved - check from registry directly
+    family_tree_resolved: struct_decl = global_types.types["FamilyTree"];
+    std::cout << "  From registry: is_forward_ref=" << family_tree_resolved.is_forward_ref << " fields=" << family_tree_resolved.fields.size() << "\n";
+    
+    if family_tree_resolved.is_forward_ref {
+        println("  FAIL: Forward reference should be resolved");
+        return false;
+    }
+    
+    if family_tree_resolved.fields.size() != 1 {
+        println("  FAIL: FamilyTree should have 1 field, has " + family_tree_resolved.fields.size());
+        return false;
+    }
+    
+    println("  PASS: Forward reference resolved correctly");
+    return true;
+}
+
+test_self_referential_struct: () -> bool = {
+    println("Test 2: Self-referential struct (ListNode)");
+
+    // Create ListNode with self-reference
+    listnode_fields: std::map<std::string, type_kind> = ();
+    listnode_fields["data"] = type_kind::TYPE_INTEGER;
+    listnode_fields["next"] = type_kind::TYPE_REFERENCE;  // Self-reference
+    
+    define_struct_type("ListNode", listnode_fields);
+    
+    // Verify struct can reference itself
+    listnode_decl: struct_decl = get_or_create_type("ListNode");
+    
+    if listnode_decl.fields.size() != 2 {
+        println("  FAIL: ListNode should have 2 fields");
+        return false;
+    }
+    
+    if listnode_decl.fields.find("next") == listnode_decl.fields.end() {
+        println("  FAIL: 'next' field missing");
+        return false;
+    }
+    
+    println("  PASS: Self-referential struct works");
+    return true;
+}
+
+test_null_reference_type: () -> bool = {
+    println("Test 3: Null reference type");
+
+    null_type: type_lattice = make_null_type();
+    
+    if not is_null_type(null_type) {
+        println("  FAIL: Should be null type");
+        return false;
+    }
+    
+    if not null_type.is_nullable {
+        println("  FAIL: Null type should be nullable");
+        return false;
+    }
+    
+    println("  PASS: Null reference type works");
+    return true;
+}
+
+test_nullable_reference: () -> bool = {
+    println("Test 4: Nullable reference");
+
+    // FamilyTree? (nullable reference)
+    ref_type: type_lattice = make_reference_type("FamilyTree", true);
+    
+    if not is_reference(ref_type) {
+        println("  FAIL: Should be reference type");
+        return false;
+    }
+    
+    if not ref_type.is_nullable {
+        println("  FAIL: Should be nullable");
+        return false;
+    }
+    
+    // Non-nullable reference
+    nonnull_ref: type_lattice = make_reference_type("Person", false);
+    
+    if nonnull_ref.is_nullable {
+        println("  FAIL: Should not be nullable");
+        return false;
+    }
+    
+    println("  PASS: Nullable reference works");
+    return true;
+}
+
+test_null_safety_check: () -> bool = {
+    println("Test 5: Null safety check");
+
+    // Nullable reference
+    nullable_ref: type_lattice = make_reference_type("FamilyTree", true);
+    
+    if can_dereference(nullable_ref) {
+        println("  FAIL: Cannot safely dereference nullable ref");
+        return false;
+    }
+    
+    // Non-nullable reference
+    nonnull_ref: type_lattice = make_reference_type("Person", false);
+    
+    if not can_dereference(nonnull_ref) {
+        println("  FAIL: Should be able to dereference non-nullable ref");
+        return false;
+    }
+    
+    println("  PASS: Null safety check works");
+    return true;
+}
+
+test_mutual_recursion: () -> bool = {
+    println("Test 6: Mutually recursive types");
+
+    // struct Person { Company? employer; }
+    person_fields: std::map<std::string, type_kind> = ();
+    person_fields["employer"] = type_kind::TYPE_REFERENCE;
+    define_struct_type("Person", person_fields);
+    
+    // struct Company { Person? owner; }
+    company_fields: std::map<std::string, type_kind> = ();
+    company_fields["owner"] = type_kind::TYPE_REFERENCE;
+    define_struct_type("Company", company_fields);
+    
+    // Verify both types exist and reference each other
+    person_decl: struct_decl = get_or_create_type("Person");
+    company_decl: struct_decl = get_or_create_type("Company");
+    
+    if person_decl.is_forward_ref || company_decl.is_forward_ref {
+        println("  FAIL: Both types should be resolved");
+        return false;
+    }
+    
+    println("  PASS: Mutual recursion works");
+    return true;
+}
+
+test_reference_field_tracking: () -> bool = {
+    println("Test 7: Reference field tracking");
+
+    // Struct with multiple reference fields
+    fields: std::map<std::string, type_kind> = ();
+    fields["parent"] = type_kind::TYPE_REFERENCE;
+    fields["child"] = type_kind::TYPE_REFERENCE;
+    fields["data"] = type_kind::TYPE_INTEGER;
+    
+    define_struct_type("TreeNode", fields);
+    
+    treenode_decl: struct_decl = get_or_create_type("TreeNode");
+    
+    if treenode_decl.fields.size() != 3 {
+        println("  FAIL: Should have 3 fields");
+        return false;
+    }
+    
+    // Count reference fields
+    ref_count: int = 0;
+    it: std::map<std::string, type_kind>::iterator = treenode_decl.fields.begin();
+    while it != treenode_decl.fields.end() {
+        if it*.second == type_kind::TYPE_REFERENCE {
+            ref_count = ref_count + 1;
+        }
+        it++;
+    }
+    
+    if ref_count != 2 {
+        println("  FAIL: Should have 2 reference fields");
+        return false;
+    }
+    
+    println("  PASS: Reference field tracking works");
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 13 Tests ===");
+    println("Chapter 13: References (Forward refs, self-referential types)");
+    println("");
+
+    passed: int = 0;
+    total: int = 7;
+
+    if test_forward_reference() {
+        passed = passed + 1;
+    }
+
+    if test_self_referential_struct() {
+        passed = passed + 1;
+    }
+
+    if test_null_reference_type() {
+        passed = passed + 1;
+    }
+
+    if test_nullable_reference() {
+        passed = passed + 1;
+    }
+
+    if test_null_safety_check() {
+        passed = passed + 1;
+    }
+
+    if test_mutual_recursion() {
+        passed = passed + 1;
+    }
+
+    if test_reference_field_tracking() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Chapter 13 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}

@@ -1,0 +1,15 @@
+// start_node.cpp2 - Start Node (function entry point)
+// Per TrikeShed: semantic objects first, hermetic abstractions
+
+// ============================================================================
+// START NODE
+// Represents the start of the function
+// No inputs initially (will have parameters in Chapter 9)
+// Is a CFG node (control flow graph)
+// ============================================================================
+
+// Factory
+make_start_node: () -> int = {
+    inputs: std::vector<int> = ();
+    return make_node(inputs, true); // is_cfg = true
+}

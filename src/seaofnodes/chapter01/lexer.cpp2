@@ -1,0 +1,173 @@
+// lexer.cpp2 - Lexical analyzer for Sea of Nodes Chapter 1
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// LEXER
+// Handles lexical analysis of source text
+// ============================================================================
+
+lexer: @struct type = {
+    input: std::string = ();
+    position: int = ();
+}
+
+// Factory
+make_lexer: (source: std::string) -> lexer = {
+    l: lexer = ();
+    l.input = source;
+    l.position = 0;
+    return l;
+}
+
+// True if at EOF
+lexer_is_eof: (inout l: lexer) -> bool = {
+    return l.position >= l.input.ssize();
+}
+
+// Peek next character
+lexer_peek: (inout l: lexer) -> char = {
+    if (lexer_is_eof(l)) {
+        return '\0'; // Special value for EOF
+    }
+    return l.input[l.position];
+}
+
+// Get next character
+lexer_next_char: (inout l: lexer) -> char = {
+    ch: char = lexer_peek(l);
+    if (!lexer_is_eof(l)) {
+        l.position++;
+    }
+    return ch;
+}
+
+// True if whitespace (space, tab, newline, CR)
+lexer_is_whitespace: (inout l: lexer) -> bool = {
+    ch: char = lexer_peek(l);
+    return ch <= ' ' && ch != '\0';
+}
+
+// Skip whitespace
+lexer_skip_whitespace: (inout l: lexer) -> void = {
+    while (lexer_is_whitespace(l)) {
+        l.position++;
+    }
+}
+
+// Match exact syntax string
+lexer_match: (inout l: lexer, syntax: std::string) -> bool = {
+    lexer_skip_whitespace(l);
+    len: int = syntax.ssize() as int;
+    if (l.position + len > l.input.ssize()) {
+        return false;
+    }
+    i: int = 0;
+    while (i < len) {
+        if (l.input[l.position + i] != syntax[i]) {
+            return false;
+        }
+        i++;
+    }
+    l.position += len;
+    return true;
+}
+
+// Match exact syntax, not followed by identifier letter
+lexer_matchx: (inout l: lexer, syntax: std::string) -> bool = {
+    if (!lexer_match(l, syntax)) {
+        return false;
+    }
+    // Check if next character is an identifier letter
+    next_ch: char = lexer_peek(l);
+    if (lexer_is_id_letter(next_ch)) {
+        l.position -= syntax.ssize(); // Backtrack
+        return false;
+    }
+    return true;
+}
+
+// True if character is digit
+lexer_is_digit: (ch: char) -> bool = {
+    return ch >= '0' && ch <= '9';
+}
+
+// True if current position is a number
+lexer_is_number: (inout l: lexer) -> bool = {
+    return lexer_is_digit(lexer_peek(l));
+}
+
+// Parse number string
+lexer_parse_number_string: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_digit(lexer_next_char(l))) {
+        // Continue parsing digits
+    }
+    // Backtrack one since we read one past the end
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+// Parse number
+lexer_parse_number: (inout l: lexer) -> long = {
+    snum: std::string = lexer_parse_number_string(l);
+    // Check for leading zero
+    if (snum.ssize() > 1 && snum[0] == '0') {
+        throw (std::runtime_error("Syntax error: integer values cannot start with '0'"));
+    }
+    return std::stol(snum);
+}
+
+// First letter of an identifier
+lexer_is_id_start: (ch: char) -> bool = {
+    return std::isalpha(ch) || ch == '_';
+}
+
+// All characters of an identifier
+lexer_is_id_letter: (ch: char) -> bool = {
+    return std::isalnum(ch) || ch == '_';
+}
+
+// Parse identifier
+lexer_parse_id: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_id_letter(lexer_next_char(l))) {
+        // Continue parsing identifier characters
+    }
+    // Backtrack one since we read one past the end
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+// True if punctuation character
+lexer_is_punctuation: (ch: char) -> bool = {
+    punct: std::string = "=;[]<>(){}+-/*!";
+    return punct.find(ch) != std::string::npos;
+}
+
+// Parse punctuation (single character)
+lexer_parse_punctuation: (inout l: lexer) -> std::string = {
+    ch: char = lexer_next_char(l);
+    return std::string(1, ch);
+}
+
+// Get any next token for error messages
+lexer_get_any_next_token: (inout l: lexer) -> std::string = {
+    if (lexer_is_eof(l)) {
+        return "";
+    }
+    ch: char = lexer_peek(l);
+    if (lexer_is_id_start(ch)) {
+        return lexer_parse_id(l);
+    }
+    if (lexer_is_digit(ch)) {
+        return lexer_parse_number_string(l);
+    }
+    if (lexer_is_punctuation(ch)) {
+        return lexer_parse_punctuation(l);
+    }
+    return std::string(1, ch);
+}

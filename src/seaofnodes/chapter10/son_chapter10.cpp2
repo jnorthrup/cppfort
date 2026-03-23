@@ -1,0 +1,514 @@
+// son_chapter10.cpp2 - Sea of Nodes Chapter 10 implementation
+// Structs and Memory, Alias Classes, Type Lattice enhancements
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// OPERATION TYPES - Extended for Chapter 10
+// ============================================================================
+
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_STOP;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+    OP_VAR_DECL;
+    OP_VAR_USE;
+    OP_VAR_ASSIGN;
+    OP_PHI;
+    OP_EQ;
+    OP_NE;
+    OP_LT;
+    OP_LE;
+    OP_GT;
+    OP_GE;
+    OP_NOT;
+    OP_PROJ;
+    OP_PARAMETER;
+    OP_IF;
+    OP_REGION;
+    OP_TRUE;
+    OP_FALSE;
+    OP_LOOP;
+    OP_LOOP_BODY;
+    OP_LOOP_END;
+    OP_BREAK;
+    OP_CONTINUE;
+    OP_NEW;
+    OP_STORE;
+    OP_LOAD;
+    OP_CAST;
+    OP_STRUCT_DECL;
+    OP_FIELD_ACCESS;
+}
+
+// ============================================================================
+// TYPE LATTICE - Enhanced for Chapter 10
+// ============================================================================
+
+type_kind: @enum type = {
+    TYPE_CONTROL;
+    TYPE_INTEGER;
+    TYPE_STRUCT;
+    TYPE_POINTER;
+    TYPE_MEMORY;
+    TYPE_BOTTOM;
+    TYPE_TOP;
+}
+
+struct_field: @struct type = {
+    name: std::string = ();
+    offset: int = ();
+}
+
+struct_type: @struct type = {
+    name: std::string = ();
+    fields: std::vector<struct_field> = ();
+    total_size: int = 0;
+}
+
+type_lattice: @struct type = {
+    kind: type_kind = ();
+    struct_val: std::optional<struct_type> = std::nullopt;
+    is_nullable: bool = false;
+    alias_id: int = -1;
+}
+
+is_pointer: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_POINTER;
+}
+
+is_memory: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_MEMORY;
+}
+
+is_struct: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_STRUCT;
+}
+
+// ============================================================================
+// ALIAS CLASS SYSTEM
+// ============================================================================
+
+alias_class_registry: @struct type = {
+    next_alias_id: int = 1;
+    struct_alias_ids: std::unordered_map<std::string, std::unordered_map<std::string, int>> = ();
+}
+
+global_alias_registry: alias_class_registry = ();
+
+get_alias_id: (struct_name: std::string, field_name: std::string) -> int = {
+    it: std::unordered_map<std::string, std::unordered_map<std::string, int>>::iterator = 
+        global_alias_registry.struct_alias_ids.find(struct_name);
+    
+    if it == global_alias_registry.struct_alias_ids.end() {
+        global_alias_registry.struct_alias_ids[struct_name] = std::unordered_map<std::string, int>();
+    }
+    
+    field_it: std::unordered_map<std::string, int>::iterator = 
+        global_alias_registry.struct_alias_ids[struct_name].find(field_name);
+    
+    if field_it == global_alias_registry.struct_alias_ids[struct_name].end() {
+        global_alias_registry.struct_alias_ids[struct_name][field_name] = global_alias_registry.next_alias_id;
+        global_alias_registry.next_alias_id = global_alias_registry.next_alias_id + 1;
+    }
+    
+    return global_alias_registry.struct_alias_ids[struct_name][field_name];
+}
+
+same_alias: (id1: int, id2: int) -> bool = {
+    return id1 == id2;
+}
+
+// ============================================================================
+// NODE RECORD - Extended for Chapter 10
+// ============================================================================
+
+node_record: @struct type = {
+    nid: int = ();
+    input_ids: std::vector<int> = ();
+    output_ids: std::vector<int> = ();
+    is_cfg: bool = ();
+    op: op_type = ();
+    is_dead: bool = false;
+    constant_val: std::optional<long> = std::nullopt;
+    name: std::string = "";
+    evaluated: bool = false;
+    cached_value: std::optional<long> = std::nullopt;
+    
+    // Chapter 10: Type information
+    node_type: type_lattice = ();
+    
+    // Chapter 10: Struct and field information
+    struct_name: std::string = "";
+    field_name: std::string = "";
+    
+    // Chapter 10: Alias class ID for memory operations
+    alias_id: int = -1;
+}
+
+// Global node registry
+nodes: std::vector<node_record> = ();
+next_nid: int = 0;
+
+// ============================================================================
+// GRAPH MANAGEMENT
+// ============================================================================
+
+create_node: (op: op_type, inputs: std::vector<int>, is_cfg: bool) -> int = {
+    nid: int = next_nid;
+    next_nid = next_nid + 1;
+    
+    node: node_record = ();
+    node.nid = nid;
+    node.op = op;
+    node.is_cfg = is_cfg;
+    node.input_ids = inputs;
+    node.is_dead = false;
+    
+    nodes.push_back(node);
+    
+    // Update output edges for inputs
+    for inputs do (input_nid) {
+        nodes[input_nid].output_ids.push_back(nid);
+    }
+    
+    return nid;
+}
+
+// ============================================================================
+// CHAPTER 10: MEMORY OPERATION NODES
+// ============================================================================
+
+// Create a NEW node (allocates a new struct instance)
+new_node: (control: int, struct_name: std::string) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(control);
+    
+    nid: int = create_node(op_type::OP_NEW, inputs, true);
+    nodes[nid].struct_name = struct_name;
+    
+    // Set the type to be a pointer to the struct
+    nodes[nid].node_type.kind = type_kind::TYPE_POINTER;
+    nodes[nid].node_type.struct_val = std::nullopt;  // Will be set during type resolution
+    
+    return nid;
+}
+
+// Create a STORE node (stores a value to a struct field)
+store_node: (memory: int, ptr: int, field: std::string, value: int, struct_name: std::string) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(memory);
+    inputs.push_back(ptr);
+    inputs.push_back(value);
+    
+    nid: int = create_node(op_type::OP_STORE, inputs, false);
+    nodes[nid].field_name = field;
+    nodes[nid].struct_name = struct_name;
+    
+    // Set the type to be a memory slice
+    nodes[nid].node_type.kind = type_kind::TYPE_MEMORY;
+    nodes[nid].node_type.alias_id = get_alias_id(struct_name, field);
+    
+    return nid;
+}
+
+// Create a LOAD node (loads a value from a struct field)
+load_node: (memory: int, ptr: int, field: std::string, struct_name: std::string) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(memory);
+    inputs.push_back(ptr);
+    
+    nid: int = create_node(op_type::OP_LOAD, inputs, false);
+    nodes[nid].field_name = field;
+    nodes[nid].struct_name = struct_name;
+    
+    // Set the type to be integer (for now, fields are int)
+    nodes[nid].node_type.kind = type_kind::TYPE_INTEGER;
+    
+    return nid;
+}
+
+// Create a CAST node (upcasts a value, used for null pointer analysis)
+cast_node: (control: int, value: int, cast_type: type_lattice) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(control);
+    inputs.push_back(value);
+    
+    nid: int = create_node(op_type::OP_CAST, inputs, false);
+    nodes[nid].node_type = cast_type;
+    
+    return nid;
+}
+
+// ============================================================================
+// STRUCT TYPE REGISTRY
+// ============================================================================
+
+struct_registry: std::unordered_map<std::string, struct_type> = ();
+
+declare_struct: (name: std::string, field_names: std::vector<std::string>) -> struct_type = {
+    s: struct_type = ();
+    s.name = name;
+    s.total_size = 0;
+    
+    offset: int = 0;
+    for field_names do (field_name: std::string) {
+        f: struct_field = ();
+        f.name = field_name;
+        f.offset = offset;
+        s.fields.push_back(f);
+        offset = offset + 1;
+    }
+    
+    s.total_size = offset;
+    struct_registry[name] = s;
+    
+    return s;
+}
+
+// ============================================================================
+// TEST SUITE
+// ============================================================================
+
+main: () -> int = {
+    tests_passed: int = 0;
+    tests_failed: int = 0;
+    
+    println("=== Chapter 10: Structs and Memory Tests ===\n");
+    
+    // Test 1: Struct type declarations
+    println("Test 1: Struct type declarations...");
+    {
+        fields_vec: std::vector<std::string> = ();
+        _ = fields_vec.push_back("x");
+        _ = fields_vec.push_back("y");
+        vec2d: struct_type = declare_struct("Vec2D", fields_vec);
+        
+        if vec2d.fields.size() == 2 && vec2d.fields[0].name == "x" && vec2d.fields[1].name == "y" {
+            println("  PASS: Vec2D struct created with 2 fields");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Vec2D struct creation");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 2: Alias class registry
+    println("Test 2: Alias class registry...");
+    {
+        id1: int = get_alias_id("Vec2D", "x");
+        id2: int = get_alias_id("Vec2D", "y");
+        id3: int = get_alias_id("Vec3D", "x");
+        
+        if id1 != id2 && id1 != id3 && id2 != id3 {
+            println("  PASS: Different fields have different alias IDs");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Alias ID assignment");
+            tests_failed = tests_failed + 1;
+        }
+        
+        // Test that same field gets same ID
+        id1_again: int = get_alias_id("Vec2D", "x");
+        if id1 == id1_again {
+            println("  PASS: Same field gets same alias ID");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Alias ID consistency");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 3: NEW node creation
+    println("Test 3: NEW node creation...");
+    {
+        start: int = create_node(op_type::OP_START, std::vector<int>(), true);
+        new_nid: int = new_node(start, "Vec2D");
+        
+        if nodes[new_nid].op == op_type::OP_NEW && nodes[new_nid].struct_name == "Vec2D" {
+            println("  PASS: NEW node created correctly");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: NEW node creation");
+            tests_failed = tests_failed + 1;
+        }
+        
+        if is_pointer(nodes[new_nid].node_type) {
+            println("  PASS: NEW node has pointer type");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: NEW node type assignment");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 4: STORE node creation
+    println("Test 4: STORE node creation...");
+    {
+        start: int = create_node(op_type::OP_START, std::vector<int>(), true);
+        new_nid: int = new_node(start, "Vec2D");
+        const_val: int = create_node(op_type::OP_CONSTANT, std::vector<int>(), false);
+        nodes[const_val].constant_val = 42;
+        
+        store_nid: int = store_node(start, new_nid, "x", const_val, "Vec2D");
+        
+        if nodes[store_nid].op == op_type::OP_STORE && nodes[store_nid].field_name == "x" {
+            println("  PASS: STORE node created correctly");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: STORE node creation");
+            tests_failed = tests_failed + 1;
+        }
+        
+        if is_memory(nodes[store_nid].node_type) {
+            println("  PASS: STORE node has memory type");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: STORE node type assignment");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 5: LOAD node creation
+    println("Test 5: LOAD node creation...");
+    {
+        start: int = create_node(op_type::OP_START, std::vector<int>(), true);
+        new_nid: int = new_node(start, "Vec2D");
+        
+        load_nid: int = load_node(start, new_nid, "x", "Vec2D");
+        
+        if nodes[load_nid].op == op_type::OP_LOAD && nodes[load_nid].field_name == "x" {
+            println("  PASS: LOAD node created correctly");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: LOAD node creation");
+            tests_failed = tests_failed + 1;
+        }
+        
+        if nodes[load_nid].node_type.kind == type_kind::TYPE_INTEGER {
+            println("  PASS: LOAD node has integer type");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: LOAD node type assignment");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 6: CAST node creation
+    println("Test 6: CAST node creation...");
+    {
+        start: int = create_node(op_type::OP_START, std::vector<int>(), true);
+        ptr_nid: int = new_node(start, "Vec2D");
+        
+        cast_type: type_lattice = ();
+        cast_type.kind = type_kind::TYPE_POINTER;
+        cast_type.is_nullable = false;  // Cast to non-null
+        
+        cast_nid: int = cast_node(start, ptr_nid, cast_type);
+        
+        if nodes[cast_nid].op == op_type::OP_CAST {
+            println("  PASS: CAST node created correctly");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: CAST node creation");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 7: Type lattice operations
+    println("Test 7: Type lattice operations...");
+    {
+        t1: type_lattice = ();
+        t1.kind = type_kind::TYPE_POINTER;
+        t1.is_nullable = true;
+        
+        t2: type_lattice = ();
+        t2.kind = type_kind::TYPE_POINTER;
+        t2.is_nullable = false;
+        
+        if is_pointer(t1) && is_pointer(t2) {
+            println("  PASS: Type lattice pointer detection");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Type lattice operations");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Test 8: Memory alias tracking
+    println("Test 8: Memory alias tracking...");
+    {
+        id1: int = get_alias_id("Vec2D", "x");
+        id2: int = get_alias_id("Vec2D", "x");
+        
+        if same_alias(id1, id2) {
+            println("  PASS: Same alias detection works");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Same alias detection");
+            tests_failed = tests_failed + 1;
+        }
+        
+        id3: int = get_alias_id("Vec2D", "y");
+        if !same_alias(id1, id3) {
+            println("  PASS: Different alias detection works");
+            tests_passed = tests_passed + 1;
+        } else {
+            println("  FAIL: Different alias detection");
+            tests_failed = tests_failed + 1;
+        }
+    }
+    
+    // Summary
+    println("\n=== Chapter 10 Test Summary ===");
+    println("Tests passed: " + tests_passed);
+    println("Tests failed: " + tests_failed);
+    
+    if tests_failed == 0 {
+        println("\n✅ All Chapter 10 tests passed!");
+        return 0;
+    } else {
+        println("\n❌ Some tests failed");
+        return 1;
+    }
+}

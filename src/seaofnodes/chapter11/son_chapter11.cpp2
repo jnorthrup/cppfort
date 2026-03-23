@@ -1,0 +1,365 @@
+// son_chapter11.cpp2 - Sea of Nodes Chapter 11 implementation
+// Chapter 11: Global Code Motion - Phase 2: Control Flow Graph Construction
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: int) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// OPERATION TYPES
+// ============================================================================
+
+op_type: @enum type = {
+    OP_START;
+    OP_STOP;
+    OP_REGION;
+    OP_IF;
+    OP_RETURN;
+    OP_CPROJ;
+}
+
+// ============================================================================
+// TYPE LATTICE
+// ============================================================================
+
+type_kind: @enum type = {
+    TYPE_CONTROL;
+}
+
+type_lattice: @struct type = {
+    kind: type_kind = ();
+    is_nullable: bool = false;
+}
+
+// ============================================================================
+// FORWARD DECLARATIONS
+// ============================================================================
+
+// Forward declare Node and CFGNode for mutual references
+Node: @struct type = {
+    nid: int = 0;
+    op: op_type = ();
+    typ: type_lattice = ();
+    name: std::string = "";
+}
+
+CFGNode: @struct type = {
+    base: Node = ();
+    idepth: int = 0;
+    loopDepth: int = 0;
+}
+
+// ============================================================================
+// CFG NODE BASE CLASS
+// ============================================================================
+
+make_cfg_node: (op: op_type, name: std::string) -> CFGNode = {
+    s: CFGNode = ();
+    s.base.nid = 0;
+    s.base.op = op;
+    s.base.typ.kind = type_kind::TYPE_CONTROL;
+    s.base.name = name;
+    s.idepth = 0;
+    s.loopDepth = 0;
+    return s;
+}
+
+cfg_idepth: (cfg: CFGNode) -> int = {
+    return cfg.idepth;
+}
+
+// Check if node is a control flow node
+is_cfg_node: (n: Node) -> bool = {
+    return n.typ.kind == type_kind::TYPE_CONTROL;
+}
+
+// Check if node is pinned (cannot be scheduled)
+// Constants, projections, phi nodes are pinned
+is_pinned: (n: Node) -> bool = {
+    // For now, only control nodes are not pinned
+    // Data nodes (constants, projections) are pinned
+    return !is_cfg_node(n);
+}
+
+// Check if node starts a basic block
+block_head: (cfg: CFGNode) -> bool = {
+    op: op_type = cfg.base.op;
+    
+    // CProj, Region, Stop start BBs
+    if op == op_type::OP_CPROJ {
+        return true;
+    } else if op == op_type::OP_REGION {
+        return true;
+    } else if op == op_type::OP_STOP {
+        return true;
+    }
+    
+    return false;
+}
+
+// ============================================================================
+// SPECIFIC CFG NODE TYPES
+// ============================================================================
+
+// Start node - program entry point
+make_start_node: () -> CFGNode = {
+    start: CFGNode = make_cfg_node(op_type::OP_START, "Start");
+    return start;
+}
+
+// Stop node - program exit point
+make_stop_node: () -> CFGNode = {
+    stop: CFGNode = make_cfg_node(op_type::OP_STOP, "Stop");
+    return stop;
+}
+
+// Region node - merge point for multiple control paths
+make_region_node: (name: std::string) -> CFGNode = {
+    region: CFGNode = make_cfg_node(op_type::OP_REGION, name);
+    return region;
+}
+
+// If node - conditional branch
+make_if_node: (name: std::string) -> CFGNode = {
+    if_node: CFGNode = make_cfg_node(op_type::OP_IF, name);
+    return if_node;
+}
+
+// Return node - return from function
+make_return_node: (name: std::string) -> CFGNode = {
+    ret: CFGNode = make_cfg_node(op_type::OP_RETURN, name);
+    return ret;
+}
+
+// CProj node - control projection (Start $ctrl, If True/False)
+make_cproj_node: (name: std::string) -> CFGNode = {
+    cproj: CFGNode = make_cfg_node(op_type::OP_CPROJ, name);
+    return cproj;
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+test_basic_cfg_node: () -> bool = {
+    println("Test: Basic CFG node creation");
+
+    start: CFGNode = make_cfg_node(op_type::OP_START, "Start");
+
+    if cfg_idepth(start) != 0 {
+        println("  FAIL: Start idepth should be 0");
+        return false;
+    }
+
+    println("  PASS: CFG node creation works");
+    return true;
+}
+
+test_start_stop_creation: () -> bool = {
+    println("Test: Start and Stop node creation");
+
+    start: CFGNode = make_start_node();
+    stop: CFGNode = make_stop_node();
+
+    if start.base.op != op_type::OP_START {
+        println("  FAIL: Start node has wrong op type");
+        return false;
+    }
+
+    if stop.base.op != op_type::OP_STOP {
+        println("  FAIL: Stop node has wrong op type");
+        return false;
+    }
+
+    println("  PASS: Start/Stop nodes created correctly");
+    return true;
+}
+
+test_if_return_creation: () -> bool = {
+    println("Test: If and Return node creation");
+
+    if_node: CFGNode = make_if_node("test_if");
+    ret_node: CFGNode = make_return_node("test_ret");
+
+    if if_node.base.op != op_type::OP_IF {
+        println("  FAIL: If node has wrong op type");
+        return false;
+    }
+
+    if ret_node.base.op != op_type::OP_RETURN {
+        println("  FAIL: Return node has wrong op type");
+        return false;
+    }
+
+    println("  PASS: If/Return nodes created correctly");
+    return true;
+}
+
+test_region_creation: () -> bool = {
+    println("Test: Region node creation");
+
+    region: CFGNode = make_region_node("merge_region");
+
+    if region.base.op != op_type::OP_REGION {
+        println("  FAIL: Region node has wrong op type");
+        return false;
+    }
+
+    println("  PASS: Region node created correctly");
+    return true;
+}
+
+test_cproj_creation: () -> bool = {
+    println("Test: CProj node creation");
+
+    cproj: CFGNode = make_cproj_node("$ctrl");
+
+    if cproj.base.op != op_type::OP_CPROJ {
+        println("  FAIL: CProj node has wrong op type");
+        return false;
+    }
+
+    println("  PASS: CProj node created correctly");
+    return true;
+}
+
+test_block_head_detection: () -> bool = {
+    println("Test: Block head detection");
+
+    start: CFGNode = make_start_node();
+    stop: CFGNode = make_stop_node();
+    region: CFGNode = make_region_node("region");
+    if_node: CFGNode = make_if_node("if");
+    cproj: CFGNode = make_cproj_node("$ctrl");
+
+    // Start is NOT a block head (only via CProj)
+    if block_head(start) {
+        println("  FAIL: Start should not be block head (only CProj)");
+        return false;
+    }
+
+    if !block_head(stop) {
+        println("  FAIL: Stop should be block head");
+        return false;
+    }
+
+    if !block_head(region) {
+        println("  FAIL: Region should be block head");
+        return false;
+    }
+
+    // If node is NOT a block head (it ends a BB)
+    if block_head(if_node) {
+        println("  FAIL: If should not be block head");
+        return false;
+    }
+
+    // CProj IS a block head
+    if !block_head(cproj) {
+        println("  FAIL: CProj should be block head");
+        return false;
+    }
+
+    println("  PASS: Block head detection works correctly");
+    return true;
+}
+
+test_is_cfg_node: () -> bool = {
+    println("Test: is_cfg_node detection");
+
+    start: CFGNode = make_start_node();
+    
+    if !is_cfg_node(start.base) {
+        println("  FAIL: Start node should be CFG node");
+        return false;
+    }
+
+    println("  PASS: is_cfg_node works correctly");
+    return true;
+}
+
+test_is_pinned: () -> bool = {
+    println("Test: is_pinned detection");
+
+    start: CFGNode = make_start_node();
+    
+    // CFG nodes are NOT pinned
+    if is_pinned(start.base) {
+        println("  FAIL: Start node should not be pinned");
+        return false;
+    }
+
+    println("  PASS: is_pinned works correctly");
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 11 Tests ===");
+    println("Chapter 11: Global Code Motion - Phase 2 (CFG Node Types)");
+    println("");
+
+    passed: int = 0;
+    total: int = 8;
+
+    if test_basic_cfg_node() {
+        passed = passed + 1;
+    }
+
+    if test_start_stop_creation() {
+        passed = passed + 1;
+    }
+
+    if test_if_return_creation() {
+        passed = passed + 1;
+    }
+
+    if test_region_creation() {
+        passed = passed + 1;
+    }
+
+    if test_cproj_creation() {
+        passed = passed + 1;
+    }
+
+    if test_block_head_detection() {
+        passed = passed + 1;
+    }
+
+    if test_is_cfg_node() {
+        passed = passed + 1;
+    }
+
+    if test_is_pinned() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Phase 2 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}

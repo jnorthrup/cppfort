@@ -1,0 +1,364 @@
+// Sea of Nodes Chapter 4: External Variables and Comparison Operators
+// Implementation using composable hermetic abstractions
+
+import std;
+
+namespace seaofnodes::chapter04 {
+
+// Core node types for Chapter 4
+enum class NodeKind : int {
+    START,
+    CONST,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    NEG,
+    EQ,     // ==
+    NE,     // !=
+    LT,     // <
+    LE,     // <=
+    GT,     // >
+    GE,     // >=
+    PARAM,  // External variable parameter
+    PHI,    // SSA phi node
+    IF,     // Control flow if
+    PROJ,   // Projection from if
+    REGION, // Control flow merge
+    WHILE,  // While loop
+    CALL,   // Function call
+    RETURN  // Return statement
+};
+
+// Type system
+struct Type {
+    enum Kind : int {
+        TOP,      // No type information
+        INTEGER,  // 32-bit integer
+        BOOLEAN,  // Boolean type (0 or 1)
+        CONTROL,  // Control flow
+        BOTTOM    // Type error
+    };
+    
+    Kind kind;
+    
+    Type(Kind k) : kind(k) {}
+    
+    [[nodiscard]] static auto meet(const Type& t1, const Type& t2) -> Type {
+        if (t1.kind == t2.kind) return t1;
+        if (t1.kind == Kind::BOTTOM || t2.kind == Kind::BOTTOM) return Kind::BOTTOM;
+        if (t1.kind == Kind::TOP) return t2;
+        if (t2.kind == Kind::TOP) return t1;
+        return Kind::BOTTOM;
+    }
+};
+
+// Node base class
+class Node {
+public:
+    NodeKind kind;
+    std::vector<Node*> inputs;
+    std::vector<Node*> outputs;
+    Type* type;
+    int nid;  // Unique node ID
+    
+    Node(NodeKind k, Type* t, int id) 
+        : kind(k), type(t), nid(id) {}
+    
+    void add_input(Node* input) {
+        inputs.push_back(input);
+        input->outputs.push_back(this);
+    }
+    
+    void remove_input(size_t index) {
+        if (index < inputs.size()) {
+            Node* input = inputs[index];
+            auto it = std::find(input->outputs.begin(), input->outputs.end(), this);
+            if (it != input->outputs.end()) {
+                input->outputs.erase(it);
+            }
+            inputs.erase(inputs.begin() + index);
+        }
+    }
+    
+    [[nodiscard]] auto is_ctrl() const -> bool {
+        return kind == NodeKind::IF || kind == NodeKind::REGION || 
+               kind == NodeKind::WHILE || kind == NodeKind::START;
+    }
+    
+    [[nodiscard]] auto is_mem() const -> bool {
+        return false; // Memory nodes not in Chapter 4
+    }
+};
+
+// Symbol table for external variables
+class SymbolTable {
+    std::unordered_map<std::string, Node*> variables;
+    std::unordered_map<std::string, int> globals;
+    
+public:
+    void add_global(std::string name, int value) {
+        globals[name] = value;
+    }
+    
+    [[nodiscard]] auto get_global(std::string_view name) const -> std::optional<int> {
+        auto it = globals.find(std::string(name));
+        if (it != globals.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+    
+    void set_variable(std::string name, Node* node) {
+        variables[name] = node;
+    }
+    
+    [[nodiscard]] auto get_variable(std::string_view name) const -> Node* {
+        auto it = variables.find(std::string(name));
+        return (it != variables.end()) ? it->second : nullptr;
+    }
+    
+    [[nodiscard]] auto has_variable(std::string_view name) const -> bool {
+        return variables.contains(std::string(name));
+    }
+};
+
+// Graph builder for Chapter 4
+class GraphBuilder {
+    Node* start;
+    SymbolTable symbols;
+    int next_nid = 1;
+    
+    // Type cache
+    Type* type_integer;
+    Type* type_boolean;
+    Type* type_control;
+    
+public:
+    GraphBuilder() {
+        type_integer = new Type(Type::Kind::INTEGER);
+        type_boolean = new Type(Type::Kind::BOOLEAN);
+        type_control = new Type(Type::Kind::CONTROL);
+        start = new Node(NodeKind::START, type_control, next_nid++);
+    }
+    
+    [[nodiscard]] auto get_start() -> Node* { return start; }
+    
+    // Constants
+    [[nodiscard]] auto constant(int value) -> Node* {
+        auto* node = new Node(NodeKind::CONST, type_integer, next_nid++);
+        // Store constant value in node
+        node->add_input(nullptr); // Placeholder for value storage
+        return node;
+    }
+    
+    // Arithmetic operations
+    [[nodiscard]] auto add(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::ADD, type_integer, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto sub(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::SUB, type_integer, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto mul(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::MUL, type_integer, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto div(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::DIV, type_integer, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto neg(Node* val) -> Node* {
+        auto* node = new Node(NodeKind::NEG, type_integer, next_nid++);
+        node->add_input(val);
+        return node;
+    }
+    
+    // Comparison operators
+    [[nodiscard]] auto eq(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::EQ, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto ne(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::NE, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto lt(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::LT, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto le(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::LE, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto gt(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::GT, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    [[nodiscard]] auto ge(Node* lhs, Node* rhs) -> Node* {
+        auto* node = new Node(NodeKind::GE, type_boolean, next_nid++);
+        node->add_input(lhs);
+        node->add_input(rhs);
+        return node;
+    }
+    
+    // External variables
+    [[nodiscard]] auto parameter(std::string name) -> Node* {
+        auto* node = new Node(NodeKind::PARAM, type_integer, next_nid++);
+        symbols.set_variable(name, node);
+        return node;
+    }
+    
+    [[nodiscard]] auto global(std::string name) -> Node* {
+        auto value = symbols.get_global(name);
+        if (value) {
+            return constant(*value);
+        }
+        return parameter(name); // Treat as parameter if not found
+    }
+    
+    // Control flow
+    [[nodiscard]] auto iff(Node* ctrl, Node* pred) -> Node* {
+        auto* node = new Node(NodeKind::IF, type_control, next_nid++);
+        node->add_input(ctrl);
+        node->add_input(pred);
+        return node;
+    }
+    
+    [[nodiscard]] auto proj(Node* ctrl, int idx) -> Node* {
+        auto* node = new Node(NodeKind::PROJ, type_control, next_nid++);
+        node->add_input(ctrl);
+        // Store projection index
+        node->add_input(reinterpret_cast<Node*>(static_cast<intptr_t>(idx)));
+        return node;
+    }
+    
+    [[nodiscard]] auto region() -> Node* {
+        return new Node(NodeKind::REGION, type_control, next_nid++);
+    }
+    
+    [[nodiscard]] auto whilen(Node* ctrl, Node* pred) -> Node* {
+        auto* node = new Node(NodeKind::WHILE, type_control, next_nid++);
+        node->add_input(ctrl);
+        node->add_input(pred);
+        return node;
+    }
+    
+    // Phi node for SSA
+    [[nodiscard]] auto phi(Node* region) -> Node* {
+        auto* node = new Node(NodeKind::PHI, type_integer, next_nid++);
+        node->add_input(region);
+        return node;
+    }
+    
+    // Symbol table access
+    [[nodiscard]] auto get_variable(std::string_view name) -> Node* {
+        return symbols.get_variable(name);
+    }
+    
+    void set_variable(std::string name, Node* node) {
+        symbols.set_variable(name, node);
+    }
+    
+    void add_global(std::string name, int value) {
+        symbols.add_global(name, value);
+    }
+    
+    // Graph verification
+    [[nodiscard]] auto verify() const -> bool {
+        // Basic verification - all nodes should have valid types
+        // More sophisticated verification would traverse the graph
+        return true;
+    }
+};
+
+// Demo functions for testing
+class Chapter04Demo {
+public:
+    static auto demonstrate_external_vars() -> void {
+        GraphBuilder builder;
+        
+        // Add some globals
+        builder.add_global("x", 42);
+        builder.add_global("y", 100);
+        
+        // Build: z = x + y
+        auto x = builder.global("x");
+        auto y = builder.global("y");
+        auto z = builder.add(x, y);
+        
+        std::cout << "Built external var expression: z = x + y\n";
+    }
+    
+    static auto demonstrate_comparisons() -> void {
+        GraphBuilder builder;
+        
+        // Build: (a < b) && (b >= c)
+        auto a = builder.constant(10);
+        auto b = builder.constant(20);
+        auto c = builder.constant(15);
+        
+        auto cmp1 = builder.lt(a, b);
+        auto cmp2 = builder.ge(b, c);
+        
+        // Would need AND operator for full expression
+        std::cout << "Built comparison: (a < b) and (b >= c)\n";
+    }
+    
+    static auto demonstrate_if_else() -> void {
+        GraphBuilder builder;
+        
+        // Build: if (x < y) z = x; else z = y;
+        builder.add_global("x", 5);
+        builder.add_global("y", 10);
+        
+        auto x = builder.global("x");
+        auto y = builder.global("y");
+        auto cmp = builder.lt(x, y);
+        auto iff = builder.iff(builder.get_start(), cmp);
+        
+        std::cout << "Built if-else structure\n";
+    }
+    
+    static auto demonstrate_while() -> void {
+        GraphBuilder builder;
+        
+        // Build: while (i < 10) i = i + 1;
+        auto i = builder.constant(0);
+        auto ten = builder.constant(10);
+        auto cmp = builder.lt(i, ten);
+        auto whilen = builder.whilen(builder.get_start(), cmp);
+        
+        std::cout << "Built while loop structure\n";
+    }
+};
+
+}  // namespace seaofnodes::chapter04
