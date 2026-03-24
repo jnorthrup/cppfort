@@ -1,5 +1,5 @@
 // son_chapter11.cpp2 - Sea of Nodes Chapter 11 implementation
-// Chapter 11: Global Code Motion - Phase 2: Control Flow Graph Construction
+// Chapter 11: Global Code Motion - Phase 3: Dominator Tree Computation
 
 // ============================================================================
 // INCLUDES
@@ -7,6 +7,9 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <optional>
+#include <unordered_map>
 
 // ============================================================================
 // PRINT HELPERS
@@ -62,6 +65,30 @@ CFGNode: @struct type = {
     base: Node = ();
     idepth: int = 0;
     loopDepth: int = 0;
+    
+    // Edge tracking for dominator computation (store node IDs, not nodes)
+    inputs: std::vector<int> = ();
+    outputs: std::vector<int> = ();
+}
+
+// Global registry of CFG nodes indexed by nid
+cfg_registry: std::unordered_map<int, CFGNode> = ();
+
+// Register a CFG node in the global registry
+register_cfg_node: (cfg: CFGNode) -> CFGNode = {
+    cfg_registry[cfg.base.nid] = cfg;
+    return cfg;
+}
+
+// Look up a CFG node by ID
+get_cfg_node: (nid: int) -> CFGNode = {
+    if cfg_registry.find(nid) != cfg_registry.end() {
+        return cfg_registry[nid];
+    }
+    
+    // Return empty node if not found
+    result: CFGNode = ();
+    return result;
 }
 
 // ============================================================================
@@ -76,6 +103,7 @@ make_cfg_node: (op: op_type, name: std::string) -> CFGNode = {
     s.base.name = name;
     s.idepth = 0;
     s.loopDepth = 0;
+    // Vectors already initialized to empty by default
     return s;
 }
 
@@ -110,6 +138,200 @@ block_head: (cfg: CFGNode) -> bool = {
     }
     
     return false;
+}
+
+// ============================================================================
+// EDGE MANAGEMENT
+// ============================================================================
+
+// Add edge from src to dst (by node IDs)
+add_edge_by_id: (src_nid: int, dst_nid: int) = {
+    // Get the nodes from registry
+    src: CFGNode = get_cfg_node(src_nid);
+    dst: CFGNode = get_cfg_node(dst_nid);
+    
+    if src.base.nid == 0 || dst.base.nid == 0 {
+        return; // One or both nodes not registered
+    }
+    
+    // Add dst ID to src's outputs
+    _ = src.outputs.push_back(dst_nid);
+    
+    // Add src ID to dst's inputs  
+    _ = dst.inputs.push_back(src_nid);
+    
+    // Update the registry with modified nodes
+    cfg_registry[src_nid] = src;
+    cfg_registry[dst_nid] = dst;
+}
+
+// Convenience function to add edge between nodes
+add_edge: (copy src: CFGNode, copy dst: CFGNode) = {
+    // Register nodes if not already registered
+    if cfg_registry.find(src.base.nid) == cfg_registry.end() {
+        cfg_registry[src.base.nid] = src;
+    }
+    if cfg_registry.find(dst.base.nid) == cfg_registry.end() {
+        cfg_registry[dst.base.nid] = dst;
+    }
+    
+    add_edge_by_id(src.base.nid, dst.base.nid);
+}
+
+// Get control input (input 0) - returns node ID
+cfg0_id: (in cfg: CFGNode) -> int = {
+    if cfg.inputs.empty() {
+        return 0; // 0 means no input
+    }
+    
+    return cfg.inputs[0];
+}
+
+// Get control input (input 0) - returns CFGNode
+cfg0: (in cfg: CFGNode) -> CFGNode = {
+    input_id: int = cfg0_id(cfg);
+    if input_id == 0 {
+        // Return null CFG node if no input
+        result: CFGNode = ();
+        result.base.op = op_type::OP_STOP; // Use STOP as sentinel for null
+        return result;
+    }
+    
+    return get_cfg_node(input_id);
+}
+
+// ============================================================================
+// DOMINATOR COMPUTATION
+// ============================================================================
+
+// Get immediate dominator of this node
+idom: (in cfg: CFGNode) -> CFGNode = {
+    op: op_type = cfg.base.op;
+    
+    // Start node has no dominator
+    if op == op_type::OP_START {
+        result: CFGNode = ();
+        result.base.op = op_type::OP_STOP; // Sentinel for null
+        return result;
+    }
+    
+    // Region node: LCA of all inputs
+    if op == op_type::OP_REGION {
+        lca_nid: int = 0; // 0 means null
+        
+        for cfg.inputs do (input_id: int) {
+            input_cfg: CFGNode = get_cfg_node(input_id);
+            lca_cfg: CFGNode = get_cfg_node(lca_nid);
+            lca_result: CFGNode = idom_lca(input_cfg, lca_cfg);
+            lca_nid = lca_result.base.nid;
+        }
+        
+        return get_cfg_node(lca_nid);
+    }
+    
+    // Stop node: LCA of all inputs
+    if op == op_type::OP_STOP {
+        lca_nid: int = 0; // 0 means null
+        
+        for cfg.inputs do (input_id: int) {
+            input_cfg: CFGNode = get_cfg_node(input_id);
+            lca_cfg: CFGNode = get_cfg_node(lca_nid);
+            lca_result: CFGNode = idom_lca(input_cfg, lca_cfg);
+            lca_nid = lca_result.base.nid;
+        }
+        
+        return get_cfg_node(lca_nid);
+    }
+    
+    // Default: control input (input 0)
+    return cfg0(cfg);
+}
+
+// Get LCA (Lowest Common Ancestor) of two nodes
+idom_lca: (in cfg: CFGNode, in rhs: CFGNode) -> CFGNode = {
+    // Check if rhs is null sentinel (nid=0 means null)
+    if rhs.base.nid == 0 {
+        return cfg;
+    }
+    
+    // Check if cfg is null sentinel (nid=0 means null)
+    if cfg.base.nid == 0 {
+        return rhs;
+    }
+    
+    lhs: CFGNode = cfg;
+    rhs_mut: CFGNode = rhs;
+    
+    // Walk up dominator trees in parallel until they match
+    while lhs.base.nid != rhs_mut.base.nid {
+        lhs_depth: int = idepth_cached(lhs);
+        rhs_depth: int = idepth_cached(rhs_mut);
+        
+        comp: int = lhs_depth - rhs_depth;
+        
+        if comp >= 0 {
+            lhs = idom(lhs);
+        }
+        
+        if comp <= 0 {
+            rhs_mut = idom(rhs_mut);
+        }
+    }
+    
+    return lhs;
+}
+
+// Get dominator depth with caching
+idepth_cached: (in cfg: CFGNode) -> int = {
+    op: op_type = cfg.base.op;
+    
+    // Start node always has depth 0
+    if op == op_type::OP_START {
+        return 0;
+    }
+    
+    // Return cached value if already computed
+    if cfg.idepth != 0 {
+        return cfg.idepth;
+    }
+    
+    // Compute and cache
+    result: int = 0;
+    
+    // Region node: max of all input idepths + 1
+    if op == op_type::OP_REGION {
+        for cfg.inputs do (input_id: int) {
+            input_cfg: CFGNode = get_cfg_node(input_id);
+            input_depth: int = idepth_cached(input_cfg);
+            if input_depth >= result {
+                result = input_depth + 1;
+            }
+        }
+        
+        // Note: Can't cache result in cfg.idepth without mutable access
+        return result;
+    }
+    
+    // Stop node: max of all input idepths + 1
+    if op == op_type::OP_STOP {
+        for cfg.inputs do (input_id: int) {
+            input_cfg: CFGNode = get_cfg_node(input_id);
+            input_depth: int = idepth_cached(input_cfg);
+            if input_depth >= result {
+                result = input_depth + 1;
+            }
+        }
+        
+        return result;
+    }
+    
+    // Default: idepth of dominator + 1
+    dom: CFGNode = idom(cfg);
+    if dom.base.nid == 0 {
+        return 1; // No dominator, depth 1
+    }
+    
+    return idepth_cached(dom) + 1;
 }
 
 // ============================================================================
@@ -308,17 +530,173 @@ test_is_pinned: () -> bool = {
     return true;
 }
 
+test_linear_chain_idepth: () -> bool = {
+    println("Test: idepth computation for linear chain");
+
+    start: CFGNode = make_start_node();
+    cproj: CFGNode = make_cproj_node("$ctrl");
+    stop: CFGNode = make_stop_node();
+    
+    // Assign unique IDs FIRST
+    start.base.nid = 1;
+    cproj.base.nid = 2;
+    stop.base.nid = 3;
+    
+    // Register nodes in global registry
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(cproj);
+    _ = register_cfg_node(stop);
+    
+    // Build chain: Start -> CProj -> Stop
+    add_edge(start, cproj);
+    add_edge(cproj, stop);
+    
+    // Get updated nodes from registry
+    start = get_cfg_node(1);
+    cproj = get_cfg_node(2);
+    stop = get_cfg_node(3);
+    
+    // Check idepths
+    start_depth: int = idepth_cached(start);
+    cproj_depth: int = idepth_cached(cproj);
+    stop_depth: int = idepth_cached(stop);
+    
+    if start_depth != 0 {
+        println("  FAIL: Start idepth should be 0");
+        return false;
+    }
+    
+    if cproj_depth != 1 {
+        std::cout << "  FAIL: CProj idepth should be 1, got " << cproj_depth << "\n";
+        return false;
+    }
+    
+    if stop_depth != 2 {
+        std::cout << "  FAIL: Stop idepth should be 2, got " << stop_depth << "\n";
+        return false;
+    }
+
+    println("  PASS: Linear chain idepth works correctly");
+    return true;
+}
+
+test_simple_idom: () -> bool = {
+    println("Test: idom for simple CFG");
+
+    start: CFGNode = make_start_node();
+    cproj: CFGNode = make_cproj_node("$ctrl");
+    stop: CFGNode = make_stop_node();
+    
+    // Assign unique IDs FIRST
+    start.base.nid = 1;
+    cproj.base.nid = 2;
+    stop.base.nid = 3;
+    
+    // Register nodes
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(cproj);
+    _ = register_cfg_node(stop);
+    
+    // Build chain: Start -> CProj -> Stop
+    add_edge(start, cproj);
+    add_edge(cproj, stop);
+    
+    // Get updated nodes from registry
+    start = get_cfg_node(1);
+    cproj = get_cfg_node(2);
+    stop = get_cfg_node(3);
+    
+    // Check idoms
+    cproj_idom: CFGNode = idom(cproj);
+    stop_idom: CFGNode = idom(stop);
+    start_idom: CFGNode = idom(start);
+    
+    // CProj's idom should be Start (via cfg0)
+    if cproj_idom.base.nid != start.base.nid {
+        println("  FAIL: CProj idom should be Start");
+        return false;
+    }
+    
+    // Stop's idom should be CProj
+    if stop_idom.base.nid != cproj.base.nid {
+        println("  FAIL: Stop idom should be CProj");
+        return false;
+    }
+    
+    // Start has no idom
+    if start_idom.base.nid != 0 {
+        println("  FAIL: Start should have no idom");
+        return false;
+    }
+
+    println("  PASS: Simple idom works correctly");
+    return true;
+}
+
+test_region_lca: () -> bool = {
+    println("Test: Region LCA computation");
+
+    start: CFGNode = make_start_node();
+    true_branch: CFGNode = make_cproj_node("True");
+    false_branch: CFGNode = make_cproj_node("False");
+    region: CFGNode = make_region_node("merge");
+    stop: CFGNode = make_stop_node();
+    
+    // Assign unique IDs FIRST
+    start.base.nid = 1;
+    true_branch.base.nid = 2;
+    false_branch.base.nid = 3;
+    region.base.nid = 4;
+    stop.base.nid = 5;
+    
+    // Register all nodes
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(true_branch);
+    _ = register_cfg_node(false_branch);
+    _ = register_cfg_node(region);
+    _ = register_cfg_node(stop);
+    
+    // Build diamond: Start -> (True, False) -> Region -> Stop
+    add_edge(start, true_branch);
+    add_edge(start, false_branch);
+    add_edge(true_branch, region);
+    add_edge(false_branch, region);
+    add_edge(region, stop);
+    
+    // Get updated nodes from registry
+    region = get_cfg_node(4);
+    
+    // Region's idom should be Start (LCA of True and False)
+    region_idom: CFGNode = idom(region);
+    
+    if region_idom.base.nid != start.base.nid {
+        println("  FAIL: Region idom should be Start");
+        return false;
+    }
+    
+    // Check idepths: Start=0, branches=1, Region=2, Stop=3
+    region_depth: int = idepth_cached(region);
+    
+    if region_depth != 2 {
+        std::cout << "  FAIL: Region idepth should be 2, got " << region_depth << "\n";
+        return false;
+    }
+
+    println("  PASS: Region LCA works correctly");
+    return true;
+}
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
 main: () -> int = {
     println("=== Sea of Nodes Chapter 11 Tests ===");
-    println("Chapter 11: Global Code Motion - Phase 2 (CFG Node Types)");
+    println("Chapter 11: Global Code Motion - Phase 3 (Dominator Tree)");
     println("");
 
     passed: int = 0;
-    total: int = 8;
+    total: int = 11;
 
     if test_basic_cfg_node() {
         passed = passed + 1;
@@ -352,11 +730,23 @@ main: () -> int = {
         passed = passed + 1;
     }
 
+    if test_linear_chain_idepth() {
+        passed = passed + 1;
+    }
+
+    if test_simple_idom() {
+        passed = passed + 1;
+    }
+
+    if test_region_lca() {
+        passed = passed + 1;
+    }
+
     println("");
     std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
 
     if passed == total {
-        println("SUCCESS: All Phase 2 tests passed!");
+        println("SUCCESS: All Phase 3 tests passed!");
         return 0;
     } else {
         println("FAILURE: Some tests failed");
