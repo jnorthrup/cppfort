@@ -65,6 +65,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/chapter13/CMakeLists.txt")
   add_subdirectory(chapter13)
 endif()
 
+# Add Chapter 14
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/chapter14/CMakeLists.txt")
+  add_subdirectory(chapter14)
+endif()
+
 # Add Chapter06_test subdirectory
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/chapter06_test/CMakeLists.txt")
   add_subdirectory(chapter06_test)

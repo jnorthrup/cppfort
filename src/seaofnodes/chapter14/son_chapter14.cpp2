@@ -1,0 +1,476 @@
+// son_chapter14.cpp2 - Sea of Nodes Chapter 14 implementation
+// Chapter 14: Narrow Types - Sub-word integer types with truncation and extension
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+#include <cmath>
+#include <climits>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+print: (val: ulong) = {
+    std::cout << val;
+}
+
+println: (val: ulong) = {
+    std::cout << val << "\n";
+}
+
+print: (val: double) = {
+    std::cout << val;
+}
+
+println: (val: double) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// OPERATION TYPES - Extended for Chapter 14
+// ============================================================================
+
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_STOP;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+    OP_VAR_DECL;
+    OP_VAR_USE;
+    OP_VAR_ASSIGN;
+    OP_PHI;
+    OP_EQ;
+    OP_NE;
+    OP_LT;
+    OP_LE;
+    OP_GT;
+    OP_GE;
+    OP_NOT;
+    OP_PROJ;
+    OP_PARAMETER;
+    OP_IF;
+    OP_REGION;
+    OP_TRUE;
+    OP_FALSE;
+    OP_LOOP;
+    OP_LOOP_BODY;
+    OP_LOOP_END;
+    OP_BREAK;
+    OP_CONTINUE;
+    OP_NEW;
+    OP_STORE;
+    OP_LOAD;
+    OP_CAST;
+    OP_STRUCT_DECL;
+    OP_FIELD_ACCESS;
+    // Chapter 12: Float operations
+    OP_ADDF;
+    OP_SUBF;
+    OP_MULF;
+    OP_DIVF;
+    OP_MINUSF;
+    OP_EQF;
+    OP_NEF;
+    OP_LTF;
+    OP_LEF;
+    OP_GTF;
+    OP_GEF;
+    // Chapter 14: Narrow type operations
+    OP_TRUNCATE;
+    OP_SIGN_EXTEND;
+    OP_ZERO_EXTEND;
+}
+
+// ============================================================================
+// TYPE LATTICE - Extended for Chapter 14
+// ============================================================================
+
+type_kind: @enum type = {
+    TYPE_CONTROL;
+    TYPE_INTEGER;
+    TYPE_STRUCT;
+    TYPE_POINTER;
+    TYPE_MEMORY;
+    TYPE_BOTTOM;
+    TYPE_TOP;
+    TYPE_FLOAT;  // Chapter 12: Float type
+    // Chapter 14: Narrow types
+    TYPE_I8;
+    TYPE_I16;
+    TYPE_I32;
+    TYPE_I64;
+    TYPE_U8;
+    TYPE_U16;
+    TYPE_U32;
+    TYPE_U64;
+    TYPE_I1;
+    TYPE_U1;
+    TYPE_BOOL;
+    TYPE_F32;
+}
+
+type_lattice: @struct type = {
+    kind: type_kind = ();
+    is_nullable: bool = false;
+    const_int_val: std::optional<long> = std::nullopt;
+    const_float_val: std::optional<double> = std::nullopt;
+    const_bool_val: std::optional<bool> = std::nullopt;  // Chapter 14
+}
+
+// Type check helpers
+is_float: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_FLOAT;
+}
+
+is_integer: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_INTEGER;
+}
+
+is_i8: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_I8;
+}
+
+is_u8: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_U8;
+}
+
+is_i16: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_I16;
+}
+
+is_u16: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_U16;
+}
+
+is_bool: (t: type_lattice) -> bool = {
+    return t.kind == type_kind::TYPE_BOOL;
+}
+
+// Narrow type constructors
+make_i8_const: (val: long) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_I8;
+    result.const_int_val = val;
+    return result;
+}
+
+make_u8_const: (val: ulong) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_U8;
+    result.const_int_val = val;
+    return result;
+}
+
+make_i16_const: (val: long) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_I16;
+    result.const_int_val = val;
+    return result;
+}
+
+make_u16_const: (val: ulong) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_U16;
+    result.const_int_val = val;
+    return result;
+}
+
+// Float type constructors (from chapter 12)
+make_float_const: (val: double) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_FLOAT;
+    result.const_float_val = val;
+    return result;
+}
+
+make_f32_const: (val: double) -> type_lattice = {
+    result: type_lattice = ();
+    result.kind = type_kind::TYPE_F32;
+    result.const_float_val = val;
+    return result;
+}
+
+// ============================================================================
+// TRUNCATION AND EXTENSION
+// ============================================================================
+
+truncate_to_i8: (val: long) -> long = {
+    // Truncate to 8-bit signed: -128 to 127
+    mask: long = 0xFF;
+    result: long = val & mask;
+    
+    // Sign-extend if negative (bit 7 set)
+    if result & 0x80 {
+        result = result | 0xFFFFFFFFFFFFFF00;
+    }
+    
+    return result;
+}
+
+truncate_to_i16: (val: long) -> long = {
+    // Truncate to 16-bit signed: -32768 to 32767
+    mask: long = 0xFFFF;
+    result: long = val & mask;
+    
+    // Sign-extend if negative (bit 15 set)
+    if result & 0x8000 {
+        result = result | 0xFFFFFFFFFFFF0000;
+    }
+    
+    return result;
+}
+
+truncate_to_u8: (val: ulong) -> ulong = {
+    // Truncate to 8-bit unsigned: 0 to 255
+    return val & 0xFF;
+}
+
+truncate_to_u16: (val: ulong) -> ulong = {
+    // Truncate to 16-bit unsigned: 0 to 65535
+    return val & 0xFFFF;
+}
+
+sign_extend_to_64: (val: long, bits: int) -> long = {
+    // Sign-extend a value of given bits to 64-bit
+    if bits == 64 {
+        return val;
+    }
+    
+    shift: int = 64 - bits;
+    mask: long = (1L << shift) - 1;
+    
+    // Check sign bit
+    if val & (1L << (bits - 1)) {
+        // Negative: sign-extend
+        return val | mask~;
+    } else {
+        // Positive: already zero-extended
+        return val & mask;
+    }
+}
+
+zero_extend_to_64: (val: ulong, bits: int) -> ulong = {
+    // Zero-extend a value of given bits to 64-bit
+    if bits == 64 {
+        return val;
+    }
+    
+    mask: ulong = (1UL << bits) - 1;
+    return val & mask;
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+test_i8_truncation: () -> bool = {
+    println("Test 1: i8 truncation (123456789 -> 21)");
+
+    // 123456789 = 0x75BCD15
+    // Truncate to 8 bits: 0x15 = 21
+    input_val: long = 123456789;
+    truncated: long = truncate_to_i8(input_val);
+
+    if truncated != 21 {
+        println("  FAIL: Expected 21, got " + truncated);
+        return false;
+    }
+
+    println("  PASS: i8 truncation works");
+    return true;
+}
+
+test_i16_truncation: () -> bool = {
+    println("Test 2: i16 truncation (123456789 -> -13035)");
+
+    // 123456789 = 0x75BCD15
+    // Truncate to 16 bits: 0xCD15
+    // Sign-extend to 64-bit: 0xFFFF...CD15 = -13035
+    input_val: long = 123456789;
+    truncated: long = truncate_to_i16(input_val);
+
+    if truncated != -13035 {
+        println("  FAIL: Expected -13035, got " + truncated);
+        return false;
+    }
+
+    println("  PASS: i16 truncation with sign-extension works");
+    return true;
+}
+
+test_u16_truncation: () -> bool = {
+    println("Test 3: u16 truncation (123456789 -> 52501)");
+
+    // 123456789 = 0x75BCD15
+    // Truncate to 16 bits: 0xCD15
+    // Zero-extend to 64-bit: 0x0000...CD15 = 52501
+    input_val: ulong = 123456789UL;
+    truncated: ulong = truncate_to_u16(input_val);
+
+    if truncated != 52501 {
+        println("  FAIL: Expected 52501, got " + truncated);
+        return false;
+    }
+
+    println("  PASS: u16 truncation with zero-extension works");
+    return true;
+}
+
+test_sign_extend: () -> bool = {
+    println("Test 4: Sign extension (-1 in 16 bits)");
+
+    // -1 in 16 bits: 0xFFFF
+    // Sign-extend to 64-bit: 0xFFFFFFFFFFFFFFFF
+    val: long = 0xFFFF;
+    extended: long = sign_extend_to_64(val, 16);
+
+    if extended != -1 {
+        println("  FAIL: Expected -1, got " + extended);
+        return false;
+    }
+
+    println("  PASS: Sign extension works");
+    return true;
+}
+
+test_zero_extend: () -> bool = {
+    println("Test 5: Zero extension (0xFFFF in 16 bits)");
+
+    // 0xFFFF in 16 bits
+    // Zero-extend to 64-bit: 0x0000...FFFF = 65535
+    val: ulong = 0xFFFF;
+    extended: ulong = zero_extend_to_64(val, 16);
+
+    if extended != 65535 {
+        println("  FAIL: Expected 65535, got " + extended);
+        return false;
+    }
+
+    println("  PASS: Zero extension works");
+    return true;
+}
+
+test_f32_type: () -> bool = {
+    println("Test 6: f32 type support");
+
+    f: type_lattice = make_f32_const(1.5);
+
+    if f.kind != type_kind::TYPE_F32 {
+        println("  FAIL: f32 type not recognized");
+        return false;
+    }
+
+    if not f.const_float_val || f.const_float_val* != 1.5 {
+        println("  FAIL: f32 constant value incorrect");
+        return false;
+    }
+
+    println("  PASS: f32 type works");
+    return true;
+}
+
+test_bool_type: () -> bool = {
+    println("Test 7: bool type (u1 alias)");
+
+    true_val: type_lattice = ();
+    true_val.kind = type_kind::TYPE_BOOL;
+    true_val.const_bool_val = true;
+
+    false_val: type_lattice = ();
+    false_val.kind = type_kind::TYPE_BOOL;
+    false_val.const_bool_val = false;
+
+    if not true_val.const_bool_val || false_val.const_bool_val {
+        println("  FAIL: bool constants incorrect");
+        return false;
+    }
+
+    println("  PASS: bool type (u1 alias) works");
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 14 Tests ===");
+    println("Chapter 14: Narrow Types (Sub-word integer types)");
+    println("");
+
+    passed: int = 0;
+    total: int = 7;
+
+    if test_i8_truncation() {
+        passed = passed + 1;
+    }
+
+    if test_i16_truncation() {
+        passed = passed + 1;
+    }
+
+    if test_u16_truncation() {
+        passed = passed + 1;
+    }
+
+    if test_sign_extend() {
+        passed = passed + 1;
+    }
+
+    if test_zero_extend() {
+        passed = passed + 1;
+    }
+
+    if test_f32_type() {
+        passed = passed + 1;
+    }
+
+    if test_bool_type() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Chapter 14 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}
