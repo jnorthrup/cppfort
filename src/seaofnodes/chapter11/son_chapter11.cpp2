@@ -35,6 +35,7 @@ op_type: @enum type = {
     OP_IF;
     OP_RETURN;
     OP_CPROJ;
+    OP_NEVER;  // Never-taken branch for infinite loops
     // Data nodes
     OP_ADD;
     OP_SUB;
@@ -1026,16 +1027,206 @@ schedule_early: (start_id: int) = {
 }
 
 // ============================================================================
+// INFINITE LOOP HANDLING
+// ============================================================================
+
+// Check if a loop has an exit (CProj from If or Never)
+has_loop_exit: (in loop: CFGNode) -> bool = {
+    // Walk the backedge via idom tree until we hit the loop again
+    // For simplicity in this implementation, check if any output is a CProj
+    for loop.outputs do (out_id: int) {
+        out_cfg: CFGNode = get_cfg_node(out_id);
+        if out_cfg.base.op == op_type::OP_CPROJ {
+            // Check if the CProj's input is an If or NeverNode
+            if out_cfg.inputs.ssize() >= 1 {
+                if_input: CFGNode = get_cfg_node(out_cfg.inputs[0]);
+                if if_input.base.op == op_type::OP_IF {
+                    return true;  // Found exit via CProj from If
+                }
+                if if_input.base.op == op_type::OP_NEVER {
+                    return true;  // Found exit via CProj from NeverNode
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Create a NeverNode (special If that never executes)
+make_never_node: (ctrl_id: int) -> CFGNode = {
+    never: CFGNode = make_cfg_node(op_type::OP_NEVER, "Never");
+    never.base.nid = 999;  // Special ID for Never node
+
+    // Add control input
+    if ctrl_id != 0 {
+        _ = never.inputs.push_back(ctrl_id);
+    }
+
+    // Register it
+    _ = register_cfg_node(never);
+
+    return never;
+}
+
+// Force exit from infinite loop by inserting NeverNode
+force_loop_exit: (inout loop: CFGNode, stop_id: int) = {
+    // Check if loop already has an exit
+    if has_loop_exit(loop) {
+        return;  // Already has exit, not infinite
+    }
+
+    // Get back edge (last input for Loop nodes)
+    back_id: int = 0;
+    if loop.inputs.ssize() >= 1 {
+        back_id = loop.inputs[loop.inputs.ssize() - 1];
+    }
+
+    if back_id == 0 {
+        return;  // No back edge
+    }
+
+    // Create NeverNode with back edge as control
+    never: CFGNode = make_never_node(back_id);
+    // Add never as output of the back edge node
+    back_node: CFGNode = get_cfg_node(back_id);
+    if back_node.base.nid != 0 {
+        _ = back_node.outputs.push_back(never.base.nid);
+        cfg_registry[back_id] = back_node;
+    }
+
+    // Create True/False projections from Never
+    true_proj: CFGNode = make_cproj_node("NeverTrue");
+    true_proj.base.nid = 990;
+    _ = register_cfg_node(true_proj);
+    _ = true_proj.inputs.push_back(never.base.nid);
+    _ = never.outputs.push_back(true_proj.base.nid);
+
+    false_proj: CFGNode = make_cproj_node("NeverFalse");
+    false_proj.base.nid = 991;
+    _ = register_cfg_node(false_proj);
+    _ = false_proj.inputs.push_back(never.base.nid);
+    _ = never.outputs.push_back(false_proj.base.nid);
+
+    // Connect false projection as new loop back edge
+    _ = loop.inputs.push_back(false_proj.base.nid);
+    _ = false_proj.outputs.push_back(loop.base.nid);
+    // The false_proj is now an output of the loop
+    _ = loop.outputs.push_back(false_proj.base.nid);
+
+    // Connect true projection to Stop via Return
+    ret: CFGNode = make_return_node("exit_return");
+    ret.base.nid = 992;
+    _ = register_cfg_node(ret);
+    _ = ret.inputs.push_back(true_proj.base.nid);
+    _ = true_proj.outputs.push_back(ret.base.nid);
+    // The return is an output of true_proj
+    _ = true_proj.outputs.push_back(ret.base.nid);
+
+    // Add return to Stop
+    stop: CFGNode = get_cfg_node(stop_id);
+    if stop.base.nid != 0 {
+        _ = stop.inputs.push_back(ret.base.nid);
+        _ = ret.outputs.push_back(stop.base.nid);
+        cfg_registry[stop_id] = stop;
+    }
+
+    // Update registry with all new nodes
+    cfg_registry[never.base.nid] = never;
+    cfg_registry[true_proj.base.nid] = true_proj;
+    cfg_registry[false_proj.base.nid] = false_proj;
+    cfg_registry[ret.base.nid] = ret;
+    cfg_registry[loop.base.nid] = loop;
+}
+
+// Fix all infinite loops in the graph
+fix_infinite_loops: (stop_id: int) = {
+    stop: CFGNode = get_cfg_node(stop_id);
+    if stop.base.nid == 0 {
+        return;
+    }
+
+    // Walk all registered CFG nodes looking for loops
+    for cfg_registry do (pair: std::pair<const int, CFGNode>) {
+        loop_id: int = pair.first;
+        cfg: CFGNode = pair.second;
+        if cfg.base.op == op_type::OP_LOOP {
+            // Check if this loop has an exit
+            if !has_loop_exit(cfg) {
+                // Force exit for infinite loop - use mutable reference
+                mutable_cfg: CFGNode = cfg;
+                force_loop_exit(mutable_cfg, stop_id);
+                // Update registry with modified loop
+                cfg_registry[loop_id] = mutable_cfg;
+            }
+        }
+    }
+}
+
+test_infinite_loop_handling: () -> bool = {
+    println("Test: Infinite loop handling");
+
+    // Create an infinite loop: while (1) { }
+    start: CFGNode = make_start_node();
+    loop: CFGNode = make_loop_node("infinite");
+    stop: CFGNode = make_stop_node();
+
+    // Assign IDs
+    start.base.nid = 100;
+    loop.base.nid = 200;
+    stop.base.nid = 300;
+
+    // Register nodes
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(loop);
+    _ = register_cfg_node(stop);
+
+    // Build infinite loop structure: Start -> Loop -> (back to Loop)
+    // No exit CProj from If, so this is infinite
+    add_edge(start, loop);
+    add_edge(loop, loop);  // Back edge to self (infinite)
+
+    // Get updated loop
+    loop = get_cfg_node(200);
+
+    // Check that loop has no exit
+    if has_loop_exit(loop) {
+        println("  FAIL: Loop should not have exit initially");
+        return false;
+    }
+
+    // Fix infinite loops
+    fix_infinite_loops(300);  // Stop ID is 300
+
+    // Get updated loop and check it now has exit
+    loop = get_cfg_node(200);
+
+    if !has_loop_exit(loop) {
+        println("  FAIL: Loop should have exit after fix_infinite_loops");
+        return false;
+    }
+
+    // Check Stop now has input (from the forced exit)
+    stop = get_cfg_node(300);
+    if stop.inputs.empty() {
+        println("  FAIL: Stop should have input from forced exit");
+        return false;
+    }
+
+    println("  PASS: Infinite loop handling works correctly");
+    return true;
+}
+
+// ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
 main: () -> int = {
     println("=== Sea of Nodes Chapter 11 Tests ===");
-    println("Chapter 11: Global Code Motion - Phase 5 (Early Schedule)");
+    println("Chapter 11: Global Code Motion - Phase 6 (Infinite Loops)");
     println("");
 
     passed: int = 0;
-    total: int = 14;
+    total: int = 15;
 
     if test_basic_cfg_node() {
         passed = passed + 1;
@@ -1093,11 +1284,15 @@ main: () -> int = {
         passed = passed + 1;
     }
 
+    if test_infinite_loop_handling() {
+        passed = passed + 1;
+    }
+
     println("");
     std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
 
     if passed == total {
-        println("SUCCESS: All Phase 5 tests passed!");
+        println("SUCCESS: All Phase 6 tests passed!");
         return 0;
     } else {
         println("FAILURE: Some tests failed");
