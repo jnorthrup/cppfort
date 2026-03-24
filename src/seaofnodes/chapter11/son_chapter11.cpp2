@@ -31,6 +31,7 @@ op_type: @enum type = {
     OP_START;
     OP_STOP;
     OP_REGION;
+    OP_LOOP;  // Loop header node
     OP_IF;
     OP_RETURN;
     OP_CPROJ;
@@ -335,6 +336,66 @@ idepth_cached: (in cfg: CFGNode) -> int = {
 }
 
 // ============================================================================
+// LOOP DEPTH COMPUTATION
+// ============================================================================
+
+// Get loop depth for a CFG node
+loop_depth: (in cfg: CFGNode) -> int = {
+    op: op_type = cfg.base.op;
+    
+    // Start node: loop depth 1
+    if op == op_type::OP_START {
+        return 1;
+    }
+    
+    // Stop node: loop depth 1
+    if op == op_type::OP_STOP {
+        return 1;
+    }
+    
+    // Region node: loop depth from input 1 (not 0)
+    if op == op_type::OP_REGION {
+        if cfg.inputs.ssize() >= 2 {
+            input1_id: int = cfg.inputs[1];
+            input1: CFGNode = get_cfg_node(input1_id);
+            return loop_depth(input1);
+        }
+        return 1; // Default if no input 1
+    }
+    
+    // Loop node: entry depth + 1
+    if op == op_type::OP_LOOP {
+        // Entry is input 1 for Loop nodes (Region convention)
+        // If we don't have 2 inputs, fall back to input 0 (control input)
+        entry_idx: int = 0;
+        if cfg.inputs.ssize() >= 2 {
+            entry_idx = 1;  // Use entry input if available
+        }
+        entry_id: int = cfg.inputs[entry_idx];
+        entry: CFGNode = get_cfg_node(entry_id);
+        if entry.base.nid == 0 {
+            return 2; // No valid entry, default to depth 2
+        }
+        entry_depth: int = loop_depth(entry);
+        return entry_depth + 1;
+    }
+    
+    // Default: loop depth of control input (input 0)
+    ctrl: CFGNode = cfg0(cfg);
+    if ctrl.base.nid == 0 {
+        return 1; // No control input, depth 1
+    }
+    
+    return loop_depth(ctrl);
+}
+
+// Create a loop header node
+make_loop_node: (name: std::string) -> CFGNode = {
+    loop: CFGNode = make_cfg_node(op_type::OP_LOOP, name);
+    return loop;
+}
+
+// ============================================================================
 // SPECIFIC CFG NODE TYPES
 // ============================================================================
 
@@ -373,6 +434,9 @@ make_cproj_node: (name: std::string) -> CFGNode = {
     cproj: CFGNode = make_cfg_node(op_type::OP_CPROJ, name);
     return cproj;
 }
+
+// Loop node - loop header (already defined above, but need it here for ordering)
+// make_loop_node is defined in the Loop Depth Computation section
 
 // ============================================================================
 // TESTS
@@ -686,17 +750,132 @@ test_region_lca: () -> bool = {
     return true;
 }
 
+test_loop_depth_simple: () -> bool = {
+    println("Test: Simple loop depth");
+
+    start: CFGNode = make_start_node();
+    loop_header: CFGNode = make_loop_node("loop");
+    stop: CFGNode = make_stop_node();
+    
+    // Assign unique IDs
+    start.base.nid = 1;
+    loop_header.base.nid = 2;
+    stop.base.nid = 3;
+    
+    // Register nodes
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(loop_header);
+    _ = register_cfg_node(stop);
+    
+    // Build: Start -> Loop -> Stop
+    add_edge(start, loop_header);
+    add_edge(loop_header, stop);
+    
+    // Get updated nodes
+    start = get_cfg_node(1);
+    loop_header = get_cfg_node(2);
+    stop = get_cfg_node(3);
+    
+    // Check loop depths
+    start_depth: int = loop_depth(start);
+    loop_depth_val: int = loop_depth(loop_header);
+    stop_depth: int = loop_depth(stop);
+    
+    if start_depth != 1 {
+        std::cout << "  FAIL: Start loop depth should be 1, got " << start_depth << "\n";
+        return false;
+    }
+    
+    if loop_depth_val != 2 {
+        std::cout << "  FAIL: Loop header depth should be 2, got " << loop_depth_val << "\n";
+        return false;
+    }
+    
+    if stop_depth != 1 {
+        std::cout << "  FAIL: Stop loop depth should be 1, got " << stop_depth << "\n";
+        return false;
+    }
+
+    println("  PASS: Simple loop depth works correctly");
+    return true;
+}
+
+test_loop_depth_nested: () -> bool = {
+    println("Test: Nested loop depth");
+
+    start: CFGNode = make_start_node();
+    outer_loop: CFGNode = make_loop_node("outer");
+    inner_loop: CFGNode = make_loop_node("inner");
+    stop: CFGNode = make_stop_node();
+    
+    // Assign unique IDs
+    start.base.nid = 1;
+    outer_loop.base.nid = 2;
+    inner_loop.base.nid = 3;
+    stop.base.nid = 4;
+    
+    // Register nodes
+    _ = register_cfg_node(start);
+    _ = register_cfg_node(outer_loop);
+    _ = register_cfg_node(inner_loop);
+    _ = register_cfg_node(stop);
+    
+    // Build: Start -> Outer -> Inner -> Stop
+    // Simple chain where each loop's control input is the previous node
+    add_edge(start, outer_loop);
+    add_edge(outer_loop, inner_loop);
+    add_edge(inner_loop, stop);
+    
+    // Get updated nodes
+    start = get_cfg_node(1);
+    outer_loop = get_cfg_node(2);
+    inner_loop = get_cfg_node(3);
+    stop = get_cfg_node(4);
+    
+    // Check loop depths
+    // Loop depth = depth of control input + 1
+    // Outer: control is Start (depth 1), so outer = 2
+    // Inner: control is Outer (depth 2), so inner = 3
+    start_depth: int = loop_depth(start);
+    outer_depth: int = loop_depth(outer_loop);
+    inner_depth: int = loop_depth(inner_loop);
+    stop_depth: int = loop_depth(stop);
+    
+    if start_depth != 1 {
+        std::cout << "  FAIL: Start loop depth should be 1, got " << start_depth << "\n";
+        return false;
+    }
+    
+    if outer_depth != 2 {
+        std::cout << "  FAIL: Outer loop depth should be 2, got " << outer_depth << "\n";
+        return false;
+    }
+    
+    if inner_depth != 3 {
+        std::cout << "  FAIL: Inner loop depth should be 3, got " << inner_depth << "\n";
+        return false;
+    }
+    
+    if stop_depth != 1 {
+        std::cout << "  FAIL: Stop loop depth should be 1, got " << stop_depth << "\n";
+        return false;
+    }
+
+    println("  PASS: Nested loop depth works correctly");
+    return true;
+}
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
 main: () -> int = {
     println("=== Sea of Nodes Chapter 11 Tests ===");
-    println("Chapter 11: Global Code Motion - Phase 3 (Dominator Tree)");
+    println("Chapter 11: Global Code Motion - Phase 4 (Loop Depth)");
     println("");
 
     passed: int = 0;
-    total: int = 11;
+    total: int = 13;
 
     if test_basic_cfg_node() {
         passed = passed + 1;
@@ -742,11 +921,19 @@ main: () -> int = {
         passed = passed + 1;
     }
 
+    if test_loop_depth_simple() {
+        passed = passed + 1;
+    }
+
+    if test_loop_depth_nested() {
+        passed = passed + 1;
+    }
+
     println("");
     std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
 
     if passed == total {
-        println("SUCCESS: All Phase 3 tests passed!");
+        println("SUCCESS: All Phase 4 tests passed!");
         return 0;
     } else {
         println("FAILURE: Some tests failed");
