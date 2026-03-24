@@ -3,6 +3,26 @@
 // Per TrikeShed: composable hermetic abstractions
 
 // ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: int) = {
+    std::cout << val << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+println: (msg: std::string, val: std::string) = {
+    std::cout << msg << val << "\n";
+}
+
+// ============================================================================
 // EXTENDED NODE REGISTRY (from Chapter 4)
 // ============================================================================
 // Chapter 5 adds: IfNode, RegionNode, StopNode
@@ -130,7 +150,7 @@ reset_nodes: () -> void = {
 
 // Constant value operations
 set_constant_value: (nid: int, val: long) -> void = {
-    while (nid >= node_registry.ssize()) {
+    while (nid >= constant_values.ssize()) {
         constant_values.push_back(0);
     }
     constant_values[nid] = val;
@@ -331,8 +351,143 @@ make_return_node_stop: (ctrl: int, data: int, stop: int) -> int = {
 }
 
 // ============================================================================
-// EXISTING NODE FACTORIES (from Chapters 1-4)
+// TEST FUNCTIONS
 // ============================================================================
+
+test_if_basic: () -> bool = {
+    println("Test: Basic if statement infrastructure");
+    
+    // Test that we can create if nodes
+    start: int = make_start_node();
+    if_node: int = make_if_node(start, 1);
+    
+    if (if_node >= 0 && node_op(if_node) == op_type::OP_IF) {
+        println("  PASS: If node creation works");
+        return true;
+    }
+    
+    println("  FAIL: If node creation failed");
+    return false;
+}
+
+test_comparison_eq: () -> bool = {
+    println("Test: Equality comparison node");
+
+    // Test creating comparison nodes
+    const_3: int = make_constant_node(3, 0);
+    const_3_copy: int = make_constant_node(3, 0);
+    
+    eq_node: int = make_eq_node(const_3, const_3_copy);
+    
+    if (eq_node >= 0 && node_op(eq_node) == op_type::OP_EQ) {
+        println("  PASS: Equality comparison node created");
+        return true;
+    }
+
+    println("  FAIL: Equality comparison node creation failed");
+    return false;
+}
+
+test_comparison_ne: () -> bool = {
+    println("Test: Not equal comparison node");
+
+    // Test creating comparison nodes
+    const_3: int = make_constant_node(3, 0);
+    const_4: int = make_constant_node(4, 0);
+    
+    ne_node: int = make_ne_node(const_3, const_4);
+    
+    if (ne_node >= 0 && node_op(ne_node) == op_type::OP_NE) {
+        println("  PASS: Not equal comparison node created");
+        return true;
+    }
+
+    println("  FAIL: Not equal comparison node creation failed");
+    return false;
+}
+
+test_phi_creation: () -> bool = {
+    println("Test: Phi node creation");
+
+    values: std::vector<int> = (1, 2);
+    phi: int = make_phi_node(0, values);
+
+    if (phi >= 0 && node_op(phi) == op_type::OP_PHI) {
+        println("  PASS: Phi node created");
+        return true;
+    }
+
+    println("  FAIL: Phi node creation failed");
+    return false;
+}
+
+test_scope_management: () -> bool = {
+    println("Test: Scope management");
+
+    reset_nodes();
+    enter_scope();
+
+    // Test variable declaration and lookup
+    ctrl: int = make_start_node();
+    value: int = make_constant_node(42, ctrl);
+
+    if (declare_variable("test_var", value)) {
+        lookup_result: int = lookup_variable("test_var");
+        if (lookup_result == value) {
+            println("  PASS: Scope management works");
+            exit_scope();
+            return true;
+        }
+    }
+
+    exit_scope();
+    println("  FAIL: Scope management failed");
+    return false;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 5 Tests ===");
+    println("Chapter 5: Control Flow - If statements, Phi nodes, and merging");
+    println("");
+
+    passed: int = 0;
+    total: int = 5;
+
+    if test_if_basic() {
+        passed = passed + 1;
+    }
+
+    if test_comparison_eq() {
+        passed = passed + 1;
+    }
+
+    if test_comparison_ne() {
+        passed = passed + 1;
+    }
+
+    if test_phi_creation() {
+        passed = passed + 1;
+    }
+
+    if test_scope_management() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Chapter 5 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}
 
 make_start_node: () -> int = {
     inputs: std::vector<int> = ();
