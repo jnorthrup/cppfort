@@ -137,6 +137,55 @@ parser_of: <T: type> type == std::function<
     (input: std::string_view, start: int, inout session: scan_session) -> scan_result<T>
 >;
 
+// ============================================================================
+// COIN SORTER — rules-first grammar engine
+// A rule is a slot: predicate + parser. Input falls through slots until match.
+// ============================================================================
+
+// Coin sorter dispatch: try each peek, run matched parser
+// peek[i] and parse[i] are parallel arrays — first peek match wins
+sort_dispatch: (
+    peeks: std::vector<std::function<(input: std::string_view, cursor: int) -> bool>>,
+    parses: std::vector<parser_of<std::string_view>>,
+    rule_name: std::string_view
+) -> parser_of<std::string_view> = {
+    return :(
+        input: std::string_view,
+        start: int,
+        inout session: scan_session
+    ) -> scan_result<std::string_view> = {
+        cursor := start;
+        ws := skip_ws()(input, cursor, session);
+        cursor = cursor + ws.consumed;
+
+        i: int = 0;
+        while i < peeks$.ssize() {
+            if peeks$[unchecked_narrow<std::size_t>(i)](input, cursor) {
+                result := parses$[unchecked_narrow<std::size_t>(i)](input, cursor, session);
+                if result.outcome == scan_signal::accept {
+                    total := cursor - start + result.consumed;
+                    emit_trace(session, rule_name$, start, start + total, scan_signal::accept);
+                    return accept_result<std::string_view>(
+                        input.substr(start, total), total
+                    );
+                }
+                total := cursor - start + result.consumed;
+                return surface_failure_result<std::string_view>(
+                    input, session, rule_name$, start, total,
+                    result.outcome, result.message
+                );
+            }
+            i += 1;
+        }
+
+        emit_trace(session, rule_name$, start, cursor, scan_signal::reject);
+        return reject_result<std::string_view>(
+            "no matching slot in " + std::string(rule_name$),
+            cursor - start
+        );
+    };
+}
+
 emit_trace: (
     inout session: scan_session,
     rule: std::string_view,
