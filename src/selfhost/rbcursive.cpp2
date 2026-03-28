@@ -883,6 +883,7 @@ struct_annotation_candidate_at: (
        !keyword_or_prefix_at(input, cursor, "basic_value") &&
        !keyword_or_prefix_at(input, cursor, "interface") &&
        !keyword_or_prefix_at(input, cursor, "enum") &&
+       !keyword_or_prefix_at(input, cursor, "flag_enum") &&
        !keyword_or_prefix_at(input, cursor, "union") &&
        !keyword_or_prefix_at(input, cursor, "regex") &&
        !keyword_or_prefix_at(input, cursor, "autodiff") &&
@@ -897,6 +898,9 @@ struct_annotation_candidate_at: (
     }
     else if keyword_or_prefix_at(input, cursor, "enum") {
         cursor = cursor + 4;
+    }
+    else if keyword_or_prefix_at(input, cursor, "flag_enum") {
+        cursor = cursor + 9;
     }
     else if keyword_or_prefix_at(input, cursor, "union") {
         cursor = cursor + 5;
@@ -1734,6 +1738,105 @@ trimmed: <T: type>(
     return with_traits<T>(
         trace_trait::skipper,
         followed_by<std::string_view, T>(rule, skip_ws(), p)
+    );
+}
+
+// ============================================================================
+// DRY COMBINATORS — one channel, eliminate repetition
+// ============================================================================
+
+// run: skip whitespace, run parser, advance cursor or fail
+run_ws: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    p: parser_of<std::string_view>
+) -> scan_result<std::string_view> = {
+    ws := skip_ws()(input, cursor, session);
+    cursor = cursor + ws.consumed;
+    return p(input, cursor, session);
+}
+
+// chain: run parser at cursor, advance on accept, reject on failure
+chain: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    p: parser_of<std::string_view>
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome == scan_signal::accept {
+        cursor = cursor + result.consumed;
+    }
+    return result;
+}
+
+// chain_ws: skip whitespace, then chain
+chain_ws: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    p: parser_of<std::string_view>
+) -> scan_result<std::string_view> = {
+    ws := skip_ws()(input, cursor, session);
+    cursor = cursor + ws.consumed;
+    result := p(input, cursor, session);
+    if result.outcome == scan_signal::accept {
+        cursor = cursor + result.consumed;
+    }
+    return result;
+}
+
+// expect: chain a parser, return structured failure on reject
+expect: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    p: parser_of<std::string_view>,
+    ctx: std::string_view,
+    msg: std::string_view
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome != scan_signal::accept {
+        total := cursor - start + result.consumed;
+        return surface_failure_result<std::string_view>(
+            input, session, ctx, start, total, result.outcome, msg
+        );
+    }
+    cursor = cursor + result.consumed;
+    return result;
+}
+
+// expect_ws: skip whitespace, then expect
+expect_ws: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    p: parser_of<std::string_view>,
+    ctx: std::string_view,
+    msg: std::string_view
+) -> scan_result<std::string_view> = {
+    ws := skip_ws()(input, cursor, session);
+    cursor = cursor + ws.consumed;
+    return expect(cursor, input, session, start, p, ctx, msg);
+}
+
+// emit_accept: record a feature and return accept
+// Replaces the 40x "record_feature(...); return accept_result<...>(...)" pattern
+emit_accept: (
+    input: std::string_view,
+    inout session: scan_session,
+    kind: feature_kind,
+    start: int,
+    stop: int,
+    semantic: std::string_view
+) -> scan_result<std::string_view> = {
+    record_feature(session, kind, start, stop, semantic);
+    return accept_result<std::string_view>(
+        input.substr(start, stop - start),
+        stop - start
     );
 }
 
@@ -7858,8 +7961,11 @@ pure2_struct_declaration: () -> parser_of<std::string_view> = {
                             annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_enum", keyword_parser("enum"));
                             annotation_result = annotation_keyword(input, cursor, session);
                             if annotation_result.outcome != scan_signal::accept {
-                                annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_union", keyword_parser("union"));
+                                annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_flag_enum", keyword_parser("flag_enum"));
                                 annotation_result = annotation_keyword(input, cursor, session);
+                                if annotation_result.outcome != scan_signal::accept {
+                                    annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_union", keyword_parser("union"));
+                                    annotation_result = annotation_keyword(input, cursor, session);
                                 if annotation_result.outcome != scan_signal::accept {
                                     annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_regex", keyword_parser("regex"));
                                     annotation_result = annotation_keyword(input, cursor, session);
@@ -7874,11 +7980,12 @@ pure2_struct_declaration: () -> parser_of<std::string_view> = {
                                 }
                             }
                         }
-                        if annotation_result.outcome != scan_signal::accept {
+                    }
+                    if annotation_result.outcome != scan_signal::accept {
                             total := cursor - start + annotation_result.consumed;
                             return surface_failure_result<std::string_view>(
                                 input, session, "pure2_struct_declaration", start, total,
-                                annotation_result.outcome, "struct '@struct', '@value', '@basic_value', '@interface', '@enum', '@union', '@regex', '@autodiff', or '@cpp1_rule_of_zero' expected"
+                                annotation_result.outcome, "struct '@struct', '@value', '@basic_value', '@interface', '@enum', '@flag_enum', '@union', '@regex', '@autodiff', or '@cpp1_rule_of_zero' expected"
                             );
                         }
                     }
