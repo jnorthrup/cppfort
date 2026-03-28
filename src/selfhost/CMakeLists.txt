@@ -136,6 +136,13 @@ if(CPPFRONT_EXECUTABLE)
 
     add_custom_target(selfhost_cppfort_cpp DEPENDS "${CPPFORT_CPP}")
 
+    # Generate config header with proper paths
+    configure_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/cppfort_config.h.in
+      ${SELFHOST_DIR}/cppfort_config.h
+      @ONLY
+    )
+
     add_executable(cppfort
       ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort_main.cpp
     )
@@ -145,8 +152,15 @@ if(CPPFRONT_EXECUTABLE)
       ${CPPFRONT_INCLUDE_DIR}
     )
     target_compile_definitions(cppfort PRIVATE
-      CPPFORT_SELFHOST_RBCURSIVE_CPP=\"${SELFHOST_DIR}/rbcursive.cpp\"
-      CPPFORT_SELFHOST_CPPFORT_CPP=\"${SELFHOST_DIR}/cppfort.cpp\"
+      CPPFORT_HAS_SON_DIALECT=1
+    )
+    target_link_libraries(cppfort PRIVATE
+      Cpp2SONDialect
+      Cpp2SONPasses
+      MLIRIR
+      MLIRSupport
+      MLIRPass
+      MLIRTransforms
     )
     set_target_properties(cppfort PROPERTIES
       CXX_STANDARD 20

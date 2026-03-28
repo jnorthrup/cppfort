@@ -8,8 +8,16 @@
 #include <string_view>
 #include <cstdio>
 
+#include "cppfort_config.h"
+
 #include CPPFORT_SELFHOST_RBCURSIVE_CPP
 #include CPPFORT_SELFHOST_CPPFORT_CPP
+
+#ifdef CPPFORT_HAS_SON_DIALECT
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "Cpp2SONDialect.h"
+#endif
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -64,7 +72,14 @@ int main(int argc, char* argv[]) {
     input_file.close();
     
     std::cerr << "cppfort: parsing " << input_path << " (" << source.size() << " bytes)\n";
-    
+
+#ifdef CPPFORT_HAS_SON_DIALECT
+    // Initialize MLIR context with cpp2 SoN dialect
+    mlir::MLIRContext context;
+    context.getOrLoadDialect<cpp2::Cpp2SONDialect>();
+    std::cerr << "cppfort: SoN dialect loaded (cpp2 namespace)\n";
+#endif
+
     scan_session session{};
     std::cerr << "DEBUG: About to call parse_source\n";
     std::cerr.flush();

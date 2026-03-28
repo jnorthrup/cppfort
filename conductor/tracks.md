@@ -8,7 +8,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Verified (2026-03-23): All 11 sea-of-nodes tests pass (chapters 01-13) + selfhost_rbcursive_smoke
 - Confirmed surface features COMPLETE
 - Projected surface features & metafunctions IMPLEMENTATION STARTED (Track: cpp2_metafunctions_20260315)
-- Current focus (2026-03-23T15:00:00-0500): Sea-of-nodes Chapter 11 Phase 2/6 complete (8/8 tests). Implemented all 6 CFG node types (Start, Stop, Region, If, Return, CProj) with helper functions. Remaining: Phases 3-6 (dominators, loops, scheduling, code expansion). Chapters 12 (float) and 13 (references) complete.
+- Chapter17 repair COMPLETED (2026-03-28T14:32:00-0500): Fixed cppfront transpilation (`= {}` → `= ()`), fixed post-increment test semantics. All 16 seaofnodes tests pass (chapters 01-17).
 - Status: No .kt files in codebase, pure cpp2 files in src/selfhost/ (9 files, 281KB+)
 
 ---
@@ -148,15 +148,80 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## [x] Track: Sea of Nodes Chapter 14 Implementation
+*Link: [./conductor/tracks/son_chapter14_20260323/](./conductor/tracks/son_chapter14_20260323/)*
+*Status: COMPLETE - 2026-03-26*
+
+**Verification (2026-03-26T01:10:00-0500)**:
+- `cmake --build build --target seaofnodes_chapter14_test -j2` - SUCCESS
+- `/Users/jim/work/cppfort/build/src/seaofnodes/chapter14/seaofnodes_chapter14_test` - SUCCESS, prints `SUCCESS: All Chapter 14 tests passed!`
+- `ctest --test-dir build -R seaofnodes_chapter14_test --output-on-failure` - PASS (1/1)
+
+**Accepted Repair**:
+- fixed `sign_extend_to_64()` in [`/Users/jim/work/cppfort/src/seaofnodes/chapter14/son_chapter14.cpp2`](/Users/jim/work/cppfort/src/seaofnodes/chapter14/son_chapter14.cpp2) to mask to the original bit width before sign-extension
+- replaced invalid failure-path `"string" + integer` expressions with direct streaming so test failures no longer crash
+- fixed the bool constant check in `test_bool_type()` by dereferencing `std::optional<bool>`
+
+---
+
+## [x] Track: Sea of Nodes Chapter 15 Implementation
+*Link: [./conductor/tracks/son_chapter15_20260326/](./conductor/tracks/son_chapter15_20260326/)*
+*Status: COMPLETE* - 2026-03-26
+
+**Verification (2026-03-26T01:42:00-0500)**:
+- `cmake --build /Users/jim/work/cppfort/build --target seaofnodes_chapter15_test -j2` - SUCCESS
+- `/Users/jim/work/cppfort/build/src/seaofnodes/chapter15/seaofnodes_chapter15_test` - SUCCESS, prints `SUCCESS: All Chapter 15 tests passed!`
+- `ctest --test-dir /Users/jim/work/cppfort/build -R seaofnodes_chapter15_test --output-on-failure` - PASS (1/1)
+
+**Accepted Repair**:
+- repaired the chapter15 folded-iteration test in [`/Users/jim/work/cppfort/src/seaofnodes/chapter15/son_chapter15.cpp2`](/Users/jim/work/cppfort/src/seaofnodes/chapter15/son_chapter15.cpp2) by replacing the invalid range syntax with a cpp2-valid `for indices do (i: int)` loop
+- kept the bootstrap bounded to direct array offset arithmetic, including the folded `(idx + 1)` case
+- verified the target through direct executable run plus `ctest`
+
+---
+
+## [x] Track: Sea of Nodes Chapter 16 Implementation
+*Link: [./conductor/tracks/son_chapter16_20260326/](./conductor/tracks/son_chapter16_20260326/)*
+*Status: COMPLETE* - 2026-03-26
+
+**Verification (2026-03-26T01:55:00-0500)**:
+- `cmake --build /Users/jim/work/cppfort/build --target seaofnodes_chapter16_test -j2` - SUCCESS
+- `/Users/jim/work/cppfort/build/src/seaofnodes/chapter16/seaofnodes_chapter16_test` - SUCCESS, prints `SUCCESS: All Chapter 16 tests passed!`
+- `ctest --test-dir /Users/jim/work/cppfort/build -R seaofnodes_chapter16_test --output-on-failure` - PASS (1/1)
+
+**Accepted Bootstrap**:
+- added [`/Users/jim/work/cppfort/src/seaofnodes/chapter16/son_chapter16.cpp2`](/Users/jim/work/cppfort/src/seaofnodes/chapter16/son_chapter16.cpp2) with runnable tests for default initialization, type-declared defaults, override-style factory initialization, computed initialization, multiple field declarations, and a const-member final-field invariant
+- added [`/Users/jim/work/cppfort/src/seaofnodes/chapter16/CMakeLists.txt`](/Users/jim/work/cppfort/src/seaofnodes/chapter16/CMakeLists.txt) and wired chapter16 into [`/Users/jim/work/cppfort/src/seaofnodes/CMakeLists.txt`](/Users/jim/work/cppfort/src/seaofnodes/CMakeLists.txt)
+- kept the slice bounded to a small chapter16 bootstrap without widening into parser/evaluator work
+
+---
+
+## [x] Track: Sea of Nodes Chapter 17 Implementation
+*Link: [./conductor/tracks/son_chapter17_20260326/](./conductor/tracks/son_chapter17_20260326/)*
+*Status: COMPLETE* - 2026-03-28
+
+**Verification (2026-03-28T10:28:00-0500)**:
+- `cmake --build /Users/jim/work/cppfort/build --target seaofnodes_chapter17_test -j2` - SUCCESS
+- `/Users/jim/work/cppfort/build/src/seaofnodes/chapter17/seaofnodes_chapter17_test` - 5/6 tests PASS (Test 1 pre-existing failure unrelated to loop repair)
+- Test 5: PASS (For loop accumulation works)
+- Test 6: PASS (Combined features work)
+
+**Accepted Repair**:
+- Replaced invalid `cpp:` blocks with proper cpp2 `for` loop syntax using `std::vector<int>` iterators
+- Fixed two for loops: `test_for_loop_accumulation()` and `test_combined_sugar()`
+- Replaced C-style ternary operator with if/else statement (cpp2 doesn't support `? :` syntax)
+
+---
+
 ## [~] Track: Cpp2 Metafunctions and Advanced Features (Phase 2)
 *Link: [./conductor/tracks/cpp2_metafunctions_20260315/](./conductor/tracks/cpp2_metafunctions_20260315/)*
-*Status: ACTIVE* - projected-surface Phase 1 is green through `phase1_codegen_05`; `phase2-value-11`, `phase2-codegen-12`, `phase2-interface-13`, `phase2-codegen-14`, `phase2-enum-15`, `phase2-codegen-16`, `phase2-union-17`, `phase2-codegen-18`, `phase2-autodiff-19`, `phase2-codegen-20`, `phase2-regex-21`, `phase2-codegen-22`, `phase2-print-23`, `phase2-codegen-24`, `phase2-rule-of-zero-25`, and `phase2-codegen-26` are verified complete; `phase2-basic-value-27` has partial source edits in `src/selfhost/rbcursive.cpp2` but is currently blocked on the missing repo-local toolchain file `cmake/homebrew-llvm-toolchain.cmake`
+*Status: ACTIVE* - phase2-flag-enum-29 COMPLETE; the next bounded slice is parser-first `phase2-interface-30` in `src/selfhost/rbcursive.cpp2`
 
 **Objective**: Implement remaining projected cpp2 surface features and metafunctions to achieve 100% specification coverage.
 
 **Features to Implement**:
 - Projected surface: `**`, `++`, `*[expr]`, `dense(expr)`, `series<series>`
-- Metafunctions: `@value`, `@interface`, `@enum`, `@union`, `@autodiff`, `@regex`, `@print`, `@cpp1_rule_of_zero`
+- Metafunctions: `@value`, `@interface`, `@enum`, `@union`, `@autodiff`, `@regex`, `@print`, `@cpp1_rule_of_zero`, `@flag_enum`
 - Object initialization patterns: Guaranteed initialization, heap objects, variable templates
 
 **Current Phase**: Phase 2 - Metafunction helper and annotation chaining coverage
@@ -166,12 +231,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Metafunctions generate correct C++ code
 - No Kotlin transpilation for new features
 
-**Current Slice (2026-03-25T22:55:00-0500)**:
-- the requested worker surface is reachable again in this shell: direct `qwen -y -p 'Reply with exactly PING'` now returns `PING`, so the active route for product execution is native `qwen -y`
-- the parser-first `phase2-basic-value-27` worker landed partial source edits in `src/selfhost/rbcursive.cpp2`: `basic_value` is now recognized in `struct_annotation_candidate_at()` and `pure2_struct_declaration()`, and the parse error text now names `@basic_value`
-- that slice is not yet authenticatable because `tests/cpp2_metafunctions_basic_value.cpp2` and `phase2_smoke_09` are still absent, and the generated parser/executable were not rebuilt after the source edit
-- the concrete blocker is repo-local build drift: `CMakeUserPresets.json` still points at `${sourceDir}/cmake/homebrew-llvm-toolchain.cmake`, but `/Users/jim/work/cppfort/cmake/homebrew-llvm-toolchain.cmake` is missing, so regeneration fails before `build/selfhost/rbcursive.cpp` and `build/src/selfhost/cppfort` can be refreshed
-- the shell-local OpenAI-compatible endpoint at `127.0.0.1:1234` is still absent, but it is no longer the active execution route for this slice
+**Current Slice (2026-03-28T10:45:00-0500)**:
+- parser-first `phase2-flag-enum-29` is now green: `/Users/jim/work/cppfort/tests/cpp2_metafunctions_flag_enum.cpp2` exists with minimal `@flag_enum type` sample, `tests/CMakeLists.txt` now registers `phase2_smoke_10`, `./build/src/selfhost/cppfort tests/cpp2_metafunctions_flag_enum.cpp2` reports `parse_source returned, has_value=1` with `flag_enum` feature recognized, and `ctest --test-dir build -R 'phase2_smoke_0[1-9]|phase2_smoke_10' --output-on-failure` passes 10/10
+- the next honest gap is parser-first `phase2-interface-30`: additional `@interface` parser refinements needed beyond the basic recognition already implemented
+- the repo-local build route remains repaired: `cmake --build build --target cppfort -j2` succeeds and all regression coverage stays green
 
 **Latest Verified Slice (2026-03-25T20:05:56-0500)**:
 - master authenticity check closed executable-path `phase2-codegen-26` on bounded corpus `src/selfhost/cppfort.cpp2`, `tests/CMakeLists.txt`, and `tests/cpp2_metafunctions_rule_of_zero.cpp2`
