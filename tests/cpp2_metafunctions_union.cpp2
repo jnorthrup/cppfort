@@ -1,0 +1,7 @@
+// phase2_smoke_04: exercises union metafunction parser-first surface (@union type)
+// This is the minimal docs surface sample from docs/cpp2/metafunctions.md.
+
+name_or_number: @union type = {
+    name: std::string;
+    num : i32;
+}

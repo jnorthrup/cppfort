@@ -1,0 +1,4 @@
+// phase1_smoke_04: exercises dense_view projected-surface form (dense(expr))
+// This is a minimal accepted translation unit using the dense(expr) form.
+
+dense(series)

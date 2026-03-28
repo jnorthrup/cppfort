@@ -1,0 +1,8 @@
+// phase2_smoke_03: exercises enum metafunction parser-first surface (@enum type)
+// This is the minimal docs surface sample from docs/cpp2/declarations.md.
+
+color: @enum type = {
+    red;
+    green;
+    blue;
+}

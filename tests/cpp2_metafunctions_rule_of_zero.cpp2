@@ -1,0 +1,6 @@
+// phase2_smoke_08: exercises cpp1_rule_of_zero metafunction parser-first surface (@cpp1_rule_of_zero type)
+// This is a minimal docs-style sample from docs/cpp2/metafunctions.md.
+
+widget: @cpp1_rule_of_zero type = {
+    x: i32 = 0;
+}

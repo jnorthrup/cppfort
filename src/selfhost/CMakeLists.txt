@@ -55,6 +55,12 @@ target_include_directories(cppfort_selfhost_cpp2_inventory INTERFACE
 target_sources(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_types.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/rbcursive.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_join.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_series.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_manifold.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_either.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2
 )
 
 find_program(CPPFRONT_EXECUTABLE NAMES cppfront)
@@ -100,6 +106,56 @@ if(CPPFRONT_EXECUTABLE)
     )
 
     add_test(NAME selfhost_rbcursive_smoke COMMAND $<TARGET_FILE:selfhost_rbcursive_smoke>)
+
+    # cppfort self-hosted compiler executable
+    set(CPPFORT_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/cppfort.cpp2")
+    set(CPPFORT_CPP "${SELFHOST_DIR}/cppfort.cpp")
+    
+    set(EMITTER_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2")
+    set(EMITTER_CPP "${SELFHOST_DIR}/canonical_emitter.cpp")
+
+    add_custom_command(
+      OUTPUT "${EMITTER_CPP}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${EMITTER_CPP}" "${EMITTER_SOURCE}"
+      DEPENDS "${EMITTER_SOURCE}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      COMMENT "Transpiling canonical emitter"
+      VERBATIM
+    )
+
+    add_custom_target(selfhost_emitter_cpp DEPENDS "${EMITTER_CPP}")
+
+    add_custom_command(
+      OUTPUT "${CPPFORT_CPP}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${CPPFORT_CPP}" "${CPPFORT_SOURCE}"
+      DEPENDS "${CPPFORT_SOURCE}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      COMMENT "Transpiling selfhost cppfort cpp2 core"
+      VERBATIM
+    )
+
+    add_custom_target(selfhost_cppfort_cpp DEPENDS "${CPPFORT_CPP}")
+
+    add_executable(cppfort
+      ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort_main.cpp
+    )
+    add_dependencies(cppfort selfhost_rbcursive_cpp selfhost_cppfort_cpp selfhost_emitter_cpp)
+    target_include_directories(cppfort PRIVATE
+      ${SELFHOST_DIR}
+      ${CPPFRONT_INCLUDE_DIR}
+    )
+    target_compile_definitions(cppfort PRIVATE
+      CPPFORT_SELFHOST_RBCURSIVE_CPP=\"${SELFHOST_DIR}/rbcursive.cpp\"
+      CPPFORT_SELFHOST_CPPFORT_CPP=\"${SELFHOST_DIR}/cppfort.cpp\"
+    )
+    set_target_properties(cppfort PROPERTIES
+      CXX_STANDARD 20
+      CXX_STANDARD_REQUIRED ON
+      CXX_EXTENSIONS OFF
+    )
+    target_compile_options(cppfort PRIVATE
+      -U__cpp_lib_modules
+    )
   else()
     message(STATUS "cppfront found but cpp2util.h missing; skipping selfhost_rbcursive_smoke")
   endif()

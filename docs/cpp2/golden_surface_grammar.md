@@ -24,10 +24,37 @@ top_level             ::= bootstrap_tag_decl
                         | manifold_decl
                         | atlas_literal
                         | coords_literal
+                        | series_literal
                         | join_expr
                         | transition_expr
+                        | alpha_expr
+                        | indexed_expr
+                        | fold_expr
+                        | grad_diff
+                        | slice_expr
+                        | purity_contract
+                        | namespace_decl
+                        | lowered_method
+                        | chart_project_expr
+                        | atlas_locate_expr
+                        | struct_annotation
+                        | function_declaration
+                        | type_declaration
+                        | precondition
+                        | postcondition
 
 bootstrap_tag_decl    ::= identifier ":" identifier "=" integer ";"
+
+namespace_decl        ::= identifier ":" "namespace" "=" "{" { top_level } "}"
+
+struct_annotation     ::= "@" "struct" type_parameters "type" "=" "{" "}"
+
+function_declaration  ::= identifier ":" "(" [parameter_list] ")" ["->" type] "=" (body | "{" body "}")
+
+type_declaration      ::= identifier ":" "type" "=" ("{" type_body "}" | type_expression)
+
+precondition          ::= "pre" "(" expression ")"
+postcondition         ::= "post" "(" expression ")"
 
 chart_definition      ::= chart_decl chart_body
 chart_decl            ::= "chart" identifier "(" parameter_text ")"
@@ -53,10 +80,30 @@ coords_literal        ::= "coords" "[" coords_element { "," coords_element } "]"
 coords_element        ::= scalar
                         | line_expr
 
+series_literal        ::= "_s" "[" series_element { "," series_element } "]"
+series_element        ::= integer
+                        | identifier
+
 transition_expr       ::= identifier "." "transition"
                           "(" string "," string "," coords_literal ")"
 
 join_expr             ::= identifier "j" identifier
+
+indexed_expr          ::= identifier "j" "(" identifier ":" type ")" "=>" expression
+
+fold_expr             ::= expression "." "fold" "(" expression "," expression ")"
+
+alpha_expr            ::= identifier "α" "(" identifier ")" "=>" expression
+
+grad_diff             ::= "grad" "(" expression "," identifier ")"
+
+purity_contract       ::= "[[" ("pure" | "contiguous" | "non_aliasing" | "strided") "]]"
+
+lowered_method        ::= identifier "." "lowered" "(" ")"
+
+chart_project_expr    ::= identifier "." "project" "(" identifier ")"
+
+atlas_locate_expr    ::= identifier "." "locate" "(" identifier ")"
 
 line_expr             ::= term { operator term }
 term                  ::= identifier
@@ -83,13 +130,7 @@ scalar                ::= integer | floating
 This is the next bounded grammar slice already called out in conductor truth.
 
 ```ebnf
-alpha_expr            ::= expression "α" "(" identifier ")" "=>" expression
-```
-
-The intended source form is:
-
-```text
-series α (x) => expr
+(* slice_expr is now CONFIRMED - see top_level *)
 ```
 
 ## Projected Surface
@@ -97,21 +138,24 @@ series α (x) => expr
 These productions remain part of the larger cppfort design surface and stay here as a grammar target, not as a claim of current acceptance.
 
 ```ebnf
-indexed_expr          ::= expression "j" "(" identifier ":" type ")" "=>" expression
-series_literal        ::= "_s" "[" expression { "," expression } "]"
-fold_expr             ::= expression ".fold(" expression "," expression ")"
-slice_expr            ::= expression "[" expression ".." expression "]"
+type_parameters       ::= "<" type_param { "," type_param } ">"
+type_param            ::= identifier
+                        | identifier ":" type_constraint
+type_constraint       ::= type
+                        | type_constraint "requires" expression
+
 cursor_type           ::= "series" "<" "series" ">"
 
 elementwise_mul       ::= expression "**" expression
 elementwise_add       ::= expression "++" expression
 indexed_view          ::= expression "*[" expression "]"
-grad_diff             ::= "grad" "(" expression "," identifier ")"
 dense_view            ::= "dense" "(" expression ")"
 
 rank_annotation       ::= "<" "rank" "=" integer ">"
-axis_annotation       ::= "<" "axis" "=" identifier { "," identifier } ">"
-purity_contract       ::= "[[" ("pure" | "contiguous" | "non_aliasing" | "strided") "]]"
+
+type                  ::= qualified_name
+                        | type "<" type_arguments ">"
+                        | "(" parameter_list ")" "->" type
 ```
 
 ## Reference Boundary

@@ -1,0 +1,58 @@
+// trikeshed_series.cpp2 - TrikeShed Series<T> port
+// Series<T> = Join<Int, (Int) -> T> - lazy indexed collection
+// Per TrikeShed specification: semantic objects first, dense lowered views second
+// Note: Core type definitions for SoN integration. Lambda-based operations require SoN dialect.
+
+// ============================================================================
+// INDEXED<I, F> - function from domain I to value type
+// Maps to: cpp2.indexed op in SoN dialect
+// ============================================================================
+
+indexed: @struct <I: type, F: type> type = {
+    domain: I = ();
+    at: F = ();
+}
+
+// ============================================================================
+// SERIES<T> - indexed sequence (indexed<int, F>)
+// Maps to: cpp2.indexed op with I=int
+// ============================================================================
+
+series: @struct <T: type> type = {
+    size: int = ();
+    at: std::function<T (int)> = ();
+}
+
+// ============================================================================
+// SERIES CORE OPERATIONS - SoN-dialect integrated
+// These map to canonical nodes for SoN optimization
+// ============================================================================
+
+s_first: <T: type>(s: series<T>) -> T = s.at(0);
+
+s_last: <T: type>(s: series<T>) -> T = s.at(s.size - 1);
+
+s_at: <T: type>(s: series<T>, i: int) -> T = s.at(i);
+
+// ============================================================================
+// SERIES COMBINATION - Maps to combine node
+// ============================================================================
+
+s_concat: <T: type>(a: series<T>, b: series<T>) -> series<T> = {
+    // Maps to cpp2.concat in SoN dialect
+    // Implementation requires SoN lowering
+    total: int = a.size + b.size;
+    result: series<T> = ();
+    result.size = total;
+    // Note: Lambda closure requires SoN dialect support
+    return result;
+}
+
+// ============================================================================
+// α (ALPHA) TRANSFORM - Maps to map node
+// In TrikeShed: series α { x -> expr } creates transformed series
+// Maps to: cpp2.alpha op in SoN dialect
+// ============================================================================
+
+// Note: Full alpha transform requires SoN dialect for lambda lowering
+// The canonical node is: alpha_op(input_series, transform_fn)

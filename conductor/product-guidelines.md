@@ -2,6 +2,49 @@
 
 ## Implementation Rules
 
+### 0. cpp2 Syntax Only
+
+**Core Rule**: This is a cppfront project. All new code MUST use cpp2 syntax, not raw C++.
+
+**cpp2 Requirements**:
+- Use cpp2 syntax: `type name = value;` not `type name(value);`
+- Use cpp2 functions: `auto foo() -> type` with `return` statements
+- Use cpp2 classes with `class` keyword and cpp2 member syntax
+- Use cpp2 templates: `template<typename T> class foo { ... };`
+- cppfront transpiles cpp2 → C++, we do NOT write raw C++20 directly
+
+**DO NOT**:
+- Create `.hpp` or `.h` files with raw C++20 code
+- Use C++20 features directly if cpp2 syntax differs
+- Write "header-only" C++ - use cpp2 files that transpile
+
+**Verification**:
+- All `src/selfhost/*.cpp2` files must transpile via `cppfront`
+- No `.hpp` files in `src/selfhost/` except transpiled output
+- The `selfhost_bootstrap_smoke` target validates cpp2 transpilation
+
+**TrikeShed Syntax Deferral**:
+- cppfront does not support custom infix operators (e.g., `a j b`)
+- Bootstrap uses prefix: `j(a, b)` 
+- Later: rbcursive parses `a j b` → normalizes to join → emits `j(a, b)`
+- Surface syntax deferred until rbcursive is integrated
+
+### Post-Dogfood TrikeShed Cosmetics
+
+After dogfooding is complete, add TrikeShed surface cosmetics:
+
+**Planned additions (cosmetic only):**
+- Custom infix operators: `a j b` 
+- Greek identifiers: `α`, `β`, `γ`, `λ`, etc.
+- Nullable types: `T?`
+- Extension functions: `Int.foo()`
+- Other Kotlin-like surface sugar
+
+**Implementation approach:**
+- Extend cppfront to accept cosmetic syntax
+- Normalize to canonical cpp2 AST
+- Zero-cost abstraction - same as current prefix syntax
+
 ### 1. Zero-Cost Abstractions via Front-End Sugar
 
 **Core Principle**: Front-end sugar IS the abstraction mechanism. Surface syntax (operators, underscore patterns, manifold notation) is the PRIMARY user interface and must compile to zero-cost abstractions.

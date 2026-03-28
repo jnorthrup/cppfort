@@ -1,7 +1,7 @@
 ---
 description: Expert in lexers, parsers, AST construction, and semantic analysis for custom languages and IR front-ends in C++20
 mode: subagent
-model: minimax/minimax-m2.5
+model: anthropic/claude-opus-4
 temperature: 0.2
 permissions:
   edit: allow

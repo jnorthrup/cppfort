@@ -1,7 +1,7 @@
 ---
 description: Expert symbolic algebraic solver for compiler IR optimizations, simplifications, equation systems, rewriting rules, proofs, and SymPy-style code generation
 mode: subagent
-model: xiaomi/mimo-v2-flash
+model: anthropic/claude-opus-4
 temperature: 0.0
 permissions:
   edit: deny

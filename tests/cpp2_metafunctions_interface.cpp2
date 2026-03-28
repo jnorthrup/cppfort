@@ -1,0 +1,6 @@
+// phase2_smoke_02: exercises interface metafunction parser-first surface (@interface type)
+// This is a minimal accepted translation unit using the local docs surface.
+
+shape: @interface type = {
+    draw: (this);
+}

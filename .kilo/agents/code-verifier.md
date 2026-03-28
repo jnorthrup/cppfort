@@ -1,7 +1,7 @@
 ---
 description: Verifies compiler code correctness, runs tests, checks algebraic equivalence, performs fuzzing, and reports bugs with minimal reproducers
 mode: subagent
-model: minimax/minimax-m2.5
+model: anthropic/claude-opus-4
 temperature: 0.1
 permissions:
   edit: deny

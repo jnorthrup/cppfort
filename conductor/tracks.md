@@ -150,7 +150,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [~] Track: Cpp2 Metafunctions and Advanced Features (Phase 2)
 *Link: [./conductor/tracks/cpp2_metafunctions_20260315/](./conductor/tracks/cpp2_metafunctions_20260315/)*
-*Status: ACTIVE* - projected-surface Phase 1 is green through `phase1_codegen_05`; `phase2-value-11`, `phase2-codegen-12`, `phase2-interface-13`, `phase2-codegen-14`, `phase2-enum-15`, `phase2-codegen-16`, `phase2-union-17`, `phase2-codegen-18`, `phase2-autodiff-19`, `phase2-codegen-20`, `phase2-regex-21`, `phase2-codegen-22`, `phase2-print-23`, and `phase2-codegen-24` are verified complete, and the next bounded slice is parser-first `phase2-rule-of-zero-25` in `src/selfhost/rbcursive.cpp2`
+*Status: ACTIVE* - projected-surface Phase 1 is green through `phase1_codegen_05`; `phase2-value-11`, `phase2-codegen-12`, `phase2-interface-13`, `phase2-codegen-14`, `phase2-enum-15`, `phase2-codegen-16`, `phase2-union-17`, `phase2-codegen-18`, `phase2-autodiff-19`, `phase2-codegen-20`, `phase2-regex-21`, `phase2-codegen-22`, `phase2-print-23`, `phase2-codegen-24`, `phase2-rule-of-zero-25`, and `phase2-codegen-26` are verified complete; `phase2-basic-value-27` has partial source edits in `src/selfhost/rbcursive.cpp2` but is currently blocked on the missing repo-local toolchain file `cmake/homebrew-llvm-toolchain.cmake`
 
 **Objective**: Implement remaining projected cpp2 surface features and metafunctions to achieve 100% specification coverage.
 
@@ -166,10 +166,22 @@ This file tracks all major tracks for the project. Each track has its own detail
 - Metafunctions generate correct C++ code
 - No Kotlin transpilation for new features
 
-**Current Blocker (2026-03-21T13:41:41-0500)**:
-- the requested worker surface is still not reachable in this automation shell: `qwen --version` reports `0.12.6`, `~/.qwen/settings.json` selects `qwen-oauth`, `qwen -y -p 'Reply with exactly PING'` exits 1 with `Error: [API Error: Connection error.]`, and there are no `QWEN_*` or `OPENAI_*` env overrides
-- there is no local OpenAI-compatible fallback listener for `qwen` to target: `lsof -nP -iTCP:1234 -iTCP:11434 -iTCP:8000 -iTCP:8080 -sTCP:LISTEN` returns no listeners
-- this run therefore preserved the next bounded corpus unchanged: `src/selfhost/rbcursive.cpp2`, `tests/CMakeLists.txt`, and `tests/cpp2_metafunctions_rule_of_zero.cpp2`
+**Current Slice (2026-03-25T22:55:00-0500)**:
+- the requested worker surface is reachable again in this shell: direct `qwen -y -p 'Reply with exactly PING'` now returns `PING`, so the active route for product execution is native `qwen -y`
+- the parser-first `phase2-basic-value-27` worker landed partial source edits in `src/selfhost/rbcursive.cpp2`: `basic_value` is now recognized in `struct_annotation_candidate_at()` and `pure2_struct_declaration()`, and the parse error text now names `@basic_value`
+- that slice is not yet authenticatable because `tests/cpp2_metafunctions_basic_value.cpp2` and `phase2_smoke_09` are still absent, and the generated parser/executable were not rebuilt after the source edit
+- the concrete blocker is repo-local build drift: `CMakeUserPresets.json` still points at `${sourceDir}/cmake/homebrew-llvm-toolchain.cmake`, but `/Users/jim/work/cppfort/cmake/homebrew-llvm-toolchain.cmake` is missing, so regeneration fails before `build/selfhost/rbcursive.cpp` and `build/src/selfhost/cppfort` can be refreshed
+- the shell-local OpenAI-compatible endpoint at `127.0.0.1:1234` is still absent, but it is no longer the active execution route for this slice
+
+**Latest Verified Slice (2026-03-25T20:05:56-0500)**:
+- master authenticity check closed executable-path `phase2-codegen-26` on bounded corpus `src/selfhost/cppfort.cpp2`, `tests/CMakeLists.txt`, and `tests/cpp2_metafunctions_rule_of_zero.cpp2`
+- the delegated worker first landed the canonical-node lowering and then was reopened to finish the remaining guard surfaces; the final accepted state adds `phase2_codegen_08` plus the rule-of-zero-specific success message path
+- after rebuilding `cppfort`, `./build/src/selfhost/cppfort -c tests/cpp2_metafunctions_rule_of_zero.cpp2` reports one canonical `cpp1_rule_of_zero` node (`tag=32`) and prints `cppfort: parsed rule of zero metafunction form`, and `ctest --test-dir build -R 'phase2_(smoke|codegen)_0[1-8]' --output-on-failure` passes 16/16
+
+**Latest Verified Slice (2026-03-25T19:44:56-0500)**:
+- master authenticity check closed parser-first `phase2-rule-of-zero-25` on bounded corpus `src/selfhost/rbcursive.cpp2`, `tests/CMakeLists.txt`, and `tests/cpp2_metafunctions_rule_of_zero.cpp2`
+- the first delegated attempt failed closed and was reopened: it added the new annotation branch and smoke surface but left the sample on `project_tag_declaration_feature_stream`
+- the accepted repair tightened the actual gate in `struct_annotation_candidate_at()` by advancing `cpp1_rule_of_zero` by its full `17` characters, after which `./build/src/selfhost/cppfort tests/cpp2_metafunctions_rule_of_zero.cpp2` succeeded and `ctest --test-dir build -R 'phase2_smoke_0[1-8]' --output-on-failure` passed 8/8
 
 **Latest Verified Slice (2026-03-20T14:18:05Z)**:
 - master authenticity check closed `phase2-codegen-24` on bounded corpus `tests/CMakeLists.txt`

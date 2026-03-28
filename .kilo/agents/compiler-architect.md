@@ -1,7 +1,7 @@
 ---
 description: Senior compiler architect for IR design, optimization passes, LLVM integration, and turning algebraic rules into production-grade C++20 passes
 mode: subagent
-model: minimax/minimax-m2.5
+model: anthropic/claude-opus-4
 temperature: 0.2
 permissions:
   edit: allow

@@ -1,0 +1,4 @@
+// phase1_smoke_03: exercises indexed_view projected-surface form (*[expr])
+// This is a minimal accepted translation unit using the *[expr] form.
+
+series *[ix]

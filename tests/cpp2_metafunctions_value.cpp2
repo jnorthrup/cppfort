@@ -1,0 +1,7 @@
+// phase2_smoke_01: exercises value metafunction parser-first surface (@value type)
+// This is a minimal accepted translation unit using the sample from docs/cpp2/metafunctions.md.
+
+point2d: @value type = {
+    x: i32 = 0;
+    y: i32 = 0;
+}
