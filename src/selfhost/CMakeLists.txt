@@ -161,6 +161,7 @@ if(CPPFRONT_EXECUTABLE)
       MLIRSupport
       MLIRPass
       MLIRTransforms
+      MLIRArithDialect
     )
     set_target_properties(cppfort PROPERTIES
       CXX_STANDARD 20

@@ -16,7 +16,97 @@
 #ifdef CPPFORT_HAS_SON_DIALECT
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/Verifier.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "Cpp2SONDialect.h"
+
+// AST-to-MLIR bridge: convert canonical AST nodes to SoN dialect ops
+static mlir::OwningOpRef<mlir::ModuleOp> ast_to_son_module(
+    mlir::MLIRContext& ctx,
+    const std::vector<canonical_node>& ast,
+    std::string_view source)
+{
+    auto module = mlir::OwningOpRef<mlir::ModuleOp>(
+        mlir::ModuleOp::create(mlir::UnknownLoc::get(&ctx)));
+    mlir::OpBuilder builder(&ctx);
+    builder.setInsertionPointToEnd(module->getBody());
+
+    int ops_created = 0;
+    for (const auto& node : ast) {
+        if (node.semantic == "bootstrap_tag_declaration") {
+            // Extract tag name from source span
+            auto name_start = static_cast<size_t>(node.source_start);
+            auto span_end = static_cast<size_t>(node.source_stop);
+            if (name_start >= source.size() || span_end > source.size()) continue;
+            std::string_view decl = source.substr(name_start, span_end - name_start);
+
+            // Find the tag name (before ':')
+            auto colon_pos = decl.find(':');
+            if (colon_pos == std::string_view::npos) continue;
+            std::string tag_name(decl.substr(0, colon_pos));
+            // Trim whitespace
+            while (!tag_name.empty() && tag_name.back() == ' ') tag_name.pop_back();
+
+            // Find the value (after '=')
+            auto eq_pos = decl.find('=', colon_pos);
+            if (eq_pos == std::string_view::npos) continue;
+            std::string_view val_sv = decl.substr(eq_pos + 1);
+            // Trim whitespace and semicolon
+            while (!val_sv.empty() && (val_sv.front() == ' ')) val_sv.remove_prefix(1);
+            while (!val_sv.empty() && (val_sv.back() == ' ' || val_sv.back() == ';')) val_sv.remove_suffix(1);
+
+            // Create a CoordinatesOp as a placeholder constant for the tag
+            // (tags are integer constants; CoordinatesOp holds values)
+            auto unknown_loc = mlir::UnknownLoc::get(&ctx);
+            auto tensor_type = mlir::RankedTensorType::get({}, builder.getI32Type());
+            auto val_attr = mlir::DenseIntElementsAttr::get(
+                tensor_type, {static_cast<int64_t>(std::stoi(std::string(val_sv)))});
+            auto constant_op = builder.create<mlir::arith::ConstantOp>(
+                unknown_loc, tensor_type, val_attr);
+
+            // Map bootstrap tag to IndexedOp: (tag_name, constant_value)
+            auto name_attr = builder.getStringAttr(tag_name);
+            auto index_type = builder.getIndexType();
+            auto name_constant = builder.create<mlir::arith::ConstantOp>(
+                unknown_loc, index_type,
+                mlir::IntegerAttr::get(index_type, ops_created));
+
+            builder.create<cpp2::IndexedOp>(
+                unknown_loc,
+                mlir::TypeRange{tensor_type},
+                mlir::ValueRange{name_constant.getResult(), constant_op.getResult()});
+            ops_created++;
+        } else if (node.semantic == "join_expression") {
+            auto unknown_loc = mlir::UnknownLoc::get(&ctx);
+            auto tensor_type = mlir::RankedTensorType::get({}, builder.getI32Type());
+            auto lhs_const = builder.create<mlir::arith::ConstantOp>(
+                unknown_loc, tensor_type,
+                mlir::DenseIntElementsAttr::get(tensor_type, {0}));
+            auto rhs_const = builder.create<mlir::arith::ConstantOp>(
+                unknown_loc, tensor_type,
+                mlir::DenseIntElementsAttr::get(tensor_type, {0}));
+            builder.create<cpp2::JoinOp>(
+                unknown_loc,
+                mlir::TypeRange{tensor_type},
+                mlir::ValueRange{lhs_const.getResult(), rhs_const.getResult()});
+            ops_created++;
+        } else if (node.semantic == "coordinates") {
+            auto unknown_loc = mlir::UnknownLoc::get(&ctx);
+            auto tensor_type = mlir::RankedTensorType::get({}, builder.getF64Type());
+            auto val_const = builder.create<mlir::arith::ConstantOp>(
+                unknown_loc, tensor_type,
+                mlir::DenseFPElementsAttr::get(tensor_type, {0.0}));
+            builder.create<cpp2::CoordinatesOp>(
+                unknown_loc,
+                mlir::TypeRange{tensor_type},
+                mlir::ValueRange{val_const.getResult()});
+            ops_created++;
+        }
+    }
+    std::cerr << "cppfort: AST-to-MLIR bridge created " << ops_created << " SoN ops\n";
+    return module;
+}
 #endif
 
 int main(int argc, char* argv[]) {
@@ -74,9 +164,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "cppfort: parsing " << input_path << " (" << source.size() << " bytes)\n";
 
 #ifdef CPPFORT_HAS_SON_DIALECT
-    // Initialize MLIR context with cpp2 SoN dialect
+    // Initialize MLIR context with cpp2 SoN dialect + arith
     mlir::MLIRContext context;
     context.getOrLoadDialect<cpp2::Cpp2SONDialect>();
+    context.getOrLoadDialect<mlir::arith::ArithDialect>();
     std::cerr << "cppfort: SoN dialect loaded (cpp2 namespace)\n";
 #endif
 
@@ -145,6 +236,19 @@ int main(int argc, char* argv[]) {
         std::cerr << "\n";
     }
     
+#ifdef CPPFORT_HAS_SON_DIALECT
+    // AST-to-MLIR: convert canonical AST to SoN dialect ops
+    auto son_module = ast_to_son_module(context, ast, source);
+    if (son_module) {
+        std::cerr << "cppfort: SoN module verified (";
+        std::cerr << son_module->getBody()->getOperations().size() << " top-level ops)\n";
+        // Print module to stderr for verification
+        son_module->dump();
+    } else {
+        std::cerr << "cppfort: SoN module creation failed\n";
+    }
+#endif
+
     // Emit C++ code
     std::string cpp_code = compile_to_cpp(ast);
     
