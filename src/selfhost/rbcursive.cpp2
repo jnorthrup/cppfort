@@ -4427,99 +4427,32 @@ pure2_join_expression: () -> parser_of<std::string_view> = {
             inout session: scan_session
         ) -> scan_result<std::string_view> = {
             cursor := start;
-            lhs := trimmed<std::string_view>(
-                "join_expression_lhs",
-                identifier_parser()
-            );
-            join := trimmed<std::string_view>(
-                "join_expression_operator",
-                join_operator_parser("join_expression_operator_token")
-            );
-            rhs := trimmed<std::string_view>(
-                "join_expression_rhs",
-                identifier_parser()
-            );
+            lhs := trimmed<std::string_view>("join_lhs", identifier_parser());
+            join_op := trimmed<std::string_view>("join_op", join_operator_parser("join_operator_token"));
+            rhs := trimmed<std::string_view>("join_rhs", identifier_parser());
 
-            lhs_result := lhs(input, cursor, session);
-            if lhs_result.outcome != scan_signal::accept {
-                total := cursor - start + lhs_result.consumed;
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_join_expression",
-                    start,
-                    total,
-                    lhs_result.outcome,
-                    "join lhs expected"
-                );
-            }
-            cursor = cursor + lhs_result.consumed;
+            // expect replaces: result:=parser(); if reject{surface_failure}; cursor+=consumed
+            expect(cursor, input, session, start, lhs, "pure2_join_expression", "join lhs expected");
+            expect(cursor, input, session, start, join_op, "pure2_join_expression", "join operator expected");
+            expect(cursor, input, session, start, rhs, "pure2_join_expression", "join rhs expected");
 
-            join_result := join(input, cursor, session);
-            if join_result.outcome != scan_signal::accept {
-                total := cursor - start + join_result.consumed;
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_join_expression",
-                    start,
-                    total,
-                    join_result.outcome,
-                    "join operator expected"
-                );
-            }
-            cursor = cursor + join_result.consumed;
-
-            rhs_result := rhs(input, cursor, session);
-            if rhs_result.outcome != scan_signal::accept {
-                total := cursor - start + rhs_result.consumed;
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_join_expression",
-                    start,
-                    total,
-                    rhs_result.outcome,
-                    "join rhs expected"
-                );
-            }
-            cursor = cursor + rhs_result.consumed;
-
-            while cursor < input.ssize() &&
-                  (input[cursor] == ' ' || input[cursor] == '\t') {
+            // tail boundary check
+            while cursor < input.ssize() && (input[cursor] == ' ' || input[cursor] == '\t') {
                 cursor = cursor + 1;
             }
-
             if cursor < input.ssize() &&
-               input[cursor] != '\n' &&
-               input[cursor] != '\r' &&
-               input[cursor] != '}' &&
-               input[cursor] != ')' &&
-               input[cursor] != ']' &&
-               input[cursor] != ',' {
-                total := cursor - start;
+               input[cursor] != '\n' && input[cursor] != '\r' &&
+               input[cursor] != '}' && input[cursor] != ')' &&
+               input[cursor] != ']' && input[cursor] != ',' {
                 return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_join_expression",
-                    start,
-                    total,
-                    scan_signal::reject,
-                    "join tail unexpected"
+                    input, session, "pure2_join_expression", start,
+                    cursor - start, scan_signal::reject, "join tail unexpected"
                 );
             }
 
-            total := cursor - start;
-            emit_trace(
-                session,
-                "pure2_join_expression",
-                start,
-                start + total,
-                scan_signal::accept
-            );
+            emit_trace(session, "pure2_join_expression", start, cursor, scan_signal::accept);
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start), cursor - start
             );
         }
     );
