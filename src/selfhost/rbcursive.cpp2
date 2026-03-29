@@ -2563,24 +2563,9 @@ pure2_chart_declaration_head: () -> parser_of<std::string_view> = {
 
             keyword_r := expect(cursor, input, session, start, keyword, "pure2_chart_declaration_head", "chart keyword expected");            if keyword_r.outcome != scan_signal::accept { return keyword_r; }
             name_r := expect(cursor, input, session, start, name, "pure2_chart_declaration_head", "chart name expected");            if name_r.outcome != scan_signal::accept { return name_r; }
-            parameter_result := parameters(input, cursor, session);
-            total := cursor - start + parameter_result.consumed;
-            if parameter_result.outcome != scan_signal::accept {
-                message: std::string_view = "chart parameter group incomplete";
-                if parameter_result.outcome == scan_signal::reject {
-                    message = "chart parameter group expected";
-                }
-
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_chart_declaration_head",
-                    start,
-                    total,
-                    parameter_result.outcome,
-                    message
-                );
-            }
+            parameter_r := expect_diff(cursor, input, session, start, parameters, "pure2_chart_declaration_head", "chart parameter group incomplete", "chart parameter group expected");
+            if parameter_r.outcome != scan_signal::accept { return parameter_r; }
+            total := cursor - start;
 
             emit_trace(
                 session,
