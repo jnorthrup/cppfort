@@ -1953,6 +1953,45 @@ finish_trace: (
     return result;
 }
 
+// finish_surface: terminal parser — return structured surface failure with one message
+finish_surface: (
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    cursor: int,
+    p: parser_of<std::string_view>,
+    ctx: std::string_view,
+    msg: std::string_view
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome != scan_signal::accept {
+        return surface_failure_result<std::string_view>(
+            input, session, ctx, start, cursor - start + result.consumed,
+            result.outcome, msg
+        );
+    }
+    return result;
+}
+
+// finish_surface_passthrough: terminal parser — preserve parser-provided message
+finish_surface_passthrough: (
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    cursor: int,
+    p: parser_of<std::string_view>,
+    ctx: std::string_view
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome != scan_signal::accept {
+        return surface_failure_result<std::string_view>(
+            input, session, ctx, start, cursor - start + result.consumed,
+            result.outcome, result.message
+        );
+    }
+    return result;
+}
+
 expect_diff: (
     inout cursor: int,
     input: std::string_view,
@@ -5682,27 +5721,9 @@ pure2_chart_project_clause: () -> parser_of<std::string_view> = {
 
             keyword_r := expect(cursor, input, session, start, keyword, "project keyword expected", "project keyword expected");            if keyword_r.outcome != scan_signal::accept { return keyword_r; }
             arrow_r := expect(cursor, input, session, start, arrow, "project arrow expected", "project arrow expected");            if arrow_r.outcome != scan_signal::accept { return arrow_r; }
-            coordinate_result := coordinates(input, cursor, session);
-            total := cursor - start + coordinate_result.consumed;
-            if coordinate_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_chart_project_clause",
-                    start,
-                    clamp_stop(input, start, total),
-                    coordinate_result.outcome
-                );
-                if coordinate_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        coordinate_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    coordinate_result.message,
-                    total
-                );
-            }
+            coordinate_r := finish_trace(input, session, start, cursor, coordinates, "pure2_chart_project_clause");
+            if coordinate_r.outcome != scan_signal::accept { return coordinate_r; }
+            total := cursor - start + coordinate_r.consumed;
 
             emit_trace(
                 session,
@@ -6177,19 +6198,9 @@ pure2_atlas_literal: () -> parser_of<std::string_view> = {
             );
 
             keyword_r := expect(cursor, input, session, start, keyword, "atlas keyword expected", "atlas keyword expected");            if keyword_r.outcome != scan_signal::accept { return keyword_r; }
-            element_result := elements(input, cursor, session);
-            total := cursor - start + element_result.consumed;
-            if element_result.outcome != scan_signal::accept {
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_atlas_literal",
-                    start,
-                    total,
-                    element_result.outcome,
-                    element_result.message
-                );
-            }
+            element_r := finish_surface_passthrough(input, session, start, cursor, elements, "pure2_atlas_literal");
+            if element_r.outcome != scan_signal::accept { return element_r; }
+            total := cursor - start + element_r.consumed;
 
             emit_trace(
                 session,
@@ -6337,19 +6348,9 @@ pure2_tag_declaration: () -> parser_of<std::string_view> = {
             type_name_r := expect(cursor, input, session, start, type_name, "tag type 'int' expected", "tag type 'int' expected");            if type_name_r.outcome != scan_signal::accept { return type_name_r; }
             assignment_r := expect(cursor, input, session, start, assignment, "tag '=' expected", "tag '=' expected");            if assignment_r.outcome != scan_signal::accept { return assignment_r; }
             initializer_r := expect(cursor, input, session, start, initializer, "tag integer initializer expected", "tag integer initializer expected");            if initializer_r.outcome != scan_signal::accept { return initializer_r; }
-            terminator_result := terminator(input, cursor, session);
-            total := cursor - start + terminator_result.consumed;
-            if terminator_result.outcome != scan_signal::accept {
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_tag_declaration",
-                    start,
-                    total,
-                    terminator_result.outcome,
-                    "tag ';' expected"
-                );
-            }
+            terminator_r := finish_surface(input, session, start, cursor, terminator, "pure2_tag_declaration", "tag ';' expected");
+            if terminator_r.outcome != scan_signal::accept { return terminator_r; }
+            total := cursor - start + terminator_r.consumed;
 
             stop := start + total;
             std::cerr << "DEBUG: pure2_tag_declaration recorded, features.size=" << session.features.size() << "\n";
@@ -6569,14 +6570,9 @@ pure2_struct_field: () -> parser_of<std::string_view> = {
             cursor = cursor + ws_result.consumed;
 
             semi := trimmed<std::string_view>("struct_field_semi", semicolon_parser("struct_field_semicolon"));
-            semi_result := semi(input, cursor, session);
-            total := cursor - start + semi_result.consumed;
-            if semi_result.outcome != scan_signal::accept {
-                return surface_failure_result<std::string_view>(
-                    input, session, "pure2_struct_field", start, total,
-                    semi_result.outcome, "struct field ';' expected"
-                );
-            }
+            semi_r := finish_surface(input, session, start, cursor, semi, "pure2_struct_field", "struct field ';' expected");
+            if semi_r.outcome != scan_signal::accept { return semi_r; }
+            total := cursor - start + semi_r.consumed;
 
             stop := start + total;
             emit_trace(session, "pure2_struct_field", start, stop, scan_signal::accept);
@@ -6615,52 +6611,45 @@ pure2_struct_declaration: () -> parser_of<std::string_view> = {
             }
             cursor = cursor + 1;
 
-            annotation_keyword := trimmed<std::string_view>("struct_decl_annotation_struct", keyword_parser("struct"));
-            annotation_result := annotation_keyword(input, cursor, session);
-            if annotation_result.outcome != scan_signal::accept {
-                annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_value", keyword_parser("value"));
-                annotation_result = annotation_keyword(input, cursor, session);
-                if annotation_result.outcome != scan_signal::accept {
-                    annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_basic_value", keyword_parser("basic_value"));
-                    annotation_result = annotation_keyword(input, cursor, session);
-                    if annotation_result.outcome != scan_signal::accept {
-                        annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_interface", keyword_parser("interface"));
-                        annotation_result = annotation_keyword(input, cursor, session);
-                        if annotation_result.outcome != scan_signal::accept {
-                            annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_enum", keyword_parser("enum"));
-                            annotation_result = annotation_keyword(input, cursor, session);
-                            if annotation_result.outcome != scan_signal::accept {
-                                annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_flag_enum", keyword_parser("flag_enum"));
-                                annotation_result = annotation_keyword(input, cursor, session);
-                                if annotation_result.outcome != scan_signal::accept {
-                                    annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_union", keyword_parser("union"));
-                                    annotation_result = annotation_keyword(input, cursor, session);
-                                if annotation_result.outcome != scan_signal::accept {
-                                    annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_regex", keyword_parser("regex"));
-                                    annotation_result = annotation_keyword(input, cursor, session);
-                                    if annotation_result.outcome != scan_signal::accept {
-                                        annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_autodiff", keyword_parser("autodiff"));
-                                        annotation_result = annotation_keyword(input, cursor, session);
-                                        if annotation_result.outcome != scan_signal::accept {
-                                            annotation_keyword = trimmed<std::string_view>("struct_decl_annotation_cpp1_rule_of_zero", keyword_parser("cpp1_rule_of_zero"));
-                                            annotation_result = annotation_keyword(input, cursor, session);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if annotation_result.outcome != scan_signal::accept {
-                            total := cursor - start + annotation_result.consumed;
-                            return surface_failure_result<std::string_view>(
-                                input, session, "pure2_struct_declaration", start, total,
-                                annotation_result.outcome, "struct '@struct', '@value', '@basic_value', '@interface', '@enum', '@flag_enum', '@union', '@regex', '@autodiff', or '@cpp1_rule_of_zero' expected"
-                            );
-                        }
-                    }
-                }
-            }
-            cursor = cursor + annotation_result.consumed;
+            annotation_keyword := choice<std::string_view>(
+                "struct_decl_annotation_choice",
+                trimmed<std::string_view>("struct_decl_annotation_struct", keyword_parser("struct")),
+                choice<std::string_view>(
+                    "struct_decl_annotation_choice_tail1",
+                    trimmed<std::string_view>("struct_decl_annotation_value", keyword_parser("value")),
+                    choice<std::string_view>(
+                        "struct_decl_annotation_choice_tail2",
+                        trimmed<std::string_view>("struct_decl_annotation_basic_value", keyword_parser("basic_value")),
+                        choice<std::string_view>(
+                            "struct_decl_annotation_choice_tail3",
+                            trimmed<std::string_view>("struct_decl_annotation_interface", keyword_parser("interface")),
+                            choice<std::string_view>(
+                                "struct_decl_annotation_choice_tail4",
+                                trimmed<std::string_view>("struct_decl_annotation_enum", keyword_parser("enum")),
+                                choice<std::string_view>(
+                                    "struct_decl_annotation_choice_tail5",
+                                    trimmed<std::string_view>("struct_decl_annotation_flag_enum", keyword_parser("flag_enum")),
+                                    choice<std::string_view>(
+                                        "struct_decl_annotation_choice_tail6",
+                                        trimmed<std::string_view>("struct_decl_annotation_union", keyword_parser("union")),
+                                        choice<std::string_view>(
+                                            "struct_decl_annotation_choice_tail7",
+                                            trimmed<std::string_view>("struct_decl_annotation_regex", keyword_parser("regex")),
+                                            choice<std::string_view>(
+                                                "struct_decl_annotation_choice_tail8",
+                                                trimmed<std::string_view>("struct_decl_annotation_autodiff", keyword_parser("autodiff")),
+                                                trimmed<std::string_view>("struct_decl_annotation_cpp1_rule_of_zero", keyword_parser("cpp1_rule_of_zero"))
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+            annotation_r := expect(cursor, input, session, start, annotation_keyword, "pure2_struct_declaration", "struct '@struct', '@value', '@basic_value', '@interface', '@enum', '@flag_enum', '@union', '@regex', '@autodiff', or '@cpp1_rule_of_zero' expected");
+            if annotation_r.outcome != scan_signal::accept { return annotation_r; }
 
             ws_result = skip_ws()(input, cursor, session);
             cursor = cursor + ws_result.consumed;
