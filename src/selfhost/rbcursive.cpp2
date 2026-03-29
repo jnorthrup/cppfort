@@ -4210,23 +4210,13 @@ pure2_indexed_expression: () -> parser_of<std::string_view> = {
             arrow_r := expect(cursor, input, session, start, arrow, "pure2_indexed_expression", "indexed arrow '=>' expected");
             if arrow_r.outcome != scan_signal::accept { return arrow_r; }
 
-            payload_result := payload(input, cursor, session);
-            total := cursor - start + payload_result.consumed;
-            if payload_result.outcome != scan_signal::accept {
-                message: std::string_view = "indexed payload expected";
-                if payload_result.outcome == scan_signal::need_more {
-                    message = "indexed payload expected";
+            payload_r := expect_map(cursor, input, session, start, payload, "pure2_indexed_expression",
+                :(result: scan_result<std::string_view>) -> std::string_view = {
+                    return "indexed payload expected";
                 }
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_indexed_expression",
-                    start,
-                    total,
-                    payload_result.outcome,
-                    message
-                );
-            }
+            );
+            if payload_r.outcome != scan_signal::accept { return payload_r; }
+            total := cursor - start;
 
             emit_trace(
                 session,
@@ -4769,23 +4759,16 @@ pure2_alpha_expression: () -> parser_of<std::string_view> = {
             if binder_r.outcome != scan_signal::accept { return binder_r; }
 
             arrow_r := expect(cursor, input, session, start, arrow, "alpha arrow '=>' expected", "alpha arrow '=>' expected");            if arrow_r.outcome != scan_signal::accept { return arrow_r; }
-            payload_result := payload(input, cursor, session);
-            total := cursor - start + payload_result.consumed;
-            if payload_result.outcome != scan_signal::accept {
-                message: std::string_view = "alpha payload expected";
-                if payload_result.message == "expression group incomplete" {
-                    message = "alpha payload incomplete";
+            payload_r := expect_map(cursor, input, session, start, payload, "pure2_alpha_expression",
+                :(result: scan_result<std::string_view>) -> std::string_view = {
+                    if result.message == "expression group incomplete" {
+                        return "alpha payload incomplete";
+                    }
+                    return "alpha payload expected";
                 }
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_alpha_expression",
-                    start,
-                    total,
-                    payload_result.outcome,
-                    message
-                );
-            }
+            );
+            if payload_r.outcome != scan_signal::accept { return payload_r; }
+            total := cursor - start;
 
             emit_trace(
                 session,
@@ -5614,24 +5597,16 @@ pure2_chart_contains_clause: () -> parser_of<std::string_view> = {
             keyword_r := expect(cursor, input, session, start, keyword, "contains keyword expected", "contains keyword expected");            if keyword_r.outcome != scan_signal::accept { return keyword_r; }
             subject_r := expect(cursor, input, session, start, subject, "contains subject expected", "contains subject expected");            if subject_r.outcome != scan_signal::accept { return subject_r; }
             relation_r := expect(cursor, input, session, start, relation, "contains comparator expected", "contains comparator expected");            if relation_r.outcome != scan_signal::accept { return relation_r; }
-            rhs_result := rhs(input, cursor, session);
-            total := cursor - start + rhs_result.consumed;
-            if rhs_result.outcome != scan_signal::accept {
-                message: std::string_view = "contains rhs expected";
-                if rhs_result.message == "scalar fractional digits expected" {
-                    message = "contains scalar fractional digits expected";
+            rhs_r := expect_map(cursor, input, session, start, rhs, "pure2_chart_contains_clause",
+                :(result: scan_result<std::string_view>) -> std::string_view = {
+                    if result.message == "scalar fractional digits expected" {
+                        return "contains scalar fractional digits expected";
+                    }
+                    return "contains rhs expected";
                 }
-
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_chart_contains_clause",
-                    start,
-                    total,
-                    rhs_result.outcome,
-                    message
-                );
-            }
+            );
+            if rhs_r.outcome != scan_signal::accept { return rhs_r; }
+            total := cursor - start;
 
             emit_trace(
                 session,
@@ -5879,24 +5854,16 @@ pure2_chart_embed_expression: () -> parser_of<std::string_view> = {
                     "chart_embed_expression"
                 )
             );
-            expression_result := expression(input, cursor, session);
-            total := cursor - start + expression_result.consumed;
-            if expression_result.outcome != scan_signal::accept {
-                message: std::string_view = "embed expression expected";
-                if expression_result.message == "expression group incomplete" {
-                    message = "embed expression incomplete";
+            expression_r := expect_map(cursor, input, session, start, expression, "pure2_chart_embed_expression",
+                :(result: scan_result<std::string_view>) -> std::string_view = {
+                    if result.message == "expression group incomplete" {
+                        return "embed expression incomplete";
+                    }
+                    return "embed expression expected";
                 }
-
-                return surface_failure_result<std::string_view>(
-                    input,
-                    session,
-                    "pure2_chart_embed_expression",
-                    start,
-                    total,
-                    expression_result.outcome,
-                    message
-                );
-            }
+            );
+            if expression_r.outcome != scan_signal::accept { return expression_r; }
+            total := cursor - start;
 
             emit_trace(
                 session,
