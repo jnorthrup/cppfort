@@ -2704,32 +2704,19 @@ pure2_chart_definition: () -> parser_of<std::string_view> = {
             head_r := expect_trace(cursor, input, session, start, head, "pure2_chart_definition");
             if head_r.outcome != scan_signal::accept { return head_r; }
 
-            body_result := body(input, cursor, session);
-            total := cursor - start + body_result.consumed;
-            if body_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_chart_definition",
-                    start,
-                    clamp_stop(input, start, total),
-                    body_result.outcome
-                );
-                if body_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(total, body_result.message);
-                }
-                return reject_result<std::string_view>(body_result.message, total);
-            }
+            body_r := finish_trace(input, session, start, cursor, body, "pure2_chart_definition");
+            if body_r.outcome != scan_signal::accept { return body_r; }
 
             emit_trace(
                 session,
                 "pure2_chart_definition",
                 start,
-                start + total,
+                start + cursor - start + body_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + body_r.consumed),
+                cursor - start + body_r.consumed
             );
         }
     );
@@ -3742,38 +3729,19 @@ pure2_coords_element: () -> parser_of<std::string_view> = {
                 "coords element tail expected",
                 "coords element tail incomplete"
             );
-            tail_result := tail(input, cursor, session);
-            total := cursor - start + tail_result.consumed;
-            if tail_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_coords_element",
-                    start,
-                    clamp_stop(input, start, total),
-                    tail_result.outcome
-                );
-                if tail_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        tail_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    tail_result.message,
-                    total
-                );
-            }
+            tail_r := finish_trace(input, session, start, cursor, tail, "pure2_coords_element");
+            if tail_r.outcome != scan_signal::accept { return tail_r; }
 
             emit_trace(
                 session,
                 "pure2_coords_element",
                 start,
-                start + total,
+                start + cursor - start + tail_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + tail_r.consumed),
+                cursor - start + tail_r.consumed
             );
         }
     );
@@ -3936,38 +3904,19 @@ pure2_series_element: () -> parser_of<std::string_view> = {
                 "series element tail expected",
                 "series element tail incomplete"
             );
-            tail_result := tail(input, cursor, session);
-            total := cursor - start + tail_result.consumed;
-            if tail_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_series_element",
-                    start,
-                    clamp_stop(input, start, total),
-                    tail_result.outcome
-                );
-                if tail_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        tail_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    tail_result.message,
-                    total
-                );
-            }
+            tail_r := finish_trace(input, session, start, cursor, tail, "pure2_series_element");
+            if tail_r.outcome != scan_signal::accept { return tail_r; }
 
             emit_trace(
                 session,
                 "pure2_series_element",
                 start,
-                start + total,
+                start + cursor - start + tail_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + tail_r.consumed),
+                cursor - start + tail_r.consumed
             );
         }
     );
@@ -4107,38 +4056,19 @@ pure2_local_element: () -> parser_of<std::string_view> = {
                 "local element tail expected",
                 "local element tail incomplete"
             );
-            tail_result := tail(input, cursor, session);
-            total := cursor - start + tail_result.consumed;
-            if tail_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_local_element",
-                    start,
-                    clamp_stop(input, start, total),
-                    tail_result.outcome
-                );
-                if tail_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        tail_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    tail_result.message,
-                    total
-                );
-            }
+            tail_r := finish_trace(input, session, start, cursor, tail, "pure2_local_element");
+            if tail_r.outcome != scan_signal::accept { return tail_r; }
 
             emit_trace(
                 session,
                 "pure2_local_element",
                 start,
-                start + total,
+                start + cursor - start + tail_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + tail_r.consumed),
+                cursor - start + tail_r.consumed
             );
         }
     );
@@ -6014,38 +5944,19 @@ pure2_chart_embed_clause: () -> parser_of<std::string_view> = {
             if bindings_r.outcome != scan_signal::accept { return bindings_r; }
 
             arrow_r := expect(cursor, input, session, start, arrow, "embed arrow expected", "embed arrow expected");            if arrow_r.outcome != scan_signal::accept { return arrow_r; }
-            expression_result := expression(input, cursor, session);
-            total := cursor - start + expression_result.consumed;
-            if expression_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_chart_embed_clause",
-                    start,
-                    clamp_stop(input, start, total),
-                    expression_result.outcome
-                );
-                if expression_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        expression_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    expression_result.message,
-                    total
-                );
-            }
+            expression_r := finish_trace(input, session, start, cursor, expression, "pure2_chart_embed_clause");
+            if expression_r.outcome != scan_signal::accept { return expression_r; }
 
             emit_trace(
                 session,
                 "pure2_chart_embed_clause",
                 start,
-                start + total,
+                start + cursor - start + expression_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + expression_r.consumed),
+                cursor - start + expression_r.consumed
             );
         }
     );
@@ -6293,38 +6204,19 @@ pure2_manifold_declaration: () -> parser_of<std::string_view> = {
                 );
             }
 
-            initializer_result := initializer(input, cursor, session);
-            total := cursor - start + initializer_result.consumed;
-            if initializer_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_manifold_declaration",
-                    start,
-                    clamp_stop(input, start, total),
-                    initializer_result.outcome
-                );
-                if initializer_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        initializer_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    initializer_result.message,
-                    total,
-                );
-            }
+            initializer_r := finish_trace(input, session, start, cursor, initializer, "pure2_manifold_declaration");
+            if initializer_r.outcome != scan_signal::accept { return initializer_r; }
 
             emit_trace(
                 session,
                 "pure2_manifold_declaration",
                 start,
-                start + total,
+                start + cursor - start + initializer_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + initializer_r.consumed),
+                cursor - start + initializer_r.consumed
             );
         }
     );
@@ -6844,38 +6736,19 @@ pure2_top_level_surface: () -> parser_of<std::string_view> = {
                 );
             }
 
-            surface_result := surface(input, cursor, session);
-            total := cursor - start + surface_result.consumed;
-            if surface_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_top_level_surface",
-                    start,
-                    clamp_stop(input, start, total),
-                    surface_result.outcome
-                );
-                if surface_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        surface_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    surface_result.message,
-                    total
-                );
-            }
+            surface_r := finish_trace(input, session, start, cursor, surface, "pure2_top_level_surface");
+            if surface_r.outcome != scan_signal::accept { return surface_r; }
 
             emit_trace(
                 session,
                 "pure2_top_level_surface",
                 start,
-                start + total,
+                start + cursor - start + surface_r.consumed,
                 scan_signal::accept
             );
             return accept_result<std::string_view>(
-                input.substr(start, total),
-                total
+                input.substr(start, cursor - start + surface_r.consumed),
+                cursor - start + surface_r.consumed
             );
         }
     );
@@ -6916,29 +6789,8 @@ pure2_translation_unit: () -> parser_of<std::string_view> = {
                 }
 
                 surface := pure2_top_level_surface();
-                surface_result := surface(input, cursor, session);
-                total := cursor - start + surface_result.consumed;
-                if surface_result.outcome != scan_signal::accept {
-                    emit_trace(
-                        session,
-                        "pure2_translation_unit",
-                        start,
-                        clamp_stop(input, start, total),
-                        surface_result.outcome
-                    );
-                    if surface_result.outcome == scan_signal::need_more {
-                        return need_more_result<std::string_view>(
-                            total,
-                            surface_result.message
-                        );
-                    }
-                    return reject_result<std::string_view>(
-                        surface_result.message,
-                        total
-                    );
-                }
-
-                cursor = cursor + surface_result.consumed;
+                surface_r := expect_trace(cursor, input, session, start, surface, "pure2_translation_unit");
+                if surface_r.outcome != scan_signal::accept { return surface_r; }
             }
         }
     );
