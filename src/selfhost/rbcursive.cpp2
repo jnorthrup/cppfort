@@ -1908,6 +1908,28 @@ expect_ws: (
     return expect(cursor, input, session, start, p, ctx, msg);
 }
 
+// expect_trace: chain parser, emit trace on failure, branch need_more/reject
+expect_trace: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    p: parser_of<std::string_view>,
+    rule: std::string_view
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome == scan_signal::accept {
+        cursor = cursor + result.consumed;
+        return result;
+    }
+    total := cursor - start + result.consumed;
+    emit_trace(session, rule, start, clamp_stop(input, start, total), result.outcome);
+    if result.outcome == scan_signal::need_more {
+        return need_more_result<std::string_view>(total, result.message);
+    }
+    return reject_result<std::string_view>(result.message, total);
+}
+
 // expect_diff: like expect but with different messages for need_more vs reject
 expect_diff: (
     inout cursor: int,
@@ -2597,22 +2619,8 @@ pure2_chart_definition: () -> parser_of<std::string_view> = {
                 pure2_chart_body()
             );
 
-            head_result := head(input, cursor, session);
-            if head_result.outcome != scan_signal::accept {
-                total := cursor - start + head_result.consumed;
-                emit_trace(
-                    session,
-                    "pure2_chart_definition",
-                    start,
-                    clamp_stop(input, start, total),
-                    head_result.outcome
-                );
-                if head_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(total, head_result.message);
-                }
-                return reject_result<std::string_view>(head_result.message, total);
-            }
-            cursor = cursor + head_result.consumed;
+            head_r := expect_trace(cursor, input, session, start, head, "pure2_chart_definition");
+            if head_r.outcome != scan_signal::accept { return head_r; }
 
             body_result := body(input, cursor, session);
             total := cursor - start + body_result.consumed;
@@ -3816,28 +3824,8 @@ pure2_series_element: () -> parser_of<std::string_view> = {
                 identifier_parser()
             );
 
-            head_result := head(input, cursor, session);
-            if head_result.outcome != scan_signal::accept {
-                total := cursor - start + head_result.consumed;
-                emit_trace(
-                    session,
-                    "pure2_series_element",
-                    start,
-                    clamp_stop(input, start, total),
-                    head_result.outcome
-                );
-                if head_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        "series element expected"
-                    );
-                }
-                return reject_result<std::string_view>(
-                    "series element expected",
-                    total
-                );
-            }
-            cursor = cursor + head_result.consumed;
+            head_r := expect_trace(cursor, input, session, start, head, "pure2_series_element");
+            if head_r.outcome != scan_signal::accept { return head_r; }
 
             ws_result := skip_ws()(input, cursor, session);
             cursor = cursor + ws_result.consumed;
@@ -4007,28 +3995,8 @@ pure2_local_element: () -> parser_of<std::string_view> = {
                 identifier_parser()
             );
 
-            head_result := head(input, cursor, session);
-            if head_result.outcome != scan_signal::accept {
-                total := cursor - start + head_result.consumed;
-                emit_trace(
-                    session,
-                    "pure2_local_element",
-                    start,
-                    clamp_stop(input, start, total),
-                    head_result.outcome
-                );
-                if head_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        "local element expected"
-                    );
-                }
-                return reject_result<std::string_view>(
-                    "local element expected",
-                    total
-                );
-            }
-            cursor = cursor + head_result.consumed;
+            head_r := expect_trace(cursor, input, session, start, head, "pure2_local_element");
+            if head_r.outcome != scan_signal::accept { return head_r; }
 
             ws_result := skip_ws()(input, cursor, session);
             cursor = cursor + ws_result.consumed;
@@ -4969,28 +4937,8 @@ pure2_transition_expression: () -> parser_of<std::string_view> = {
             }
             cursor = cursor + 1;
 
-            coordinate_result := coordinates(input, cursor, session);
-            total := cursor - start + coordinate_result.consumed;
-            if coordinate_result.outcome != scan_signal::accept {
-                emit_trace(
-                    session,
-                    "pure2_transition_expression",
-                    start,
-                    clamp_stop(input, start, total),
-                    coordinate_result.outcome
-                );
-                if coordinate_result.outcome == scan_signal::need_more {
-                    return need_more_result<std::string_view>(
-                        total,
-                        coordinate_result.message
-                    );
-                }
-                return reject_result<std::string_view>(
-                    coordinate_result.message,
-                    total
-                );
-            }
-            cursor = cursor + coordinate_result.consumed;
+            coordinates_r := expect_trace(cursor, input, session, start, coordinates, "pure2_transition_expression");
+            if coordinates_r.outcome != scan_signal::accept { return coordinates_r; }
 
             ws_result = skip_ws()(input, cursor, session);
             cursor = cursor + ws_result.consumed;
