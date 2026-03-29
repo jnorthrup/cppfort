@@ -1930,7 +1930,29 @@ expect_trace: (
     return reject_result<std::string_view>(result.message, total);
 }
 
-// expect_diff: like expect but with different messages for need_more vs reject
+// finish_trace: terminal parser — run from cursor, trace on failure, return on success
+// Use when this is the LAST parser in a function (no cursor advance after)
+// Caller computes total := cursor - start + result.consumed from returned result
+finish_trace: (
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    cursor: int,
+    p: parser_of<std::string_view>,
+    rule: std::string_view
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome != scan_signal::accept {
+        total := cursor - start + result.consumed;
+        emit_trace(session, rule, start, clamp_stop(input, start, total), result.outcome);
+        if result.outcome == scan_signal::need_more {
+            return need_more_result<std::string_view>(total, result.message);
+        }
+        return reject_result<std::string_view>(result.message, total);
+    }
+    return result;
+}
+
 expect_diff: (
     inout cursor: int,
     input: std::string_view,
