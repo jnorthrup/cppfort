@@ -5734,29 +5734,10 @@ pure2_chart_embed_expression: () -> parser_of<std::string_view> = {
             );
 
             if cursor < input.ssize() && keyword_or_prefix_at(input, cursor, "local") {
-                local_result := local_literal(input, cursor, session);
-                total := cursor - start + local_result.consumed;
-                if local_result.outcome != scan_signal::accept {
-                    emit_trace(
-                        session,
-                        "pure2_chart_embed_expression",
-                        start,
-                        clamp_stop(input, start, total),
-                        local_result.outcome
-                    );
-                    if local_result.outcome == scan_signal::need_more {
-                        return need_more_result<std::string_view>(
-                            total,
-                            local_result.message
-                        );
-                    }
-                    return reject_result<std::string_view>(
-                        local_result.message,
-                        total
-                    );
-                }
+                local_r := expect_trace(cursor, input, session, start, local_literal, "pure2_chart_embed_expression");
+                if local_r.outcome != scan_signal::accept { return local_r; }
+                total := cursor - start + local_r.consumed;
 
-                cursor = cursor + local_result.consumed;
                 ws_result := skip_ws()(input, cursor, session);
                 cursor = cursor + ws_result.consumed;
 
@@ -6117,29 +6098,8 @@ pure2_chart_body: () -> parser_of<std::string_view> = {
                     );
                 }
 
-                clause_result := clause(input, cursor, session);
-                total := cursor - start + clause_result.consumed;
-                if clause_result.outcome != scan_signal::accept {
-                    emit_trace(
-                        session,
-                        "pure2_chart_body",
-                        start,
-                        clamp_stop(input, start, total),
-                        clause_result.outcome
-                    );
-                    if clause_result.outcome == scan_signal::need_more {
-                        return need_more_result<std::string_view>(
-                            total,
-                            clause_result.message
-                        );
-                    }
-                    return reject_result<std::string_view>(
-                        clause_result.message,
-                        total
-                    );
-                }
-
-                cursor = cursor + clause_result.consumed;
+                clause_r := expect_trace(cursor, input, session, start, clause, "pure2_chart_body");
+                if clause_r.outcome != scan_signal::accept { return clause_r; }
             }
         }
     );
