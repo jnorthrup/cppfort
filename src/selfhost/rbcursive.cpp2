@@ -1973,6 +1973,27 @@ finish_surface: (
     return result;
 }
 
+// expect_map: like expect but message is computed from result
+expect_map: (
+    inout cursor: int,
+    input: std::string_view,
+    inout session: scan_session,
+    start: int,
+    p: parser_of<std::string_view>,
+    ctx: std::string_view,
+    msg_fn: std::function<(result: scan_result<std::string_view>) -> std::string_view>
+) -> scan_result<std::string_view> = {
+    result := p(input, cursor, session);
+    if result.outcome == scan_signal::accept {
+        cursor = cursor + result.consumed;
+        return result;
+    }
+    total := cursor - start + result.consumed;
+    return surface_failure_result<std::string_view>(
+        input, session, ctx, start, total, result.outcome, msg_fn(result)
+    );
+}
+
 // finish_surface_passthrough: terminal parser — preserve parser-provided message
 finish_surface_passthrough: (
     input: std::string_view,
