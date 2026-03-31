@@ -1,5 +1,5 @@
 # Minimal Dogfood Implementation Plan
-
+ 
 ## Overview (UNBIASED)
 
 Implement the closed-loop **dogfooding** infrastructure for cppfort, enabling it to parse `bootstrap_tags.cpp2` through the pipeline: cpp2 source → canonical AST → (optionally) C++ emission → executable.
@@ -10,7 +10,7 @@ Implement the closed-loop **dogfooding** infrastructure for cppfort, enabling it
 - **Transpilation**: cppfront transpiles cpp2 to C++ (temporary bootstrap tool)
 
 **This plan focuses on dogfooding** - verifying cppfort can parse cpp2 syntax correctly. Self-hosting and transpilation are separate concerns.
-
+ 
 ## Phase 1: Create `src/selfhost/canonical_emitter.cpp2`
 
 ### Purpose
@@ -189,9 +189,15 @@ Add new section:
 4. test_selfhost.sh passes
 ```
 
+<<<<<<< HEAD
 ## Implementation Order (UNBIASED)
 
 1. Create canonical_emitter.cpp2 (pure cpp2, transpiles with cppfront **for bootstrap only**)
+=======
+## Implementation Order
+
+1. Create canonical_emitter.cpp2 (pure cpp2, transpiles with cppfront)
+>>>>>>> 36cbad0
 2. Update cppfort.cpp2 to add compile_to_cpp()
 3. Update cppfort_main.cpp to use new function
 4. Update CMakeLists.txt
@@ -199,8 +205,11 @@ Add new section:
 6. Build and test
 7. Update conductor track
 
+<<<<<<< HEAD
 **Note**: cppfront is a temporary bootstrap tool. The goal is cppfort parsing cpp2, not cppfront transpilation.
 
+=======
+>>>>>>> 36cbad0
 ## Expected Build Commands
 
 ```bash
@@ -210,14 +219,20 @@ mkdir -p build && cd build
 cmake ..
 make cppfort
 
+<<<<<<< HEAD
 # Test - DOGFOODING: cppfort parses cpp2
 ./build/src/selfhost/cppfort src/selfhost/bootstrap_tags.cpp2 -o /tmp/test_output
+=======
+# Test
+./src/selfhost/cppfort ../src/selfhost/bootstrap_tags.cpp2 -o /tmp/test_output
+>>>>>>> 36cbad0
 /tmp/test_output
 
 # Full validation
 ../scripts/test_selfhost.sh
 ```
 
+<<<<<<< HEAD
 ## Success Criteria (UNBIASED)
 
 - [ ] cppfort binary builds successfully
@@ -250,3 +265,21 @@ Once this minimal dogfooding loop works:
 - Transpilation tools (cppfront) - bootstrap infrastructure
 
 **Key principle**: Each slice has its own verification surface. Do not widen scope.
+=======
+## Success Criteria
+
+- [ ] cppfort binary builds successfully
+- [ ] cppfort parses bootstrap_tags.cpp2 and produces canonical AST
+- [ ] Canonical AST converts to valid C++ code
+- [ ] System compiler produces working executable
+- [ ] Executable output matches cppfront baseline
+- [ ] test_selfhost.sh passes all checks
+
+## Post-Dogfood Next Steps
+
+Once this minimal loop works:
+1. Expand parser coverage (file-level parsing, more constructs)
+2. Replace C++ emission with MLIR SoN lowering
+3. Add SoN optimization passes
+4. Target full rbcursive.cpp2 self-compilation
+>>>>>>> 36cbad0

@@ -61,6 +61,26 @@ The external loop operates on one bounded compiler slice at a time:
 - Prefer targeted tests first, then broader regression runs if the change touches shared code.
 - Record command(s) run and pass/fail outcome in the track notes or recap.
 
+## Completion-Claim Gate
+
+Before marking any slice complete or updating track truth, Hermes must interrogate the completion claim.
+
+Required close gate:
+1. read the changed files directly
+2. run or inspect the exact bounded verification command(s)
+3. capture the actual pass/fail result
+4. inspect at least one concrete artifact or raw output
+5. probe one adjacent regression surface when bleed is plausible
+6. record what remains unverified
+
+Do not close a slice on:
+- delegated summary alone
+- green narration without raw evidence
+- build success without runtime or behavior proof
+- a test name that does not exercise the bounded behavior
+
+If the claim fails interrogation, reopen the slice immediately and say exactly what proof is missing.
+
 ## Blocking Rule
 
 If track files or prerequisites are missing, create minimal stubs (`plan.md`, `spec.md`) before attempting implementation.

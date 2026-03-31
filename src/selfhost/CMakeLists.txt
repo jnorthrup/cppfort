@@ -4,6 +4,8 @@ set(SELFHOST_DIR "${CMAKE_BINARY_DIR}/selfhost")
 set(BOOTSTRAP_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/bootstrap_tags.cpp2")
 set(BOOTSTRAP_CPP "${SELFHOST_DIR}/bootstrap_tags.cpp")
 set(BOOTSTRAP_OBJ "${SELFHOST_DIR}/bootstrap_tags.o")
+set(BBCURSIVE_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.cpp2")
+set(BBCURSIVE_CPP "${SELFHOST_DIR}/bbcursive.cpp")
 
 # Note: No cppfort compiler available. The bootstrap_tags.cpp2 contains only
 # integer constant definitions that can be manually transpiled or handled by
@@ -55,6 +57,7 @@ target_include_directories(cppfort_selfhost_cpp2_inventory INTERFACE
 target_sources(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.h2
   ${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_types.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_join.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_series.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_manifold.cpp2
@@ -63,14 +66,18 @@ target_sources(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2
 )
 
+# The repo currently ships bbcursive.cpp2, not rbcursive.cpp2. Keep the
+# bbcursive include/build route honest while preserving the legacy target name
+# used by seaofnodes CMake dependencies elsewhere in the tree.
+add_custom_target(selfhost_bbcursive_cpp DEPENDS "${BBCURSIVE_CPP}")
+add_custom_target(selfhost_rbcursive_cpp DEPENDS "${BBCURSIVE_CPP}")
+
 find_program(CPPFRONT_EXECUTABLE NAMES cppfront)
 if(CPPFRONT_EXECUTABLE)
   get_filename_component(CPPFRONT_EXECUTABLE_REAL "${CPPFRONT_EXECUTABLE}" REALPATH)
   get_filename_component(CPPFRONT_SOURCE_DIR "${CPPFRONT_EXECUTABLE_REAL}" DIRECTORY)
   get_filename_component(CPPFRONT_ROOT_DIR "${CPPFRONT_SOURCE_DIR}/.." REALPATH)
   set(CPPFRONT_INCLUDE_DIR "${CPPFRONT_ROOT_DIR}/include")
-  set(BBCURSIVE_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.cpp2")
-  set(BBCURSIVE_CPP "${SELFHOST_DIR}/bbcursive.cpp")
 
   if(EXISTS "${CPPFRONT_INCLUDE_DIR}/cpp2util.h")
     add_custom_command(
@@ -81,8 +88,6 @@ if(CPPFRONT_EXECUTABLE)
       COMMENT "Transpiling selfhost bbcursive cpp2 surface"
       VERBATIM
     )
-
-    add_custom_target(selfhost_bbcursive_cpp DEPENDS "${BBCURSIVE_CPP}")
 
     set(BBCURSIVE_SMOKE_SOURCE "${CMAKE_SOURCE_DIR}/tests/selfhost_bbcursive_smoke.cpp2")
     set(BBCURSIVE_SMOKE_CPP "${SELFHOST_DIR}/selfhost_bbcursive_smoke.cpp")
@@ -119,32 +124,9 @@ if(CPPFRONT_EXECUTABLE)
 
     add_test(NAME selfhost_bbcursive_smoke COMMAND $<TARGET_FILE:selfhost_bbcursive_smoke>)
 
-    # TDD pipeline test for closed-loop self-hosting
-    add_executable(selfhost_pipeline_test
-      ${CMAKE_SOURCE_DIR}/tests/selfhost_pipeline_test.cpp
-    )
-    add_dependencies(selfhost_pipeline_test selfhost_bbcursive_cpp selfhost_cppfort_cpp)
-    target_include_directories(selfhost_pipeline_test PRIVATE
-      ${SELFHOST_DIR}
-      ${CPPFRONT_INCLUDE_DIR}
-    )
-    set_target_properties(selfhost_pipeline_test PROPERTIES
-      CXX_STANDARD 20
-      CXX_STANDARD_REQUIRED ON
-      CXX_EXTENSIONS OFF
-    )
-    target_compile_options(selfhost_pipeline_test PRIVATE
-      -U__cpp_lib_modules
-    )
-    target_compile_definitions(selfhost_pipeline_test PRIVATE
-      CPPFORT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
-    )
-    add_test(NAME selfhost_pipeline_test COMMAND $<TARGET_FILE:selfhost_pipeline_test>)
-
     # cppfort self-hosted compiler executable
     set(CPPFORT_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/cppfort.cpp2")
     set(CPPFORT_CPP "${SELFHOST_DIR}/cppfort.cpp")
-    
     set(EMITTER_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2")
     set(EMITTER_CPP "${SELFHOST_DIR}/canonical_emitter.cpp")
 
@@ -180,7 +162,7 @@ if(CPPFRONT_EXECUTABLE)
     add_executable(cppfort
       ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort_main.cpp
     )
-    add_dependencies(cppfort selfhost_bbcursive_cpp selfhost_emitter_cpp)
+    add_dependencies(cppfort selfhost_bbcursive_cpp selfhost_cppfort_cpp selfhost_emitter_cpp)
     target_include_directories(cppfort PRIVATE
       ${SELFHOST_DIR}
       ${CPPFRONT_INCLUDE_DIR}
@@ -205,9 +187,31 @@ if(CPPFRONT_EXECUTABLE)
     target_compile_options(cppfort PRIVATE
       -U__cpp_lib_modules
     )
+
+    # TDD pipeline test for closed-loop self-hosting
+    add_executable(selfhost_pipeline_test
+      ${CMAKE_SOURCE_DIR}/tests/selfhost_pipeline_test.cpp
+    )
+    add_dependencies(selfhost_pipeline_test selfhost_bbcursive_cpp selfhost_cppfort_cpp)
+    target_include_directories(selfhost_pipeline_test PRIVATE
+      ${SELFHOST_DIR}
+      ${CPPFRONT_INCLUDE_DIR}
+    )
+    set_target_properties(selfhost_pipeline_test PROPERTIES
+      CXX_STANDARD 20
+      CXX_STANDARD_REQUIRED ON
+      CXX_EXTENSIONS OFF
+    )
+    target_compile_options(selfhost_pipeline_test PRIVATE
+      -U__cpp_lib_modules
+    )
+    target_compile_definitions(selfhost_pipeline_test PRIVATE
+      CPPFORT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
+    )
+    add_test(NAME selfhost_pipeline_test COMMAND $<TARGET_FILE:selfhost_pipeline_test>)
   else()
-    message(STATUS "cppfront found but cpp2util.h missing; skipping selfhost_bbcursive_smoke")
+    message(STATUS "cppfront found but cpp2util.h missing; selfhost transpile targets remain unavailable")
   endif()
 else()
-  message(STATUS "cppfront not found; skipping selfhost_bbcursive_smoke")
+  message(STATUS "cppfront not found; selfhost transpile targets remain unavailable")
 endif()

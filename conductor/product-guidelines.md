@@ -195,6 +195,41 @@ cppfort/
 - CMake target builds successfully
 - Test validates the feature works end-to-end
 
+### Completion Claim Interrogation
+
+Every time a completion agent wants to claim a slice is complete, Hermes must grill that claim instead of accepting the narration.
+
+**Required interrogation questions:**
+1. What exact files changed?
+2. What exact command proves the slice works?
+3. What was the actual observed output, not the summary?
+4. What failure path was checked to prove the feature is isolated and did not bleed into adjacent surfaces?
+5. What evidence was personally inspected by Hermes in the repo or command output?
+6. What remains unproven even if the slice is accepted?
+
+**Fail closed if any answer is missing or weak.**
+A completion claim is rejected and reopened if it relies on any of these:
+- summary words without raw command evidence
+- green build claims without naming the target and command
+- tests that compile but do not exercise the bounded behavior
+- assertions about emitted structure without inspecting the artifact
+- "should work", "looks done", or "matches the pattern" language
+- completion claims that ignore adjacent regression surfaces
+
+**Minimum proof before closing a slice:**
+- changed-file list
+- bounded verification command(s)
+- actual pass/fail result
+- one directly inspected artifact or output path
+- one adjacent-surface check when bleed/regression is plausible
+- explicit statement of what is still not covered
+
+**Hermes acceptance posture:**
+- distrust narrated completion by default
+- interrogate the completion claim before updating track truth
+- reopen immediately on overstated claims
+- never let a success string stand in for runtime behavior
+
 **Current state (2026-03-12):**
 - ❌ Parser: header-only API, no implementation
 - ❌ MLIR SoN dialect: TableGen defined but disabled in build

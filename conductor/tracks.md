@@ -213,6 +213,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## [~] Track: cppfort conflict curation
+*Link: [./conductor/tracks/cppfort_conflict_curation_20260331/](./conductor/tracks/cppfort_conflict_curation_20260331/)*
+*Status: ACTIVE* - user correction superseded the prior slice again: active bounded slice `alias-hierarchy-restore-04` owns `src/selfhost/trikeshed.h2`, `src/selfhost/bbcursive.h2`, and `src/selfhost/bbcursive.cpp2`, with Join/Series/strview/CharSeries restoration ahead of any local transpile hack
+
 ## [~] Track: Cpp2 Metafunctions and Advanced Features (Phase 2)
 *Link: [./conductor/tracks/cpp2_metafunctions_20260315/](./conductor/tracks/cpp2_metafunctions_20260315/)*
 *Status: ACTIVE* - phase2-flag-enum-29 COMPLETE; the next bounded slice is parser-first `phase2-interface-30` in `src/selfhost/rbcursive.cpp2`

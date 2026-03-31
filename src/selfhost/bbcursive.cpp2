@@ -16,46 +16,52 @@ lex: (src: std::string_view) -> std::vector<tok> = {
     r: std::vector<tok> = ();
     i := 0; n := src.ssize();
     while i < n {
-        inspect src[i] {
-            is ' '..= '\t'  { i += 1; continue; } // WS
-            is _ = {
-                inspect src[i] {
-                    is '/' = {
-                        if i+1 < n && src[i+1] == '/' {
-                            s := i; i += 2;
-                            while i < n && src[i] != '\n' { i += 1; }
-                            r.push_back((kind::comment, src[s..<i], s));
-                        } else {
-                            r.push_back((kind::punc, src[i..<i+1], i)); i += 1;
-                        }
-                    }
-                    is '"' = {
-                        s := i; i += 1;
-                        while i < n && src[i] != '"' { if src[i] == '\\' && i+1 < n { i += 1; } i += 1; }
-                        if i < n { i += 1; }
-                        r.push_back((kind::str, src[s..<i], s));
-                    }
-                    is '0'..= '9' = {
-                        s := i;
-                        while i < n && std::isdigit(src[i]) != 0 { i += 1; }
-                        r.push_back((kind::num, src[s..<i], s));
-                    }
-                    is _ = {
-                        // multi-char punct
-                        if i+1 < n && src[i..<i+2] in ("->", "=>", "::", "==") {
-                            r.push_back((kind::punc, src[i..<i+2], i)); i += 2; continue;
-                        }
-                        // word
-                        if std::isalpha(src[i]) != 0 || src[i] == '_' || src[i] == '@' {
-                            s := i; if src[i] == '@' { i += 1; }
-                            while i < n && (std::isalnum(src[i]) != 0 || src[i] in ('_', '.', '-')) { i += 1; }
-                            r.push_back((kind::word, src[s..<i], s));
-                        } else {
-                            r.push_back((kind::punc, src[i..<i+1], i)); i += 1;
-                        }
-                    }
-                }
+        ch := src[i];
+        if (ch == ' ' || ch == '\t') {
+            i += 1;
+            continue;
+        }
+
+        if ch == '/' {
+            if (i+1 < n && src[i+1] == '/') {
+                s := i; i += 2;
+                while (i < n && src[i] != '\n') { i += 1; }
+                r.push_back((kind::comment, src[s..<i], s));
+            } else {
+                r.push_back((kind::punc, src[i..<i+1], i)); i += 1;
             }
+            continue;
+        }
+
+        if ch == '"' {
+            s := i; i += 1;
+            while (i < n && src[i] != '"') { if (src[i] == '\\' && i+1 < n) { i += 1; } i += 1; }
+            if i < n { i += 1; }
+            r.push_back((kind::str, src[s..<i], s));
+            continue;
+        }
+
+        if (ch >= '0' && ch <= '9') {
+            s := i;
+            while (i < n && std::isdigit(src[i]) != 0) { i += 1; }
+            r.push_back((kind::num, src[s..<i], s));
+            continue;
+        }
+
+        // multi-char punct
+        if (i+1 < n) {
+            two := src[i..<i+2];
+            if (two == "->" || two == "=>" || two == "::" || two == "==") {
+                r.push_back((kind::punc, two, i)); i += 2; continue;
+            }
+        }
+        // word
+        if (std::isalpha(src[i]) != 0 || src[i] == '_' || src[i] == '@') {
+            s := i; if src[i] == '@' { i += 1; }
+            while (i < n && (std::isalnum(src[i]) != 0 || src[i] == '_' || src[i] == '.' || src[i] == '-')) { i += 1; }
+            r.push_back((kind::word, src[s..<i], s));
+        } else {
+            r.push_back((kind::punc, src[i..<i+1], i)); i += 1;
         }
     }
     r.push_back((kind::end, "", i));
@@ -70,21 +76,51 @@ reader: type = {
     ts: std::vector<tok> = ();
 
     skip: (this, p: int) -> int = {
-        while p < ts.ssize() && ts[p].k == kind::comment { p += 1; }
+        while (p < ts.ssize() && ts[p].k == kind::comment) { p += 1; }
         return p;
     }
 
     // terminals
-    word:   (this) -> parser = return :(p) = p < ts.ssize() && ts[p].k == kind::word ? 1 : std::nullopt;
-    num:    (this) -> parser = return :(p) = p < ts.ssize() && ts[p].k == kind::num ? 1 : std::nullopt;
-    str:    (this) -> parser = return :(p) = p < ts.ssize() && ts[p].k == kind::str ? 1 : std::nullopt;
-    chlit:  (this, c: char) -> parser = return :(p) = p < ts.ssize() && ts[p].k == kind::punc && ts[p].t[0] == c ? 1 : std::nullopt;
-    strlit: (this, s: std::string_view) -> parser = return :(p) = p < ts.ssize() && ts[p].t == s ? 1 : std::nullopt;
-    value:  (this) -> parser = return :(p) = p < ts.ssize() && ts[p].k in (kind::word, kind::num, kind::str) ? 1 : std::nullopt;
+    word:   (this) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && ts[p].k == kind::word) { return 1; }
+            return std::nullopt;
+        };
+    }
+    num:    (this) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && ts[p].k == kind::num) { return 1; }
+            return std::nullopt;
+        };
+    }
+    str:    (this) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && ts[p].k == kind::str) { return 1; }
+            return std::nullopt;
+        };
+    }
+    chlit:  (this, c: char) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && ts[p].k == kind::punc && ts[p].t[0] == c) { return 1; }
+            return std::nullopt;
+        };
+    }
+    strlit: (this, s: std::string_view) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && ts[p].t == s) { return 1; }
+            return std::nullopt;
+        };
+    }
+    value:  (this) -> parser = {
+        return :(p: int) -> std::optional<int> = {
+            if (p < ts.ssize() && (ts[p].k == kind::word || ts[p].k == kind::num || ts[p].k == kind::str)) { return 1; }
+            return std::nullopt;
+        };
+    }
 
     confix: (this, open: char, close: char) -> parser = {
         return :(p: int) -> std::optional<int> = {
-            if p >= ts.ssize() || ts[p].t[0] != open { return std::nullopt; }
+            if (p >= ts.ssize() || ts[p].t[0] != open) { return std::nullopt; }
             d := 0;
             for i in p ..< ts.ssize() {
                 if ts[i].k == kind::punc {
@@ -159,7 +195,7 @@ reader: type = {
 
     oneOf: (this, chars...: char) -> parser = {
         return :(p: int) -> std::optional<int> = {
-            if p >= ts.ssize() || ts[p].k != kind::punc { return std::nullopt; }
+            if (p >= ts.ssize() || ts[p].k != kind::punc) { return std::nullopt; }
             for i in 0..<chars.ssize() {
                 if ts[p].t[0] == chars[i] { return 1; }
             }
@@ -206,7 +242,7 @@ parse: (src: std::string_view) -> std::optional<std::vector<node>> = {
     p := 0;
     while p < tokens.ssize() {
         p = r.skip(p);
-        if p >= tokens.ssize() || tokens[p].k == kind::end { break; }
+        if (p >= tokens.ssize() || tokens[p].k == kind::end) { break; }
         lo := p;
         result := parser(p);
         if result.has_value() {

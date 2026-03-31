@@ -21,6 +21,7 @@ if(TARGET cppfort)
   add_test(NAME phase2_smoke_08 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_rule_of_zero.cpp2)
   add_test(NAME phase2_smoke_09 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_basic_value.cpp2)
   add_test(NAME phase2_smoke_10 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_flag_enum.cpp2)
+
   add_test(NAME phase2_codegen_01 COMMAND $<TARGET_FILE:cppfort> -c ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_value.cpp2)
   set_tests_properties(phase2_codegen_01 PROPERTIES
     PASS_REGULAR_EXPRESSION "cppfort: parsed value metafunction form"
@@ -66,6 +67,7 @@ if(TARGET cppfort)
     PASS_REGULAR_EXPRESSION "cppfort: parsed basic value metafunction form"
     FAIL_REGULAR_EXPRESSION "cppfort: no tags parsed;cppfort: parsed 0 canonical nodes"
   )
+
   add_test(NAME phase1_smoke_01 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_elementwise.cpp2)
   add_test(NAME phase1_smoke_02 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_elementwise_add.cpp2)
   add_test(NAME phase1_smoke_03 COMMAND $<TARGET_FILE:cppfort> ${CMAKE_SOURCE_DIR}/tests/cpp2_metafunctions_indexed_view.cpp2)

@@ -269,6 +269,7 @@ sign_extend_to_64: (val: long, bits: int) -> long = {
     if bits == 64 {
         return val;
     }
+<<<<<<< HEAD
 
     // Create mask for the valid bits
     value_mask: long = (1L << bits) - 1;
@@ -283,6 +284,19 @@ sign_extend_to_64: (val: long, bits: int) -> long = {
     } else {
         // Positive: already zero-extended
         return masked_val;
+=======
+    
+    shift: int = 64 - bits;
+    mask: long = (1L << shift) - 1;
+    
+    // Check sign bit
+    if val & (1L << (bits - 1)) {
+        // Negative: sign-extend
+        return val | mask~;
+    } else {
+        // Positive: already zero-extended
+        return val & mask;
+>>>>>>> 36cbad0
     }
 }
 
@@ -309,7 +323,11 @@ test_i8_truncation: () -> bool = {
     truncated: long = truncate_to_i8(input_val);
 
     if truncated != 21 {
+<<<<<<< HEAD
         std::cout << "  FAIL: Expected 21, got " << truncated << "\n";
+=======
+        println("  FAIL: Expected 21, got " + truncated);
+>>>>>>> 36cbad0
         return false;
     }
 
@@ -327,7 +345,11 @@ test_i16_truncation: () -> bool = {
     truncated: long = truncate_to_i16(input_val);
 
     if truncated != -13035 {
+<<<<<<< HEAD
         std::cout << "  FAIL: Expected -13035, got " << truncated << "\n";
+=======
+        println("  FAIL: Expected -13035, got " + truncated);
+>>>>>>> 36cbad0
         return false;
     }
 
@@ -345,7 +367,11 @@ test_u16_truncation: () -> bool = {
     truncated: ulong = truncate_to_u16(input_val);
 
     if truncated != 52501 {
+<<<<<<< HEAD
         std::cout << "  FAIL: Expected 52501, got " << truncated << "\n";
+=======
+        println("  FAIL: Expected 52501, got " + truncated);
+>>>>>>> 36cbad0
         return false;
     }
 
@@ -362,7 +388,11 @@ test_sign_extend: () -> bool = {
     extended: long = sign_extend_to_64(val, 16);
 
     if extended != -1 {
+<<<<<<< HEAD
         std::cout << "  FAIL: Expected -1, got " << extended << "\n";
+=======
+        println("  FAIL: Expected -1, got " + extended);
+>>>>>>> 36cbad0
         return false;
     }
 
@@ -379,7 +409,11 @@ test_zero_extend: () -> bool = {
     extended: ulong = zero_extend_to_64(val, 16);
 
     if extended != 65535 {
+<<<<<<< HEAD
         std::cout << "  FAIL: Expected 65535, got " << extended << "\n";
+=======
+        println("  FAIL: Expected 65535, got " + extended);
+>>>>>>> 36cbad0
         return false;
     }
 
@@ -417,7 +451,11 @@ test_bool_type: () -> bool = {
     false_val.kind = type_kind::TYPE_BOOL;
     false_val.const_bool_val = false;
 
+<<<<<<< HEAD
     if not true_val.const_bool_val* || false_val.const_bool_val* {
+=======
+    if not true_val.const_bool_val || false_val.const_bool_val {
+>>>>>>> 36cbad0
         println("  FAIL: bool constants incorrect");
         return false;
     }

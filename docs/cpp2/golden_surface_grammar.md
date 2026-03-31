@@ -2,10 +2,11 @@
 
 This file is the repo-owned human-readable grammar reference for cppfort.
 
+ 
 It is not a generated artifact and not a build input. Executable acceptance lives in `src/selfhost/cpp2.cpp2` (bitmap scanner + reify pipeline).
 
 The executable mirror of the confirmed surface lives in `src/selfhost/cpp2.cpp2`, which implements the encode → decode → index → reify pipeline following the pattern from TrikeShed's JsonBitmap/JsonParser.
-
+ 
 ## Status Labels
 
 - `CONFIRMED`: accepted by the current selfhost smoke path

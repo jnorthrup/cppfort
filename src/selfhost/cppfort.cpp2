@@ -33,7 +33,10 @@ canonical_union_tag: int = 29;
 canonical_autodiff_tag: int = 30;
 canonical_regex_tag: int = 31;
 canonical_rule_of_zero_tag: int = 32;
+<<<<<<< HEAD
 canonical_basic_value_tag: int = 33;
+=======
+>>>>>>> 36cbad0
 
 // ============================================================================
 // Canonical AST Node
@@ -67,17 +70,23 @@ features_to_canonical: (features: std::vector<feature_record>) -> std::vector<ca
 
         // Recognize top-level semantic features including projected-surface forms
         is_top_level: bool = s == "bootstrap_tag_declaration" ||
+<<<<<<< HEAD
                              s == "struct_declaration" ||
                              s == "function_declaration" ||
                              s == "namespace_alias" ||
                              s == "namespace" ||
+=======
+>>>>>>> 36cbad0
                              s == "value" ||
                              s == "interface" ||
                              s == "enum" ||
                              s == "union" ||
                              s == "regex" ||
                              s == "cpp1_rule_of_zero" ||
+<<<<<<< HEAD
                              s == "basic_value" ||
+=======
+>>>>>>> 36cbad0
                              s == "elementwise_mul" ||
                              s == "elementwise_add" ||
                              s == "indexed_view" ||
@@ -105,16 +114,22 @@ features_to_canonical: (features: std::vector<feature_record>) -> std::vector<ca
                 node.tag = canonical_regex_tag;
             } else if s == "cpp1_rule_of_zero" {
                 node.tag = canonical_rule_of_zero_tag;
+<<<<<<< HEAD
             } else if s == "basic_value" {
                 node.tag = canonical_basic_value_tag;
+=======
+>>>>>>> 36cbad0
             } else if s == "interface" {
                 node.tag = canonical_interface_tag;
             } else if s == "value" {
                 node.tag = canonical_value_tag;
+<<<<<<< HEAD
             } else if s == "struct_declaration" {
                 node.tag = canonical_normalize_tag;
             } else if s == "function_declaration" {
                 node.tag = canonical_normalize_tag;
+=======
+>>>>>>> 36cbad0
             } else {
                 node.tag = canonical_normalize_tag;
             }
@@ -136,11 +151,15 @@ features_to_canonical: (features: std::vector<feature_record>) -> std::vector<ca
 // ============================================================================
 
 parse_source: (source: std::string_view, inout session: scan_session) -> std::optional<std::vector<canonical_node>> = {
+<<<<<<< HEAD
     // Clear the session for the initial translation unit attempt
+=======
+>>>>>>> 36cbad0
     session.features.clear();
     session.diagnostics.clear();
     session.traces.clear();
 
+<<<<<<< HEAD
     // Try translation unit for the entire input
     translation_unit_result: scan_result<std::string_view> = project_translation_unit_feature_stream(source, session);
 
@@ -306,6 +325,105 @@ parse_source: (source: std::string_view, inout session: scan_session) -> std::op
     } else {
         return std::nullopt;
     }
+=======
+    translation_unit_result: scan_result<std::string_view> = project_translation_unit_feature_stream(source, session);
+
+    if translation_unit_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    chart_result: scan_result<std::string_view> = project_chart_definition_feature_stream(source, session);
+    
+    if chart_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    atlas_result: scan_result<std::string_view> = project_atlas_literal_feature_stream(source, session);
+    
+    if atlas_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    manifold_result: scan_result<std::string_view> = project_manifold_declaration_feature_stream(source, session);
+    
+    if manifold_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    join_result: scan_result<std::string_view> = project_join_expression_feature_stream(source, session);
+    
+    if join_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    coords_result: scan_result<std::string_view> = pure2_coords_literal()(source, 0, session);
+    
+    if coords_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    local_result: scan_result<std::string_view> = pure2_local_literal()(source, 0, session);
+    
+    if local_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+    
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+    
+    tag_result: scan_result<std::string_view> = project_tag_declaration_feature_stream(source, session);
+
+    if tag_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+
+    elementwise_result: scan_result<std::string_view> = project_elementwise_mul_feature_stream(source, session);
+
+    if elementwise_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+
+    keyword_result: scan_result<std::string_view> = project_to_feature_stream(source, session);
+
+    if keyword_result.outcome == scan_signal::accept {
+        return features_to_canonical(session.features);
+    }
+
+    return std::nullopt;
+>>>>>>> 36cbad0
 }
 
 // ============================================================================
@@ -333,8 +451,11 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
     has_autodiff: bool = false;
     has_regex: bool = false;
     has_rule_of_zero: bool = false;
+<<<<<<< HEAD
     has_basic_value: bool = false;
     has_function: bool = false;
+=======
+>>>>>>> 36cbad0
     found_integer: bool = false;
     found_identifier: bool = false;
     identifier_name: std::string = ();
@@ -406,6 +527,7 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
             has_rule_of_zero = true;
         }
 
+<<<<<<< HEAD
         if node.semantic == "basic_value" {
             has_basic_value = true;
         }
@@ -414,6 +536,8 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
             has_function = true;
         }
 
+=======
+>>>>>>> 36cbad0
         // Look for identifier (the tag name)
         if !found_identifier && node.semantic != "bootstrap_tag_declaration" &&
            node.semantic != "int" && node.semantic != "" &&
@@ -428,8 +552,12 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
            node.semantic != "union" &&
            node.semantic != "autodiff" &&
            node.semantic != "regex" &&
+<<<<<<< HEAD
            node.semantic != "cpp1_rule_of_zero" &&
            node.semantic != "basic_value" {
+=======
+           node.semantic != "cpp1_rule_of_zero" {
+>>>>>>> 36cbad0
             if node.semantic != "1" && node.semantic != "2" && node.semantic != "3" &&
                node.semantic != "4" && node.semantic != "5" && node.semantic != "6" &&
                node.semantic != "7" && node.semantic != "8" && node.semantic != "9" &&
@@ -517,11 +645,14 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
         output += "constexpr int rule_of_zero_tag = 12;\n";
     }
 
+<<<<<<< HEAD
     if has_basic_value {
         output += "// Basic value metafunction form recognized\n";
         output += "constexpr int basic_value_tag = 13;\n";
     }
 
+=======
+>>>>>>> 36cbad0
     output += "\nint main() {\n";
     if has_elementwise {
         output += "    std::cout << \"cppfort: parsed elementwise_mul projected-surface form\\n\";\n";
@@ -547,10 +678,13 @@ compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
         output += "    std::cout << \"cppfort: parsed regex metafunction form\\n\";\n";
     } else if has_rule_of_zero {
         output += "    std::cout << \"cppfort: parsed rule of zero metafunction form\\n\";\n";
+<<<<<<< HEAD
     } else if has_basic_value {
         output += "    std::cout << \"cppfort: parsed basic value metafunction form\\n\";\n";
     } else if has_function {
         output += "    std::cout << \"cppfort: parsed function declaration\\n\";\n";
+=======
+>>>>>>> 36cbad0
     } else if has_tags {
         if found_identifier {
             output += "    std::cout << \"cppfort: parsed tag declaration\\n\";\n";
