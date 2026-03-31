@@ -1,0 +1,85 @@
+// bbcursive.h2 — elevated EBNF
+//
+// nars.kt:  Series<term> = rep, Twin = seq, Optional = opt
+// cpp2:     seq, alt, opt, rep — four vararg combinators
+//           inspect for dispatch, ..< for ranges
+
+#include <string_view>
+#include <string>
+#include <vector>
+#include <optional>
+
+cpp2: namespace = {
+
+parser: type == (int) -> std::optional<int>;
+
+kind: @enum type = { word; num; str; punc; comment; end; }
+
+tok: @struct type = {
+    k: kind = ();
+    t: std::string_view = ();
+    o: int = 0;
+}
+
+lex: (src: std::string_view) -> std::vector<tok>;
+
+reader: @struct type = {
+    ts: std::vector<tok> = ();
+
+    skip: (this, p: int) -> int;
+
+    word:   (this) -> parser;
+    num:    (this) -> parser;
+    str:    (this) -> parser;
+    chlit:  (this, c: char) -> parser;
+    strlit: (this, s: std::string_view) -> parser;
+    value:  (this) -> parser = return :(p) = p < ts.ssize() && ts[p].k in (kind::word, kind::num, kind::str) ? 1 : std::nullopt;
+    confix: (this, open: char, close: char) -> parser;
+
+    seq: (this, parsers...: parser) -> parser;
+    alt: (this, parsers...: parser) -> parser;
+    opt: (this, p: parser) -> parser;
+    rep: (this, p: parser) -> parser;
+    and: (this, p: parser) -> parser;  // positive lookahead — succeed if p succeeds, don't consume
+    or:  (this, parsers...: parser) -> parser;  // alt alias
+    not: (this, p: parser) -> parser;  // negative lookahead — succeed if p fails, don't consume
+    oneOf: (this, chars...: char) -> parser;  // match one char from set
+
+    tag_decl:  (this) -> parser;
+    meta_decl: (this) -> parser;
+    type_decl: (this) -> parser;
+    func_decl: (this) -> parser;
+    namespace_decl: (this) -> parser;
+    type_alias: (this) -> parser;
+    decl:      (this) -> parser;
+}
+
+value_kind: @enum type = { word; num; str; }
+
+tag_decl: @struct type = {
+    name: std::string_view = ();
+    type_name: std::string_view = ();
+    val: value_kind = ();
+}
+
+meta_decl: @struct type = {
+    name: std::string_view = ();
+    metafunc: std::string_view = ();
+}
+
+func_decl: @struct type = {
+    name: std::string_view = ();
+    return_type: std::string_view = ();
+}
+
+node: @struct type = {
+    tag: int = ();
+    lo: int = 0;
+    hi: int = 0;
+    sem: std::string = ();
+    kids: std::vector<node> = ();
+}
+
+parse: (src: std::string_view) -> std::optional<std::vector<node>>;
+
+}

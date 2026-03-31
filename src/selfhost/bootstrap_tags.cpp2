@@ -1,0 +1,54 @@
+// cppfort bootstrap nucleus - Canonical Semantic Layer
+// Per TrikeShed specification: semantic objects first, dense lowered views second
+// This file defines the core template abstractions that map to MLIR SoN operations
+//
+// CANONICAL TYPES (to be implemented as transpiler capabilities grow):
+// - indexed<I,F>     -> cpp2.indexed op     (coordinate-based indexing)
+// - series<F>        -> cpp2.indexed series  (indexed sequence)  
+// - tensor<K,F>      -> cpp2.tensor op       (sparse tensor)
+// - dense_tensor<K,T>-> cpp2.dense_tensor op (dense array)
+// - atlas<C,Chart>   -> cpp2.atlas op       (chart management)
+// - manifold<C,Chart>-> cpp2.manifold op   (smooth coordinate spaces)
+// - grad_expr        -> cpp2.grad_diff op   (differentiable expression)
+// - grad_backend<E,V>-> cpp2.grad_diff      (AD algorithm)
+// - jacobian         -> cpp2.jacobian op     (Jacobian matrix)
+// - matrix_mul       -> cpp2.matrix_mul op   (chain rule aggregation)
+
+// ============================================================================
+// Canonical Tag Definitions
+// These tags identify canonical node types in the semantic layer
+// ============================================================================
+
+join_tag : int = 1;
+indexed_tag : int = 2;
+coordinates_tag : int = 3;
+chart_project_tag : int = 4;
+chart_embed_tag : int = 5;
+atlas_locate_tag : int = 6;
+transition_tag : int = 7;
+lower_dense_tag : int = 8;
+normalize_tag : int = 9;
+canonical_ast_tag : int = 10;
+
+// Gradient protocol tags
+grad_expr_tag : int = 11;
+grad_backend_tag : int = 12;
+
+// Parser API tags
+parser_parse_tag : int = 100;
+parser_normalize_tag : int = 101;
+parser_lower_to_son_tag : int = 102;
+
+// Shape descriptors for tensor operations
+shape_tag : int = 20;
+stride_tag : int = 21;
+rank_tag : int = 22;
+
+// Jacobian and gradient computation
+jacobian_tag : int = 30;
+matrix_mul_tag : int = 31;
+gradient_aggregate_tag : int = 32;
+
+// CAS Internment tags
+intern_string_tag : int = 40;
+intern_constant_tag : int = 41;

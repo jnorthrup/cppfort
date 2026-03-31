@@ -1,0 +1,11 @@
+// generator.h2 — public API for C++ code generator
+
+#include "cpp2.h2"
+#include <string>
+
+cpp2: namespace = {
+
+emit_decl: (src: std::string_view, d: decl, inout output: std::string);
+generate: (src: std::string_view, decls: std::vector<decl>) -> std::string;
+
+}

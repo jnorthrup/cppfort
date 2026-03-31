@@ -1,0 +1,89 @@
+// parser.cpp2 - Parser for Sea of Nodes Chapter 1
+// Per TrikeShed: composable hermetic abstractions
+// Converts Simple source to Sea of Nodes IR directly
+
+// ============================================================================
+// PARSER
+// Simple recursive descent parser
+// ============================================================================
+
+parser: @struct type = {
+    lexer: lexer = ();
+    start_node: int = (); // Global START node ID
+}
+
+// Factory
+make_parser: (source: std::string) -> parser = {
+    p: parser = ();
+    p.lexer = make_lexer(source);
+    // Create START node
+    p.start_node = make_start_node();
+    return p;
+}
+
+// Parse the entire program
+// Returns the ReturnNode (which acts as Stop node in Chapter 1)
+parser_parse: (p: parser) -> int = {
+    reset_nodes(); // Reset for each parse
+    ret: int = parser_parse_statement(p);
+    if (!lexer_is_eof(p.lexer)) {
+        throw (parser_error(p, "Syntax error, unexpected " + lexer_get_any_next_token(p.lexer)));
+    }
+    return ret;
+}
+
+// Parse a statement
+// Currently only supports: returnStatement
+parser_parse_statement: (p: parser) -> int = {
+    if (lexer_matchx(p.lexer, "return")) {
+        return parser_parse_return(p);
+    }
+    throw (parser_error_syntax(p, "a statement"));
+}
+
+// Parse return statement; "return" already parsed
+// Syntax: 'return' expr ;
+parser_parse_return: (p: parser) -> int = {
+    expr: int = parser_require(p, parser_parse_expression(p), ";");
+    return make_return_node(p.start_node, expr);
+}
+
+// Parse an expression
+// Currently only supports: primaryExpr
+parser_parse_expression: (p: parser) -> int = {
+    return parser_parse_primary(p);
+}
+
+// Parse primary expression
+// Currently only supports: integerLiteral
+parser_parse_primary: (p: parser) -> int = {
+    lexer_skip_whitespace(p.lexer);
+    if (lexer_is_number(p.lexer)) {
+        return parser_parse_integer_literal(p);
+    }
+    throw (parser_error(p, "Syntax error, expected integer literal"));
+}
+
+// Parse integer literal
+// Syntax: [1-9][0-9]* | [0]
+parser_parse_integer_literal: (p: parser) -> int = {
+    value: long = lexer_parse_number(p.lexer);
+    return make_constant_node(value, p.start_node);
+}
+
+// Require exact match of syntax
+parser_require: (p: parser, n: int, syntax: std::string) -> int = {
+    if (lexer_match(p.lexer, syntax)) {
+        return n;
+    }
+    throw (parser_error_syntax(p, syntax));
+}
+
+// Error reporting
+parser_error_syntax: (p: parser, syntax: std::string) -> std::runtime_error = {
+    return parser_error(p, "Syntax error, expected " + syntax + ": " + lexer_get_any_next_token(p.lexer));
+}
+
+parser_error: (p: parser, message: std::string) -> std::runtime_error = {
+    return std::runtime_error(message);
+}

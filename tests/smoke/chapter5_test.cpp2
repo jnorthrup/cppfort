@@ -1,0 +1,12 @@
+// Chapter 5: Base smoke test
+// Dogfooding test for Cpp2SON dialect
+
+let test_coords = coords[5.0, 0.0]
+let test_chart = chart test(point: f64) {
+  contains point <= 100.0
+  project -> coords[point]
+  embed(local) -> local[0]
+}
+let test_atlas = atlas[test_chart]
+let test_manifold = manifold test = test_atlas
+return test_coords

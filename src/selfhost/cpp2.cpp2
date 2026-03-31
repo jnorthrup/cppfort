@@ -1,0 +1,1185 @@
+// cpp2.cpp2 — bitmap scanner for cpp2 source
+//
+// Pattern: /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/JsonBitmap.kt
+//          /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt
+//
+//  YOUR JOB:  DESERIALIZE_CPP2.md
+//
+// Same pipeline:
+//   encode(src) → 4-bit pixels (structural + lexer events)
+//   decode(bmp) → 2-bit structural bitmap
+//   index(src)  → (open j close) j declBoundaries
+//   reify(src)  → construct types from bitmap positions
+
+#include <string_view>
+#include <vector>
+#include <cstdint>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+cpp2: namespace = {
+
+// ============================================================================
+// BITMAP — 4-bit pixel per input byte
+//   bits 0-1: structural event (scope open/close, delimiter, marker)
+//   bits 2-3: lexer event (string, escape, comment, word boundary)
+// ============================================================================
+
+struct_event: @enum type = {
+    unchanged;       // 0 — nothing structural
+    scope_open;      // 1 — {, (, [
+    scope_close;     // 2 — }, ), ]
+    decl_delim;      // 3 — ;, ,
+}
+
+lexer_event: @enum type = {
+    unchanged;       // 0 — nothing lexical
+    string_delim;    // 1 — ", `
+    escape;          // 2 — \
+    comment_start;   // 3 — //
+}
+
+pixel: @struct type = {
+    se: struct_event = ();
+    le: lexer_event = ();
+}
+
+// classify — small functions so inspect works as return expression
+classify_se: (c: char) -> struct_event = {
+    return inspect c -> struct_event {
+   is '{' = struct_event::scope_open;
+  is '(' = struct_event::scope_open;
+  is '[' = struct_event::scope_open;
+   is '}' = struct_event::scope_close;
+     is ')' = struct_event::scope_close;
+    is ']' = struct_event::scope_close;
+     is ';' = struct_event::decl_delim;
+       is ',' = struct_event::decl_delim;
+        is _ = struct_event::unchanged;
+    };
+}
+
+classify_le: (c: char) -> lexer_event = {
+    return inspect c -> lexer_event {
+        is '"' = lexer_event::string_delim;
+        is '`' = lexer_event::string_delim;
+        is '\'' = lexer_event::string_delim;
+        is '\\' = lexer_event::escape;
+        is '/' = lexer_event::comment_start;
+        is _ = lexer_event::unchanged;
+    };
+}
+
+// encode one byte → pixel
+encode_byte: (c: char) -> pixel = {
+    return (classify_se(c), classify_le(c));
+}
+
+// encode full source → pixel array
+encode: (src: std::string_view) -> std::vector<pixel> = {
+    r: std::vector<pixel> = ();
+    r.reserve(src.size());
+    for 0..<src.ssize() do (i) {
+        r.push_back(encode_byte(src[i]));
+    }
+    return r;
+}
+
+// ============================================================================
+// DECODE — state machine over pixels
+//   odd quotes mask structural events inside strings
+//   escapes toggle quote masking
+//   comments mask everything until newline
+// ============================================================================
+
+bitmap: @struct type = {
+    src: std::string_view = ();
+    // structural positions — indices into src
+    scope_opens: std::vector<int> = ();
+    scope_closes: std::vector<int> = ();
+    decl_delims: std::vector<int> = ();
+    // string/comment boundaries
+    string_opens: std::vector<int> = ();
+    string_closes: std::vector<int> = ();
+    comment_starts: std::vector<int> = ();
+    comment_ends: std::vector<int> = ();
+    // memoized depth at each boundary (parallel to their respective vectors)
+    scope_open_depths: std::vector<int> = ();
+    scope_close_depths: std::vector<int> = ();
+    decl_delim_depths: std::vector<int> = ();
+    string_open_depths: std::vector<int> = ();
+    string_close_depths: std::vector<int> = ();
+    comment_start_depths: std::vector<int> = ();
+    comment_end_depths: std::vector<int> = ();
+}
+
+decode: (src: std::string_view) -> bitmap = {
+    pixels := encode(src);
+    bmp: bitmap = ();
+    bmp.src = src;
+
+    in_string := false;
+    in_comment := false;
+    escape_next := false;
+    depth := 0;
+
+    for 0..<pixels.ssize() do (i) {
+        p := pixels[i];
+
+        if in_comment {
+            if src[i] == '\n' {
+                in_comment = false;
+                bmp.comment_ends.push_back(i);
+                bmp.comment_end_depths.push_back(depth);
+            }
+            continue;
+        }
+
+        if in_string {
+            if escape_next { escape_next = false; continue; }
+            if p.le == lexer_event::escape { escape_next = true; continue; }
+            if p.le == lexer_event::string_delim {
+                in_string = false;
+                bmp.string_closes.push_back(i);
+                bmp.string_close_depths.push_back(depth);
+            }
+            continue;
+        }
+
+        // not in string or comment
+        if p.le == lexer_event::string_delim {
+            in_string = true;
+            bmp.string_opens.push_back(i);
+            bmp.string_open_depths.push_back(depth);
+        } else if p.le == lexer_event::comment_start {
+            if i+1 < src.ssize() && src[i+1] == '/' {
+                in_comment = true;
+                bmp.comment_starts.push_back(i);
+                bmp.comment_start_depths.push_back(depth);
+            }
+        }
+
+        if p.se == struct_event::scope_open {
+            bmp.scope_opens.push_back(i);
+            bmp.scope_open_depths.push_back(depth);
+            depth += 1;
+        } else if p.se == struct_event::scope_close {
+            depth -= 1;
+            bmp.scope_closes.push_back(i);
+            bmp.scope_close_depths.push_back(depth);
+        } else if p.se == struct_event::decl_delim {
+            bmp.decl_delims.push_back(i);
+            bmp.decl_delim_depths.push_back(depth);
+        }
+    }
+
+    return bmp;
+}
+
+// ============================================================================
+// INDEX — find declaration boundaries from bitmap
+// Pattern: /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt index()
+// ============================================================================
+
+decl_boundary: @struct type = {
+    lo: int = 0;
+    hi: int = 0;
+    depth: int = 0;
+}
+
+index_decls: (bmp: bitmap) -> std::vector<decl_boundary> = {
+    decls: std::vector<decl_boundary> = ();
+    decl_start := 0;
+
+    // walk all structural events in source order
+    // scope_opens, scope_closes, decl_delims are already depth-annotated
+    so := 0;  // cursor into scope_opens
+    sc := 0;  // cursor into scope_closes
+    dd := 0;  // cursor into decl_delims
+
+    // merge-walk: advance whichever cursor has the smallest next position
+    while so < bmp.scope_opens.ssize() || sc < bmp.scope_closes.ssize() || dd < bmp.decl_delims.ssize() {
+        pos_so: int = 0x7fffffff;
+        if so < bmp.scope_opens.ssize() { pos_so = bmp.scope_opens[so]; }
+        pos_sc: int = 0x7fffffff;
+        if sc < bmp.scope_closes.ssize() { pos_sc = bmp.scope_closes[sc]; }
+        pos_dd: int = 0x7fffffff;
+        if dd < bmp.decl_delims.ssize() { pos_dd = bmp.decl_delims[dd]; }
+
+        if pos_dd <= pos_so && pos_dd <= pos_sc {
+            // decl delimiter at depth already memoized
+            d := bmp.decl_delim_depths[dd];
+            i := pos_dd;
+            dd += 1;
+            if d == 0 && i >= decl_start {
+                b: decl_boundary = (); b.lo = decl_start; b.hi = i+1; b.depth = d; decls.push_back(b);
+                decl_start = i + 1;
+            }
+        } else if pos_sc <= pos_so {
+            // scope close
+            d := bmp.scope_close_depths[sc];
+            i := pos_sc;
+            sc += 1;
+            if d == 0 && i >= decl_start {
+                b: decl_boundary = (); b.lo = decl_start; b.hi = i+1; b.depth = d; decls.push_back(b);
+                decl_start = i + 1;
+            }
+        } else {
+            // scope open — just advance cursor, depth already memoized
+            so += 1;
+        }
+    }
+
+    // trailing content
+    if decl_start < bmp.src.ssize() {
+        has_content := false;
+        j := decl_start;
+        while j < bmp.src.ssize() {
+            c := bmp.src[j];
+            if c != ' ' && c != '\t' && c != '\n' && c != '\r' { has_content = true; break; }
+            j += 1;
+        }
+        if has_content {
+            b: decl_boundary = (); b.lo = decl_start; b.hi = unchecked_narrow<int>(bmp.src.ssize()); b.depth = 0; decls.push_back(b);
+        }
+    }
+    return decls;
+}
+
+// recursively parse declarations inside a namespace body
+parse_ns_body: (src: std::string_view, body_lo: int, body_hi: int) -> std::vector<decl> = {
+    decls: std::vector<decl> = ();
+    depth := 0;
+    decl_start := body_lo;
+    i := body_lo;
+    while i < body_hi {
+        c := src[i];
+        if c == '{' { depth += 1; }
+        else if c == '}' {
+            if depth > 0 { depth -= 1; }
+            if depth == 0 && i > decl_start {
+                b: decl_boundary = (); b.lo = decl_start; b.hi = i+1; b.depth = 0;
+                d := reify(src, b);
+                if d.kind != decl_kind::unknown_kind { decls.push_back(d); }
+                decl_start = i + 1;
+            }
+        }
+        else if c == ';' {
+            if depth == 0 && i > decl_start {
+                b: decl_boundary = (); b.lo = decl_start; b.hi = i+1; b.depth = 0;
+                d := reify(src, b);
+                if d.kind != decl_kind::unknown_kind { decls.push_back(d); }
+                decl_start = i + 1;
+            }
+        }
+        i += 1;
+    }
+    if decl_start < body_hi {
+        has_content := false;
+        j := decl_start;
+        while j < body_hi {
+            c := src[j];
+            if c != ' ' && c != '\t' && c != '\n' && c != '\r' { has_content = true; break; }
+            j += 1;
+        }
+        if has_content {
+            b: decl_boundary = (); b.lo = decl_start; b.hi = body_hi; b.depth = 0;
+            d := reify(src, b);
+            if d.kind != decl_kind::unknown_kind { decls.push_back(d); }
+        }
+    }
+    return decls;
+}
+
+// ============================================================================
+// TYPES — from golden_surface_grammar.md
+// Pattern: /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt
+// ============================================================================
+
+value_kind: @enum type = { word; num; str; }
+
+// ——— declarations (colon-led: name ":" kind "=" value) ———
+
+tag_decl: @struct type = {
+    name: std::string_view = ();
+    type_name: std::string_view = ();
+    val: value_kind = ();
+}
+
+namespace_decl: @struct type = {
+    name: std::string_view = ();
+    children: std::vector<decl> = ();
+}
+
+type_decl: @struct type = {
+    name: std::string_view = ();
+    metafunc: std::string_view = ();  // may be empty
+}
+
+type_alias: @struct type = {
+    name: std::string_view = ();
+    value: std::string_view = ();
+}
+
+func_decl: @struct type = {
+    name: std::string_view = ();
+    return_type: std::string_view = ();  // may be empty
+}
+
+// ——— keyword-led (keyword starts the production) ———
+
+chart_decl: @struct type = {
+    name: std::string_view = ();
+    params: std::string_view = ();
+}
+
+manifold_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+atlas_decl: @struct type = {
+    elements: std::string_view = ();
+}
+
+coords_decl: @struct type = {
+    elements: std::string_view = ();
+}
+
+series_decl: @struct type = {
+    elements: std::string_view = ();
+}
+
+// ——— expressions (infix / dot-led) ———
+
+join_decl: @struct type = {
+    left: std::string_view = ();
+    right: std::string_view = ();
+}
+
+transition_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+alpha_decl: @struct type = {
+    name: std::string_view = ();
+    param: std::string_view = ();
+}
+
+indexed_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+fold_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+// ——— keyword-call ———
+
+grad_decl: @struct type = {
+    var: std::string_view = ();
+}
+
+// ——— attribute / contract ———
+
+purity_decl: @struct type = {
+    label: std::string_view = ();
+}
+
+lowered_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+project_decl: @struct type = {
+    name: std::string_view = ();
+    arg: std::string_view = ();
+}
+
+locate_decl: @struct type = {
+    name: std::string_view = ();
+    arg: std::string_view = ();
+}
+
+precond_decl: @struct type = {
+    expr: std::string_view = ();
+}
+
+postcond_decl: @struct type = {
+    expr: std::string_view = ();
+}
+
+// ——— kind enum (mirrors golden_surface_grammar.md top_level) ———
+
+decl_kind: @enum type = {
+    tag_kind; ns_kind; type_kind; alias_kind; func_kind;
+    chart_kind; manifold_kind; atlas_kind; coords_kind; series_kind;
+    join_kind; transition_kind; alpha_kind; indexed_kind; fold_kind;
+    grad_kind; slice_kind; purity_kind; lowered_kind;
+    project_kind; locate_kind; pre_kind; post_kind;
+    unknown_kind;
+}
+
+// ——— tagged union ———
+
+decl: @struct type = {
+    kind: decl_kind = ();
+    tag: tag_decl = ();
+    ns: namespace_decl = ();
+    tp: type_decl = ();
+    al: type_alias = ();
+    fn: func_decl = ();
+    chart: chart_decl = ();
+    manifold: manifold_decl = ();
+    atlas: atlas_decl = ();
+    coords: coords_decl = ();
+    series: series_decl = ();
+    join: join_decl = ();
+    transition: transition_decl = ();
+    alpha: alpha_decl = ();
+    indexed: indexed_decl = ();
+    fold: fold_decl = ();
+    grad: grad_decl = ();
+    purity: purity_decl = ();
+    lowered: lowered_decl = ();
+    project: project_decl = ();
+    locate: locate_decl = ();
+    predecl: precond_decl = ();
+    postdecl: postcond_decl = ();
+    lo: int = 0;
+    hi: int = 0;
+}
+
+// ============================================================================
+// REIFY — construct types from bitmap positions
+// Pattern: /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt reify()
+//
+// json.kt reify():
+//   val c = src.mk.get
+//   when (c) {
+//     '{', '[' → index(src), construct from boundaries
+//     '"' → extract string
+//     't', 'f' → boolean
+//     else → number
+//   }
+//
+// cpp2 reify():
+//   scan decl boundary for ':' → split name:type
+//   scan for '=' → split type=value
+//   scan for '{' → body is confix
+//   scan for 'namespace' → namespace_decl
+//   scan for '@word' → meta_decl
+//   scan for 'type ==' → type_alias
+//   scan for '(...)' → func_decl
+// ============================================================================
+
+// skip whitespace and comments in source
+skip_ws: (src: std::string_view, p: int) -> int = {
+    cur := p;
+    while cur < src.ssize() {
+        c := src[cur];
+        if c == ' ' || c == '\t' || c == '\n' || c == '\r' { cur += 1; continue; }
+        if c == '/' && cur+1 < src.ssize() && src[cur+1] == '/' {
+            cur += 2;
+            while cur < src.ssize() && src[cur] != '\n' { cur += 1; }
+            continue;
+        }
+        break;
+    }
+    return cur;
+}
+
+// read a word (identifier) from source at position p
+read_word: (src: std::string_view, p: int) -> std::string_view = {
+    start := p;
+    cur := p;
+    if cur < src.ssize() && (src[cur] == '@') { cur += 1; }
+    while cur < src.ssize() {
+        c := src[cur];
+        if std::isalnum(c) != 0 || c == '_' || c == '.' || c == '-' { cur += 1; } else { break; }
+    }
+    return src.substr(start, cur - start);
+}
+
+// find char in source at depth 0 (not inside braces/parens/brackets)
+find_at_depth: (src: std::string_view, target: char, p: int) -> int = {
+    depth := 0;
+    in_string := false;
+    i := p;
+    while i < src.ssize() {
+        c := src[i];
+        if in_string {
+            if c == '\\' { i += 2; continue; }
+            if c == '"' { in_string = false; }
+            i += 1; continue;
+        }
+        if c == '"' { in_string = true; i += 1; continue; }
+        if depth == 0 && c == target { return i; }
+        if c == '{' || c == '(' || c == '[' { depth += 1; }
+        if c == '}' || c == ')' || c == ']' { depth -= 1; }
+        i += 1;
+    }
+    return -1;
+}
+
+// reify a single declaration boundary → decl
+//
+// dispatch by first token:
+//   [[...]]          → purity_contract
+//   keyword ...      → chart, manifold, atlas, coords, _s, grad, pre, post
+//   name ":" ...     → namespace, type, alias, func, tag  (colon-led)
+//   name "." method  → transition, lowered, project, locate, fold
+//   name "j" ...     → join, indexed
+//   name "α" ...     → alpha
+reify: (src: std::string_view, boundary: decl_boundary) -> decl = {
+    p := skip_ws(src, boundary.lo);
+    if p >= boundary.hi { return (); }
+
+    d: decl = ();
+    d.lo = boundary.lo;
+    d.hi = boundary.hi;
+
+    // ——— [[...]] → purity_contract ———
+    if p + 1 < boundary.hi && src[p] == '[' && src[p+1] == '[' {
+        p += 2;
+        label_start := p;
+        while p + 1 < boundary.hi && !(src[p] == ']' && src[p+1] == ']') { p += 1; }
+        d.kind = decl_kind::purity_kind;
+        d.purity.label = src.substr(label_start, p - label_start);
+        return d;
+    }
+
+    // ——— read first word ———
+    first := read_word(src, p);
+    if first.ssize() == 0 { d.kind = decl_kind::unknown_kind; return d; }
+    p += first.ssize();
+    p = skip_ws(src, p);
+
+    // ——— keyword-led productions ———
+
+    if first == "chart" {
+        d.kind = decl_kind::chart_kind;
+        d.chart.name = read_word(src, p);
+        return d;
+    }
+    if first == "manifold" {
+        d.kind = decl_kind::manifold_kind;
+        d.manifold.name = read_word(src, p);
+        return d;
+    }
+    if first == "atlas" {
+        d.kind = decl_kind::atlas_kind;
+        return d;
+    }
+    if first == "coords" {
+        d.kind = decl_kind::coords_kind;
+        return d;
+    }
+    if first == "_s" {
+        d.kind = decl_kind::series_kind;
+        return d;
+    }
+    if first == "grad" {
+        d.kind = decl_kind::grad_kind;
+        if p < boundary.hi && src[p] == '(' {
+            p += 1;
+            // skip expr to comma, read var after comma
+            depth := 0;
+            while p < boundary.hi {
+                if src[p] == '(' { depth += 1; }
+                if src[p] == ')' { if depth == 0 { break; } depth -= 1; }
+                if depth == 0 && src[p] == ',' {
+                    p += 1;
+                    p = skip_ws(src, p);
+                    d.grad.var = read_word(src, p);
+                    break;
+                }
+                p += 1;
+            }
+        }
+        return d;
+    }
+    if first == "pre" {
+        d.kind = decl_kind::pre_kind;
+        if p < boundary.hi && src[p] == '(' {
+            p += 1;
+            expr_start := p;
+            depth := 0;
+            while p < boundary.hi {
+                if src[p] == '(' { depth += 1; }
+                if src[p] == ')' { if depth == 0 { break; } depth -= 1; }
+                p += 1;
+            }
+            d.predecl.expr = src.substr(expr_start, p - expr_start);
+        }
+        return d;
+    }
+    if first == "post" {
+        d.kind = decl_kind::post_kind;
+        if p < boundary.hi && src[p] == '(' {
+            p += 1;
+            expr_start := p;
+            depth := 0;
+            while p < boundary.hi {
+                if src[p] == '(' { depth += 1; }
+                if src[p] == ')' { if depth == 0 { break; } depth -= 1; }
+                p += 1;
+            }
+            d.postdecl.expr = src.substr(expr_start, p - expr_start);
+        }
+        return d;
+    }
+
+    // ——— colon-led: name ":" kind "=" value ———
+
+    if p < boundary.hi && src[p] == ':' {
+        name := first;
+        p += 1;
+        p = skip_ws(src, p);
+
+        // namespace — find braces, recursively reify body
+        if p + 9 <= boundary.hi && src.substr(p, 9) == "namespace" {
+            d.kind = decl_kind::ns_kind;
+            d.ns.name = name;
+            // find '=' then '{' to locate body
+            eq := find_at_depth(src, '=', p);
+            if eq > 0 {
+                open := find_at_depth(src, '{', eq);
+                if open > 0 {
+                    close := open + 1;
+                    brace_depth := 1;
+                    while close < boundary.hi && brace_depth > 0 {
+                        if src[close] == '{' { brace_depth += 1; }
+                        if src[close] == '}' { brace_depth -= 1; }
+                        close += 1;
+                    }
+                    body_lo := open + 1;
+                    body_hi := close - 1;
+                    d.ns.children = parse_ns_body(src, body_lo, body_hi);
+                }
+            }
+            return d;
+        }
+
+        // @metafunc type
+        if p < boundary.hi && src[p] == '@' {
+            metafunc := read_word(src, p);
+            p += metafunc.ssize();
+            p = skip_ws(src, p);
+            if p + 4 <= boundary.hi && src.substr(p, 4) == "type" {
+                d.kind = decl_kind::type_kind;
+                d.tp.name = name;
+                d.tp.metafunc = metafunc;
+                return d;
+            }
+        }
+
+        // type == → alias
+        if p + 4 <= boundary.hi && src.substr(p, 4) == "type" {
+            p += 4;
+            p = skip_ws(src, p);
+            if p + 2 <= boundary.hi && src.substr(p, 2) == "==" {
+                p += 2;
+                p = skip_ws(src, p);
+                val := read_word(src, p);
+                d.kind = decl_kind::alias_kind;
+                d.al.name = name;
+                d.al.value = val;
+                return d;
+            }
+            // plain type_decl
+            d.kind = decl_kind::type_kind;
+            d.tp.name = name;
+            return d;
+        }
+
+        // ( → func
+        if p < boundary.hi && src[p] == '(' {
+            d.kind = decl_kind::func_kind;
+            d.fn.name = name;
+            close := find_at_depth(src, ')', p);
+            if close > 0 {
+                p = close + 1;
+                p = skip_ws(src, p);
+                if p + 2 <= boundary.hi && src.substr(p, 2) == "->" {
+                    p += 2;
+                    p = skip_ws(src, p);
+                    ret := read_word(src, p);
+                    d.fn.return_type = ret;
+                }
+            }
+            return d;
+        }
+
+        // word = → tag
+        type_name := read_word(src, p);
+        if type_name.ssize() > 0 {
+            p += type_name.ssize();
+            p = skip_ws(src, p);
+            if p < boundary.hi && src[p] == '=' {
+                d.kind = decl_kind::tag_kind;
+                d.tag.name = name;
+                d.tag.type_name = type_name;
+                return d;
+            }
+        }
+
+        d.kind = decl_kind::unknown_kind;
+        return d;
+    }
+
+    // ——— dot-led: name.method(...) ———
+
+    if p < boundary.hi && src[p] == '.' {
+        p += 1;
+        method := read_word(src, p);
+        if method == "transition" {
+            d.kind = decl_kind::transition_kind;
+            d.transition.name = first;
+            return d;
+        }
+        if method == "lowered" {
+            d.kind = decl_kind::lowered_kind;
+            d.lowered.name = first;
+            return d;
+        }
+        if method == "project" {
+            d.kind = decl_kind::project_kind;
+            d.project.name = first;
+            return d;
+        }
+        if method == "locate" {
+            d.kind = decl_kind::locate_kind;
+            d.locate.name = first;
+            return d;
+        }
+        if method == "fold" {
+            d.kind = decl_kind::fold_kind;
+            d.fold.name = first;
+            return d;
+        }
+    }
+
+    // ——— infix 'j': join or indexed ———
+
+    if p < boundary.hi && src[p] == 'j' && (p + 1 >= boundary.hi || src[p+1] == ' ' || src[p+1] == '(') {
+        p += 1;
+        p = skip_ws(src, p);
+        if p < boundary.hi && src[p] == '(' {
+            d.kind = decl_kind::indexed_kind;
+            d.indexed.name = first;
+            return d;
+        }
+        d.kind = decl_kind::join_kind;
+        d.join.left = first;
+        d.join.right = read_word(src, p);
+        return d;
+    }
+
+    // ——— α (UTF-8: 0xCE 0xB1) → alpha_expr ———
+    // α is 2 bytes in UTF-8, cpp2 char is byte-level
+    if p + 1 < boundary.hi && src[p] == '\xce' && src[p+1] == '\xb1' {
+        p += 2;
+        p = skip_ws(src, p);
+        // expect '('
+        if p < boundary.hi && src[p] == '(' {
+            p += 1;
+            param := read_word(src, p);
+            d.kind = decl_kind::alpha_kind;
+            d.alpha.name = first;
+            d.alpha.param = param;
+            return d;
+        }
+    }
+
+    d.kind = decl_kind::unknown_kind;
+    return d;
+}
+
+// ============================================================================
+// INDEX + REIFY — full pipeline
+// Pattern: /Users/jim/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt
+// ============================================================================
+
+parse: (src: std::string_view) -> std::vector<decl> = {
+    bmp := decode(src);
+    boundaries := index_decls(bmp);
+    decls: std::vector<decl> = ();
+    for 0..<boundaries.ssize() do (i) {
+        d := reify(src, boundaries[i]);
+        if d.kind != decl_kind::unknown_kind {
+            decls.push_back(d);
+        }
+    }
+    return decls;
+}
+
+// ============================================================================
+// CODE GENERATOR — emit C++ from parsed declarations
+// ============================================================================
+
+// find closing brace for opening brace at position open (relative to text)
+find_close_brace: (text: std::string_view, open: int) -> int = {
+    depth := 1;
+    i := open + 1;
+    while i < text.ssize() && depth > 0 {
+        if text[i] == '{' { depth += 1; }
+        if text[i] == '}' { depth -= 1; }
+        i += 1;
+    }
+    return i - 1;
+}
+
+// emit struct body: transform cpp2 field declarations to C++
+emit_struct_body: (body: std::string_view) -> std::string = {
+    output: std::string = ();
+    // For now, emit body as-is with minimal transforms
+    // Fields like "name: type = ();" → "type name{};"
+    // Fields like "name: type = value;" → "type name = value;"
+    p := 0;
+    while p < body.ssize() {
+        p = skip_ws(body, p);
+        if p >= body.ssize() { break; }
+
+        // read field name
+        fname := read_word(body, p);
+        if fname.ssize() == 0 {
+            // emit single char and advance
+            output += std::string(body.substr(p, 1));
+            p += 1;
+            continue;
+        }
+        p += fname.ssize();
+        p = skip_ws(body, p);
+
+        if p >= body.ssize() || body[p] != ':' {
+            // not a field declaration, emit as-is
+            output += std::string(fname);
+            continue;
+        }
+        p += 1; // skip ':'
+        p = skip_ws(body, p);
+
+        // read type (everything until '=' or ';' or '{')
+        type_start := p;
+        while p < body.ssize() && body[p] != '=' && body[p] != ';' && body[p] != '{' {
+            p += 1;
+        }
+        ftype := body.substr(type_start, p - type_start);
+        // trim trailing whitespace from type
+        while ftype.ssize() > 0 && (ftype[ftype.ssize()-1] == ' ' || ftype[ftype.ssize()-1] == '\t') {
+            ftype = ftype.substr(0, ftype.ssize()-1);
+        }
+
+        p = skip_ws(body, p);
+
+        if p < body.ssize() && body[p] == '=' {
+            p += 1;
+            p = skip_ws(body, p);
+            // read value until ';'
+            val_start := p;
+            while p < body.ssize() && body[p] != ';' {
+                p += 1;
+            }
+            val := body.substr(val_start, p - val_start);
+            // emit: type name = value;
+            output += std::string(ftype);
+            output += " ";
+            output += std::string(fname);
+            if val.ssize() > 0 && !(val.ssize() == 2 && val[0] == '(' && val[1] == ')') {
+                output += " = ";
+                output += std::string(val);
+            }
+            output += ";\n";
+        } else {
+            // no value, just type name;
+            output += std::string(ftype);
+            output += " ";
+            output += std::string(fname);
+            output += ";\n";
+        }
+
+        if p < body.ssize() && body[p] == ';' { p += 1; }
+    }
+    return output;
+}
+
+emit_decl: (src: std::string_view, d: decl) -> std::string = {
+    output: std::string = ();
+    text := src.substr(d.lo, d.hi - d.lo);
+
+    if d.kind == decl_kind::tag_kind {
+        // name: type = value;  →  constexpr type name = value;
+        output += "constexpr ";
+        output += std::string(d.tag.type_name);
+        output += " ";
+        output += std::string(d.tag.name);
+        eq := find_at_depth(text, '=', 0);
+        if eq >= 0 {
+            rest := text.substr(eq);
+            // trim trailing whitespace/semicolon
+            while rest.ssize() > 0 && (rest[rest.ssize()-1] == ';' || rest[rest.ssize()-1] == ' ' || rest[rest.ssize()-1] == '\t' || rest[rest.ssize()-1] == '\n' || rest[rest.ssize()-1] == '\r') {
+                rest = rest.substr(0, rest.ssize()-1);
+            }
+            // handle () default init → {}
+            if rest == "=" {
+                output += "{};\n";
+            } else {
+                output += " ";
+                output += std::string(rest);
+                // if value is (), convert to {}
+                if rest.ssize() >= 2 && rest[rest.ssize()-2] == '(' && rest[rest.ssize()-1] == ')' {
+                    output += "{};\n";
+                } else {
+                    output += ";\n";
+                }
+            }
+        } else {
+            output += "{};\n";
+        }
+    } else if d.kind == decl_kind::ns_kind {
+        // name: namespace = { children... }  →  namespace name { children... }
+        output += "namespace ";
+        output += std::string(d.ns.name);
+        output += " {\n";
+        // emit recursively reified children
+        for 0..<d.ns.children.ssize() do (ci) {
+            output += emit_decl(src, d.ns.children[ci]);
+        }
+        output += "}\n";
+    } else if d.kind == decl_kind::type_kind {
+        meta := d.tp.metafunc;
+        if meta == "@enum" {
+            // name: @enum type = { val1; val2; }  →  enum class name { val1, val2 };
+            output += "enum class ";
+            output += std::string(d.tp.name);
+            open := find_at_depth(text, '{', 0);
+            if open >= 0 {
+                close := find_close_brace(text, open);
+                body := text.substr(open + 1, close - open - 1);
+                output += " {\n";
+                // transform semicolons to commas in enum body
+                bp := 0;
+                while bp < body.ssize() {
+                    bp = skip_ws(body, bp);
+                    if bp >= body.ssize() { break; }
+                    val := read_word(body, bp);
+                    if val.ssize() > 0 {
+                        output += "    ";
+                        output += std::string(val);
+                        bp += val.ssize();
+                        bp = skip_ws(body, bp);
+                        if bp < body.ssize() && body[bp] == ';' {
+                            output += ",";
+                            bp += 1;
+                        }
+                        output += "\n";
+                    } else {
+                        bp += 1;
+                    }
+                }
+                output += "};\n";
+            } else {
+                output += ";\n";
+            }
+        } else {
+            // name: @struct type = { ... } or name: type = { ... }
+            // → struct name { ... };
+            output += "struct ";
+            output += std::string(d.tp.name);
+            open := find_at_depth(text, '{', 0);
+            if open >= 0 {
+                close := find_close_brace(text, open);
+                body := text.substr(open + 1, close - open - 1);
+                output += " {\n";
+                output += emit_struct_body(body);
+                output += "};\n";
+            } else {
+                output += ";\n";
+            }
+        }
+    } else if d.kind == decl_kind::alias_kind {
+        // name: type == value  →  using name = value;
+        output += "using ";
+        output += std::string(d.al.name);
+        output += " = ";
+        output += std::string(d.al.value);
+        output += ";\n";
+    } else if d.kind == decl_kind::func_kind {
+        // name: (params) -> return_type = { ... }
+        // → return_type name(params) { ... }
+        ret := d.fn.return_type;
+        if ret.ssize() > 0 {
+            output += std::string(ret);
+        } else {
+            output += "void";
+        }
+        output += " ";
+        output += std::string(d.fn.name);
+
+        // emit params - find ( and ) in text
+        open_paren := find_at_depth(text, '(', 0);
+        if open_paren >= 0 {
+            close_paren := find_at_depth(text, ')', open_paren);
+            if close_paren > 0 {
+                params := text.substr(open_paren, close_paren - open_paren + 1);
+                // transform cpp2 params: (name: type, name: type) → (type name, type name)
+                output += std::string(params); // TODO: transform params
+            }
+        }
+
+        // emit body
+        open_brace := find_at_depth(text, '{', 0);
+        if open_brace >= 0 {
+            close_brace := find_close_brace(text, open_brace);
+            body := text.substr(open_brace + 1, close_brace - open_brace - 1);
+            output += " {\n";
+            // emit body as-is (cpp2 syntax) — needs further transform for full self-hosting
+            output += std::string(body);
+            output += "\n}\n";
+        } else {
+            output += ";\n";
+        }
+    } else if d.kind == decl_kind::chart_kind {
+        // chart name(params) { ... }  →  struct name_chart { /* chart */ };
+        output += "// chart ";
+        output += std::string(d.chart.name);
+        output += "\n";
+    } else if d.kind == decl_kind::manifold_kind {
+        // manifold name = atlas[...]  →  // manifold name
+        output += "// manifold ";
+        output += std::string(d.manifold.name);
+        output += "\n";
+    } else if d.kind == decl_kind::atlas_kind {
+        // atlas[...]  →  // atlas
+        output += "// atlas\n";
+    } else if d.kind == decl_kind::coords_kind {
+        // coords[...]  →  // coords
+        output += "// coords\n";
+    } else if d.kind == decl_kind::series_kind {
+        // _s[...]  →  // series
+        output += "// series\n";
+    } else if d.kind == decl_kind::join_kind {
+        // a j b  →  // join(a, b)
+        output += "// join(";
+        output += std::string(d.join.left);
+        output += ", ";
+        output += std::string(d.join.right);
+        output += ")\n";
+    } else if d.kind == decl_kind::transition_kind {
+        // x.transition(...)  →  // transition(name)
+        output += "// transition(";
+        output += std::string(d.transition.name);
+        output += ")\n";
+    } else if d.kind == decl_kind::alpha_kind {
+        // x α(y) => ...  →  // alpha(name)
+        output += "// alpha(";
+        output += std::string(d.alpha.name);
+        output += ")\n";
+    } else if d.kind == decl_kind::indexed_kind {
+        // x j(y: t) => ...  →  // indexed(name)
+        output += "// indexed(";
+        output += std::string(d.indexed.name);
+        output += ")\n";
+    } else if d.kind == decl_kind::fold_kind {
+        // expr.fold(a, b)  →  // fold(name)
+        output += "// fold(";
+        output += std::string(d.fold.name);
+        output += ")\n";
+    } else if d.kind == decl_kind::grad_kind {
+        // grad(expr, var)  →  // grad(var)
+        output += "// grad(";
+        output += std::string(d.grad.var);
+        output += ")\n";
+    } else if d.kind == decl_kind::slice_kind {
+        output += "// slice\n";
+    } else if d.kind == decl_kind::purity_kind {
+        // [[pure]]  →  // [[pure]]
+        output += "// [[";
+        output += std::string(d.purity.label);
+        output += "]]\n";
+    } else if d.kind == decl_kind::lowered_kind {
+        // x.lowered()  →  // lowered(name)
+        output += "// lowered(";
+        output += std::string(d.lowered.name);
+        output += ")\n";
+    } else if d.kind == decl_kind::project_kind {
+        // x.project(y)  →  // project(name, arg)
+        output += "// project(";
+        output += std::string(d.project.name);
+        output += ", ";
+        output += std::string(d.project.arg);
+        output += ")\n";
+    } else if d.kind == decl_kind::locate_kind {
+        // x.locate(y)  →  // locate(name, arg)
+        output += "// locate(";
+        output += std::string(d.locate.name);
+        output += ", ";
+        output += std::string(d.locate.arg);
+        output += ")\n";
+    } else if d.kind == decl_kind::pre_kind {
+        // pre(expr)  →  // pre(expr)
+        output += "// pre(";
+        output += std::string(d.predecl.expr);
+        output += ")\n";
+    } else if d.kind == decl_kind::post_kind {
+        // post(expr)  →  // post(expr)
+        output += "// post(";
+        output += std::string(d.postdecl.expr);
+        output += ")\n";
+    } else {
+        output += "// unknown: ";
+        output += std::string(text);
+        output += "\n";
+    }
+    return output;
+}
+
+generate: (src: std::string_view, decls: std::vector<decl>) -> std::string = {
+    output: std::string = ();
+    output += "// Generated by cpp2 bitmap scanner\n\n";
+    output += "#include <string_view>\n";
+    output += "#include <vector>\n";
+    output += "#include <cstdint>\n";
+    output += "#include <string>\n";
+    output += "#include <iostream>\n";
+    output += "#include <fstream>\n";
+    output += "#include <sstream>\n";
+    output += "#include <optional>\n\n";
+
+    for 0..<decls.ssize() do (i) {
+        output += emit_decl(src, decls[i]);
+        output += "\n";
+    }
+
+    return output;
+}
+
+}
+
+// ============================================================================
+// MAIN — read file, parse, generate C++ to stdout
+// ============================================================================
+
+main: (args) -> int = {
+    if args.ssize() < 2 {
+        return 1;
+    }
+
+    filename := args[1];
+    file: std::ifstream = (std::string(filename));
+    if !file.is_open() {
+        return 1;
+    }
+
+    buf: std::stringstream = ();
+    buf << file.rdbuf();
+    src := buf.str();
+
+    decls := cpp2::parse(src);
+
+    output := cpp2::generate(src, decls);
+    std::cout << output;
+
+    return 0;
+}

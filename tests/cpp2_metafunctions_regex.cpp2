@@ -1,0 +1,7 @@
+// phase2_smoke_06: exercises regex metafunction parser-first surface (@regex type)
+// This is the minimal docs surface sample from docs/cpp2/metafunctions.md.
+
+name_matcher: @regex type = {
+    regex         := R"((\w+) (\w+))";
+    regex_no_case := R"(/(ab)+/i)";
+}

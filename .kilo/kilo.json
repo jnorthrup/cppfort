@@ -1,0 +1,17 @@
+{
+  "$schema": "https://kilo.ai/config.json",
+  "agent": {
+    "orchestrator": {
+      "permissions": {
+        "task": {
+          "*": "deny",
+          "algebraic-solver": "allow",
+          "compiler-architect": "allow",
+          "parser-frontend": "allow",
+          "code-verifier": "allow",
+          "code-polisher": "allow"
+        }
+      }
+    }
+  }
+}

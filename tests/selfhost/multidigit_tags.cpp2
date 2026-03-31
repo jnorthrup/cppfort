@@ -1,0 +1,4 @@
+// Multi-digit tag values for TDD
+big_tag: int = 1024;
+small_tag: int = 7;
+zero_tag: int = 0;

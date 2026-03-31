@@ -1,0 +1,8 @@
+// phase2_smoke_05: exercises autodiff metafunction parser-first surface (@autodiff type)
+// This mirrors the docs/cpp2/metafunctions.md hello-diff example at the declaration level.
+
+ad: @autodiff type = {
+    func: (x: double) -> (r: double) = {
+        r = x * x;
+    }
+}

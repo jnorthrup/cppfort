@@ -1,0 +1,87 @@
+// cpp2.h2 — public API for cpp2 bitmap scanner
+//
+// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt
+
+#include "trikeshed.h2"
+#include <string_view>
+#include <vector>
+
+cpp2: namespace = {
+
+struct_event: @enum type = { unchanged; scope_open; scope_close; decl_delim; }
+lexer_event: @enum type = { unchanged; string_delim; escape; comment_start; }
+
+pixel: @struct type = {
+    se: struct_event = ();
+    le: lexer_event = ();
+}
+
+bitmap: @struct type = {
+    src: std::string_view = ();
+    scope_opens: std::vector<int> = ();
+    scope_closes: std::vector<int> = ();
+    decl_delims: std::vector<int> = ();
+    string_opens: std::vector<int> = ();
+    string_closes: std::vector<int> = ();
+    comment_starts: std::vector<int> = ();
+    comment_ends: std::vector<int> = ();
+}
+
+decl_boundary: @struct type = {
+    lo: int = 0;
+    hi: int = 0;
+    depth: int = 0;
+}
+
+value_kind: @enum type = { word; num; str; }
+
+tag_decl: @struct type = {
+    name: std::string_view = ();
+    type_name: std::string_view = ();
+    val: value_kind = ();
+}
+
+namespace_decl: @struct type = {
+    name: std::string_view = ();
+}
+
+type_decl: @struct type = {
+    name: std::string_view = ();
+    metafunc: std::string_view = ();
+}
+
+type_alias: @struct type = {
+    name: std::string_view = ();
+    value: std::string_view = ();
+}
+
+func_decl: @struct type = {
+    name: std::string_view = ();
+    return_type: std::string_view = ();
+}
+
+decl_kind: @enum type = { tag_kind; ns_kind; type_kind; alias_kind; func_kind; unknown_kind; }
+
+decl: @struct type = {
+    kind: decl_kind = ();
+    tag: tag_decl = ();
+    ns: namespace_decl = ();
+    tp: type_decl = ();
+    al: type_alias = ();
+    fn: func_decl = ();
+    lo: int = 0;
+    hi: int = 0;
+}
+
+// utility functions
+skip_ws: (src: std::string_view, p: int) -> int;
+read_word: (src: std::string_view, p: int) -> std::string_view;
+find_at_depth: (src: std::string_view, target: char, p: int) -> int;
+reify: (src: std::string_view, boundary: decl_boundary) -> decl;
+
+// main API
+decode: (src: std::string_view) -> bitmap;
+index_decls: (bmp: bitmap) -> std::vector<decl_boundary>;
+parse: (src: std::string_view) -> std::vector<decl>;
+
+}

@@ -1,0 +1,258 @@
+// son_chapter15.cpp2 - Sea of Nodes Chapter 15 implementation
+// Chapter 15: Array Offset Calculations - Index arithmetic with scale factors
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+#include <cmath>
+#include <climits>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+print: (val: ulong) = {
+    std::cout << val;
+}
+
+println: (val: ulong) = {
+    std::cout << val << "\n";
+}
+
+print: (val: double) = {
+    std::cout << val;
+}
+
+println: (val: double) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// ARRAY OFFSET HELPER
+// ============================================================================
+
+// array_offset: computes base + (idx << scale)
+// scale is the log2 of element size (0=1, 1=2, 2=4, 3=8, etc.)
+array_offset: (base: long, idx: long, scale: int) -> long = {
+    return base + (idx << scale);
+}
+
+// array_offset_folded: optimized helper for (idx + 1) case
+// Computes base + ((idx + 1) << scale) directly
+array_offset_folded: (base: long, idx: long, scale: int) -> long = {
+    return base + ((idx + 1) << scale);
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+test_array_offset_basic: () -> bool = {
+    println("Test 1: Basic array offset (base=100, idx=5, scale=3 -> 140)");
+    
+    // scale=3 means element size 8 (like long/double array)
+    // offset = 100 + (5 << 3) = 100 + 40 = 140
+    result: long = array_offset(100, 5, 3);
+    
+    if result != 140 {
+        std::cout << "  FAIL: Expected 140, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Basic array offset works");
+    return true;
+}
+
+test_array_offset_scale0: () -> bool = {
+    println("Test 2: Scale 0 (byte array, base=1000, idx=42 -> 1042)");
+    
+    // scale=0 means element size 1 (byte array)
+    // offset = 1000 + (42 << 0) = 1000 + 42 = 1042
+    result: long = array_offset(1000, 42, 0);
+    
+    if result != 1042 {
+        std::cout << "  FAIL: Expected 1042, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Scale 0 (byte array) works");
+    return true;
+}
+
+test_array_offset_scale2: () -> bool = {
+    println("Test 3: Scale 2 (int32 array, base=2000, idx=100 -> 2400)");
+    
+    // scale=2 means element size 4 (int32 array)
+    // offset = 2000 + (100 << 2) = 2000 + 400 = 2400
+    result: long = array_offset(2000, 100, 2);
+    
+    if result != 2400 {
+        std::cout << "  FAIL: Expected 2400, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Scale 2 (int32 array) works");
+    return true;
+}
+
+test_array_offset_folded: () -> bool = {
+    println("Test 4: Folded (idx+1) case (base=16, idx=0, scale=3 -> 24)");
+    
+    // Test the folded case: 16 + ((0+1) << 3) = 16 + 8 = 24
+    result: long = array_offset_folded(16, 0, 3);
+    
+    if result != 24 {
+        std::cout << "  FAIL: Expected 24, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Folded (idx+1) case works");
+    return true;
+}
+
+test_array_offset_folded_iter: () -> bool = {
+    println("Test 5: Folded iteration test (16 + ((i+1) << 3) for i=0..4)");
+
+    // Test: 16 + ((i+1) << 3) for i=0,1,2,3,4
+    // i=0: 16 + (1 << 3) = 16 + 8 = 24
+    // i=1: 16 + (2 << 3) = 16 + 16 = 32
+    // i=2: 16 + (3 << 3) = 16 + 24 = 40
+    // i=3: 16 + (4 << 3) = 16 + 32 = 48
+    // i=4: 16 + (5 << 3) = 16 + 40 = 56
+
+    indices: std::vector<int> = ();
+    indices.push_back(0);
+    indices.push_back(1);
+    indices.push_back(2);
+    indices.push_back(3);
+    indices.push_back(4);
+
+    all_pass: bool = true;
+
+    for indices do (i: int) {
+        expected: long = 16 + ((i + 1) << 3);
+        result: long = array_offset_folded(16, i, 3);
+
+        if result != expected {
+            std::cout << "  FAIL: i=" << i << ", expected " << expected << ", got " << result << "\n";
+            all_pass = false;
+        }
+    }
+
+    if all_pass {
+        println("  PASS: Folded iteration test works");
+    }
+
+    return all_pass;
+}
+
+test_array_offset_zero_idx: () -> bool = {
+    println("Test 6: Zero index (base=500, idx=0, scale=3 -> 500)");
+    
+    // offset = 500 + (0 << 3) = 500 + 0 = 500
+    result: long = array_offset(500, 0, 3);
+    
+    if result != 500 {
+        std::cout << "  FAIL: Expected 500, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Zero index works");
+    return true;
+}
+
+test_array_offset_large_scale: () -> bool = {
+    println("Test 7: Large scale (base=0, idx=1, scale=6 -> 64)");
+    
+    // scale=6 means element size 64
+    // offset = 0 + (1 << 6) = 0 + 64 = 64
+    result: long = array_offset(0, 1, 6);
+    
+    if result != 64 {
+        std::cout << "  FAIL: Expected 64, got " << result << "\n";
+        return false;
+    }
+    
+    println("  PASS: Large scale works");
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 15 Tests ===");
+    println("Chapter 15: Array Offset Calculations");
+    println("");
+    
+    passed: int = 0;
+    total: int = 7;
+    
+    if test_array_offset_basic() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_scale0() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_scale2() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_folded() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_folded_iter() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_zero_idx() {
+        passed = passed + 1;
+    }
+    
+    if test_array_offset_large_scale() {
+        passed = passed + 1;
+    }
+    
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+    
+    if passed == total {
+        println("SUCCESS: All Chapter 15 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}

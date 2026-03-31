@@ -1,0 +1,387 @@
+# Build artifacts and generated files
+build/
+build_clean/
+build_test/
+build_coverage/
+build.ninja
+.ninja_deps
+.ninja_log
+cmake_install.cmake
+CTestTestfile.cmake
+cppfortConfig.cmake
+cppfortConfigVersion.cmake
+
+# Generated MLIR/TableGen files
+*.inc
+*.inc.d
+Cpp2*.cpp.inc
+Cpp2*.h.inc
+Cpp2*Ops*.cpp.inc
+Cpp2*Ops*.h.inc
+tablegen_compile_commands.yml
+
+# LLVM/MLIR artifacts
+*.bc
+*.ll
+*.mlir
+*.mlir.bc
+*.mlir.txt
+*.llvm
+*.llvm.bc
+*.llvm.txt
+llvm.profdata
+*.profraw
+*.profdata
+
+# Clang artifacts
+*.ast
+*.clang
+*.clang-tidy
+*.clang-format
+compile_commands.json
+.cache/
+
+# Cppfront generated files
+*.cpp.generated
+*.h.generated
+*.out.cpp
+*.out.h
+
+# Temporary and cache files
+*.tmp
+*.o.tmp
+*.a763eac
+*.backup
+*.try-catch-fix
+.cache/
+*.swp
+*.swo
+*~
+
+# Corpus and test results
+build/corpus_results.csv
+corpus_scan_results.txt
+test_results.csv
+scan_corpus.sh
+scan_out.txt
+COMPLETION_SUMMARY.md
+
+# ========================================================================
+# PRINCIPLE: When x.cpp2 is present, x.* files are suspect as generated artifacts
+# ========================================================================
+
+# Corpus generated files
+corpus/ast_mappings/generated/
+corpus/ast_mappings/*.ast.json
+corpus/ast_mappings/*.ast.txt
+corpus/cache/
+corpus/database/
+corpus/isomorphs/
+corpus/reference_ast/
+corpus/tagged/
+
+# Test checksums (generated)
+tests/reference/*.sha256
+
+# Conductor tracks (generated)
+conductor/tracks/*/
+
+# Test artifacts and results
+tests/results/
+tests/baseline/
+tests/local/
+tests/regression-tests/*.out
+tests/regression-tests/*.err
+tests/Testing/
+
+# Executables and binaries
+cppfort
+cppfort-opt
+cppfort-son
+*.exe
+tests/*_test
+tests/test_*
+tests/run_*
+tests/verify_*
+tests/generate_*
+tests/cpp2_tests
+tests/cppfront_*
+tests/regression_runner
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+coverage.info
+*.profraw
+*.profdata
+
+# IDE and editor files
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Development artifacts
+*.orig
+*.rej
+*.patch
+*.diff
+
+# Logs and debug files
+*.log
+debug.log
+*.out
+
+# TEST OUTPUT FILES - NEVER COMMIT THESE
+test_output*.txt
+*.txt.test
+test*.txt
+**/test_output.txt
+
+# Binary executables and libraries
+cppfort
+cppfort-opt
+cppfort-son
+*.a
+*.so
+*.dylib
+*.exe
+
+# Test executables
+tests/*_test
+tests/test_*
+tests/run_*
+tests/verify_*
+tests/generate_*
+
+# Third party and dependencies
+third_party/
+
+# Documentation build artifacts
+docs/build/
+docs/_build/
+
+# Temporary directories
+tmp/
+temp/
+.cache/
+.venv/
+
+# Regression test artifacts
+tests/regression-tests/*.out
+tests/regression-tests/*.err
+tests/results/
+tests/baseline/
+tests/local/
+
+# MLIR test artifacts
+tests/mlir/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+coverage.info
+coverage.xml
+
+# Profiling data
+*.profraw
+*.profdata
+
+# LLVM profiling and optimization data
+*.prof
+*.lto.o
+*.thinlto.bc
+
+# Clang static analyzer
+*.plist
+*.sarif
+
+# MLIR debugging and testing
+*.debug.mlir
+*.opt.mlir
+*.canonical.mlir
+
+# Backup files
+*.bak
+*.orig
+*.rej
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# Haskell
+dist/
+dist-newstyle/
+*.hi
+*.o
+
+# LaTeX
+*.aux
+*.log
+*.pdf
+*.dvi
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# R
+.Rhistory
+.RData
+*.Rproj.user
+
+# MATLAB
+*.asv
+
+# Vim
+*.swp
+*.swo
+Session.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+
+# TextMate
+*.tmproj
+*.tmproject
+tmtags
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserdatad
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Visual Studio
+*.suo
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.o
+*.obj
+*.exe
+*.dll
+*.pdb
+*.idb
+*.ilk
+*.msi
+*.msm
+*.msp
+*.dsp
+*.dsw
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*logs/
+__pycache__/
+build/
+build-alpha/

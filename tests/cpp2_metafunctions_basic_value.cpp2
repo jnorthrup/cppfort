@@ -1,0 +1,6 @@
+// phase2_smoke_09: exercises basic_value metafunction parser-first surface (@basic_value type)
+// This is a minimal docs-style sample from docs/cpp2/metafunctions.md.
+
+regular: @basic_value type = {
+    x: i32 = 0;
+}

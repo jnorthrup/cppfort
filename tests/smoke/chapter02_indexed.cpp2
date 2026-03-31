@@ -1,0 +1,14 @@
+// Chapter 02: Indexed operations
+// Dogfooding test for Cpp2SON dialect
+
+// Basic indexed operation: n j (i: int) => expr
+let series1 = series α (x) => x * 2
+
+// Join operation: a j b
+let pair = 5 j 10
+
+// Indexed access
+let indexed1 = series1 j (i: int) => i + 1
+
+// Return result
+return pair;

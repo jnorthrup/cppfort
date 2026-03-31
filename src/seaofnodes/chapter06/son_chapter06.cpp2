@@ -1,0 +1,966 @@
+// son_chapter06.cpp2 - Sea of Nodes Chapter 6 implementation
+// Dead Code Elimination - Peephone optimization for dead control flow
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+
+// ============================================================================
+// PRINT HELPER
+// ============================================================================
+
+print: (msg: std::string) -> void = {
+    std::cout << msg;
+}
+
+print: (msg: std::string, val: long) -> void = {
+    std::cout << msg << val;
+}
+
+print: (val: long) -> void = {
+    std::cout << val;
+}
+
+// ============================================================================
+// EXTENDED NODE REGISTRY (from Chapter 5)
+// ============================================================================
+// Chapter 6 adds: Dead code elimination optimization
+
+// Operation types for Chapter 6
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_STOP;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+    OP_VAR_DECL;
+    OP_VAR_USE;
+    OP_VAR_ASSIGN;
+    OP_PHI;
+    OP_EQ;
+    OP_NE;
+    OP_LT;
+    OP_LE;
+    OP_GT;
+    OP_GE;
+    OP_NOT;
+    OP_PROJ;
+    OP_PARAMETER;
+    OP_IF;
+    OP_REGION;
+    OP_TRUE;
+    OP_FALSE;
+}
+
+node_record: @struct type = {
+    nid: int = ();
+    input_ids: std::vector<int> = ();
+    output_ids: std::vector<int> = ();
+    is_cfg: bool = ();
+    op: op_type = ();
+    // Dead code elimination fields
+    is_dead: bool = false;
+    is_visited: bool = false;
+}
+
+// Global node registry
+node_registry: std::vector<node_record> = ();
+
+// Global constant value registry
+constant_values: std::vector<long> = ();
+
+// ============================================================================
+// VARIABLE TRACKING (from Chapter 3)
+// ============================================================================
+
+var_record: @struct type = {
+    name: std::string = ();
+    current_value: int = ();
+}
+
+scope_record: @struct type = {
+    level: int = ();
+    variables: std::vector<var_record> = ();
+    control_node: int = ();
+}
+
+scope_stack: std::vector<scope_record> = ();
+
+// Factory function for creating a node
+make_node: (input_ids: std::vector<int>, is_cfg: bool, operation: op_type) -> int = {
+    nid: int = unchecked_narrow<int>(node_registry.ssize());
+    record: node_record = ();
+    record.nid = nid;
+    record.input_ids = input_ids;
+    record.output_ids = std::vector<int>();
+    record.is_cfg = is_cfg;
+    record.op = operation;
+    record.is_dead = false;
+    record.is_visited = false;
+
+    node_registry.push_back(record);
+
+    i: int = 0;
+    while (i < input_ids.ssize()) {
+        input_id: int = input_ids[i];
+        if (input_id >= 0 && input_id < node_registry.ssize()) {
+            node_registry[input_id].output_ids.push_back(nid);
+        }
+        i++;
+    }
+
+    return nid;
+}
+
+// Helper to get operation type of a node
+node_op: (nid: int) -> op_type = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return op_type::OP_CONSTANT;
+    }
+    return node_registry[nid].op;
+}
+
+// Helper to check if node is a constant
+is_constant: (nid: int) -> bool = {
+    return nid >= 0 && node_op(nid) == op_type::OP_CONSTANT;
+}
+
+// Helper to get constant value
+constant_value: (nid: int) -> long = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return 0;
+    }
+    // Use nid directly since make_constant creates node first then stores value at same index
+    if (nid >= 0 && nid < constant_values.ssize()) {
+        return constant_values[nid];
+    }
+    return 0;
+}
+
+// ============================================================================
+// DEAD CODE ELIMINATION (Chapter 6 new)
+// ============================================================================
+
+// Mark all reachable nodes from start
+mark_reachable: (start_nid: int) -> void = {
+    worklist: std::vector<int> = ();
+    worklist.push_back(start_nid);
+    
+    while (worklist.ssize() > 0) {
+        curr: int = worklist.back();
+        worklist.pop_back();
+        
+        if (curr < 0 || curr >= node_registry.ssize()) {
+            continue;
+        }
+        
+        if (node_registry[curr].is_visited) {
+            continue;
+        }
+        
+        node_registry[curr].is_visited = true;
+        node_registry[curr].is_dead = false;
+        
+        // Add all inputs to worklist
+        i: int = 0;
+        while (i < node_registry[curr].input_ids.ssize()) {
+            inp: int = node_registry[curr].input_ids[i];
+            if (inp >= 0 && inp < node_registry.ssize() && !node_registry[inp].is_visited) {
+                worklist.push_back(inp);
+            }
+            i++;
+        }
+        
+        // For control flow nodes, also follow outputs
+        if (node_registry[curr].is_cfg) {
+            j: int = 0;
+            while (j < node_registry[curr].output_ids.ssize()) {
+                out: int = node_registry[curr].output_ids[j];
+                if (out >= 0 && out < node_registry.ssize() && !node_registry[out].is_visited) {
+                    worklist.push_back(out);
+                }
+                j++;
+            }
+        }
+    }
+}
+
+// Mark unreachable nodes as dead
+eliminate_dead_code: () -> void = {
+    i: int = 0;
+    while (i < node_registry.ssize()) {
+        if (!node_registry[i].is_visited) {
+            node_registry[i].is_dead = true;
+        }
+        i++;
+    }
+}
+
+// Compute constant fold for a node
+compute_fold: (nid: int) -> std::optional<long> = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return std::nullopt;
+    }
+    
+    op: op_type = node_registry[nid].op;
+    
+    if (op == op_type::OP_CONSTANT) {
+        return std::optional<long>(constant_value(nid));
+    }
+    
+    if (op == op_type::OP_ADD) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            return std::optional<long>(constant_value(lhs) + constant_value(rhs));
+        }
+    }
+    
+    if (op == op_type::OP_SUB) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            return std::optional<long>(constant_value(lhs) - constant_value(rhs));
+        }
+    }
+    
+    if (op == op_type::OP_MUL) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            return std::optional<long>(constant_value(lhs) * constant_value(rhs));
+        }
+    }
+    
+    if (op == op_type::OP_DIV) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs) && constant_value(rhs) != 0) {
+            return std::optional<long>(constant_value(lhs) / constant_value(rhs));
+        }
+    }
+    
+    if (op == op_type::OP_MINUS) {
+        inp: int = node_registry[nid].input_ids[0];
+        if (is_constant(inp)) {
+            return std::optional<long>(-constant_value(inp));
+        }
+    }
+    
+    if (op == op_type::OP_NOT) {
+        inp: int = node_registry[nid].input_ids[0];
+        if (is_constant(inp)) {
+            val: long = constant_value(inp);
+            result_val: long = 0;
+            if (val != 0) {
+                result_val = 0;
+            } else {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_EQ) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) == constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_NE) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) != constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_LT) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) < constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_LE) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) <= constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_GT) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) > constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    if (op == op_type::OP_GE) {
+        lhs: int = node_registry[nid].input_ids[0];
+        rhs: int = node_registry[nid].input_ids[1];
+        if (is_constant(lhs) && is_constant(rhs)) {
+            result_val: long = 0;
+            if (constant_value(lhs) >= constant_value(rhs)) {
+                result_val = 1;
+            }
+            return std::optional<long>(result_val);
+        }
+    }
+    
+    return std::nullopt;
+}
+
+// Evaluate a node - used for dead code elimination with constant conditions
+evaluate_node: (nid: int) -> std::optional<long> = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return std::nullopt;
+    }
+    
+    // First try constant folding
+    folded: std::optional<long> = compute_fold(nid);
+    if (folded.has_value()) {
+        return folded;
+    }
+    
+    return std::nullopt;
+}
+
+// Check if an if condition is known at compile time
+evaluate_if_condition: (if_nid: int) -> std::optional<bool> = {
+    if (if_nid < 0 || if_nid >= node_registry.ssize()) {
+        return std::nullopt;
+    }
+    
+    if (node_registry[if_nid].op != op_type::OP_IF) {
+        return std::nullopt;
+    }
+    
+    // Get the condition (first input to IF node)
+    cond: int = node_registry[if_nid].input_ids[0];
+    result: std::optional<long> = evaluate_node(cond);
+    
+    if (result.has_value()) {
+        return std::optional<bool>(result.value() != 0);
+    }
+    
+    return std::nullopt;
+}
+
+// Optimize if statement with known condition
+optimize_if: (if_nid: int) -> void = {
+    cond_result: std::optional<bool> = evaluate_if_condition(if_nid);
+    
+    if (!cond_result.has_value()) {
+        // Can't optimize - condition not known
+    } else {
+        is_true: bool = cond_result.value();
+        
+        // Get the projection nodes
+        i: int = 0;
+        while (i < node_registry[if_nid].output_ids.ssize()) {
+            out_id: int = node_registry[if_nid].output_ids[i];
+            
+            if (out_id < 0 || out_id >= node_registry.ssize()) {
+                i++;
+                continue;
+            }
+            
+            out_op: op_type = node_registry[out_id].op;
+            
+            if (is_true) {
+                // If condition is true, keep TRUE projection, mark FALSE as dead
+                if (out_op == op_type::OP_FALSE) {
+                    node_registry[out_id].is_dead = true;
+                }
+            } else {
+                // If condition is false, keep FALSE projection, mark TRUE as dead
+                if (out_op == op_type::OP_TRUE) {
+                    node_registry[out_id].is_dead = true;
+                }
+            }
+            
+            i++;
+        }
+    }
+}
+
+// Run dead code elimination pass
+run_dead_code_elimination: () -> void = {
+    // Reset visited state
+    i: int = 0;
+    while (i < node_registry.ssize()) {
+        node_registry[i].is_visited = false;
+        node_registry[i].is_dead = false;
+        i++;
+    }
+    
+    // Find start node and mark reachable
+    start_id: int = -1;
+    j: int = 0;
+    while (j < node_registry.ssize()) {
+        if (node_registry[j].op == op_type::OP_START) {
+            start_id = j;
+            break;
+        }
+        j++;
+    }
+    
+    if (start_id >= 0) {
+        mark_reachable(start_id);
+    }
+    
+    // Mark unreachable as dead
+    eliminate_dead_code();
+    
+    // Optimize if statements with known conditions
+    k: int = 0;
+    while (k < node_registry.ssize()) {
+        if (node_registry[k].op == op_type::OP_IF && !node_registry[k].is_dead) {
+            optimize_if(k);
+        }
+        k++;
+    }
+}
+
+// ============================================================================
+// NODE FACTORIES (from Chapter 2-5)
+// ============================================================================
+
+make_constant: (value: long) -> int = {
+    // Create node first to get the nid
+    nid: int = make_node(std::vector<int>(), false, op_type::OP_CONSTANT);
+    // Then store the value at the same index
+    // Grow constant_values to accommodate this nid
+    if (nid >= constant_values.ssize()) {
+        // Resize to have at least nid+1 elements
+        while (constant_values.ssize() < nid + 1) {
+            constant_values.push_back(0);
+        }
+    }
+    constant_values[nid] = value;
+    return nid;
+}
+
+make_add: (lhs: int, rhs: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(lhs);
+    inputs.push_back(rhs);
+    
+    // Create the node first
+    test_nid: int = make_node(inputs, false, op_type::OP_ADD);
+    
+    // Try to fold after creating node 
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        // Replace with constant
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_sub: (lhs: int, rhs: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(lhs);
+    inputs.push_back(rhs);
+    
+    test_nid: int = make_node(inputs, false, op_type::OP_SUB);
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_mul: (lhs: int, rhs: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(lhs);
+    inputs.push_back(rhs);
+    
+    test_nid: int = make_node(inputs, false, op_type::OP_MUL);
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_div: (lhs: int, rhs: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(lhs);
+    inputs.push_back(rhs);
+    
+    if (is_constant(rhs) && constant_value(rhs) == 0) {
+        return -1; // Error marker
+    }
+    
+    test_nid: int = make_node(inputs, false, op_type::OP_DIV);
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_minus: (input: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(input);
+    
+    test_nid: int = make_node(inputs, false, op_type::OP_MINUS);
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_comparison: (op: op_type, lhs: int, rhs: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(lhs);
+    inputs.push_back(rhs);
+    
+    test_nid: int = make_node(inputs, false, op);
+    folded_result: std::optional<long> = compute_fold(test_nid);
+    
+    if (folded_result.has_value()) {
+        return make_constant(folded_result.value());
+    }
+    
+    return test_nid;
+}
+
+make_if: (cond: int, true_proj: int, false_proj: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(cond);
+    inputs.push_back(true_proj);
+    inputs.push_back(false_proj);
+    return make_node(inputs, true, op_type::OP_IF);
+}
+
+make_proj: (input: int, idx: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(input);
+    inputs.push_back(idx);
+    return make_node(inputs, true, op_type::OP_PROJ);
+}
+
+make_region: (nins: int) -> int = {
+    inputs: std::vector<int> = ();
+    i: int = 0;
+    while (i < nins) {
+        inputs.push_back(-1);
+        i++;
+    }
+    return make_node(inputs, true, op_type::OP_REGION);
+}
+
+make_stop: () -> int = {
+    return make_node(std::vector<int>(), true, op_type::OP_STOP);
+}
+
+make_parameter: (index: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(index);
+    return make_node(inputs, false, op_type::OP_PARAMETER);
+}
+
+make_var_decl: (name: std::string, value: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(value);
+    nid: int = make_node(inputs, false, op_type::OP_VAR_DECL);
+    return nid;
+}
+
+make_var_use: (decl_nid: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(decl_nid);
+    return make_node(inputs, false, op_type::OP_VAR_USE);
+}
+
+make_var_assign: (decl_nid: int, value: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(decl_nid);
+    inputs.push_back(value);
+    return make_node(inputs, false, op_type::OP_VAR_ASSIGN);
+}
+
+make_phi: (region: int, values: std::vector<int>) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(region);
+    i: int = 0;
+    while (i < values.ssize()) {
+        inputs.push_back(values[i]);
+        i++;
+    }
+    return make_node(inputs, false, op_type::OP_PHI);
+}
+
+make_return: (value: int) -> int = {
+    inputs: std::vector<int> = ();
+    inputs.push_back(value);
+    return make_node(inputs, true, op_type::OP_RETURN);
+}
+
+make_start: () -> int = {
+    return make_node(std::vector<int>(), true, op_type::OP_START);
+}
+
+// ============================================================================
+// PARSER (from Chapters 2-5)
+// ============================================================================
+
+// Simple parser state
+parser_pos: int = 0;
+parser_input: std::string = "";
+
+advance: () -> void = {
+    if (parser_pos < parser_input.ssize()) {
+        parser_pos++;
+    }
+}
+
+peek: () -> char = {
+    if (parser_pos < parser_input.ssize()) {
+        return parser_input[parser_pos];
+    }
+    return '\0';
+}
+
+expect: (c: char) -> bool = {
+    if (peek() == c) {
+        advance();
+        return true;
+    }
+    return false;
+}
+
+skip_whitespace: () -> void = {
+    while (peek() == ' ' || peek() == '\t' || peek() == '\n' || peek() == '\r') {
+        advance();
+    }
+}
+
+parse_number: () -> long = {
+    skip_whitespace();
+    val: long = 0;
+    neg: bool = false;
+    
+    if (peek() == '-') {
+        neg = true;
+        advance();
+    }
+    
+    while (peek() >= '0' && peek() <= '9') {
+        val = val * 10 + (peek() - '0');
+        advance();
+    }
+    
+    if (neg) {
+        val = -val;
+    }
+    
+    return val;
+}
+
+parse_identifier: () -> std::string = {
+    skip_whitespace();
+    name: std::string = "";
+    
+    while ((peek() >= 'a' && peek() <= 'z') || (peek() >= 'A' && peek() <= 'Z') || peek() == '_') {
+        name = name + std::string(1, peek());
+        advance();
+    }
+    
+    return name;
+}
+
+parse_primary: () -> int = {
+    skip_whitespace();
+    
+    if (peek() >= '0' && peek() <= '9') {
+        val: long = parse_number();
+        return make_constant(val);
+    }
+    
+    if (peek() == '(') {
+        advance();
+        expr: int = parse_expression();
+        expect(')');
+        return expr;
+    }
+    
+    if (peek() == '-') {
+        advance();
+        expr: int = parse_primary();
+        return make_minus(expr);
+    }
+    
+    // Check for true/false literals
+    if (peek() >= 'a' && peek() <= 'z') {
+        name: std::string = parse_identifier();
+        if (name == "true") {
+            return make_constant(1);
+        }
+        if (name == "false") {
+            return make_constant(0);
+        }
+    }
+    
+    return make_constant(0);
+}
+
+parse_unary: () -> int = {
+    skip_whitespace();
+    
+    if (peek() == '!') {
+        advance();
+        expr: int = parse_unary();
+        inputs: std::vector<int> = ();
+        inputs.push_back(expr);
+        test_nid: int = make_node(inputs, false, op_type::OP_NOT);
+        folded: std::optional<long> = compute_fold(test_nid);
+        if (folded.has_value()) {
+            return make_constant(folded.value());
+        }
+        return test_nid;
+    }
+    
+    return parse_primary();
+}
+
+parse_mult: () -> int = {
+    left: int = parse_unary();
+    
+    while (peek() == '*' || peek() == '/') {
+        op: char = peek();
+        advance();
+        right: int = parse_unary();
+        
+        if (op == '*') {
+            left = make_mul(left, right);
+        } else {
+            if (is_constant(right) && constant_value(right) == 0) {
+                return -1; // Division by zero marker
+            }
+            left = make_div(left, right);
+        }
+    }
+    
+    return left;
+}
+
+parse_add: () -> int = {
+    left: int = parse_mult();
+    
+    while (peek() == '+' || peek() == '-') {
+        op: char = peek();
+        advance();
+        right: int = parse_mult();
+        
+        if (op == '+') {
+            left = make_add(left, right);
+        } else {
+            left = make_sub(left, right);
+        }
+    }
+    
+    return left;
+}
+
+parse_comparison: () -> int = {
+    left: int = parse_add();
+    
+    if (peek() == '=' && parser_pos + 1 < parser_input.ssize() && parser_input[parser_pos + 1] == '=') {
+        advance();
+        advance();
+        right: int = parse_add();
+        return make_comparison(op_type::OP_EQ, left, right);
+    }
+    
+    if (peek() == '!' && parser_pos + 1 < parser_input.ssize() && parser_input[parser_pos + 1] == '=') {
+        advance();
+        advance();
+        right: int = parse_add();
+        return make_comparison(op_type::OP_NE, left, right);
+    }
+    
+    if (peek() == '<') {
+        advance();
+        if (peek() == '=') {
+            advance();
+            right: int = parse_add();
+            return make_comparison(op_type::OP_LE, left, right);
+        }
+        right: int = parse_add();
+        return make_comparison(op_type::OP_LT, left, right);
+    }
+    
+    if (peek() == '>') {
+        advance();
+        if (peek() == '=') {
+            advance();
+            right: int = parse_add();
+            return make_comparison(op_type::OP_GE, left, right);
+        }
+        right: int = parse_add();
+        return make_comparison(op_type::OP_GT, left, right);
+    }
+    
+    return left;
+}
+
+parse_expression: () -> int = {
+    return parse_comparison();
+}
+
+// ============================================================================
+// MAIN TEST
+// ============================================================================
+
+main: () -> int = {
+    print("=== Sea of Nodes Chapter 06: Dead Code Elimination ===\n");
+    
+    // Initialize
+    node_registry = std::vector<node_record>();
+    constant_values = std::vector<long>();
+    scope_stack = std::vector<scope_record>();
+    
+    // Test 1: Basic constant evaluation
+    print("Test 1: Basic constant folding...\n");
+    c1: int = make_constant(5);
+    c2: int = make_constant(3);
+    result: int = make_add(c1, c2);
+    
+    if (is_constant(result) && constant_value(result) == 8) {
+        print("  PASS: 5 + 3 = 8\n");
+    } else {
+        print("  FAIL: Constant folding failed\n");
+    }
+    
+    // Test 2: Dead code elimination with true condition
+    // Test that constant conditions can be evaluated at compile time
+    print("Test 2: Constant condition evaluation...\n");
+    node_registry = std::vector<node_record>();
+    constant_values = std::vector<long>();
+    
+    // Create a simple expression with known constant
+    // This tests that we can evaluate constant conditions
+    a: int = make_constant(5);
+    b: int = make_constant(3);
+    cmp: int = make_comparison(op_type::OP_GT, a, b);  // 5 > 3 = true
+    
+    // Evaluate the comparison
+    cmp_result: std::optional<long> = compute_fold(cmp);
+    if (cmp_result.has_value() && cmp_result.value() != 0) {
+        print("  PASS: Constant condition 5 > 3 evaluates to true\n");
+    } else {
+        print("  FAIL: Constant condition should evaluate to true\n");
+    }
+    
+    // Test 3: Dead code elimination with false condition
+    print("Test 3: False condition evaluation...\n");
+    node_registry = std::vector<node_record>();
+    constant_values = std::vector<long>();
+    
+    // Create a comparison that evaluates to false
+    x: int = make_constant(1);
+    y: int = make_constant(10);
+    cmp2: int = make_comparison(op_type::OP_GT, x, y);  // 1 > 10 = false
+    
+    // Evaluate the comparison
+    cmp2_result: std::optional<long> = compute_fold(cmp2);
+    if (cmp2_result.has_value() && cmp2_result.value() == 0) {
+        print("  PASS: Constant condition 1 > 10 evaluates to false\n");
+    } else {
+        print("  FAIL: Constant condition should evaluate to false\n");
+    }
+    
+    // Test 4: Unreachable code detection
+    print("Test 4: Unreachable code detection...\n");
+    node_registry = std::vector<node_record>();
+    constant_values = std::vector<long>();
+    
+    start3: int = make_start();
+    reachable_const: int = make_constant(10);
+    unreachable_const: int = make_constant(20);
+    
+    // Mark reachable
+    mark_reachable(start3);
+    mark_reachable(reachable_const);
+    
+    eliminate_dead_code();
+    
+    if (node_registry[unreachable_const].is_dead) {
+        print("  PASS: Unreachable node marked as dead\n");
+    } else {
+        print("  FAIL: Unreachable node not marked dead\n");
+    }
+    
+    // Test 5: Complex expression with constant folding
+    print("Test 5: Complex constant folding...\n");
+    node_registry = std::vector<node_record>();
+    constant_values = std::vector<long>();
+    
+    // (1 + 2) * 3 = 9
+    a5: int = make_constant(1);
+    b5: int = make_constant(2);
+    c5: int = make_constant(3);
+    
+    sum: int = make_add(a5, b5);
+    prod: int = make_mul(sum, c5);
+    
+    if (is_constant(prod) && constant_value(prod) == 9) {
+        print("  PASS: (1+2)*3 = 9\n");
+    } else {
+        print("  FAIL: Complex folding failed\n");
+    }
+    
+    print("\n=== All tests completed ===\n");
+    
+    return 0;
+}

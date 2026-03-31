@@ -1,0 +1,2 @@
+// Single tag declaration for TDD roundtrip testing
+my_tag: int = 42;

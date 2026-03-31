@@ -1,0 +1,208 @@
+// Sea of Nodes - Chapter 1: Introduction
+// Ported from Java to cpp2 using TrikeShed hermetic abstractions
+// This module provides the base Node class and fundamental IR nodes
+
+son: namespace = {
+
+// ============================================================================
+// Node - Base class for all Sea of Nodes IR nodes
+// ============================================================================
+node: @struct type = {
+    nid: int = ();
+    inputs: std::vector<node> = ();
+    outputs: std::vector<node> = ();
+    static unique_id: int = 1;
+
+    in: (inout this, i: int) -> node = this.inputs[i];
+    nIns: (inout this) -> int = this.inputs.size();
+    nOuts: (inout this) -> int = this.outputs.size();
+    isUnused: (inout this) -> bool = this.nOuts() == 0;
+    isCFG: (inout this) -> bool = false;
+}
+
+node_reset: () = {
+    node.unique_id = 1;
+}
+
+// ============================================================================
+// StartNode - CFG start node (entry point)
+// ============================================================================
+start_node: @struct type = {
+    nid: int = ();
+    inputs: std::vector<node> = ();
+    outputs: std::vector<node> = ();
+    static unique_id: int = 1;
+
+    in: (inout this, i: int) -> node = this.inputs[i];
+    nIns: (inout this) -> int = this.inputs.size();
+    nOuts: (inout this) -> int = this.outputs.size();
+    isUnused: (inout this) -> bool = this.nOuts() == 0;
+    isCFG: (inout this) -> bool = true;
+}
+
+// ============================================================================
+// ConstantNode - Integer constant value
+// ============================================================================
+constant_node: @struct type = {
+    nid: int = ();
+    inputs: std::vector<node> = ();
+    outputs: std::vector<node> = ();
+    static unique_id: int = 1;
+    value: int = ();
+
+    in: (inout this, i: int) -> node = this.inputs[i];
+    nIns: (inout this) -> int = this.inputs.size();
+    nOuts: (inout this) -> int = this.outputs.size();
+    isUnused: (inout this) -> bool = this.nOuts() == 0;
+    isCFG: (inout this) -> bool = false;
+    ctrl: (inout this) -> node = this.in(0);
+}
+
+// ============================================================================
+// ReturnNode - Return statement node
+// ============================================================================
+return_node: @struct type = {
+    nid: int = ();
+    inputs: std::vector<node> = ();
+    outputs: std::vector<node> = ();
+    static unique_id: int = 1;
+    expr: node = ();
+
+    in: (inout this, i: int) -> node = this.inputs[i];
+    nIns: (inout this) -> int = this.inputs.size();
+    nOuts: (inout this) -> int = this.outputs.size();
+    isUnused: (inout this) -> bool = this.nOuts() == 0;
+    isCFG: (inout this) -> bool = false;
+    ctrl: (inout this) -> node = this.in(0);
+}
+
+// ============================================================================
+// Parser - Simple parser for "return <integer>;" syntax
+// ============================================================================
+parser: @struct type = {
+    source: std::string = ();
+    pos: int = 0;
+    static start: start_node = ();
+}
+
+parser_new: (src: std::string) -> parser = {
+    p: parser = (src, 0);
+    return p;
+}
+
+parser_skipWhitespace: (inout p: parser) = {
+    while p.pos < p.source.size() {
+        c := p.source[p.pos];
+        if c != ' ' && c != '\t' && c != '\n' {
+            break;
+        }
+        p.pos = p.pos + 1;
+    }
+}
+
+parser_expectKeyword: (inout p: parser, kw: std::string) = {
+    if p.source.substr(p.pos, kw.size()) != kw {
+        panic("Syntax error, expected keyword: " + kw);
+    }
+    p.pos = p.pos + kw.size();
+    
+    if p.pos < p.source.size() {
+        c := p.source[p.pos];
+        if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' {
+            panic("Syntax error, expected whitespace after keyword: " + kw);
+        }
+    }
+}
+
+parser_expectChar: (inout p: parser, c: char) = {
+    if p.pos >= p.source.size() {
+        panic("Syntax error, expected " + c + ": ");
+    }
+    if p.source[p.pos] != c {
+        panic("Syntax error, expected " + c + ": " + p.source.substr(p.pos));
+    }
+    p.pos = p.pos + 1;
+}
+
+parser_parseInteger: (inout p: parser) -> int = {
+    if p.pos >= p.source.size() {
+        panic("Syntax error, expected integer literal");
+    }
+    
+    start := p.pos;
+    c := p.source[p.pos];
+    
+    if c == '0' {
+        p.pos = p.pos + 1;
+        if p.pos < p.source.size() {
+            next_c := p.source[p.pos];
+            if next_c >= '0' && next_c <= '9' {
+                panic("Syntax error: integer values cannot start with '0'");
+            }
+        }
+        return 0;
+    }
+    
+    if c < '1' || c > '9' {
+        panic("Syntax error, expected integer literal");
+    }
+    
+    while p.pos < p.source.size() {
+        c = p.source[p.pos];
+        if c < '0' || c > '9' {
+            break;
+        }
+        p.pos = p.pos + 1;
+    }
+    
+    val_str := p.source.substr(start, p.pos - start);
+    
+    val := 0;
+    i := 0;
+    while i < val_str.size() {
+        digit := (val_str[i] as int) - 48;
+        val = val * 10 + digit;
+        i = i + 1;
+    }
+    
+    return val;
+}
+
+parser_parseReturn: (inout p: parser) -> return_node = {
+    parser_expectKeyword(p, "return");
+    parser_skipWhitespace(p);
+    value := parser_parseInteger(p);
+    parser_skipWhitespace(p);
+    parser_expectChar(p, ';');
+    
+    ctrl := parser.start;
+    expr: node = (ctrl, value);
+    ret: return_node = (ctrl, expr);
+    
+    return ret;
+}
+
+parser_parse: (inout p: parser) -> return_node = {
+    node_reset();
+    return parser_parseReturn(p);
+}
+
+// Test function
+test_chapter01: () = {
+    println("Testing Chapter 1: Introduction");
+    
+    p1 := parser_new("return 1;");
+    ret1 := parser_parse(p1);
+    
+    println("  Test 1: return 1; - PASSED");
+    
+    node_reset();
+    p2 := parser_new("return 0;");
+    ret2 := parser_parse(p2);
+    
+    println("  Test 2: return 0; - PASSED");
+    
+    println("  All Chapter 1 tests passed!");
+}
+
+}

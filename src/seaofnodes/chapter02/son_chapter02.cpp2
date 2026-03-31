@@ -1,0 +1,582 @@
+// son_chapter02.cpp2 - Sea of Nodes Chapter 2 implementation
+// Adds binary arithmetic operations with precedence and peephole optimization
+// Per TrikeShed: composable hermetic abstractions
+
+// ============================================================================
+// NODE REGISTRY (from Chapter 1)
+// ============================================================================
+
+// Operation types for binary/unary operations
+op_type: @enum type = {
+    OP_CONSTANT;
+    OP_START;
+    OP_RETURN;
+    OP_ADD;
+    OP_SUB;
+    OP_MUL;
+    OP_DIV;
+    OP_MINUS;
+}
+
+node_record: @struct type = {
+    nid: int = ();
+    input_ids: std::vector<int> = ();
+    output_ids: std::vector<int> = ();
+    is_cfg: bool = ();
+    op: op_type = ();
+}
+
+// Global node registry - initialized as empty vector
+node_registry: std::vector<node_record> = ();
+
+// Global constant value registry - initialized as empty vector
+constant_values: std::vector<long> = ();
+
+// Factory function for creating a node
+make_node: (input_ids: std::vector<int>, is_cfg: bool, operation: op_type) -> int = {
+    nid: int = unchecked_narrow<int>(node_registry.ssize());
+    record: node_record = ();
+    record.nid = nid;
+    record.input_ids = input_ids;
+    record.output_ids = std::vector<int>();
+    record.is_cfg = is_cfg;
+    record.op = operation;
+
+    // Register this node
+    node_registry.push_back(record);
+
+    // Register this node as an output of all its inputs
+    // Using index-based iteration
+    i: int = 0;
+    while (i < input_ids.ssize()) {
+        input_id: int = input_ids[i];
+        if (input_id >= 0 && input_id < node_registry.ssize()) {
+            node_registry[input_id].output_ids.push_back(nid);
+        }
+        i++;
+    }
+
+    return nid;
+}
+
+// Helper to get operation type of a node
+node_op: (nid: int) -> op_type = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return op_type::OP_CONSTANT;
+    }
+    return node_registry[nid].op;
+}
+
+// Accessors
+node_in: (nid: int, i: int) -> int = {
+    return node_registry[nid].input_ids[i];
+}
+
+node_nins: (nid: int) -> int = {
+    return node_registry[nid].input_ids.ssize();
+}
+
+node_nouts: (nid: int) -> int = {
+    return node_registry[nid].output_ids.ssize();
+}
+
+node_is_unused: (nid: int) -> bool = {
+    return node_registry[nid].output_ids.empty();
+}
+
+node_is_cfg: (nid: int) -> bool = {
+    return node_registry[nid].is_cfg;
+}
+
+// Reset registry (for testing)
+reset_nodes: () -> void = {
+    node_registry.clear();
+    constant_values.clear();
+}
+
+// Constant value operations
+set_constant_value: (nid: int, val: long) -> void = {
+    // Ensure the registry is large enough
+    while (nid >= node_registry.ssize()) {
+        constant_values.push_back(0);
+    }
+    constant_values[nid] = val;
+    
+    // Mark as constant operation
+    if (nid >= 0 && nid < node_registry.ssize()) {
+        node_registry[nid].op = op_type::OP_CONSTANT;
+    }
+}
+
+get_constant_value: (nid: int) -> long = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return 0;
+    }
+    return constant_values[nid];
+}
+
+// ============================================================================
+// START NODE (from Chapter 1)
+// ============================================================================
+
+make_start_node: () -> int = {
+    inputs: std::vector<int> = ();
+    return make_node(inputs, true, op_type::OP_START);
+}
+
+// ============================================================================
+// RETURN NODE (from Chapter 1)
+// ============================================================================
+
+make_return_node: (ctrl: int, data: int) -> int = {
+    inputs: std::vector<int> = (ctrl, data);
+    return make_node(inputs, true, op_type::OP_RETURN);
+}
+
+// ============================================================================
+// CONSTANT NODE (from Chapter 1)
+// ============================================================================
+
+make_constant_node: (val: long, start_node_id: int) -> int = {
+    inputs: std::vector<int> = (start_node_id);
+    nid: int = make_node(inputs, false, op_type::OP_CONSTANT);
+
+    // Store the value in the registry
+    set_constant_value(nid, val);
+
+    return nid;
+}
+
+// ============================================================================
+// BINARY OPERATIONS (Chapter 2)
+// ============================================================================
+
+// Binary operation base - just a node with two inputs
+make_binary_node: (op1: int, op2: int, operation: op_type) -> int = {
+    inputs: std::vector<int> = (op1, op2);
+    return make_node(inputs, false, operation);
+}
+
+// Add Node
+make_add_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_ADD);
+}
+
+// Sub Node
+make_sub_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_SUB);
+}
+
+// Mul Node
+make_mul_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_MUL);
+}
+
+// Div Node
+make_div_node: (op1: int, op2: int) -> int = {
+    return make_binary_node(op1, op2, op_type::OP_DIV);
+}
+
+// ============================================================================
+// UNARY OPERATIONS (Chapter 2)
+// ============================================================================
+
+// Minus Node (unary minus)
+make_minus_node: (op: int) -> int = {
+    inputs: std::vector<int> = (op);
+    return make_node(inputs, false, op_type::OP_MINUS);
+}
+
+// ============================================================================
+// PEEPHOLE OPTIMIZATION (Chapter 2)
+// ============================================================================
+
+// Try to evaluate a constant node
+// Returns pair: (is_constant, value)
+try_evaluate_constant: (nid: int) -> std::pair<bool, long> = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return std::make_pair(false, 0);
+    }
+    // Check if it's a constant node (has exactly one input which is Start node)
+    if (node_nins(nid) == 1 && node_is_cfg(node_in(nid, 0))) {
+        // This is a constant node, get its value
+        return std::make_pair(true, get_constant_value(nid));
+    }
+    return std::make_pair(false, 0);
+}
+
+// Peephole optimization - constant folding
+peephole: (nid: int) -> int = {
+    // Check if both operands are constants
+    if (node_nins(nid) == 2) {
+        left: std::pair<bool, long> = try_evaluate_constant(node_in(nid, 0));
+        right: std::pair<bool, long> = try_evaluate_constant(node_in(nid, 1));
+        
+        if (left.first && right.first) {
+            // Try to fold based on operation type
+            // We need to determine the operation type - for now, we'll check node_registry structure
+            // In a real implementation, we'd have operation type metadata
+            // For Chapter 2, we'll just return the node as-is since we don't have type info yet
+            // The actual folding happens in the parser when creating nodes
+        }
+    }
+    
+    return nid;
+}
+
+// ============================================================================
+// LEXER (from Chapter 1, extended)
+// ============================================================================
+
+lexer: @struct type = {
+    input: std::string = ();
+    position: int = ();
+}
+
+make_lexer: (source: std::string) -> lexer = {
+    l: lexer = ();
+    l.input = source;
+    l.position = 0;
+    return l;
+}
+
+lexer_is_eof: (inout l: lexer) -> bool = {
+    return l.position >= l.input.ssize();
+}
+
+lexer_peek: (inout l: lexer) -> char = {
+    if (lexer_is_eof(l)) {
+        return '\0';
+    }
+    return l.input[l.position];
+}
+
+lexer_next_char: (inout l: lexer) -> char = {
+    ch: char = lexer_peek(l);
+    if (!lexer_is_eof(l)) {
+        l.position++;
+    }
+    return ch;
+}
+
+lexer_is_whitespace: (inout l: lexer) -> bool = {
+    ch: char = lexer_peek(l);
+    return ch <= ' ' && ch != '\0';
+}
+
+lexer_skip_whitespace: (inout l: lexer) -> void = {
+    while (lexer_is_whitespace(l)) {
+        l.position++;
+    }
+}
+
+lexer_match: (inout l: lexer, syntax: std::string) -> bool = {
+    lexer_skip_whitespace(l);
+    len: int = unchecked_narrow<int>(syntax.ssize());
+    if (l.position + len > l.input.ssize()) {
+        return false;
+    }
+    i: int = 0;
+    while (i < len) {
+        if (l.input[l.position + i] != syntax[i]) {
+            return false;
+        }
+        i++;
+    }
+    l.position += len;
+    return true;
+}
+
+lexer_matchx: (inout l: lexer, syntax: std::string) -> bool = {
+    if (!lexer_match(l, syntax)) {
+        return false;
+    }
+    // Check if next character is an identifier letter
+    next_ch: char = lexer_peek(l);
+    if (lexer_is_id_letter(next_ch)) {
+        l.position -= syntax.ssize(); // Backtrack
+        return false;
+    }
+    return true;
+}
+
+lexer_is_digit: (ch: char) -> bool = {
+    return ch >= '0' && ch <= '9';
+}
+
+lexer_is_number: (inout l: lexer) -> bool = {
+    return lexer_is_digit(lexer_peek(l));
+}
+
+lexer_parse_number_string: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_digit(lexer_next_char(l))) {
+        // Continue parsing digits
+    }
+    // Backtrack one since we read one past the end
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+lexer_parse_number: (inout l: lexer) -> long = {
+    snum: std::string = lexer_parse_number_string(l);
+    // Check for leading zero
+    if (snum.ssize() > 1 && snum[0] == '0') {
+        throw (std::runtime_error("Syntax error: integer values cannot start with '0'"));
+    }
+    return std::stol(snum);
+}
+
+lexer_is_id_start: (ch: char) -> bool = {
+    return std::isalpha(ch) || ch == '_';
+}
+
+lexer_is_id_letter: (ch: char) -> bool = {
+    return std::isalnum(ch) || ch == '_';
+}
+
+lexer_parse_id: (inout l: lexer) -> std::string = {
+    start: int = l.position;
+    while (lexer_is_id_letter(lexer_next_char(l))) {
+        // Continue parsing identifier characters
+    }
+    // Backtrack one since we read one past the end
+    if (!lexer_is_eof(l)) {
+        l.position--;
+    }
+    return l.input.substr(start, l.position - start);
+}
+
+lexer_is_punctuation: (ch: char) -> bool = {
+    punct: std::string = "=;[]<>(){}+-/*!";
+    return punct.find(ch) != std::string::npos;
+}
+
+lexer_parse_punctuation: (inout l: lexer) -> std::string = {
+    ch: char = lexer_next_char(l);
+    return std::string(1, ch);
+}
+
+lexer_get_any_next_token: (inout l: lexer) -> std::string = {
+    if (lexer_is_eof(l)) {
+        return "";
+    }
+    ch: char = lexer_peek(l);
+    if (lexer_is_id_start(ch)) {
+        return lexer_parse_id(l);
+    }
+    if (lexer_is_digit(ch)) {
+        return lexer_parse_number_string(l);
+    }
+    if (lexer_is_punctuation(ch)) {
+        return lexer_parse_punctuation(l);
+    }
+    return std::string(1, ch);
+}
+
+// ============================================================================
+// PARSER (Chapter 2 - with precedence and peephole)
+// ============================================================================
+
+parser: @struct type = {
+    lexer_instance: lexer = ();
+    start_node: int = ();
+}
+
+make_parser: (source: std::string) -> parser = {
+    p: parser = ();
+    p.lexer_instance = make_lexer(source);
+    // Create START node
+    p.start_node = make_start_node();
+    return p;
+}
+
+// Parse the entire program
+parser_parse: (inout p: parser) -> int = {
+    reset_nodes(); // Reset for each parse
+    ret: int = parser_parse_statement(p);
+    if (!lexer_is_eof(p.lexer_instance)) {
+        throw (parser_error(p, "Syntax error, unexpected " + lexer_get_any_next_token(p.lexer_instance)));
+    }
+    return ret;
+}
+
+// Parse a statement
+parser_parse_statement: (inout p: parser) -> int = {
+    if (lexer_matchx(p.lexer_instance, "return")) {
+        return parser_parse_return(p);
+    }
+    throw (parser_error_syntax(p, "a statement"));
+}
+
+// Parse return statement; "return" already parsed
+parser_parse_return: (inout p: parser) -> int = {
+    expr: int = parser_require(p, parser_parse_expression(p), ";");
+    return make_return_node(p.start_node, expr);
+}
+
+// Parse an expression
+// expr : additiveExpr
+parser_parse_expression: (inout p: parser) -> int = {
+    return parser_parse_addition(p);
+}
+
+// Parse additive expression
+// additiveExpr : multiplicativeExpr (('+' | '-') multiplicativeExpr)*
+parser_parse_addition: (inout p: parser) -> int = {
+    lhs: int = parser_parse_multiplication(p);
+    
+    while (true) {
+        if (lexer_match(p.lexer_instance, "+")) {
+            rhs: int = parser_parse_addition(p);
+            lhs = make_add_node(lhs, rhs);
+            // Try constant folding
+            lhs = parser_try_constant_fold(p, lhs);
+        } else if (lexer_match(p.lexer_instance, "-")) {
+            rhs: int = parser_parse_addition(p);
+            lhs = make_sub_node(lhs, rhs);
+            // Try constant folding
+            lhs = parser_try_constant_fold(p, lhs);
+        } else {
+            break;
+        }
+    }
+    
+    return lhs;
+}
+
+// Parse multiplicative expression
+// multiplicativeExpr : unaryExpr (('*' | '/') unaryExpr)*
+parser_parse_multiplication: (inout p: parser) -> int = {
+    lhs: int = parser_parse_unary(p);
+    
+    while (true) {
+        if (lexer_match(p.lexer_instance, "*")) {
+            rhs: int = parser_parse_multiplication(p);
+            lhs = make_mul_node(lhs, rhs);
+            // Try constant folding
+            lhs = parser_try_constant_fold(p, lhs);
+        } else if (lexer_match(p.lexer_instance, "/")) {
+            rhs: int = parser_parse_multiplication(p);
+            lhs = make_div_node(lhs, rhs);
+            // Try constant folding
+            lhs = parser_try_constant_fold(p, lhs);
+        } else {
+            break;
+        }
+    }
+    
+    return lhs;
+}
+
+// Parse unary expression
+// unaryExpr : ('-') unaryExpr | primaryExpr
+parser_parse_unary: (inout p: parser) -> int = {
+    if (lexer_match(p.lexer_instance, "-")) {
+        operand: int = parser_parse_unary(p);
+        // Try to fold unary minus
+        return parser_try_unary_minus_fold(p, operand);
+    }
+    return parser_parse_primary(p);
+}
+
+// Parse primary expression
+// primaryExpr : integerLiteral | '(' expression ')'
+parser_parse_primary: (inout p: parser) -> int = {
+    lexer_skip_whitespace(p.lexer_instance);
+    if (lexer_is_number(p.lexer_instance)) {
+        return parser_parse_integer_literal(p);
+    }
+    if (lexer_match(p.lexer_instance, "(")) {
+        expr: int = parser_parse_expression(p);
+        return parser_require(p, expr, ")");
+    }
+    throw (parser_error(p, "Syntax error, expected integer literal or '('"));
+}
+
+// Parse integer literal
+parser_parse_integer_literal: (inout p: parser) -> int = {
+    value: long = lexer_parse_number(p.lexer_instance);
+    return make_constant_node(value, p.start_node);
+}
+
+// Require exact match of syntax
+parser_require: (inout p: parser, n: int, syntax: std::string) -> int = {
+    if (lexer_match(p.lexer_instance, syntax)) {
+        return n;
+    }
+    throw (parser_error_syntax(p, syntax));
+}
+
+// Try constant folding for binary operations
+parser_try_constant_fold: (inout p: parser, nid: int) -> int = {
+    // Check if both operands are constants
+    if (node_nins(nid) == 2) {
+        left_id: int = node_in(nid, 0);
+        right_id: int = node_in(nid, 1);
+        
+        // Check if left is constant
+        left_result: std::pair<bool, long> = try_evaluate_constant(left_id);
+        if (!left_result.first) {
+            return nid;
+        }
+        
+        // Check if right is constant
+        right_result: std::pair<bool, long> = try_evaluate_constant(right_id);
+        if (!right_result.first) {
+            return nid;
+        }
+        
+        // Both are constants, perform the operation based on node type
+        operation: op_type = node_op(nid);
+        left_val: long = left_result.second;
+        right_val: long = right_result.second;
+        
+        // Perform the appropriate operation
+        if (operation == op_type::OP_ADD) {
+            result: long = left_val + right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_SUB) {
+            result: long = left_val - right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_MUL) {
+            result: long = left_val * right_val;
+            return make_constant_node(result, p.start_node);
+        } else if (operation == op_type::OP_DIV) {
+            if (right_val == 0) {
+                throw (std::runtime_error("Division by zero"));
+            }
+            result: long = left_val / right_val;
+            return make_constant_node(result, p.start_node);
+        } else {
+            // Not a binary operation we can fold
+            return nid;
+        }
+    }
+    
+    return nid;
+}
+
+// Try unary minus folding
+parser_try_unary_minus_fold: (inout p: parser, operand: int) -> int = {
+    // Check if operand is a constant
+    const_result: std::pair<bool, long> = try_evaluate_constant(operand);
+    if (const_result.first) {
+        // Fold unary minus: -5 becomes -5
+        return make_constant_node(-const_result.second, p.start_node);
+    }
+    
+    // Otherwise, create the minus node
+    return make_minus_node(operand);
+}
+
+// Error reporting
+parser_error_syntax: (inout p: parser, syntax: std::string) -> std::runtime_error = {
+    return parser_error(p, "Syntax error, expected " + syntax + ": " + lexer_get_any_next_token(p.lexer_instance));
+}
+
+parser_error: (inout p: parser, message: std::string) -> std::runtime_error = {
+    return std::runtime_error(message);
+}

@@ -1,0 +1,308 @@
+// cppfort Canonical Types - Template-based Semantic Layer
+// Per TrikeShed specification: semantic objects first, dense lowered views second
+// These templates map directly to MLIR SoN operations
+
+// ============================================================================
+// CANONICAL SEMANTIC TYPES
+// ============================================================================
+
+// indexed<I, F> - function from domain I to value type
+// Maps to: cpp2.indexed op in SoN dialect
+template<typename I, typename F>
+class indexed {
+    I domain;
+    F at;
+public:
+    using value_type = decltype(at(std::declval<I>()));
+    auto operator[](I i) -> value_type { return at(i); }
+    auto size() -> I { return domain; }
+};
+
+// series<F> - indexed sequence (indexed<int, F>)
+// Maps to: cpp2.indexed op with I=int
+template<typename F>
+using series = indexed<int, F>;
+
+// axis<K> - compile-time rank/key descriptor
+template<typename K>
+struct axis {
+    using key_type = K;
+    static constexpr int rank = 1;
+};
+
+// tensor<K, F> - sparse tensor with coordinate keys
+// Maps to: cpp2.tensor op
+template<typename K, typename F>
+class tensor {
+    series<axis<K>> axes;  // axis<K> is const-generic rank helper
+    F at;                  // coord<K> -> T
+};
+
+// dense_tensor<K, T> - dense array with semantic shape + lowered strides
+// Maps to: cpp2.dense_tensor op with [[contiguous, non_aliasing, pure]]
+// Memory layout: SoA (Structure of Arrays) for cache-friendly access
+template<typename K, typename T>
+class dense_tensor {
+    series<axis<K>> axes;      // semantic shape
+    series<int> strides;        // lowering
+    T* data;              // dense backing
+public:
+    auto operator[](int flat) -> T& { return data[flat]; }
+    // [[contiguous, non_aliasing, pure]]
+    auto data_view() -> T* { return data; }
+    
+    // Zero-cost abstraction: stride computation inlined at compile time
+    template<int Rank>
+    auto compute_offset(coord<Rank> c) const -> int {
+        offset: int = 0;
+        i: int = 0;
+        while i < Rank {
+            offset += c[i] * strides[i];
+            i += 1;
+        }
+        return offset;
+    }
+    
+    // Memory layout: row-major by default for cache locality
+    static constexpr bool row_major = true;
+    static constexpr bool contiguous_memory = true;
+};
+
+// soa_tensor<K, T, N> - Structure of Arrays for high-rank tensors
+// Provides better cache behavior for manifold computations
+template<typename K, typename T, int N>
+class soa_tensor {
+    T* components[N];  // N component arrays
+    series<axis<K>> shape;
+public:
+    // Zero-cost: returns pointer to component array, no bounds check in release
+    auto component(int idx) -> T* { 
+        return components[idx]; 
+    }
+    
+    static constexpr int rank = N;
+    static constexpr bool is_soa = true;
+    static constexpr bool is_cache_friendly = true;
+};
+
+// mem_layout<K> - compile-time memory layout descriptor
+template<typename K>
+struct mem_layout {
+    static constexpr bool row_major = true;
+    static constexpr bool column_major = false;
+    static constexpr bool strided = true;
+    static constexpr bool soa = false;
+    static constexpr int alignment = 32;  // cache line alignment
+};
+
+// atlas<C, Chart> - chart management for manifolds
+// Maps to: cpp2.atlas op
+template<typename C, typename Chart>
+class atlas {
+    indexed<C, Chart> charts;
+public:
+    using coord_type = C;
+    auto operator()(C c) -> Chart { return charts[c]; }
+};
+
+// manifold<C, Chart> - smooth coordinate space (alias for atlas)
+// Maps to: cpp2.manifold op
+template<typename C, typename Chart>
+using manifold = atlas<C, Chart>;
+
+// ============================================================================
+// ZERO-COST ABSTRACTION GUARANTEES
+// These compile-time checks verify that abstractions are optimized away
+// ============================================================================
+
+// [[pure]] concept - functions with no side effects, enable more optimizations
+template<typename F, typename... Args>
+concept pure_function = requires(F f, Args... args) {
+    { f(args...) } -> same_as<void>;
+};
+
+// [[contiguous]] concept - guarantees contiguous memory layout
+template<typename T>
+concept contiguous_container = requires(T t) {
+    { t.data_view() };
+    { t.size() };
+};
+
+// [[noalias]] concept - pointer arguments do not alias
+template<typename T>
+concept non_aliasing_pointer = requires(T* p) {
+    // Compile-time assertion: this is a non-aliasing pointer
+    sizeof(T) > 0;
+};
+
+// optimize_for_cache<N> - hint to compiler for cache line alignment
+template<int N>
+struct alignas(N) cache_line {
+    char data[N];
+};
+
+template<typename T>
+constexpr bool is_zero_cost_abstraction = 
+    pure_function<T> || 
+    contiguous_container<T> ||
+    non_aliasing_pointer<T>;
+
+// ============================================================================
+// GRADIENT PROTOCOL
+// NOT library capture - language-level concept
+// ============================================================================
+
+// grad_expr - concept for differentiable expressions
+// Maps to: cpp2.grad_diff op with pure/no-side-effect
+template<typename E>
+concept grad_expr = requires(E e) {
+    { e + e } -> same_as<E>;
+    { e - e } -> same_as<E>;
+    { e * e } -> same_as<E>;
+    { e / e } -> same_as<E>;
+};
+
+// grad_backend - AD algorithm protocol
+// Maps to: cpp2.grad_diff, cpp2.jacobian, cpp2.matrix_mul ops
+template<typename E, typename V>
+struct grad_backend {
+    auto constant(double) -> E;
+    auto variable(std::string_view) -> V;
+    auto diff(E, V) -> E;
+    auto eval(E, bindings) -> double;
+};
+
+// ============================================================================
+// HELPER TYPES FOR TENSOR OPERATIONS
+// ============================================================================
+
+// coord<K> - coordinate type for tensor keys
+template<int Rank>
+struct coord {
+    int values[Rank];
+    auto operator[](int i) -> int& { return values[i]; }
+};
+
+// coordinate range descriptor
+template<typename K>
+struct range {
+    K start;
+    K end;
+    K step;
+};
+
+// ============================================================================
+// CANONICAL NODE OPTIMIZATION PASSES
+// Compile-time optimization hints and zero-cost transformations
+// ============================================================================
+
+// const_fold<T> - compile-time constant folding for canonical operations
+template<auto Op, typename T>
+struct const_fold {
+    static constexpr T value = Op(T{});
+};
+
+// dead_code_elimination - mark nodes that can be removed
+template<typename Node>
+struct dce_marker {
+    static constexpr bool can_eliminate = false;
+    static constexpr bool is_pure = false;
+};
+
+// inline_hint - compiler hint for inlining small canonical operations
+template<typename F>
+struct inline_hint {
+    static constexpr bool should_inline = true;
+    using func_type = F;
+};
+
+// canonical_opt_level - optimization level selector
+struct canonical_opt_level {
+    static constexpr int level = 2;  // O2 by default
+    static constexpr bool inline_small = true;
+    static constexpr bool fold_constants = true;
+    static constexpr bool eliminate_dead = true;
+};
+
+// ============================================================================
+// CANONICAL TAG DEFINITIONS
+// These tags identify canonical node types in the semantic layer
+// ============================================================================
+
+join_tag : int = 1;
+indexed_tag : int = 2;
+coordinates_tag : int = 3;
+chart_project_tag : int = 4;
+chart_embed_tag : int = 5;
+atlas_locate_tag : int = 6;
+transition_tag : int = 7;
+lower_dense_tag : int = 8;
+normalize_tag : int = 9;
+canonical_ast_tag : int = 10;
+
+// Gradient protocol tags
+grad_expr_tag : int = 11;
+grad_backend_tag : int = 12;
+
+// Parser API tags
+parser_parse_tag : int = 100;
+parser_normalize_tag : int = 101;
+parser_lower_to_son_tag : int = 102;
+
+// Shape descriptors for tensor operations
+shape_tag : int = 20;
+stride_tag : int = 21;
+rank_tag : int = 22;
+
+// Jacobian and gradient computation
+jacobian_tag : int = 30;
+matrix_mul_tag : int = 31;
+gradient_aggregate_tag : int = 32;
+
+// CAS Internment tags
+intern_string_tag : int = 40;
+intern_constant_tag : int = 41;
+
+// ============================================================================
+// MANIFOLD GUIDANCE DOCUMENTATION
+// ============================================================================
+// 
+// The 'manifold' concept here is algebraic/process structure for the compiler:
+// - charts: individual coordinate patches
+// - atlases: collections of charts with overlap/transitions
+// - coordinates: values within a chart's domain
+// - transitions: smooth mappings between chart patches
+// - metric: distance/inner-product structure
+//
+// Dense lowering is a separate explicit boundary from semantic representation.
+// This is NOT learned embeddings or statistical inference.
+// ============================================================================
+
+// ============================================================================
+// EXAMPLE USAGE
+// ============================================================================
+
+/*
+// Create a simple series
+series<double> s = indexed<int, (int)->double> {
+    domain = 10,
+    at = [](int i) { return double(i) * 2.0; }
+};
+
+// Create a manifold (e.g., sphere S2)
+manifold<coord2, series<double>> sphere = atlas {
+    charts = indexed<coord2, (coord2)->series<double>> {
+        domain = coord2{-π..π, 0..π},
+        at = [](coord2 c) {
+            // chart function: φ, θ -> [x, y, z]
+            return series<double>(...)
+        }
+    }
+};
+
+// Use gradient protocol
+auto g = grad(sphere, coords);
+
+// Lower to dense tensor
+dense_tensor<coord2, double> dense = to_dense(g);
+*/

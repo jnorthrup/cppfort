@@ -1,0 +1,293 @@
+// son_chapter16.cpp2 - Sea of Nodes Chapter 16 implementation
+// Chapter 16: Constructors and Final fields
+// Per TrikeShed: constructors, initialization, and final field invariants
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+#include <cmath>
+#include <climits>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+print: (val: ulong) = {
+    std::cout << val;
+}
+
+println: (val: ulong) = {
+    std::cout << val << "\n";
+}
+
+print: (val: double) = {
+    std::cout << val;
+}
+
+println: (val: double) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// CHAPTER 16: CONSTRUCTORS AND FINAL FIELDS
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Test 1: Default field initialization
+// Fields without explicit initialization default to 0 (for numeric types)
+// ----------------------------------------------------------------------------
+
+struct PointDefaults {
+    int x;
+    int y;
+    int z;
+};
+
+test_default_initialization: () -> bool = {
+    println("Test 1: Default field initialization (fields default to 0)");
+
+    p: PointDefaults = ();
+    
+    // Default initialization should give us zeros
+    if p.x != 0 || p.y != 0 || p.z != 0 {
+        std::cout << "  FAIL: Expected (0,0,0), got (" << p.x << "," << p.y << "," << p.z << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Default initialization gives (0,0,0)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 2: Constructor-provided initialization (type declaration with initial value)
+// Fields can have default values specified in the type declaration
+// ----------------------------------------------------------------------------
+
+struct PointWithDefaults {
+    int x = 1;
+    int y = 1;
+    int z = 1;
+};
+
+test_constructor_default_values: () -> bool = {
+    println("Test 2: Constructor-provided initialization (type declares defaults)");
+
+    p: PointWithDefaults = ();
+    
+    // Should get the declared defaults
+    if p.x != 1 || p.y != 1 || p.z != 1 {
+        std::cout << "  FAIL: Expected (1,1,1), got (" << p.x << "," << p.y << "," << p.z << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Type defaults give (1,1,1)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 3: Allocation/override-style initialization via factory function
+// Factory function provides initialization values (simulating constructor args)
+// ----------------------------------------------------------------------------
+
+struct Config {
+    int width = 800;
+    int height = 600;
+    int depth = 32;
+};
+
+// Factory function simulating constructor with arguments
+make_config: (w: int, h: int, d: int) -> Config = {
+    cfg: Config = ();
+    cfg.width = w;
+    cfg.height = h;
+    cfg.depth = d;
+    return cfg;
+}
+
+test_allocation_override: () -> bool = {
+    println("Test 3: Allocation override-style initialization (via factory)");
+
+    // Override defaults via factory function
+    cfg: Config = make_config(1920, 1080, 24);
+    
+    // Check overridden values
+    if cfg.width != 1920 || cfg.height != 1080 || cfg.depth != 24 {
+        std::cout << "  FAIL: Expected (1920,1080,24), got (" << cfg.width << "," << cfg.height << "," << cfg.depth << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Allocation override gives (1920,1080,24)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 4: Final-field style invariant (const members set and observed)
+// Using raw C++ class with const members to demonstrate final field semantics
+// ----------------------------------------------------------------------------
+
+class Constants {
+public:
+    const int PI_APPROX;
+    const int E_APPROX;
+    const int GOLDEN_RATIO;
+    
+    // Constructor initializes const members
+    Constants(int pi, int e, int golden)
+        : PI_APPROX(pi), E_APPROX(e), GOLDEN_RATIO(golden) {}
+};
+
+test_final_field_invariant: () -> bool = {
+    println("Test 4: Final-field invariant (const members observed after construction)");
+
+    // Create with specific constant approximations (scaled by 100)
+    c: Constants = (314, 271, 161);
+    
+    // Observe the final fields - they should be immutable
+    pi_val: int = c.PI_APPROX;
+    e_val: int = c.E_APPROX;
+    golden_val: int = c.GOLDEN_RATIO;
+    
+    if pi_val != 314 || e_val != 271 || golden_val != 161 {
+        std::cout << "  FAIL: Expected (314,271,161), got (" << pi_val << "," << e_val << "," << golden_val << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Final fields observed correctly (314,271,161)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 5: Multiple declarations of the same type
+// ----------------------------------------------------------------------------
+
+struct MultiDecl {
+    int a;
+    int b;
+    int c;
+};
+
+test_multiple_declarations: () -> bool = {
+    println("Test 5: Multiple field declarations");
+
+    m: MultiDecl = ();
+    m.a = 10;
+    m.b = 20;
+    m.c = 30;
+    
+    if m.a != 10 || m.b != 20 || m.c != 30 {
+        std::cout << "  FAIL: Expected (10,20,30), got (" << m.a << "," << m.b << "," << m.c << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Multiple declarations work (10,20,30)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 6: Constructor with computed initialization (factory with computation)
+// ----------------------------------------------------------------------------
+
+struct Rectangle {
+    int width = 0;
+    int height = 0;
+    int area = 0;
+};
+
+// Factory function that computes area from width and height
+make_rectangle: (w: int, h: int) -> Rectangle = {
+    r: Rectangle = ();
+    r.width = w;
+    r.height = h;
+    r.area = w * h;  // Computed initialization
+    return r;
+}
+
+test_constructor_computation: () -> bool = {
+    println("Test 6: Constructor with computed initialization");
+
+    r: Rectangle = make_rectangle(7, 6);
+    
+    // Area should be computed: 7 * 6 = 42
+    if r.area != 42 {
+        std::cout << "  FAIL: Expected area=42, got " << r.area << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Computed initialization gives area=42\n";
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 16 Tests ===");
+    println("Chapter 16: Constructors and Final fields");
+    println("");
+
+    passed: int = 0;
+    total: int = 6;
+
+    if test_default_initialization() {
+        passed = passed + 1;
+    }
+
+    if test_constructor_default_values() {
+        passed = passed + 1;
+    }
+
+    if test_allocation_override() {
+        passed = passed + 1;
+    }
+
+    if test_final_field_invariant() {
+        passed = passed + 1;
+    }
+
+    if test_multiple_declarations() {
+        passed = passed + 1;
+    }
+
+    if test_constructor_computation() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Chapter 16 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}

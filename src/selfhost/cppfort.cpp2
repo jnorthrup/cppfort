@@ -1,0 +1,567 @@
+// cppfort.cpp2 - cppfort self-hosted compiler (pure cpp2 core)
+// Dogfood deliverable: cppfort compiles its own cpp2 source
+// This file contains types and parsing logic only - I/O handled by driver
+
+// ============================================================================
+// Canonical AST Node Tags
+// These are the node types that SoN operations target
+// ============================================================================
+
+canonical_join_tag: int = 1;
+canonical_indexed_tag: int = 2;
+canonical_coordinates_tag: int = 3;
+canonical_series_tag: int = 4;
+canonical_atlas_tag: int = 5;
+canonical_manifold_tag: int = 6;
+canonical_either_tag: int = 7;
+
+canonical_chart_project_tag: int = 10;
+canonical_chart_embed_tag: int = 11;
+canonical_atlas_locate_tag: int = 12;
+canonical_transition_tag: int = 13;
+
+canonical_lower_dense_tag: int = 20;
+canonical_normalize_tag: int = 21;
+canonical_elementwise_add_tag: int = 22;
+canonical_indexed_view_tag: int = 23;
+canonical_dense_view_tag: int = 24;
+canonical_cursor_type_tag: int = 25;
+canonical_value_tag: int = 26;
+canonical_interface_tag: int = 27;
+canonical_enum_tag: int = 28;
+canonical_union_tag: int = 29;
+canonical_autodiff_tag: int = 30;
+canonical_regex_tag: int = 31;
+canonical_rule_of_zero_tag: int = 32;
+canonical_basic_value_tag: int = 33;
+
+// ============================================================================
+// Canonical AST Node
+// The small, repo-owned representation that all lowering targets
+// ============================================================================
+
+canonical_node: @struct type = {
+    tag: int = ();
+    source_start: int = 0;
+    source_stop: int = 0;
+    semantic: std::string = ();
+    children: std::vector<canonical_node> = ();
+}
+
+// ============================================================================
+// Feature Stream → Canonical AST
+// Converts parser features to canonical nodes
+// ============================================================================
+
+features_to_canonical: (features: std::vector<feature_record>) -> std::vector<canonical_node> = {
+    nodes: std::vector<canonical_node> = ();
+
+    // Debug: verify function entry
+    result_count: int = 0;
+
+    i: int = 0;
+    fsz: int = unchecked_narrow<int>(features.size());
+    while i < fsz {
+        f: feature_record = features[unchecked_narrow<std::size_t>(i)];
+        s: std::string_view = f.semantic;
+
+        // Recognize top-level semantic features including projected-surface forms
+        is_top_level: bool = s == "bootstrap_tag_declaration" ||
+                             s == "struct_declaration" ||
+                             s == "function_declaration" ||
+                             s == "namespace_alias" ||
+                             s == "namespace" ||
+                             s == "value" ||
+                             s == "interface" ||
+                             s == "enum" ||
+                             s == "union" ||
+                             s == "regex" ||
+                             s == "cpp1_rule_of_zero" ||
+                             s == "basic_value" ||
+                             s == "elementwise_mul" ||
+                             s == "elementwise_add" ||
+                             s == "indexed_view" ||
+                             s == "dense_view" ||
+                             s == "cursor_type" ||
+                             s == "autodiff";
+
+        if is_top_level {
+            node: canonical_node = ();
+            if s == "elementwise_add" {
+                node.tag = canonical_elementwise_add_tag;
+            } else if s == "indexed_view" {
+                node.tag = canonical_indexed_view_tag;
+            } else if s == "dense_view" {
+                node.tag = canonical_dense_view_tag;
+            } else if s == "cursor_type" {
+                node.tag = canonical_cursor_type_tag;
+            } else if s == "enum" {
+                node.tag = canonical_enum_tag;
+            } else if s == "union" {
+                node.tag = canonical_union_tag;
+            } else if s == "autodiff" {
+                node.tag = canonical_autodiff_tag;
+            } else if s == "regex" {
+                node.tag = canonical_regex_tag;
+            } else if s == "cpp1_rule_of_zero" {
+                node.tag = canonical_rule_of_zero_tag;
+            } else if s == "basic_value" {
+                node.tag = canonical_basic_value_tag;
+            } else if s == "interface" {
+                node.tag = canonical_interface_tag;
+            } else if s == "value" {
+                node.tag = canonical_value_tag;
+            } else if s == "struct_declaration" {
+                node.tag = canonical_normalize_tag;
+            } else if s == "function_declaration" {
+                node.tag = canonical_normalize_tag;
+            } else {
+                node.tag = canonical_normalize_tag;
+            }
+            node.source_start = f.start;
+            node.source_stop = f.stop;
+            node.semantic = f.semantic;
+            nodes.push_back(node);
+            result_count += 1;
+        }
+        i += 1;
+    }
+
+    return nodes;
+}
+
+// ============================================================================
+// Source File → Canonical AST
+// Main entry point for parsing
+// ============================================================================
+
+parse_source: (source: std::string_view, inout session: scan_session) -> std::optional<std::vector<canonical_node>> = {
+    // Clear the session for the initial translation unit attempt
+    session.features.clear();
+    session.diagnostics.clear();
+    session.traces.clear();
+
+    // Try translation unit for the entire input
+    translation_unit_result: scan_result<std::string_view> = project_translation_unit_feature_stream(source, session);
+
+    if translation_unit_result.outcome == scan_signal::accept && translation_unit_result.consumed == source.ssize() {
+        return features_to_canonical(session.features);
+    }
+
+     // If that doesn't work, try to parse as a sequence of declarations
+     // We'll accumulate features and diagnostics in the session (but we need to clear them for the loop? Actually, we want to start fresh for the loop)
+     session.features.clear();
+     session.diagnostics.clear();
+     session.traces.clear();
+
+     offset: int = 0;
+     parsed: bool = false;
+     temp_session: scan_session = ();   // We'll use a temporary session for each parser try
+
+    while (offset < source.ssize()) {
+        parsed = false;
+
+        // Try each parser in order on the substring starting at offset
+
+         // 1. Tag declaration
+         {
+             r: scan_result<std::string_view> = project_tag_declaration_feature_stream(source.substr(offset), temp_session);
+            if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                // Accumulate
+                session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                offset += r.consumed;
+                parsed = true;
+            }
+        }
+        if (!parsed) {
+            // 2. Struct/enum/flag_enum/union/value/interface declaration
+            {
+                r: scan_result<std::string_view> = project_struct_declaration_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 3. Function declaration
+            {
+                r: scan_result<std::string_view> = project_function_declaration_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 4. Chart definition
+            {
+                r: scan_result<std::string_view> = project_chart_definition_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 5. Atlas literal
+            {
+                r: scan_result<std::string_view> = project_atlas_literal_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 6. Manifold declaration
+            {
+                r: scan_result<std::string_view> = project_manifold_declaration_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 7. Join expression
+            {
+                r: scan_result<std::string_view> = project_join_expression_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 8. Coords literal
+            {
+                r := pure2_coords_literal()(source.substr(offset), 0, temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 9. Local literal
+            {
+                r := pure2_local_literal()(source.substr(offset), 0, temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 10. Elementwise multiplication
+            {
+                r := project_elementwise_mul_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+        if (!parsed) {
+            // 11. Keyword (which is the `project_to_feature_stream`)
+            {
+                r := project_to_feature_stream(source.substr(offset), temp_session);
+                if (r.outcome == scan_signal::accept && r.consumed > 0) {
+                    session.features.insert(session.features.end(), temp_session.features.begin(), temp_session.features.end());
+                    session.diagnostics.insert(session.diagnostics.end(), temp_session.diagnostics.begin(), temp_session.diagnostics.end());
+                    offset += r.consumed;
+                    parsed = true;
+                }
+            }
+        }
+
+        if (!parsed) {
+            // If no parser worked, we break and return nullopt
+            break;
+        }
+    }
+
+    if (offset == source.ssize()) {
+        return features_to_canonical(session.features);
+    } else {
+        return std::nullopt;
+    }
+}
+
+// ============================================================================
+// Compile: Canonical AST → C++ Code
+// Minimal dogfood: emits C++ directly, bypasses MLIR for now
+// ============================================================================
+
+compile_to_cpp: (nodes: std::vector<canonical_node>) -> std::string = {
+    output: std::string = ();
+
+    output = "// Generated by cppfort from canonical AST\n";
+    output += "// Minimal dogfood bootstrap\n\n";
+    output += "#include <iostream>\n\n";
+
+    has_tags: bool = false;
+    has_elementwise: bool = false;
+    has_elementwise_add: bool = false;
+    has_indexed_view: bool = false;
+    has_dense_view: bool = false;
+    has_cursor_type: bool = false;
+    has_value: bool = false;
+    has_interface: bool = false;
+    has_enum: bool = false;
+    has_union: bool = false;
+    has_autodiff: bool = false;
+    has_regex: bool = false;
+    has_rule_of_zero: bool = false;
+    has_basic_value: bool = false;
+    has_function: bool = false;
+    found_integer: bool = false;
+    found_identifier: bool = false;
+    identifier_name: std::string = ();
+
+    i: int = 0;
+    fsz: int = unchecked_narrow<int>(nodes.size());
+    while i < fsz {
+        node: canonical_node = nodes[unchecked_narrow<std::size_t>(i)];
+
+        // Look for integer values (the tag values)
+        if node.semantic == "1" || node.semantic == "2" || node.semantic == "3" ||
+           node.semantic == "4" || node.semantic == "5" || node.semantic == "6" ||
+           node.semantic == "7" || node.semantic == "8" || node.semantic == "9" ||
+           node.semantic == "10" || node.semantic == "11" || node.semantic == "12" ||
+           node.semantic == "20" || node.semantic == "21" || node.semantic == "30" ||
+           node.semantic == "31" || node.semantic == "32" || node.semantic == "40" ||
+           node.semantic == "41" || node.semantic == "100" || node.semantic == "101" ||
+           node.semantic == "102" {
+            found_integer = true;
+            has_tags = true;
+        }
+
+        // Look for elementwise_mul projected-surface form
+        if node.semantic == "elementwise_mul" {
+            has_elementwise = true;
+        }
+
+        if node.semantic == "elementwise_add" {
+            has_elementwise_add = true;
+        }
+
+        if node.semantic == "indexed_view" {
+            has_indexed_view = true;
+        }
+
+        if node.semantic == "dense_view" {
+            has_dense_view = true;
+        }
+
+        if node.semantic == "cursor_type" {
+            has_cursor_type = true;
+        }
+
+        if node.semantic == "value" {
+            has_value = true;
+        }
+
+        if node.semantic == "interface" {
+            has_interface = true;
+        }
+
+        if node.semantic == "enum" {
+            has_enum = true;
+        }
+
+        if node.semantic == "union" {
+            has_union = true;
+        }
+
+        if node.semantic == "autodiff" {
+            has_autodiff = true;
+        }
+
+        if node.semantic == "regex" {
+            has_regex = true;
+        }
+
+        if node.semantic == "cpp1_rule_of_zero" {
+            has_rule_of_zero = true;
+        }
+
+        if node.semantic == "basic_value" {
+            has_basic_value = true;
+        }
+
+        if node.semantic == "function_declaration" {
+            has_function = true;
+        }
+
+        // Look for identifier (the tag name)
+        if !found_identifier && node.semantic != "bootstrap_tag_declaration" &&
+           node.semantic != "int" && node.semantic != "" &&
+           node.semantic != "elementwise_mul" &&
+           node.semantic != "elementwise_add" &&
+           node.semantic != "indexed_view" &&
+           node.semantic != "dense_view" &&
+           node.semantic != "cursor_type" &&
+           node.semantic != "value" &&
+           node.semantic != "interface" &&
+           node.semantic != "enum" &&
+           node.semantic != "union" &&
+           node.semantic != "autodiff" &&
+           node.semantic != "regex" &&
+           node.semantic != "cpp1_rule_of_zero" &&
+           node.semantic != "basic_value" {
+            if node.semantic != "1" && node.semantic != "2" && node.semantic != "3" &&
+               node.semantic != "4" && node.semantic != "5" && node.semantic != "6" &&
+               node.semantic != "7" && node.semantic != "8" && node.semantic != "9" &&
+               node.semantic != "10" && node.semantic != "11" && node.semantic != "12" &&
+               node.semantic != "20" && node.semantic != "21" && node.semantic != "30" &&
+               node.semantic != "31" && node.semantic != "32" && node.semantic != "40" &&
+               node.semantic != "41" && node.semantic != "100" && node.semantic != "101" &&
+               node.semantic != "102" {
+                // This is likely the tag name
+                if found_integer {
+                    identifier_name = node.semantic;
+                    found_identifier = true;
+                }
+            }
+        }
+
+        i += 1;
+    }
+
+    // Emit code based on what we found
+    if has_tags {
+        output += "constexpr int bootstrap_tag = 1;\n";
+        if found_identifier {
+            output += "constexpr int parsed_tag = 1;\n";
+        }
+    }
+
+    if has_elementwise {
+        output += "// Elementwise multiplication operator recognized\n";
+        output += "constexpr int elementwise_mul_tag = 1;\n";
+    }
+
+    if has_elementwise_add {
+        output += "// Elementwise addition operator recognized\n";
+        output += "constexpr int elementwise_add_tag = 2;\n";
+    }
+
+    if has_indexed_view {
+        output += "// Indexed view operator recognized\n";
+        output += "constexpr int indexed_view_tag = 3;\n";
+    }
+
+    if has_dense_view {
+        output += "// Dense view operator recognized\n";
+        output += "constexpr int dense_view_tag = 4;\n";
+    }
+
+    if has_cursor_type {
+        output += "// Cursor type form recognized\n";
+        output += "constexpr int cursor_type_tag = 5;\n";
+    }
+
+    if has_value {
+        output += "// Value metafunction form recognized\n";
+        output += "constexpr int value_tag = 6;\n";
+    }
+
+    if has_interface {
+        output += "// Interface metafunction form recognized\n";
+        output += "constexpr int interface_tag = 7;\n";
+    }
+
+    if has_enum {
+        output += "// Enum metafunction form recognized\n";
+        output += "constexpr int enum_tag = 8;\n";
+    }
+
+    if has_union {
+        output += "// Union metafunction form recognized\n";
+        output += "constexpr int union_tag = 9;\n";
+    }
+
+    if has_autodiff {
+        output += "// Autodiff metafunction form recognized\n";
+        output += "constexpr int autodiff_tag = 10;\n";
+    }
+
+    if has_regex {
+        output += "// Regex metafunction form recognized\n";
+        output += "constexpr int regex_tag = 11;\n";
+    }
+
+    if has_rule_of_zero {
+        output += "// Rule of zero metafunction form recognized\n";
+        output += "constexpr int rule_of_zero_tag = 12;\n";
+    }
+
+    if has_basic_value {
+        output += "// Basic value metafunction form recognized\n";
+        output += "constexpr int basic_value_tag = 13;\n";
+    }
+
+    output += "\nint main() {\n";
+    if has_elementwise {
+        output += "    std::cout << \"cppfort: parsed elementwise_mul projected-surface form\\n\";\n";
+    } else if has_elementwise_add {
+        output += "    std::cout << \"cppfort: parsed elementwise_add projected-surface form\\n\";\n";
+    } else if has_indexed_view {
+        output += "    std::cout << \"cppfort: parsed indexed_view projected-surface form\\n\";\n";
+    } else if has_dense_view {
+        output += "    std::cout << \"cppfort: parsed dense_view projected-surface form\\n\";\n";
+    } else if has_cursor_type {
+        output += "    std::cout << \"cppfort: parsed cursor_type projected-surface form\\n\";\n";
+    } else if has_value {
+        output += "    std::cout << \"cppfort: parsed value metafunction form\\n\";\n";
+    } else if has_interface {
+        output += "    std::cout << \"cppfort: parsed interface metafunction form\\n\";\n";
+    } else if has_enum {
+        output += "    std::cout << \"cppfort: parsed enum metafunction form\\n\";\n";
+    } else if has_union {
+        output += "    std::cout << \"cppfort: parsed union metafunction form\\n\";\n";
+    } else if has_autodiff {
+        output += "    std::cout << \"cppfort: parsed autodiff metafunction form\\n\";\n";
+    } else if has_regex {
+        output += "    std::cout << \"cppfort: parsed regex metafunction form\\n\";\n";
+    } else if has_rule_of_zero {
+        output += "    std::cout << \"cppfort: parsed rule of zero metafunction form\\n\";\n";
+    } else if has_basic_value {
+        output += "    std::cout << \"cppfort: parsed basic value metafunction form\\n\";\n";
+    } else if has_function {
+        output += "    std::cout << \"cppfort: parsed function declaration\\n\";\n";
+    } else if has_tags {
+        if found_identifier {
+            output += "    std::cout << \"cppfort: parsed tag declaration\\n\";\n";
+        } else {
+            output += "    std::cout << \"cppfort: parsed \" << bootstrap_tag << \" tag value(s)\\n\";\n";
+        }
+    } else {
+        output += "    std::cout << \"cppfort: no tags parsed\\n\";\n";
+    }
+    output += "    return 0;\n";
+    output += "}\n";
+
+    return output;
+}

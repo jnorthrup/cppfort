@@ -1,0 +1,39 @@
+// cpp2_main.cpp2 — main program for cpp2 bitmap scanner compiler
+//
+// Reads a .cpp2 file, parses it, generates C++ output.
+// Usage: cpp2_bin input.cpp2 > output.cpp
+
+#include "cpp2.h2"
+#include "generator.h2"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+main: (args) -> int = {
+    if args.ssize() < 2 {
+        std::cerr << "Usage: cpp2_bin input.cpp2\n";
+        return 1;
+    }
+
+    // read input file
+    filename := args[1];
+    file: std::ifstream = (std::string(filename));
+    if !file.is_open() {
+        std::cerr << "Error: cannot open " << filename << "\n";
+        return 1;
+    }
+
+    buf: std::stringstream = ();
+    buf << file.rdbuf();
+    src := buf.str();
+
+    // parse
+    decls := cpp2::parse(src);
+    std::cerr << "Parsed " << decls.ssize() << " declarations\n";
+
+    // generate C++
+    output := cpp2::generate(src, decls);
+    std::cout << output;
+
+    return 0;
+}

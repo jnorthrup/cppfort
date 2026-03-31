@@ -1,0 +1,114 @@
+// trikeshed_manifold.cpp2 - TrikeShed Manifold port
+// Per TrikeShed specification: semantic objects first, dense lowered views second
+// Manifold is algebraic/process structure for the compiler, NOT a learned model
+
+// ============================================================================
+// COORDINATES<T> - Semantic coordinate type (lazy, indexed)
+// Maps to: cpp2.coordinates op in SoN dialect
+// ============================================================================
+
+coordinates: @struct <T: type> type = {
+    dimension: int = ();
+    axes: std::function<T (int)> = ();
+}
+
+// ============================================================================
+// DENSE_COORDINATES<T> - Materialized coordinate storage
+// This is intentionally NOT a series so semantic and dense layers remain distinct
+// Maps to: cpp2.dense_tensor op in SoN dialect
+// ============================================================================
+
+dense_coordinates: @struct <T: type> type = {
+    axes: std::vector<T> = ();
+}
+
+// ============================================================================
+// COORDINATES ACCESS
+// ============================================================================
+
+c_at: <T: type>(c: coordinates<T>, axis: int) -> T = c.axes(axis);
+
+c_dimension: <T: type>(c: coordinates<T>) -> int = c.dimension;
+
+d_dimension: <T: type>(d: dense_coordinates<T>) -> int = d.axes.size() as int;
+
+d_at: <T: type>(d: dense_coordinates<T>, axis: int) -> T = d.axes[axis as std::size_t];
+
+// ============================================================================
+// COORDINATES FACTORIES
+// Maps to: cpp2.coordinates_op in SoN dialect
+// ============================================================================
+
+// Note: make_coordinates requires SoN dialect for lambda lowering
+// Canonical node: coordinates_op(dimension, axes_access_fn)
+
+// ============================================================================
+// CHART<C, P> - Coordinate chart (one patch of a manifold)
+// Maps to: cpp2.chart op in SoN dialect
+// ============================================================================
+
+chart: @struct <C: type, P: type> type = {
+    name: std::string = ();
+    dimension: int = ();
+    // Note: contains, project, embed require SoN dialect support for closures
+}
+
+// ============================================================================
+// ATLAS<C, P> - Collection of charts
+// Maps to: cpp2.atlas op in SoN dialect
+// ============================================================================
+
+atlas: @struct <C: type, P: type> type = {
+    charts: std::vector<chart<C, P>> = ();
+}
+
+// ============================================================================
+// ATLAS OPERATIONS
+// ============================================================================
+
+atlas_size: <C: type, P: type>(a: atlas<C, P>) -> int = a.charts.size() as int;
+
+atlas_dimension: <C: type, P: type>(a: atlas<C, P>) -> int = {
+    if a.charts.empty() {
+        return 0;
+    }
+    return a.charts[0].dimension;
+}
+
+atlas_chart_by_name: <C: type, P: type>(a: atlas<C, P>, name: std::string) -> std::optional<chart<C, P>> = {
+    idx: int = 0;
+    while idx < (a.charts.size() as int) {
+        if a.charts[idx as std::size_t].name == name {
+            return a.charts[idx as std::size_t];
+        }
+        idx += 1;
+    }
+    return std::nullopt;
+}
+
+make_atlas: <C: type, P: type>(charts: std::vector<chart<C, P>>) -> atlas<C, P> = (charts);
+
+// ============================================================================
+// MANIFOLD<C, P> - Smooth coordinate space (alias for atlas with transition)
+// Maps to: cpp2.manifold op in SoN dialect
+// ============================================================================
+
+manifold: @struct <C: type, P: type> type = {
+    atlas_: atlas<C, P> = ();
+}
+
+// ============================================================================
+// MANIFOLD OPERATIONS
+// ============================================================================
+
+m_dimension: <C: type, P: type>(m: manifold<C, P>) -> int = atlas_dimension(m.atlas_);
+
+m_charts: <C: type, P: type>(m: manifold<C, P>) -> std::vector<chart<C, P>> = m.atlas_.charts;
+
+make_manifold: <C: type, P: type>(a: atlas<C, P>) -> manifold<C, P> = (a);
+
+// ============================================================================
+// TRANSITION - Maps to transition_op in SoN dialect
+// Canonical node: transition_op(manifold, from_chart, to_chart, coords)
+// Note: Full implementation requires SoN dialect support for chart lookup
+// ============================================================================

@@ -1,0 +1,8 @@
+// phase2_smoke_10: exercises flag_enum metafunction parser-first surface (@flag_enum type)
+// Testing without type parameter first
+
+file_attributes: @flag_enum type = {
+    cached;
+    current;
+    obsolete;
+}

@@ -1,0 +1,15 @@
+// return_node.cpp2 - Return Node
+// Per TrikeShed: semantic objects first, hermetic abstractions
+
+// ============================================================================
+// RETURN NODE
+// Has two inputs: control node and data node
+// Functions as a Stop node in Chapter 1
+// Is a CFG node
+// ============================================================================
+
+// Factory
+make_return_node: (ctrl: int, data: int) -> int = {
+    inputs: std::vector<int> = (ctrl, data);
+    return make_node(inputs, true); // is_cfg = true
+}

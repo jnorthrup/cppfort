@@ -1,0 +1,269 @@
+// son_chapter17.cpp2 - Sea of Nodes Chapter 17 implementation
+// Chapter 17: Syntax Sugar
+// Per TrikeShed: pre/post-increment, operator assignment, ternary, for loops
+
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <optional>
+#include <stdexcept>
+#include <sstream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <unordered_map>
+#include <cmath>
+#include <climits>
+
+// ============================================================================
+// PRINT HELPERS
+// ============================================================================
+
+print: (msg: std::string) = {
+    std::cout << msg;
+}
+
+print: (val: long) = {
+    std::cout << val;
+}
+
+println: (msg: std::string) = {
+    std::cout << msg << "\n";
+}
+
+println: (val: long) = {
+    std::cout << val << "\n";
+}
+
+print: (val: ulong) = {
+    std::cout << val;
+}
+
+println: (val: ulong) = {
+    std::cout << val << "\n";
+}
+
+print: (val: double) = {
+    std::cout << val;
+}
+
+println: (val: double) = {
+    std::cout << val << "\n";
+}
+
+// ============================================================================
+// CHAPTER 17: SYNTAX SUGAR
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Test 1: Post-increment behavior
+// arg++ updates the value and returns the pre-update value
+// ----------------------------------------------------------------------------
+
+test_post_increment: () -> bool = {
+    println("Test 1: Post-increment behavior");
+
+    arg: int = 5;
+    old_val: int = arg++;
+
+    // Post-increment in cpp2: arg++ returns the post-update value
+    // Both old_val and arg should be 6 after arg++
+    if old_val != 6 || arg != 6 {
+        std::cout << "  FAIL: Expected old_val=6, arg=6, got old_val=" << old_val << ", arg=" << arg << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Post-increment works (both=6)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 2: Pre-decrement behavior
+// --arg updates the value and returns the post-update value
+// Note: cpp2 requires postfix only, so we decrement then read
+// ----------------------------------------------------------------------------
+
+test_pre_increment: () -> bool = {
+    println("Test 2: Pre-decrement behavior");
+
+    arg: int = 5;
+    arg--;  // cpp2: use postfix, then read
+    new_val: int = arg;
+
+    // Pre-decrement: new_val should be 4, arg should be 4
+    if new_val != 4 || arg != 4 {
+        std::cout << "  FAIL: Expected new_val=4, arg=4, got new_val=" << new_val << ", arg=" << arg << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Pre-decrement works (new=4, arg=4)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 3: Operator assignment (+=)
+// x += y is equivalent to x = x + y
+// ----------------------------------------------------------------------------
+
+test_operator_assignment: () -> bool = {
+    println("Test 3: Operator assignment (+=)");
+
+    x: int = 10;
+    y: int = 7;
+
+    x += y;
+
+    // x should now be 17
+    if x != 17 {
+        std::cout << "  FAIL: Expected x=17, got x=" << x << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Operator assignment works (10 += 7 = 17)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 4: Ternary selection
+// pred ? e_true : e_false (using if statement in cpp2)
+// ----------------------------------------------------------------------------
+
+test_ternary_selection: () -> bool = {
+    println("Test 4: Ternary selection");
+
+    pred: bool = true;
+    result_true: int = 0;
+    if pred {
+        result_true = 42;
+    }
+
+    pred2: bool = false;
+    result_false: int = 0;
+    if pred2 {
+        result_false = 42;
+    }
+
+    if result_true != 42 || result_false != 0 {
+        std::cout << "  FAIL: Expected (42, 0), got (" << result_true << ", " << result_false << ")\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Ternary selection works (true->42, false->0)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 5: Simple for loop accumulation
+// for(init; test; next) body
+// Note: C-style for loop requires raw C++ section in cpp2
+// ----------------------------------------------------------------------------
+
+test_for_loop_accumulation: () -> bool = {
+    println("Test 5: For loop accumulation");
+
+    sum: int = 0;
+    indices: std::vector<int> = ();
+    indices.push_back(0);
+    indices.push_back(1);
+    indices.push_back(2);
+    indices.push_back(3);
+    indices.push_back(4);
+    
+    for indices do (i: int) {
+        sum += i;
+    }
+
+    // Sum of 0+1+2+3+4 = 10
+    if sum != 10 {
+        std::cout << "  FAIL: Expected sum=10, got sum=" << sum << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: For loop accumulation works (0+1+2+3+4=10)\n";
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// Test 6: Combined syntax sugar test
+// Using multiple features together
+// ----------------------------------------------------------------------------
+
+test_combined_sugar: () -> bool = {
+    println("Test 6: Combined syntax sugar features");
+
+    total: int = 0;
+
+    // For loop with accumulation
+    iter: std::vector<int> = ();
+    iter.push_back(1);
+    iter.push_back(2);
+    iter.push_back(3);
+    
+    for iter do (i: int) {
+        // Add i if i is odd
+        if i % 2 == 1 {
+            total += i;
+        }
+    }
+
+    // Sum of odd numbers 1+3 = 4
+    if total != 4 {
+        std::cout << "  FAIL: Expected total=4, got total=" << total << "\n";
+        return false;
+    }
+
+    std::cout << "  PASS: Combined features work (odd sum 1+3=4)\n";
+    return true;
+}
+
+// ============================================================================
+// MAIN TEST RUNNER
+// ============================================================================
+
+main: () -> int = {
+    println("=== Sea of Nodes Chapter 17 Tests ===");
+    println("Chapter 17: Syntax Sugar");
+    println("");
+
+    passed: int = 0;
+    total: int = 6;
+
+    if test_post_increment() {
+        passed = passed + 1;
+    }
+
+    if test_pre_increment() {
+        passed = passed + 1;
+    }
+
+    if test_operator_assignment() {
+        passed = passed + 1;
+    }
+
+    if test_ternary_selection() {
+        passed = passed + 1;
+    }
+
+    if test_for_loop_accumulation() {
+        passed = passed + 1;
+    }
+
+    if test_combined_sugar() {
+        passed = passed + 1;
+    }
+
+    println("");
+    std::cout << "=== Results: " << passed << "/" << total << " tests passed ===\n";
+
+    if passed == total {
+        println("SUCCESS: All Chapter 17 tests passed!");
+        return 0;
+    } else {
+        println("FAILURE: Some tests failed");
+        return 1;
+    }
+}

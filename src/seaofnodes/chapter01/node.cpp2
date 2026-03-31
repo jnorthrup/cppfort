@@ -1,0 +1,90 @@
+// node.cpp2 - Sea of Nodes base Node class
+// Per TrikeShed: semantic objects first, hermetic abstractions
+// Using node registry pattern to avoid recursive type issues
+
+// ============================================================================
+// NODE REGISTRY
+// Global registry of all nodes in the compilation
+// ============================================================================
+
+node_record: @struct type = {
+    nid: int = ();
+    input_ids: std::vector<int> = ();
+    output_ids: std::vector<int> = ();
+    is_cfg: bool = ();
+}
+
+// Global node registry - initialized as empty vector
+node_registry: std::vector<node_record> = ();
+
+// Global constant value registry - initialized as empty vector
+constant_values: std::vector<long> = ();
+
+// Factory function for creating a node
+make_node: (input_ids: std::vector<int>, is_cfg: bool) -> int = {
+    nid: int = node_registry.ssize() as int;
+    record: node_record = ();
+    record.nid = nid;
+    record.input_ids = input_ids;
+    record.output_ids = std::vector<int>();
+    record.is_cfg = is_cfg;
+
+    // Register this node
+    node_registry.push_back(record);
+
+    // Register this node as an output of all its inputs
+    // Using index-based iteration
+    i: int = 0;
+    while (i < input_ids.ssize()) {
+        input_id: int = input_ids[i];
+        if (input_id >= 0 && input_id < node_registry.ssize()) {
+            node_registry[input_id].output_ids.push_back(nid);
+        }
+        i++;
+    }
+
+    return nid;
+}
+
+// Accessors
+node_in: (nid: int, i: int) -> int = {
+    return node_registry[nid].input_ids[i];
+}
+
+node_nins: (nid: int) -> int = {
+    return node_registry[nid].input_ids.ssize();
+}
+
+node_nouts: (nid: int) -> int = {
+    return node_registry[nid].output_ids.ssize();
+}
+
+node_is_unused: (nid: int) -> bool = {
+    return node_registry[nid].output_ids.empty();
+}
+
+node_is_cfg: (nid: int) -> bool = {
+    return node_registry[nid].is_cfg;
+}
+
+// Reset registry (for testing)
+reset_nodes: () -> void = {
+    node_registry.clear();
+    constant_values.clear();
+}
+
+// Constant value operations
+set_constant_value: (nid: int, val: long) -> void = {
+    // Ensure the registry is large enough
+    while (nid >= node_registry.ssize()) {
+        constant_values.push_back(0);
+    }
+    constant_values[nid] = val;
+}
+
+get_constant_value: (nid: int) -> long = {
+    if (nid < 0 || nid >= node_registry.ssize()) {
+        return 0;
+    }
+    return constant_values[nid];
+}

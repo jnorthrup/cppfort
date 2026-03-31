@@ -1,0 +1,104 @@
+// trikeshed.h2 — minimal TrikeShed abstractions for cpp2
+//
+// USE THESE FIRST.  DO NOT WRITE PROCEDURAL C.
+// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/lib/
+//
+// This is the MINIMAL set needed for the bitmap scanner.
+// Full Join/Series/Either extensions can be added after self-hosting.
+
+#include <string_view>
+#include <vector>
+#include <string>
+
+cpp2: namespace = {
+
+// char_series — the cursor type that std::string_view is missing
+// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/lib/CharSeries.kt
+char_series: type = {
+    src: std::string_view = ();
+    pos: int = 0;
+    lim: int = 0;
+
+    // construct from string_view
+    operator=: (out this, s: std::string_view) = {
+        src = s;
+        pos = 0;
+        lim = unchecked_narrow<int>(s.ssize());
+    }
+
+    operator=: (out this, s: std::string_view, p: int, l: int) = {
+        src = s;
+        pos = p;
+        lim = l;
+    }
+
+    // remaining chars
+    res: (this) -> int == lim - pos;
+    hasRemaining: (this) -> bool == pos < lim;
+
+    // current char
+    get: (this) -> char == src[pos];
+
+    // advance
+    next: (inout this) -> char = {
+        c := src[pos];
+        pos += 1;
+        return c;
+    }
+
+    // decrement
+    dec: (inout this) = { pos -= 1; }
+
+    // flip — reverse direction (pos ↔ lim)
+    flip: (inout this) = {
+        tmp := pos;
+        pos = lim;
+        lim = tmp;
+    }
+
+    // trim — skip whitespace
+    trim: (inout this) = {
+        while pos < lim && std::isspace(src[pos]) != 0 { pos += 1; }
+    }
+
+    // seekTo — advance to character
+    seekTo: (inout this, c: char) -> bool = {
+        while pos < lim {
+            if src[pos] == c { pos += 1; return true; }
+            pos += 1;
+        }
+        return false;
+    }
+
+    // seekTo with escape
+    seekToEscaped: (inout this, c: char, esc: char) -> bool = {
+        while pos < lim {
+            if src[pos] == esc { pos += 2; continue; }
+            if src[pos] == c { pos += 1; return true; }
+            pos += 1;
+        }
+        return false;
+    }
+
+    // slice — get remaining as string_view
+    slice: (this) -> std::string_view = { return src.substr(pos, lim - pos); }
+
+    // clone — copy cursor
+    clone: (this) -> char_series = { return (src, pos, lim); }
+
+    // limit — set new limit
+    setLim: (inout this, newLim: int) = { lim = newLim; }
+    setPos: (inout this, newPos: int) = { pos = newPos; }
+
+    // asString — convert current view to string
+    asString: (this) -> std::string = { return std::string(src.substr(pos, lim - pos)); }
+
+    // take — get first n chars as string_view
+    take: (this, n: int) -> std::string_view = {
+        end := pos + n;
+        if end > lim { end = lim; }
+        return src.substr(pos, end - pos);
+    }
+}
+
+}

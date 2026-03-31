@@ -1,0 +1,4 @@
+// phase1_smoke_05: exercises cursor_type projected-surface form (series<series>)
+// This is a minimal accepted translation unit using the bare cursor_type syntax.
+
+series<series>

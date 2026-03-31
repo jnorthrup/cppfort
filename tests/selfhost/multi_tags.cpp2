@@ -1,0 +1,4 @@
+// Multiple tag declarations for TDD roundtrip testing
+alpha: int = 1;
+beta: int = 2;
+gamma: int = 3;

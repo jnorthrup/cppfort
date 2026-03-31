@@ -1,0 +1,44 @@
+// trikeshed_either.cpp2 - TrikeShed Either<Left, Right> port
+// Per TrikeShed specification: semantic objects first, dense lowered views second
+
+// ============================================================================
+// EITHER<LEFT, RIGHT> - Sum type
+// ============================================================================
+
+either: @struct <L: type, R: type> type = {
+    is_left: bool = ();
+    left_value: std::optional<L> = ();
+    right_value: std::optional<R> = ();
+}
+
+// ============================================================================
+// EITHER FACTORIES
+// ============================================================================
+
+make_left: <L: type, R: type>(l: L) -> either<L, R> = {
+    result: either<L, R> = ();
+    result.is_left = true;
+    result.left_value = std::optional<L>(l);
+    result.right_value = std::nullopt;
+    return result;
+}
+
+make_right: <L: type, R: type>(r: R) -> either<L, R> = {
+    result: either<L, R> = ();
+    result.is_left = false;
+    result.left_value = std::nullopt;
+    result.right_value = std::optional<R>(r);
+    return result;
+}
+
+// ============================================================================
+// EITHER ACCESS
+// ============================================================================
+
+is_left: <L: type, R: type>(e: either<L, R>) -> bool = e.is_left;
+
+is_right: <L: type, R: type>(e: either<L, R>) -> bool = !e.is_left;
+
+left_or_null: <L: type, R: type>(e: either<L, R>) -> std::optional<L> = e.left_value;
+
+right_or_null: <L: type, R: type>(e: either<L, R>) -> std::optional<R> = e.right_value;

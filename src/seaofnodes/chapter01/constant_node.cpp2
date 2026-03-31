@@ -1,0 +1,19 @@
+// constant_node.cpp2 - Constant Node
+// Per TrikeShed: semantic objects first, hermetic abstractions
+
+// ============================================================================
+// CONSTANT NODE
+// Represents a constant value (integer literal)
+// Has no semantic inputs, but takes Start as input for graph walk
+// ============================================================================
+
+// Factory
+make_constant_node: (val: long, start_node_id: int) -> int = {
+    inputs: std::vector<int> = (start_node_id);
+    nid: int = make_node(inputs, false); // is_cfg = false
+
+    // Store the value in the registry
+    set_constant_value(nid, val);
+
+    return nid;
+}

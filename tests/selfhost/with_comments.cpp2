@@ -1,0 +1,6 @@
+// This file tests comment handling in the parser
+// Comments should be skipped by skip_ws
+
+visible_tag: int = 10;
+// hidden_tag: int = 99;
+another_tag: int = 20;

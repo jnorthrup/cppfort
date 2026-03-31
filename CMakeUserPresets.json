@@ -1,0 +1,65 @@
+{
+  "version": 3,
+  "vendor": {
+    "jetbrains": {
+      "workspace": "${workspaceDir}"
+    }
+  },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "homebrew-llvm-debug",
+      "displayName": "Homebrew LLVM Debug",
+      "description": "Debug build with Homebrew LLVM",
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "CMAKE_CXX_STANDARD": "23",
+        "CPPFORT_ENABLE_MLIR": "ON"
+      },
+      "environment": {
+        "CC": "/opt/homebrew/opt/llvm/bin/clang",
+        "CXX": "/opt/homebrew/opt/llvm/bin/clang++"
+      },
+      "toolchainFile": "${sourceDir}/cmake/homebrew-llvm-toolchain.cmake"
+    },
+    {
+      "name": "homebrew-llvm-release",
+      "displayName": "Homebrew LLVM Release",
+      "description": "Release build with Homebrew LLVM",
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "CMAKE_CXX_STANDARD": "23",
+        "CPPFORT_ENABLE_MLIR": "ON"
+      },
+      "environment": {
+        "CC": "/opt/homebrew/opt/llvm/bin/clang",
+        "CXX": "/opt/homebrew/opt/llvm/bin/clang++"
+      },
+      "toolchainFile": "${sourceDir}/cmake/homebrew-llvm-toolchain.cmake"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "homebrew-llvm-debug",
+      "displayName": "Debug Build"
+    },
+    {
+      "name": "release",
+      "configurePreset": "homebrew-llvm-release",
+      "displayName": "Release Build"
+    }
+  ]
+}

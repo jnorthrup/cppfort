@@ -1,0 +1,6 @@
+// phase2_smoke_07: exercises helper metafunction chaining parser-first surface (@interface @print type)
+// This is the minimal docs-style sample from docs/cpp2/metafunctions.md.
+
+shape: @interface @print type = {
+    draw: (this);
+}
