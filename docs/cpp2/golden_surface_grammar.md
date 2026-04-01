@@ -47,20 +47,21 @@ top_level             ::= bootstrap_tag_decl
 bootstrap_tag_decl    ::= identifier ":" identifier "=" integer [";"]
 
 (* ========================================================================
-   SEMICOLON RULES — Kotlin-style (adopted for cpp2)
-   
-   Semicolons are OPTIONAL. Line breaks determine statement boundaries.
-   
-   Required ONLY in these cases:
-   1. Multiple statements on one line:  a := 1; b := 2;
-   2. Enum entries followed by members:  diamonds := 9; flip: (inout this) = { }
-   3. Disambiguating ambiguous parses:   expr;  // prevent next-line attachment
-   
-   Redundant semicolons are legal but discouraged (Kotlin convention).
-   The serde_tree tracks semi_span: present = explicit, absent = inferred.
+   SEMICOLON RULES — CURRENT BOOTSTRAP CONSTRAINT
+
+   Long-term cpp2 design may support reduced semicolons, but the current
+   selfhost/bootstrap path RETAINS explicit semicolons as written because
+   cppfront currently conflicts with Kotlin-style newline inference.
+
+   Current rule in this repo-owned executable surface:
+   1. Keep semicolons on declarations and expression bodies that previously had them.
+   2. Do not rely on newline-only statement termination in the bootstrap path.
+   3. semi_span remains referential so explicit semicolons stay recoverable in serde.
+
+   When cppfront conflict is removed, revisit reduced-semicolon inference.
    ======================================================================== *)
 
-statement_terminator  ::= ";" | newline
+statement_terminator  ::= ";"
 multi_statement_line  ::= statement ";" statement [";" statement]*
 
 namespace_decl        ::= identifier ":" "namespace" "=" "{" { top_level } "}"

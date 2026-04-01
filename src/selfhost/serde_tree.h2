@@ -62,8 +62,12 @@ struct serdes_node {
     span body_span = {0, 0};
     span semi_span = {0, 0};  // points to trailing ; if present, {0,0} if absent
     span src_span  = {0, 0};
-    series<serdes_node> children = {0, [](int) -> serdes_node { return {}; }};
+    series<serdes_node> children = {};
 };
+
+inline auto empty_children() -> series<serdes_node> {
+    return {0, [](int) -> serdes_node { return serdes_node{}; }};
+}
 
 // ============================================================================
 // CONSTRUCTORS
@@ -74,7 +78,7 @@ inline auto make_node(node_kind k, span src, span nm, span ty, span bd, span sem
 }
 
 inline auto make_leaf(node_kind k, span src) -> serdes_node {
-    return {k, {0,0}, {0,0}, {0,0}, {0,0}, src, {0, [](int) -> serdes_node { return {}; }}};
+    return {k, {0,0}, {0,0}, {0,0}, {0,0}, src, empty_children()};
 }
 
 // ============================================================================
@@ -171,7 +175,7 @@ inline auto reify(std::string_view src) -> series<serdes_node> {
     if (n == 0) return {1, [](int) -> serdes_node { return make_leaf(node_kind::line_expr, {0,0}); }};
     auto root_kids = build_children(src, regs, 0, static_cast<int>(src.size()), 0);
     auto root = make_node(node_kind::translation_unit, {0, static_cast<int>(src.size())},
-                          {0,0}, {0,0}, {0,0}, root_kids);
+                          {0,0}, {0,0}, {0,0}, {0,0}, root_kids);
     return {1, [root](int) -> serdes_node { return root; }};
 }
 

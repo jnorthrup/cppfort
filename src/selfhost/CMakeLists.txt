@@ -124,6 +124,24 @@ if(CPPFRONT_EXECUTABLE)
 
     add_test(NAME selfhost_bbcursive_smoke COMMAND $<TARGET_FILE:selfhost_bbcursive_smoke>)
 
+    add_executable(selfhost_hanging_lines_smoke
+      ${CMAKE_SOURCE_DIR}/tests/selfhost_hanging_lines_smoke.cpp
+    )
+    target_include_directories(selfhost_hanging_lines_smoke PRIVATE
+      ${CMAKE_SOURCE_DIR}
+      ${CMAKE_SOURCE_DIR}/src/selfhost
+      ${CPPFRONT_INCLUDE_DIR}
+    )
+    set_target_properties(selfhost_hanging_lines_smoke PROPERTIES
+      CXX_STANDARD 20
+      CXX_STANDARD_REQUIRED ON
+      CXX_EXTENSIONS OFF
+    )
+    target_compile_options(selfhost_hanging_lines_smoke PRIVATE
+      -U__cpp_lib_modules
+    )
+    add_test(NAME selfhost_hanging_lines_smoke COMMAND $<TARGET_FILE:selfhost_hanging_lines_smoke>)
+
     # --- cpp2_bin: self-hosted transpiler ---
     # .h2 files must be transpiled to .h for the C++ compiler.
     # cppfront rewrites #include "X.h2" to #include "X.h"
