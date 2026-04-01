@@ -60,6 +60,7 @@ struct serdes_node {
     span name_span = {0, 0};
     span type_span = {0, 0};
     span body_span = {0, 0};
+    span semi_span = {0, 0};  // points to trailing ; if present, {0,0} if absent
     span src_span  = {0, 0};
     series<serdes_node> children = {0, [](int) -> serdes_node { return {}; }};
 };
@@ -68,12 +69,12 @@ struct serdes_node {
 // CONSTRUCTORS
 // ============================================================================
 
-inline auto make_node(node_kind k, span src, span nm, span ty, span bd, series<serdes_node> kids) -> serdes_node {
-    return {k, nm, ty, bd, src, kids};
+inline auto make_node(node_kind k, span src, span nm, span ty, span bd, span semi, series<serdes_node> kids) -> serdes_node {
+    return {k, nm, ty, bd, semi, src, kids};
 }
 
 inline auto make_leaf(node_kind k, span src) -> serdes_node {
-    return {k, {0,0}, {0,0}, {0,0}, src, {0, [](int) -> serdes_node { return {}; }}};
+    return {k, {0,0}, {0,0}, {0,0}, {0,0}, src, {0, [](int) -> serdes_node { return {}; }}};
 }
 
 // ============================================================================
@@ -97,8 +98,9 @@ inline auto map_kind(kind k) -> node_kind {
 
 // Extract hierarchical spans from a region
 // Trust the scanner: ; is part of the trailing code region, not the decl region
+// But track whether a trailing ; exists (reduced semicolons in cpp2)
 inline auto extract_spans(std::string_view src, const region& r)
-    -> join<span, join<span, span>> {
+    -> join<span, join<span, join<span, span>>> {
     auto text = src.substr(r.lo, r.hi - r.lo);
     auto colon = text.find(':');
     auto eq    = text.find('=');
@@ -106,6 +108,7 @@ inline auto extract_spans(std::string_view src, const region& r)
     span nm = {0, 0};
     span ty = {0, 0};
     span bd = {0, 0};
+    span semi = {0, 0};
     
     if (colon != std::string_view::npos) {
         nm = {r.lo, r.lo + static_cast<int>(colon)};
@@ -119,7 +122,14 @@ inline auto extract_spans(std::string_view src, const region& r)
         nm = {r.lo, r.hi};
     }
     
-    return {nm, {ty, bd}};
+    // Check for trailing semicolon (reduced semicolons: block bodies don't have ;)
+    int end = r.hi;
+    while (end > r.lo && (src[end - 1] == ' ' || src[end - 1] == '\n' || src[end - 1] == '\t')) --end;
+    if (end > r.lo && src[end - 1] == ';') {
+        semi = {end - 1, end};
+    }
+    
+    return {nm, {ty, {bd, semi}}};
 }
 
 // Forward declare
@@ -131,7 +141,7 @@ inline auto build_node(std::string_view src, const std::vector<region>& regs, in
     auto k = map_kind(r.k);
     auto spans = extract_spans(src, r);
     auto kids = build_children(src, regs, r.lo, r.hi, idx + 1);
-    return make_node(k, {r.lo, r.hi}, spans.a, spans.b.a, spans.b.b, kids);
+    return make_node(k, {r.lo, r.hi}, spans.a, spans.b.a, spans.b.b.a, spans.b.b.b, kids);
 }
 
 inline auto build_children(std::string_view src, const std::vector<region>& regs,
