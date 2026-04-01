@@ -1,8 +1,11 @@
-// cpp2.h2 — region scanner + emitter
+// cpp2.h2 — region scanner + emitter for cpp2 -> C++ transpilation
 //
-// scan: source string -> vector<(pos, kind)> seek markers
-// fold: adjacent same-kind markers -> regions
-// emit: walk regions, output C++ (rewrite .h2->.h in #include lines)
+// scan: source string -> vector<(pos, kind)> seek markers at syntax boundaries
+// fold: markers -> regions (contiguous spans of same kind)
+// emit: walk regions, output C++
+//
+// Depth-scoped bitmaps: each phase can create alternate scope internally.
+// The trailing discriminator on each mark carries the kind.
 
 #pragma once
 #include <string_view>
@@ -12,7 +15,15 @@
 
 namespace cpp2 {
 
-enum class kind { code, line_comment, pp_include };
+enum class kind {
+    code,
+    line_comment,
+    pp_include,
+    decl_name,      // name: appearing before : in declarations
+    decl_auto,      // name := auto declarations
+    func_header,    // name: (params) -> ret = {
+    if_cond,        // if without parens
+};
 
 struct mark {
     int pos = 0;
@@ -25,17 +36,27 @@ struct region {
     int hi = 0;
 };
 
-// scan — single forward pass, emit seek markers at boundaries
+// scan — single forward pass, emit seek markers at syntax boundaries
 inline auto scan(std::string_view src) -> std::vector<mark> {
     std::vector<mark> out;
     int i = 0;
     int n = static_cast<int>(src.size());
 
     while (i < n) {
+        // skip string literals
+        if (src[i] == '"') {
+            ++i;
+            while (i < n && src[i] != '"') {
+                if (src[i] == '\\') ++i; // skip escaped char
+                ++i;
+            }
+            ++i; // closing quote
+            continue;
+        }
+
         // line comment: //
         if (src[i] == '/' && i + 1 < n && src[i + 1] == '/') {
             out.push_back({i, kind::line_comment});
-            // skip to end of line
             while (i < n && src[i] != '\n') ++i;
             out.push_back({i, kind::code});
             continue;
@@ -43,7 +64,6 @@ inline auto scan(std::string_view src) -> std::vector<mark> {
 
         // #include line
         if (src[i] == '#') {
-            // peek ahead past whitespace for "include"
             int j = i + 1;
             while (j < n && (src[j] == ' ' || src[j] == '\t')) ++j;
             if (j + 6 < n && src.substr(j, 7) == "include") {
@@ -51,6 +71,44 @@ inline auto scan(std::string_view src) -> std::vector<mark> {
                 while (i < n && src[i] != '\n') ++i;
                 out.push_back({i, kind::code});
                 continue;
+            }
+        }
+
+        // detect top-level function header: "name: (params) -> ret = {"
+        // or "main: (args) -> int = {"
+        if (i == 0 || src[i - 1] == '\n') {
+            // look for identifier followed by ':'
+            int j = i;
+            while (j < n && ((src[j] >= 'a' && src[j] <= 'z') ||
+                             (src[j] >= 'A' && src[j] <= 'Z') ||
+                             src[j] == '_' ||
+                             (src[j] >= '0' && src[j] <= '9'))) ++j;
+            if (j > i && j < n && src[j] == ':') {
+                // check if it's := (auto) or : type (declaration) or : ( (function)
+                int k = j + 1;
+                if (k < n && src[k] == '=') {
+                    // name := — auto declaration
+                    // emit everything from line start as code, let emit handle it
+                } else {
+                    // skip whitespace after ':'
+                    while (k < n && src[k] == ' ') ++k;
+                    if (k < n && src[k] == '(') {
+                        // function header: name: (params) -> ret = {
+                        out.push_back({i, kind::func_header});
+                        // find the matching '{'
+                        int depth = 0;
+                        while (k < n) {
+                            if (src[k] == '{') { ++depth; if (depth == 1) break; }
+                            if (src[k] == '"') { ++k; while (k < n && src[k] != '"') { if (src[k] == '\\') ++k; ++k; } }
+                            ++k;
+                        }
+                        if (k < n) {
+                            out.push_back({k + 1, kind::code}); // after the {
+                            i = k + 1;
+                            continue;
+                        }
+                    }
+                }
             }
         }
 
@@ -69,7 +127,6 @@ inline auto fold(std::string_view src, const std::vector<mark>& marks) -> std::v
         return regions;
     }
 
-    // everything before first mark is code
     if (marks[0].pos > 0) {
         regions.push_back({kind::code, 0, marks[0].pos});
     }
@@ -78,7 +135,6 @@ inline auto fold(std::string_view src, const std::vector<mark>& marks) -> std::v
         int lo = marks[i].pos;
         int hi = (i + 1 < static_cast<int>(marks.size())) ? marks[i + 1].pos : n;
         regions.push_back({marks[i].k, lo, hi});
-        // gap between this pair and next is code
         if (i + 2 < static_cast<int>(marks.size())) {
             int gap_lo = hi;
             int gap_hi = marks[i + 2].pos;
@@ -93,13 +149,205 @@ inline auto fold(std::string_view src, const std::vector<mark>& marks) -> std::v
     return regions;
 }
 
+// emit_func_header — transpile "name: (params) -> ret = {" to C++
+inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
+    // find the ':'
+    auto colon = text.find(':');
+    if (colon == std::string_view::npos) { out << text; return; }
+    auto name = text.substr(0, colon);
+
+    // skip whitespace after ':'
+    auto p = colon + 1;
+    while (p < text.size() && text[p] == ' ') ++p;
+
+    // expect '('
+    if (p >= text.size() || text[p] != '(') { out << text; return; }
+    ++p; // skip '('
+
+    // extract params up to ')'
+    auto params_start = p;
+    int depth = 1;
+    while (p < text.size() && depth > 0) {
+        if (text[p] == '(') ++depth;
+        if (text[p] == ')') --depth;
+        if (depth > 0) ++p;
+    }
+    auto params = text.substr(params_start, p - params_start);
+    ++p; // skip ')'
+
+    // skip whitespace
+    while (p < text.size() && text[p] == ' ') ++p;
+
+    // expect '->'
+    std::string ret_type = "void";
+    if (p + 1 < text.size() && text[p] == '-' && text[p + 1] == '>') {
+        p += 2;
+        while (p < text.size() && text[p] == ' ') ++p;
+        auto ret_start = p;
+        while (p < text.size() && text[p] != ' ' && text[p] != '=' && text[p] != '{') ++p;
+        ret_type = std::string(text.substr(ret_start, p - ret_start));
+    }
+
+    // skip to '=' or '{'
+    while (p < text.size() && text[p] != '{') ++p;
+
+    // handle main specially
+    if (name == "main") {
+        out << "#include <vector>\n#include <string_view>\n"
+            << "int main(int argc, char** argv) {\n"
+            << "    std::vector<std::string_view> args(argv, argv + argc);";
+    } else {
+        out << "[[nodiscard]] auto " << name << "(" << params << ") -> " << ret_type << " {";
+    }
+}
+
+// emit_body — transform cpp2 body syntax to C++
+//    if cond {         ->  if (cond) {
+//    if !expr {        ->  if (!expr) {
+//    name := expr;     ->  auto name = expr;
+//    name: type = (... ->  type name(...  
+//    name: type = ();  ->  type name{};
+inline auto emit_body(std::string_view text, std::ostream& out) -> void {
+    // pre-pass: rewrite .ssize() -> .size() (C++ std containers don't have ssize in all impls)
+    std::string buf(text);
+    auto pos = buf.find(".ssize()");
+    while (pos != std::string::npos) {
+        buf.replace(pos, 8, ".size()");
+        pos = buf.find(".ssize()", pos + 7);
+    }
+
+    int i = 0;
+    int n = static_cast<int>(buf.size());
+
+    while (i < n) {
+        // skip string literals
+        if (buf[i] == '"') {
+            out << buf[i++];
+            while (i < n && buf[i] != '"') {
+                if (buf[i] == '\\') out << buf[i++];
+                if (i < n) out << buf[i++];
+            }
+            if (i < n) out << buf[i++];
+            continue;
+        }
+
+        // skip line comments
+        if (buf[i] == '/' && i + 1 < n && buf[i + 1] == '/') {
+            while (i < n && buf[i] != '\n') out << buf[i++];
+            continue;
+        }
+
+        // if/while without parens: "if EXPR {" or "while EXPR {"
+        if ((buf[i] == 'i' && i + 1 < n && buf[i + 1] == 'f' &&
+             (i + 2 >= n || buf[i + 2] == ' ' || buf[i + 2] == '!')) ||
+            (buf[i] == 'w' && i + 4 < n && buf.compare(i, 5, "while") == 0)) {
+            int kw_end = (buf[i] == 'i') ? i + 2 : i + 5;
+            out.write(&buf[i], kw_end - i);
+            out << " (";
+            i = kw_end;
+            // skip space
+            while (i < n && buf[i] == ' ') { out << ' '; ++i; }
+            // collect expr until '{'
+            while (i < n && buf[i] != '{') {
+                out << buf[i++];
+            }
+            out << ") ";
+            if (i < n) out << buf[i++]; // the '{'
+            continue;
+        }
+
+        // auto declaration: "name := expr"
+        // look for identifier followed by " :="
+        if ((buf[i] >= 'a' && buf[i] <= 'z') || (buf[i] >= 'A' && buf[i] <= 'Z') || buf[i] == '_') {
+            int name_start = i;
+            while (i < n && ((buf[i] >= 'a' && buf[i] <= 'z') ||
+                             (buf[i] >= 'A' && buf[i] <= 'Z') ||
+                             buf[i] == '_' ||
+                             (buf[i] >= '0' && buf[i] <= '9'))) ++i;
+            auto name = std::string_view(&buf[name_start], i - name_start);
+
+            // skip whitespace
+            int ws_start = i;
+            while (i < n && buf[i] == ' ') ++i;
+
+            // check := (auto)
+            if (i + 1 < n && buf[i] == ':' && buf[i + 1] == '=') {
+                out << "auto " << name << " =";
+                i += 2;
+                continue;
+            }
+
+            // check ": type =" (typed declaration)
+            if (i < n && buf[i] == ':') {
+                // check for :: (not a declaration, it's a namespace qualifier)
+                if (i + 1 < n && buf[i + 1] == ':') {
+                    // not a declaration, emit the name and continue
+                    out << name;
+                    i = name_start + (i - name_start);
+                    // re-emit the :: and keep going from here
+                    out << "::";
+                    i += 2;
+                    continue;
+                }
+                ++i; // skip ':'
+                while (i < n && buf[i] == ' ') ++i;
+                // collect type
+                int type_start = i;
+                int depth = 0;
+                while (i < n && buf[i] != '=' && (buf[i] != '(' || depth > 0)) {
+                    if (buf[i] == '<') ++depth;
+                    if (buf[i] == '>') --depth;
+                    ++i;
+                }
+                auto type_str = std::string(&buf[type_start], i - type_start);
+                // trim trailing space from type
+                while (!type_str.empty() && type_str.back() == ' ') {
+                    type_str = type_str.substr(0, type_str.size() - 1);
+                }
+
+                if (i < n && buf[i] == '=') {
+                    ++i; // skip '='
+                    while (i < n && buf[i] == ' ') ++i;
+                    // check for () default init
+                    if (i < n && buf[i] == '(' && (i + 1 >= n || buf[i + 1] == ')')) {
+                        out << type_str << " " << name << "{}";
+                        i += 2;
+                        continue;
+                    }
+                    // check for (expr) constructor
+                    if (i < n && buf[i] == '(') {
+                        out << type_str << " " << name;
+                        // emit the (expr) as-is
+                        while (i < n && buf[i] != ';') {
+                            out << buf[i++];
+                        }
+                        continue;
+                    }
+                    // regular init
+                    out << type_str << " " << name << " = ";
+                    continue;
+                }
+                // no = found, just output what we consumed
+                out << name << ": " << type_str;
+                continue;
+            }
+
+            // not a declaration, output name and continue
+            out << name;
+            for (int w = ws_start; w < i; ++w) out << buf[w];
+            continue;
+        }
+
+        out << buf[i++];
+    }
+}
+
 // emit — walk regions, produce C++ output
 inline auto emit(std::string_view src, const std::vector<region>& regions, std::ostream& out) -> void {
     for (auto const& r : regions) {
         auto text = src.substr(r.lo, r.hi - r.lo);
         switch (r.k) {
         case kind::pp_include:
-            // rewrite .h2" -> .h" inside #include lines
             {
                 std::string line(text);
                 auto pos = line.find(".h2\"");
@@ -109,14 +357,17 @@ inline auto emit(std::string_view src, const std::vector<region>& regions, std::
                 out << line;
             }
             break;
+        case kind::func_header:
+            emit_func_header(text, out);
+            break;
         default:
-            out << text;
+            emit_body(text, out);
             break;
         }
     }
 }
 
-// convenience: scan + fold
+// convenience
 inline auto regions(std::string_view src) -> std::vector<region> {
     return fold(src, scan(src));
 }

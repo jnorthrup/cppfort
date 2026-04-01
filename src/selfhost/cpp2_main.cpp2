@@ -13,16 +13,16 @@ main: (args) -> int = {
         return 1;
     }
 
-    filename := args[1];
-    file: std::ifstream = (std::string(filename));
-    if !file.is_open() {
+    filename: std::string = std::string(args[1]);
+    f: std::ifstream = (filename);
+    if !f.is_open() {
         std::cerr << "Error: cannot open " << filename << "\n";
         return 1;
     }
 
     buf: std::stringstream = ();
-    buf << file.rdbuf();
-    src := buf.str();
+    buf << f.rdbuf();
+    src: std::string = buf.str();
 
     regs: std::vector<cpp2::region> = cpp2::regions(src);
     std::cerr << "regions: " << regs.size() << "\n";
