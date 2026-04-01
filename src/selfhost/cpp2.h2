@@ -36,6 +36,13 @@ struct region {
     int hi = 0;
 };
 
+struct func_info {
+    std::string name;
+    std::string params;    // original cpp2 params
+    std::string ret_type;
+    bool is_main = false;
+};
+
 // scan — single forward pass, emit seek markers at syntax boundaries
 inline auto scan(std::string_view src) -> std::vector<mark> {
     std::vector<mark> out;
@@ -150,6 +157,82 @@ inline auto fold(std::string_view src, const std::vector<mark>& marks) -> std::v
 }
 
 // emit_func_header — transpile "name: (params) -> ret = {" to C++
+// transform_params — rewrite cpp2 param syntax to C++
+//   inout s: std::string -> std::string& s
+//   in s: int             -> int const& s  
+//   out s: int            -> int& s
+//   forward s: T          -> T&& s
+//   s: int                -> int s
+inline auto transform_params(std::string_view params) -> std::string {
+    std::string result;
+    int i = 0;
+    int n = static_cast<int>(params.size());
+
+    while (i < n) {
+        // skip leading whitespace
+        while (i < n && params[i] == ' ') { result += ' '; ++i; }
+
+        // collect direction keyword
+        std::string dir;
+        while (i < n && ((params[i] >= 'a' && params[i] <= 'z') ||
+                         (params[i] >= 'A' && params[i] <= 'Z'))) {
+            dir += params[i++];
+        }
+
+        // skip whitespace
+        while (i < n && params[i] == ' ') ++i;
+
+        // collect name (before ':')
+        std::string pname;
+        while (i < n && params[i] != ':' && params[i] != ',') {
+            pname += params[i++];
+        }
+
+        // trim pname
+        while (!pname.empty() && pname.back() == ' ') pname.pop_back();
+
+        // skip ':'
+        if (i < n && params[i] == ':') ++i;
+        while (i < n && params[i] == ' ') ++i;
+
+        // collect type (up to ',' or end)
+        std::string type;
+        int tdepth = 0;
+        while (i < n && (params[i] != ',' || tdepth > 0)) {
+            if (params[i] == '<') ++tdepth;
+            if (params[i] == '>') --tdepth;
+            type += params[i++];
+        }
+        // trim type
+        while (!type.empty() && type.back() == ' ') type.pop_back();
+
+        // emit transformed param
+        if (dir == "inout") {
+            result += type + "& " + pname;
+        } else if (dir == "out") {
+            result += type + "& " + pname;
+        } else if (dir == "forward") {
+            result += type + "&& " + pname;
+        } else if (dir == "in") {
+            result += type + " const& " + pname;
+        } else {
+            // no direction — pname was actually the type, type was empty
+            if (type.empty()) {
+                result += pname;
+            } else {
+                result += type + " " + pname;
+            }
+        }
+
+        // comma
+        if (i < n && params[i] == ',') {
+            result += ", ";
+            ++i;
+        }
+    }
+    return result;
+}
+
 inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
     // find the ':'
     auto colon = text.find(':');
@@ -193,11 +276,11 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
 
     // handle main specially
     if (name == "main") {
-        out << "#include <vector>\n#include <string_view>\n"
-            << "int main(int argc, char** argv) {\n"
+        out << "int main(int argc, char** argv) {\n"
             << "    std::vector<std::string_view> args(argv, argv + argc);";
     } else {
-        out << "[[nodiscard]] auto " << name << "(" << params << ") -> " << ret_type << " {";
+        auto nodiscard = (ret_type != "void") ? "[[nodiscard]] " : "";
+        out << nodiscard << "auto " << name << "(" << transform_params(params) << ") -> " << ret_type << " {";
     }
 }
 
@@ -370,6 +453,103 @@ inline auto emit(std::string_view src, const std::vector<region>& regions, std::
 // convenience
 inline auto regions(std::string_view src) -> std::vector<region> {
     return fold(src, scan(src));
+}
+
+// collect_func_headers — extract function metadata from regions
+inline auto collect_func_headers(std::string_view src, const std::vector<region>& regions) -> std::vector<func_info> {
+    std::vector<func_info> funcs;
+    for (auto const& r : regions) {
+        if (r.k != kind::func_header) continue;
+        auto text = src.substr(r.lo, r.hi - r.lo);
+        auto colon = text.find(':');
+        if (colon == std::string_view::npos) continue;
+        auto name = std::string(text.substr(0, colon));
+
+        // skip to '('
+        auto p = colon + 1;
+        while (p < text.size() && text[p] == ' ') ++p;
+        if (p >= text.size() || text[p] != '(') continue;
+        ++p;
+        auto ps = p;
+        int d = 1;
+        while (p < text.size() && d > 0) {
+            if (text[p] == '(') ++d;
+            if (text[p] == ')') --d;
+            if (d > 0) ++p;
+        }
+        auto params = std::string(text.substr(ps, p - ps));
+        ++p;
+        while (p < text.size() && text[p] == ' ') ++p;
+
+        std::string ret = "void";
+        if (p + 1 < text.size() && text[p] == '-' && text[p+1] == '>') {
+            p += 2;
+            while (p < text.size() && text[p] == ' ') ++p;
+            auto rs = p;
+            while (p < text.size() && text[p] != ' ' && text[p] != '=' && text[p] != '{') ++p;
+            ret = std::string(text.substr(rs, p - rs));
+        }
+        funcs.push_back({name, params, ret, name == "main"});
+    }
+    return funcs;
+}
+
+// emit_forward_decls — emit forward declarations before main
+inline auto emit_forward_decls(const std::vector<func_info>& funcs, std::ostream& out) -> void {
+    for (auto const& f : funcs) {
+        if (f.is_main) continue;
+        auto nodiscard = (f.ret_type != "void") ? "[[nodiscard]] " : "";
+        out << nodiscard << "auto " << f.name << "(" << transform_params(f.params) << ") -> " << f.ret_type << ";\n";
+    }
+}
+
+// emit2 — full emit: headers + forward decls + bodies
+inline auto emit2(std::string_view src, const std::vector<region>& regions, std::ostream& out) -> void {
+    auto funcs = collect_func_headers(src, regions);
+
+    // emit #include lines first
+    for (auto const& r : regions) {
+        if (r.k == kind::pp_include) {
+            auto text = src.substr(r.lo, r.hi - r.lo);
+            std::string line(text);
+            auto pos = line.find(".h2\"");
+            if (pos != std::string::npos) line.erase(pos + 2, 1);
+            // ensure trailing newline
+            if (!line.empty() && line.back() != '\n') line += '\n';
+            out << line;
+        }
+    }
+
+    // emit standard headers for pure cpp2 (no explicit includes)
+    bool has_includes = false;
+    for (auto const& r : regions) {
+        if (r.k == kind::pp_include) { has_includes = true; break; }
+    }
+    if (!has_includes) {
+        out << "#include <iostream>\n#include <string>\n#include <vector>\n#include <string_view>\n";
+    }
+
+    // forward declarations
+    if (!funcs.empty()) {
+        out << "\n";
+        emit_forward_decls(funcs, out);
+        out << "\n";
+    }
+
+    // emit bodies
+    for (auto const& r : regions) {
+        auto text = src.substr(r.lo, r.hi - r.lo);
+        switch (r.k) {
+        case kind::pp_include:
+            break; // already emitted above
+        case kind::func_header:
+            emit_func_header(text, out);
+            break;
+        default:
+            emit_body(text, out);
+            break;
+        }
+    }
 }
 
 } // namespace cpp2

@@ -26,7 +26,7 @@ main: (args) -> int = {
 
     regs: std::vector<cpp2::region> = cpp2::regions(src);
     std::cerr << "regions: " << regs.size() << "\n";
-    cpp2::emit(src, regs, std::cout);
+    cpp2::emit2(src, regs, std::cout);
 
     return 0;
 }
