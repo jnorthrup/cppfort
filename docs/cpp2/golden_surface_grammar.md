@@ -44,7 +44,24 @@ top_level             ::= bootstrap_tag_decl
                         | precondition
                         | postcondition
 
-bootstrap_tag_decl    ::= identifier ":" identifier "=" integer ";"
+bootstrap_tag_decl    ::= identifier ":" identifier "=" integer [";"]
+
+(* ========================================================================
+   SEMICOLON RULES — Kotlin-style (adopted for cpp2)
+   
+   Semicolons are OPTIONAL. Line breaks determine statement boundaries.
+   
+   Required ONLY in these cases:
+   1. Multiple statements on one line:  a := 1; b := 2;
+   2. Enum entries followed by members:  diamonds := 9; flip: (inout this) = { }
+   3. Disambiguating ambiguous parses:   expr;  // prevent next-line attachment
+   
+   Redundant semicolons are legal but discouraged (Kotlin convention).
+   The serde_tree tracks semi_span: present = explicit, absent = inferred.
+   ======================================================================== *)
+
+statement_terminator  ::= ";" | newline
+multi_statement_line  ::= statement ";" statement [";" statement]*
 
 namespace_decl        ::= identifier ":" "namespace" "=" "{" { top_level } "}"
 
