@@ -96,6 +96,7 @@ inline auto map_kind(kind k) -> node_kind {
 }
 
 // Extract hierarchical spans from a region
+// Trust the scanner: ; is part of the trailing code region, not the decl region
 inline auto extract_spans(std::string_view src, const region& r)
     -> join<span, join<span, span>> {
     auto text = src.substr(r.lo, r.hi - r.lo);
