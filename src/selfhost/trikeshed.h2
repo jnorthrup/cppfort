@@ -1,104 +1,78 @@
-// trikeshed.h2 — minimal TrikeShed abstractions for cpp2
+// trikeshed.h2 — Join, series, strview, char_series
 //
-// USE THESE FIRST.  DO NOT WRITE PROCEDURAL C.
-// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/lib/
-//
-// This is the MINIMAL set needed for the bitmap scanner.
-// Full Join/Series/Either extensions can be added after self-hosting.
+// Fundamental lazy collections. Series is LAZY — the function IS the accessor.
+// view is the highest density tool — re-expresses the series through a function.
 
-#include <string_view>
+#include <functional>
 #include <vector>
-#include <string>
+#include <string_view>
 
-cpp2: namespace = {
+// ============================================================================
+// JOIN — product pair
+// ============================================================================
 
-// char_series — the cursor type that std::string_view is missing
-// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/lib/CharSeries.kt
-char_series: type = {
-    src: std::string_view = ();
-    pos: int = 0;
-    lim: int = 0;
+template<typename A, typename B>
+struct join {
+    A a {};
+    B b {};
+    join() = default;
+    join(A a_, B b_) : a(std::move(a_)), b(std::move(b_)) {}
+    join(join&& o) noexcept : a(std::move(o.a)), b(std::move(o.b)) {}
+    join& operator=(join&& o) noexcept { a = std::move(o.a); b = std::move(o.b); return *this; }
+    join(const join&) = delete;
+    join& operator=(const join&) = delete;
+};
 
-    // construct from string_view
-    operator=: (out this, s: std::string_view) = {
-        src = s;
-        pos = 0;
-        lim = unchecked_narrow<int>(s.ssize());
+// ============================================================================
+// TWIN<T> — Same-type pair
+// ============================================================================
+
+template<typename T> using twin = join<T, T>;
+
+// ============================================================================
+// SERIES<T> — Lazy indexed collection
+// Series is LAZY. The function IS the element accessor. Nothing materialized.
+// ============================================================================
+
+template<typename T> using series = join<int, std::function<T(int)>>;
+
+// ============================================================================
+// STRVIEW — char series over contiguous storage
+// ============================================================================
+
+using strview = series<char>;
+
+// ============================================================================
+// CHARSERIES — char based cursor over strview
+// Wraps strview with pos/limit/mark cursor state.
+// ============================================================================
+
+struct char_series {
+    strview buf {};
+    int pos  = 0;
+    int limit = 0;
+    int mark  = -1;
+
+    char_series() = default;
+    char_series(strview b) : buf(std::move(b)), pos(0), limit(buf.a), mark(-1) {}
+    char_series(char_series&& o) noexcept : buf(std::move(o.buf)), pos(o.pos), limit(o.limit), mark(o.mark) {}
+
+    char get()       { return buf.b(pos); }
+    char peek(int i) { return buf.b(pos + i); }
+    bool has_next()  { return pos < limit; }
+    char advance()   { return buf.b(pos++); }
+    void mark_pos()  { mark = pos; }
+    void reset()     { if (mark >= 0) pos = mark; }
+
+    // slice — sub-range [lo, hi) as new char_series
+    char_series slice(int lo, int hi) {
+        int n = hi - lo;
+        return char_series(strview(n, [this, lo](int i) -> char { return buf.b(lo + i); }));
     }
 
-    operator=: (out this, s: std::string_view, p: int, l: int) = {
-        src = s;
-        pos = p;
-        lim = l;
+    // view — the highest density tool. Re-expresses the series through a function.
+    template<typename T2>
+    series<T2> view(std::function<T2(int)> f) {
+        return series<T2>(buf.a, std::move(f));
     }
-
-    // remaining chars
-    res: (this) -> int == lim - pos;
-    hasRemaining: (this) -> bool == pos < lim;
-
-    // current char
-    get: (this) -> char == src[pos];
-
-    // advance
-    next: (inout this) -> char = {
-        c := src[pos];
-        pos += 1;
-        return c;
-    }
-
-    // decrement
-    dec: (inout this) = { pos -= 1; }
-
-    // flip — reverse direction (pos ↔ lim)
-    flip: (inout this) = {
-        tmp := pos;
-        pos = lim;
-        lim = tmp;
-    }
-
-    // trim — skip whitespace
-    trim: (inout this) = {
-        while pos < lim && std::isspace(src[pos]) != 0 { pos += 1; }
-    }
-
-    // seekTo — advance to character
-    seekTo: (inout this, c: char) -> bool = {
-        while pos < lim {
-            if src[pos] == c { pos += 1; return true; }
-            pos += 1;
-        }
-        return false;
-    }
-
-    // seekTo with escape
-    seekToEscaped: (inout this, c: char, esc: char) -> bool = {
-        while pos < lim {
-            if src[pos] == esc { pos += 2; continue; }
-            if src[pos] == c { pos += 1; return true; }
-            pos += 1;
-        }
-        return false;
-    }
-
-    // slice — get remaining as string_view
-    slice: (this) -> std::string_view = { return src.substr(pos, lim - pos); }
-
-    // clone — copy cursor
-    clone: (this) -> char_series = { return (src, pos, lim); }
-
-    // limit — set new limit
-    setLim: (inout this, newLim: int) = { lim = newLim; }
-    setPos: (inout this, newPos: int) = { pos = newPos; }
-
-    // asString — convert current view to string
-    asString: (this) -> std::string = { return std::string(src.substr(pos, lim - pos)); }
-
-    // take — get first n chars as string_view
-    take: (this, n: int) -> std::string_view = {
-        end := pos + n;
-        if end > lim { end = lim; }
-        return src.substr(pos, end - pos);
-    }
-}
-
-}
+};

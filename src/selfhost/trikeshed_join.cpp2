@@ -1,29 +1,16 @@
-// trikeshed_join.cpp2 - TrikeShed Join<A,B> port
-// Per TrikeShed specification: semantic objects first, dense lowered views second
-// Join is the foundational abstraction: a pair with named access
+// trikeshed_join.cpp2 — TrikeShed Join<A,B> port
+// Join is the foundational product type: a pair with named access .a and .b
+//
+// Kotlin spec:
+//   interface Join<A, B> { val a: A; val b: B }
+//   inline infix fun <A, B> A.j(b: B): Join<A, B> = Join(this, b)
+//   typealias Twin<T> = Join<T, T>
+
+#include "trikeshed.h2"
 
 // ============================================================================
-// JOIN<A, B> - Core product type
-// ============================================================================
-
-join: @struct <A: type, B: type> type = {
-    a: A = ();
-    b: B = ();
-}
-
-// ============================================================================
-// TWIN<T> - Same-type pair (Join<T, T>)
-// ============================================================================
-
-twin: @struct <T: type> type = {
-    a: T = ();
-    b: T = ();
-}
-
-// ============================================================================
-// JOIN FACTORY - prefix j function
-// TrikeShed surface: a j b (infix)
-// cpp2 bootstrap: j(a, b) (prefix)
+// JOIN FACTORY — TrikeShed surface: a j b (infix), cpp2: j(a, b)
+// Kotlin: inline infix fun <A, B> A.j(b: B): Join<A, B> = Join(this, b)
 // Canonical node: join<A, B>
 // Note: rbcursive will parse a j b -> join node -> emit j(a, b) for cppfront
 // ============================================================================
@@ -33,33 +20,10 @@ j: <A: type, B: type>(a: A, b: B) -> join<A, B> = {
 }
 
 // ============================================================================
-// TWIN FACTORY
+// COMPONENT ACCESSORS — mirrors Kotlin component1/component2
+// Kotlin: operator fun component1(): A = a
+//         operator fun component2(): B = b
 // ============================================================================
 
-twin_of: <T: type>(a: T, b: T) -> twin<T> = {
-    return (a, b);
-}
-
-// ============================================================================
-// ACCESSORS
-// ============================================================================
-
-left_of: <T: type, B: type>(j: join<T, B>) -> T = {
-    return j.a;
-}
-
-right_of: <A: type, T: type>(j: join<A, T>) -> T = {
-    return j.b;
-}
-
-first_of: <A: type, B: type>(j: join<A, B>) -> A = {
-    return j.a;
-}
-
-second_of: <A: type, B: type>(j: join<A, B>) -> B = {
-    return j.b;
-}
-
-pair_of: <A: type, B: type>(j: join<A, B>) -> std::pair<A, B> = {
-    return std::make_pair(j.a, j.b);
-}
+first:  <A: type, B: type>(j: join<A, B>) -> A = j.a;
+second: <A: type, B: type>(j: join<A, B>) -> B = j.b;

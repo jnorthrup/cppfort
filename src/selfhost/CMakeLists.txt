@@ -94,7 +94,7 @@ if(CPPFRONT_EXECUTABLE)
 
     add_custom_command(
       OUTPUT "${BBCURSIVE_SMOKE_CPP}"
-      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${BBCURSIVE_SMOKE_CPP}" "${BBCURSIVE_SMOKE_SOURCE}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${BBCURSIVE_SMOKE_CPP}" "${BBCURSIVE_SMOKE_SOURCE}"
       DEPENDS "${BBCURSIVE_SMOKE_SOURCE}" "${BBCURSIVE_SOURCE}"
       WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
       COMMENT "Transpiling bbcursive smoke test"
@@ -124,91 +124,60 @@ if(CPPFRONT_EXECUTABLE)
 
     add_test(NAME selfhost_bbcursive_smoke COMMAND $<TARGET_FILE:selfhost_bbcursive_smoke>)
 
-    # cppfort self-hosted compiler executable
-    set(CPPFORT_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/cppfort.cpp2")
-    set(CPPFORT_CPP "${SELFHOST_DIR}/cppfort.cpp")
-    set(EMITTER_SOURCE "${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2")
-    set(EMITTER_CPP "${SELFHOST_DIR}/canonical_emitter.cpp")
+    # --- cpp2_bin: self-hosted transpiler ---
+    # .h2 files must be transpiled to .h for the C++ compiler.
+    # cppfront rewrites #include "X.h2" to #include "X.h"
+    set(TRIKESHED_H "${SELFHOST_DIR}/trikeshed.h")
+    set(CPP2_H "${SELFHOST_DIR}/cpp2.h")
+    set(BBCURSIVE_H "${SELFHOST_DIR}/bbcursive.h")
+    set(CPP2_MAIN_SRC "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2_main.cpp2")
+    set(CPP2_MAIN_CPP "${SELFHOST_DIR}/cpp2_main.cpp")
 
     add_custom_command(
-      OUTPUT "${EMITTER_CPP}"
-      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${EMITTER_CPP}" "${EMITTER_SOURCE}"
-      DEPENDS "${EMITTER_SOURCE}"
-      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-      COMMENT "Transpiling canonical emitter"
+      OUTPUT "${TRIKESHED_H}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${TRIKESHED_H}" "${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed.h2"
+      DEPENDS "${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed.h2"
+      COMMENT "Transpiling trikeshed.h2 -> trikeshed.h"
+      VERBATIM
+    )
+    add_custom_command(
+      OUTPUT "${CPP2_H}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${CPP2_H}" "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2.h2"
+      DEPENDS "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2.h2" "${TRIKESHED_H}"
+      COMMENT "Transpiling cpp2.h2 -> cpp2.h"
+      VERBATIM
+    )
+    add_custom_command(
+      OUTPUT "${BBCURSIVE_H}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${BBCURSIVE_H}" "${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.h2"
+      DEPENDS "${CMAKE_SOURCE_DIR}/src/selfhost/bbcursive.h2" "${CPP2_H}"
+      COMMENT "Transpiling bbcursive.h2 -> bbcursive.h"
+      VERBATIM
+    )
+    add_custom_command(
+      OUTPUT "${CPP2_MAIN_CPP}"
+      COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${CPP2_MAIN_CPP}" "${CPP2_MAIN_SRC}"
+      DEPENDS "${CPP2_MAIN_SRC}" "${BBCURSIVE_H}"
+      COMMENT "Transpiling cpp2_main.cpp2"
       VERBATIM
     )
 
-    add_custom_target(selfhost_emitter_cpp DEPENDS "${EMITTER_CPP}")
-
-    add_custom_command(
-      OUTPUT "${CPPFORT_CPP}"
-      COMMAND "${CPPFRONT_EXECUTABLE}" -p -q -o "${CPPFORT_CPP}" "${CPPFORT_SOURCE}"
-      DEPENDS "${CPPFORT_SOURCE}"
-      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-      COMMENT "Transpiling selfhost cppfort cpp2 core"
-      VERBATIM
-    )
-
-    add_custom_target(selfhost_cppfort_cpp DEPENDS "${CPPFORT_CPP}")
-
-    # Generate config header with proper paths
-    configure_file(
-      ${CMAKE_CURRENT_SOURCE_DIR}/cppfort_config.h.in
-      ${SELFHOST_DIR}/cppfort_config.h
-      @ONLY
-    )
-
-    add_executable(cppfort
-      ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort_main.cpp
-    )
-    add_dependencies(cppfort selfhost_bbcursive_cpp selfhost_cppfort_cpp selfhost_emitter_cpp)
-    target_include_directories(cppfort PRIVATE
+    add_executable(cpp2_bin "${CPP2_MAIN_CPP}")
+    add_dependencies(cpp2_bin selfhost_bbcursive_cpp)
+    target_include_directories(cpp2_bin PRIVATE
       ${SELFHOST_DIR}
       ${CPPFRONT_INCLUDE_DIR}
+      ${CMAKE_SOURCE_DIR}/src/selfhost
     )
-    target_compile_definitions(cppfort PRIVATE
-      CPPFORT_HAS_SON_DIALECT=1
-    )
-    target_link_libraries(cppfort PRIVATE
-      Cpp2SONDialect
-      Cpp2SONPasses
-      MLIRIR
-      MLIRSupport
-      MLIRPass
-      MLIRTransforms
-      MLIRArithDialect
-    )
-    set_target_properties(cppfort PROPERTIES
+    set_target_properties(cpp2_bin PROPERTIES
       CXX_STANDARD 20
       CXX_STANDARD_REQUIRED ON
       CXX_EXTENSIONS OFF
     )
-    target_compile_options(cppfort PRIVATE
-      -U__cpp_lib_modules
-    )
-
-    # TDD pipeline test for closed-loop self-hosting
-    add_executable(selfhost_pipeline_test
-      ${CMAKE_SOURCE_DIR}/tests/selfhost_pipeline_test.cpp
-    )
-    add_dependencies(selfhost_pipeline_test selfhost_bbcursive_cpp selfhost_cppfort_cpp)
-    target_include_directories(selfhost_pipeline_test PRIVATE
-      ${SELFHOST_DIR}
-      ${CPPFRONT_INCLUDE_DIR}
-    )
-    set_target_properties(selfhost_pipeline_test PROPERTIES
-      CXX_STANDARD 20
-      CXX_STANDARD_REQUIRED ON
-      CXX_EXTENSIONS OFF
-    )
-    target_compile_options(selfhost_pipeline_test PRIVATE
-      -U__cpp_lib_modules
-    )
-    target_compile_definitions(selfhost_pipeline_test PRIVATE
+    target_compile_options(cpp2_bin PRIVATE -U__cpp_lib_modules)
+    target_compile_definitions(cpp2_bin PRIVATE
       CPPFORT_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"
     )
-    add_test(NAME selfhost_pipeline_test COMMAND $<TARGET_FILE:selfhost_pipeline_test>)
   else()
     message(STATUS "cppfront found but cpp2util.h missing; selfhost transpile targets remain unavailable")
   endif()

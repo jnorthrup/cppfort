@@ -213,9 +213,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## [~] Track: Self-Hosted cpp2_bin
+*Link: [./conductor/tracks/selfhost_cpp2_bin_20260331/](./conductor/tracks/selfhost_cpp2_bin_20260331/)*
+*Status: ACTIVE* — cpp2_bin builds and runs; scan/fold produces region graph; lex/parse are stubs; passthrough emits source
+
 ## [~] Track: cppfort conflict curation
 *Link: [./conductor/tracks/cppfort_conflict_curation_20260331/](./conductor/tracks/cppfort_conflict_curation_20260331/)*
-*Status: ACTIVE* - user correction superseded the prior slice again: active bounded slice `alias-hierarchy-restore-04` owns `src/selfhost/trikeshed.h2`, `src/selfhost/bbcursive.h2`, and `src/selfhost/bbcursive.cpp2`, with Join/Series/strview/CharSeries restoration ahead of any local transpile hack
+*Status: ACTIVE* - slice `trikeshed-alias-hierarchy-06` landed on trikeshed.h2, trikeshed_join.cpp2, trikeshed_series.cpp2, bbcursive.h2; cppfront passes on the 3 core files; blocked on bbcursive.cpp2 (outside corpus) which still uses old ts.ssize()/ts[p]/std::vector<tok> and needs updating to ts.a/ts.b(p)/series<tok>
 
 ## [~] Track: Cpp2 Metafunctions and Advanced Features (Phase 2)
 *Link: [./conductor/tracks/cpp2_metafunctions_20260315/](./conductor/tracks/cpp2_metafunctions_20260315/)*

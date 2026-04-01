@@ -1,87 +1,220 @@
-// cpp2.h2 — public API for cpp2 bitmap scanner
+// cpp2.h2 — bitmap scanner producing region graph
 //
-// Pattern: ~/work/Trikeshed/src/commonMain/kotlin/borg/trikeshed/parse/json/Json.kt
+// Each source character gets a wide pixel — packed structural + lexical + block + pp events.
+// Pixels then fold into regions — contiguous spans classified by type.
+// Region tree: the seriously wide source graph that C++ passes need but cpp2 doesn't have.
 
+#pragma once
 #include "trikeshed.h2"
 #include <string_view>
 #include <vector>
+#include <functional>
 
-cpp2: namespace = {
+namespace cpp2 {
 
-struct_event: @enum type = { unchanged; scope_open; scope_close; decl_delim; }
-lexer_event: @enum type = { unchanged; string_delim; escape; comment_start; }
+enum class struct_event  { none, scope_open, scope_close, decl_delim };
+enum class lexer_event   { none, string_delim, escape, line_comment, block_comment_open, block_comment_close, triple_quote };
+enum class ws_event      { none, whitespace, newline };
+enum class token_event   { none, word_start, num_start, op_start };
+enum class block_event   { none, markdown_open, markdown_close, code_fence };
+enum class pp_event      { none, pp_directive, pp_include, pp_if, pp_else, pp_endif, pp_define, pp_macro_arg };
+enum class region_kind   { none, code, line_comment, block_comment, string_literal, triple_quoted, markdown_block, pp_region, pp_include_guard };
 
-pixel: @struct type = {
-    se: struct_event = ();
-    le: lexer_event = ();
+[[nodiscard]] inline auto to_int(region_kind k) -> int { return static_cast<int>(k); }
+
+struct pixel {
+    struct_event se = struct_event::none;
+    lexer_event  le = lexer_event::none;
+    ws_event     ws = ws_event::none;
+    token_event  te = token_event::none;
+    block_event  be = block_event::none;
+    pp_event     pp = pp_event::none;
+};
+
+struct region {
+    region_kind kind = region_kind::none;
+    int lo = 0;
+    int hi = 0;
+    int depth = 0;
+    int parent = -1;
+};
+
+struct bitmap {
+    std::string_view src;
+    std::vector<pixel> pixels;
+    std::vector<region> regions;
+};
+
+using bitmap_series = series<pixel>;
+using region_series = series<region>;
+
+// scan — forward pass: source chars -> pixels (one pass, all layers)
+inline bitmap scan(std::string_view src) {
+    bitmap bmp;
+    bmp.src = src;
+    int i = 0;
+    int n = static_cast<int>(src.size());
+
+    bool in_line_comment = false;
+    bool in_block_comment = false;
+    bool in_triple_quote = false;
+    bool in_markdown = false;
+    int depth = 0;
+
+    while (i < n) {
+        pixel p;
+        char c = src[i];
+
+        if (c == ' ' || c == '\t') p.ws = ws_event::whitespace;
+        if (c == '\n') { p.ws = ws_event::newline; in_line_comment = false; }
+
+        // inside block comment: look for *> close
+        if (in_block_comment) {
+            if (c == '*' && i + 1 < n && src[i + 1] == '>') {
+                p.le = lexer_event::block_comment_close;
+                in_block_comment = false;
+                i += 2;
+                bmp.pixels.push_back(p);
+                continue;
+            }
+            bmp.pixels.push_back(p);
+            ++i;
+            continue;
+        }
+
+        // inside triple quote: look for """ close
+        if (in_triple_quote) {
+            if (c == '"' && i + 2 < n && src[i + 1] == '"' && src[i + 2] == '"') {
+                p.le = lexer_event::triple_quote;
+                in_triple_quote = false;
+                i += 3;
+                bmp.pixels.push_back(p);
+                continue;
+            }
+            bmp.pixels.push_back(p);
+            ++i;
+            continue;
+        }
+
+        // inside markdown block: look for ``` close
+        if (in_markdown) {
+            if (c == '`' && i + 2 < n && src[i + 1] == '`' && src[i + 2] == '`') {
+                p.be = block_event::markdown_close;
+                in_markdown = false;
+                i += 3;
+                bmp.pixels.push_back(p);
+                continue;
+            }
+            bmp.pixels.push_back(p);
+            ++i;
+            continue;
+        }
+
+        // line comment: //
+        if (c == '/' && i + 1 < n && src[i + 1] == '/') {
+            p.le = lexer_event::line_comment;
+            in_line_comment = true;
+            bmp.pixels.push_back(p);
+            i += 2;
+            continue;
+        }
+        if (in_line_comment) {
+            bmp.pixels.push_back(p);
+            ++i;
+            continue;
+        }
+
+        // block comment open: <*
+        if (c == '<' && i + 1 < n && src[i + 1] == '*') {
+            p.le = lexer_event::block_comment_open;
+            in_block_comment = true;
+            bmp.pixels.push_back(p);
+            i += 2;
+            continue;
+        }
+
+        // triple quote: """
+        if (c == '"' && i + 2 < n && src[i + 1] == '"' && src[i + 2] == '"') {
+            p.le = lexer_event::triple_quote;
+            in_triple_quote = true;
+            i += 3;
+            bmp.pixels.push_back(p);
+            continue;
+        }
+
+        // markdown / code fence: ```
+        if (c == '`' && i + 2 < n && src[i + 1] == '`' && src[i + 2] == '`') {
+            p.be = block_event::markdown_open;
+            in_markdown = true;
+            i += 3;
+            bmp.pixels.push_back(p);
+            continue;
+        }
+
+        // structural
+        if (c == '{') { p.se = struct_event::scope_open;  ++depth; }
+        if (c == '}') { p.se = struct_event::scope_close; --depth; }
+        if (c == ';' || c == ':') p.se = struct_event::decl_delim;
+
+        // string
+        if (c == '"') p.le = lexer_event::string_delim;
+        if (c == '\\') p.le = lexer_event::escape;
+
+        // preprocessor
+        if (c == '#') {
+            p.pp = pp_event::pp_directive;
+            if (i + 1 < n) {
+                char nc = src[i + 1];
+                if (nc == 'i') p.pp = pp_event::pp_include;
+                if (nc == 'd') p.pp = pp_event::pp_define;
+            }
+        }
+
+        // token start
+        if (i == 0 || bmp.pixels[i - 1].ws != ws_event::none || bmp.pixels[i - 1].se != struct_event::none || bmp.pixels[i - 1].pp != pp_event::none) {
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') p.te = token_event::word_start;
+            if (c >= '0' && c <= '9') p.te = token_event::num_start;
+        }
+
+        bmp.pixels.push_back(p);
+        ++i;
+    }
+    return bmp;
 }
 
-bitmap: @struct type = {
-    src: std::string_view = ();
-    scope_opens: std::vector<int> = ();
-    scope_closes: std::vector<int> = ();
-    decl_delims: std::vector<int> = ();
-    string_opens: std::vector<int> = ();
-    string_closes: std::vector<int> = ();
-    comment_starts: std::vector<int> = ();
-    comment_ends: std::vector<int> = ();
+// fold — pixel run-length -> region graph
+inline bitmap fold(bitmap bmp) {
+    int n = static_cast<int>(bmp.pixels.size());
+    if (n == 0) return bmp;
+
+    region r;
+    r.lo = 0;
+    r.kind = region_kind::code;
+    r.depth = 0;
+
+    for (int i = 0; i < n; ++i) {
+        const pixel& px = bmp.pixels[i];
+
+        region_kind k = region_kind::code;
+        if (px.le == lexer_event::line_comment) k = region_kind::line_comment;
+        if (px.le == lexer_event::block_comment_open || px.le == lexer_event::block_comment_close) k = region_kind::block_comment;
+        if (px.le == lexer_event::string_delim) k = region_kind::string_literal;
+        if (px.le == lexer_event::triple_quote) k = region_kind::triple_quoted;
+        if (px.be == block_event::markdown_open || px.be == block_event::markdown_close) k = region_kind::markdown_block;
+        if (px.pp != pp_event::none) k = region_kind::pp_region;
+
+        if (k != r.kind) {
+            r.hi = i;
+            if (r.hi > r.lo) bmp.regions.push_back(r);
+            r = {};
+            r.lo = i;
+            r.kind = k;
+            r.depth = 0;
+        }
+    }
+    r.hi = n;
+    if (r.hi > r.lo) bmp.regions.push_back(r);
+    return bmp;
 }
 
-decl_boundary: @struct type = {
-    lo: int = 0;
-    hi: int = 0;
-    depth: int = 0;
-}
-
-value_kind: @enum type = { word; num; str; }
-
-tag_decl: @struct type = {
-    name: std::string_view = ();
-    type_name: std::string_view = ();
-    val: value_kind = ();
-}
-
-namespace_decl: @struct type = {
-    name: std::string_view = ();
-}
-
-type_decl: @struct type = {
-    name: std::string_view = ();
-    metafunc: std::string_view = ();
-}
-
-type_alias: @struct type = {
-    name: std::string_view = ();
-    value: std::string_view = ();
-}
-
-func_decl: @struct type = {
-    name: std::string_view = ();
-    return_type: std::string_view = ();
-}
-
-decl_kind: @enum type = { tag_kind; ns_kind; type_kind; alias_kind; func_kind; unknown_kind; }
-
-decl: @struct type = {
-    kind: decl_kind = ();
-    tag: tag_decl = ();
-    ns: namespace_decl = ();
-    tp: type_decl = ();
-    al: type_alias = ();
-    fn: func_decl = ();
-    lo: int = 0;
-    hi: int = 0;
-}
-
-// utility functions
-skip_ws: (src: std::string_view, p: int) -> int;
-read_word: (src: std::string_view, p: int) -> std::string_view;
-find_at_depth: (src: std::string_view, target: char, p: int) -> int;
-reify: (src: std::string_view, boundary: decl_boundary) -> decl;
-
-// main API
-decode: (src: std::string_view) -> bitmap;
-index_decls: (bmp: bitmap) -> std::vector<decl_boundary>;
-parse: (src: std::string_view) -> std::vector<decl>;
-
-}
+} // namespace cpp2

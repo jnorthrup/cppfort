@@ -1,21 +1,23 @@
-// cpp2_main.cpp2 — main program for cpp2 bitmap scanner compiler
+// cpp2_main.cpp2 — self-hosted cpp2 transpiler
 //
-// Reads a .cpp2 file, parses it, generates C++ output.
-// Usage: cpp2_bin input.cpp2 > output.cpp
+// Reads a .h2/.cpp2 file, scans -> folds -> lexes -> parses it,
+// then emits the region graph and token stream as diagnostic output.
+// Eventually: full C++ code generation from the node tree.
+//
+// Usage: cpp2_bin input.h2
 
 #include "cpp2.h2"
-#include "generator.h2"
+#include "bbcursive.h2"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
 main: (args) -> int = {
     if args.ssize() < 2 {
-        std::cerr << "Usage: cpp2_bin input.cpp2\n";
+        std::cerr << "Usage: cpp2_bin input.h2\n";
         return 1;
     }
 
-    // read input file
     filename := args[1];
     file: std::ifstream = (std::string(filename));
     if !file.is_open() {
@@ -27,13 +29,34 @@ main: (args) -> int = {
     buf << file.rdbuf();
     src := buf.str();
 
-    // parse
-    decls := cpp2::parse(src);
-    std::cerr << "Parsed " << decls.ssize() << " declarations\n";
+    // forward pass: scan -> fold
+    bmp: cpp2::bitmap = cpp2::scan(src);
+    bmp = cpp2::fold(bmp);
 
-    // generate C++
-    output := cpp2::generate(src, decls);
-    std::cout << output;
+    // emit region graph
+    std::cerr << "regions: " << bmp.regions.size() << "\n";
+    i: int = 0;
+    while i < int(bmp.regions.size()) {
+        r := bmp.regions[i];
+        lo: int = r.lo;
+        hi: int = r.hi;
+        d: int = r.depth;
+        k: int = cpp2::to_int(r.kind);
+        std::cerr << "  [" << i << "] kind=" << k << " lo=" << lo << " hi=" << hi << " depth=" << d << "\n";
+        i += 1;
+    }
+
+    // trailing pass: lex -> parse
+    toks: series<cpp2::tok> = cpp2::lex(bmp);
+    std::cerr << "tokens: " << toks.a << "\n";
+
+    nodes := cpp2::parse(src);
+    if nodes.has_value() {
+        std::cerr << "nodes: " << nodes.value().size() << "\n";
+    }
+
+    // passthrough: emit original source (until code gen works)
+    std::cout << src;
 
     return 0;
 }

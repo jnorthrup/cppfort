@@ -1,58 +1,54 @@
-// trikeshed_series.cpp2 - TrikeShed Series<T> port
-// Series<T> = Join<Int, (Int) -> T> - lazy indexed collection
-// Per TrikeShed specification: semantic objects first, dense lowered views second
-// Note: Core type definitions for SoN integration. Lambda-based operations require SoN dialect.
+// trikeshed_series.cpp2 — TrikeShed Series<T> port
+// Series<T> = Join<int, (int)->T> — lazy indexed collection
+//
+// Kotlin spec:
+//   typealias MetaSeries<I,T> = Join<I,(I)->T>
+//   typealias Series<T>       = MetaSeries<Int,T>
+//   val <T> Series<T>.size: Int get() = a
+//   operator fun <T> Series<T>.get(i: Int): T = b(i)
+//
+// Series is LAZY. The function IS the element accessor. Nothing materialized.
+// C++ abhors lazy but this is the moment.
+
+#include "trikeshed.h2"
 
 // ============================================================================
-// INDEXED<I, F> - function from domain I to value type
-// Maps to: cpp2.indexed op in SoN dialect
+// SERIES SIZE — .a alias (the count / domain)
+// Kotlin: val <T> Series<T>.size: Int get() = a
 // ============================================================================
 
-indexed: @struct <I: type, F: type> type = {
-    domain: I = ();
-    at: F = ();
+s_size: <T: type>(s: series<T>) -> int = s.a;
+
+// ============================================================================
+// SERIES SUBSCRIPT — calls .b(i), the lazy accessor
+// Kotlin: operator fun <T> Series<T>.get(i: Int): T = b(i)
+// ============================================================================
+
+s_at: <T: type>(s: series<T>, i: int) -> T = s.b(i);
+
+// ============================================================================
+// SERIES CONVENIENCE
+// ============================================================================
+
+s_first: <T: type>(s: series<T>) -> T = s.b(0);
+s_last:  <T: type>(s: series<T>) -> T = s.b(s.a - 1);
+
+// ============================================================================
+// VIEW — typed projection, re-expresses series through a function
+// Kotlin: IterableSeries<A> — value class wrapping Series<A>
+//         view<T,T2>({int->}) — typed transform
+// view and slice are UNRELATED. slice supports spans. view supports spans.
+// ============================================================================
+
+s_view: <T: type, T2: type>(s: series<T>, fn: std::function<T2 (int)>) -> series<T2> = {
+    return j(s.a, fn);
 }
 
 // ============================================================================
-// SERIES<T> - indexed sequence (indexed<int, F>)
-// Maps to: cpp2.indexed op with I=int
+// SLICE — sub-range [lo, hi) as new series
+// slice supports spans. slice and view are UNRELATED.
 // ============================================================================
 
-series: @struct <T: type> type = {
-    size: int = ();
-    at: std::function<T (int)> = ();
+s_slice: <T: type>(s: series<T>, lo: int, hi: int) -> series<T> = {
+    return j(hi - lo, :(i) -> T = s.b(lo + i));
 }
-
-// ============================================================================
-// SERIES CORE OPERATIONS - SoN-dialect integrated
-// These map to canonical nodes for SoN optimization
-// ============================================================================
-
-s_first: <T: type>(s: series<T>) -> T = s.at(0);
-
-s_last: <T: type>(s: series<T>) -> T = s.at(s.size - 1);
-
-s_at: <T: type>(s: series<T>, i: int) -> T = s.at(i);
-
-// ============================================================================
-// SERIES COMBINATION - Maps to combine node
-// ============================================================================
-
-s_concat: <T: type>(a: series<T>, b: series<T>) -> series<T> = {
-    // Maps to cpp2.concat in SoN dialect
-    // Implementation requires SoN lowering
-    total: int = a.size + b.size;
-    result: series<T> = ();
-    result.size = total;
-    // Note: Lambda closure requires SoN dialect support
-    return result;
-}
-
-// ============================================================================
-// α (ALPHA) TRANSFORM - Maps to map node
-// In TrikeShed: series α { x -> expr } creates transformed series
-// Maps to: cpp2.alpha op in SoN dialect
-// ============================================================================
-
-// Note: Full alpha transform requires SoN dialect for lambda lowering
-// The canonical node is: alpha_op(input_series, transform_fn)
