@@ -1,4 +1,33 @@
-// cpp2.cpp2 — STUBBED
-//
-// Bitmap scanner implementation absorbed into bbcursive combinator surface.
-// The separate bitmap strategy is dead. Grammar rules are reader methods in bbcursive.h2.
+// cpp2.cpp2 - self-hosted cpp2 transpiler
+// Permanent selfhost contract: cpp2.cpp2 compiles cpp2.cpp2.
+// Usage: cpp2_bin input.h2
+
+#include "cpp2.h2"
+#include "bbcursive.h2"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+main: (args) -> int = {
+    if args.ssize() < 2 {
+        std::cerr << "Usage: cpp2_bin input.h2\n";
+        return 1;
+    }
+
+    filename: std::string = std::string(args[1]);
+    f: std::ifstream = (filename);
+    if !f.is_open() {
+        std::cerr << "Error: cannot open " << filename << "\n";
+        return 1;
+    }
+
+    buf: std::stringstream = ();
+    buf << f.rdbuf();
+    src: std::string = buf.str();
+
+    regs: std::vector<cpp2::region> = cpp2::regions(src);
+    std::cerr << "regions: " << regs.size() << "\n";
+    cpp2::emit2(src, regs, std::cout);
+
+    return 0;
+}

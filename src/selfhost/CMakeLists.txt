@@ -148,8 +148,8 @@ if(CPPFRONT_EXECUTABLE)
     set(TRIKESHED_H "${SELFHOST_DIR}/trikeshed.h")
     set(CPP2_H "${SELFHOST_DIR}/cpp2.h")
     set(BBCURSIVE_H "${SELFHOST_DIR}/bbcursive.h")
-    set(CPP2_MAIN_SRC "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2_main.cpp2")
-    set(CPP2_MAIN_CPP "${SELFHOST_DIR}/cpp2_main.cpp")
+    set(CPP2_MAIN_SRC "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2.cpp2")
+    set(CPP2_MAIN_CPP "${SELFHOST_DIR}/cpp2.cpp")
 
     add_custom_command(
       OUTPUT "${TRIKESHED_H}"
@@ -176,7 +176,7 @@ if(CPPFRONT_EXECUTABLE)
       OUTPUT "${CPP2_MAIN_CPP}"
       COMMAND "${CPPFRONT_EXECUTABLE}" -q -o "${CPP2_MAIN_CPP}" "${CPP2_MAIN_SRC}"
       DEPENDS "${CPP2_MAIN_SRC}" "${BBCURSIVE_H}"
-      COMMENT "Transpiling cpp2_main.cpp2"
+      COMMENT "Transpiling cpp2.cpp2"
       VERBATIM
     )
 

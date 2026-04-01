@@ -1,3 +1,36 @@
+   Completion audit — 2026-04-01
+
+- DONE: verified current live selfhost path is `src/selfhost/cpp2.h2` + `src/selfhost/cpp2.cpp2`
+- DONE: verified `src/selfhost/cppfort_main.cpp` is absent; old TODO references to it are stale
+- DONE: `cmake -S . -B build` passes
+- DONE: `cmake --build build --target selfhost_bootstrap_smoke` passes
+- DONE: `ctest --test-dir build --output-on-failure` passes (2/2)
+- DONE: `cmake --build build --target cpp2_bin` passes
+- DONE: self-transpile fixed-point check for `src/selfhost/cpp2.cpp2` passes (`diff` empty)
+- DONE: reclassified stale immediate-curation targets
+  - `src/selfhost/cppfort.cpp2` = KEEP (already collapsed facade, not current garbage)
+  - `src/selfhost/cpp2.cpp2` = PROMOTED to permanent live selfhost contract
+  - `src/selfhost/cpp2_main.cpp2` = retired shim/signpost to stop split-entrypoint drift
+  - `src/selfhost/cpp2.h2` = KEEP (live path; 256-byte autovec fast path now installed)
+  - `src/selfhost/canonical_emitter.cpp2` = actual current stringly hotspot
+  - `src/selfhost/bootstrap_tags.cpp2` + `src/selfhost/canonical_types.cpp2` + `src/selfhost/CMakeLists.txt` = actual enum-table unification target
+- DONE: `src/selfhost/cpp2.h2` scanner now has a 256-byte boring-span fast path with Apple-clang-autovec shape
+- DONE: added long-span scanner smoke coverage for trailing comment/include/func_header recovery after 320-byte boring spans
+- DONE: resumed live selfhost path after lexer work
+  - fixed `emit_body()` so bare `if/while` rewriting no longer corrupts existing `if (...)`, `if constexpr`, or single-line `if` forms
+  - restricted declaration rewriting to statement heads so ternary `?:` expressions survive transpilation
+  - verified `./build/src/selfhost/cpp2_bin src/selfhost/trikeshed.h2` now transpiles to C++ that compiles cleanly
+- DONE: restored permanent contract so `src/selfhost/cpp2.cpp2` is the executable selfhost entrypoint again
+  - `cpp2_bin` now builds from `src/selfhost/cpp2.cpp2`
+  - `src/selfhost/cpp2.cpp2` self-transpiles to fixed point
+
+   Remaining immediate curation
+
+   1. Fail-close or quarantine `src/selfhost/canonical_emitter.cpp2`
+   2. Unify canonical tag metadata into one enum/table source
+   3. Delete manual CMake tag echo duplication and generate from the single tag source
+   4. Only after that, refactor `src/selfhost/cpp2.h2` classifier staircases into helpers/registry where it does not break the green path
+
    What to curate immediately
 
    1. Kill string-semantic conditional spam
