@@ -46,17 +46,44 @@ struct func_info {
     bool is_main = false;
 };
 
+// Continuation tokens: if line ends with these, newline doesn't terminate statement
+inline auto is_continuation(char c) -> bool {
+    return c == '=' || c == ',' || c == '(' || c == '[' || c == '{'
+        || c == '+' || c == '-' || c == '*' || c == '/' || c == '%'
+        || c == '<' || c == '>' || c == '!' || c == '&' || c == '|'
+        || c == '^' || c == '~' || c == '?';
+}
+
+// Find last non-whitespace char before position i
+inline auto prev_nonspace(std::string_view src, int i) -> char {
+    int j = i - 1;
+    while (j >= 0 && (src[j] == ' ' || src[j] == '\t')) --j;
+    return (j >= 0) ? src[j] : '\0';
+}
+
+// Check if newline at position i is a hanging line (doesn't terminate statement)
+// Also returns true if we're inside unclosed brackets
+inline auto is_hanging_newline(std::string_view src, int i, int depth) -> bool {
+    if (depth > 0) return true;  // inside brackets
+    char c = prev_nonspace(src, i);
+    if (is_continuation(c)) return true;
+    // Check for -> (two chars)
+    if (c == '>' && i >= 2 && src[i - 2] == '-') return true;
+    return false;
+}
+
 // scan — single forward pass, emit seek markers at syntax boundaries
 inline auto scan(std::string_view src) -> std::vector<mark> {
     std::vector<mark> out;
     int i = 0;
     int n = static_cast<int>(src.size());
+    int depth = 0;  // bracket depth: ()[]{} tracking for hanging lines
 
     while (i < n) {
         // skip string literals
-        if (src[i] == '"') {
+        if (src[i] == '\"') {
             ++i;
-            while (i < n && src[i] != '"') {
+            while (i < n && src[i] != '\"') {
                 if (src[i] == '\\') ++i; // skip escaped char
                 ++i;
             }
@@ -69,6 +96,16 @@ inline auto scan(std::string_view src) -> std::vector<mark> {
             out.push_back({i, kind::line_comment});
             while (i < n && src[i] != '\n') ++i;
             out.push_back({i, kind::code});
+            continue;
+        }
+
+        // track bracket depth
+        if (src[i] == '(' || src[i] == '[' || src[i] == '{') { ++depth; ++i; continue; }
+        if (src[i] == ')' || src[i] == ']' || src[i] == '}') { if (depth > 0) --depth; ++i; continue; }
+
+        // hanging newline: skip it (Kotlin-style semicolon inference)
+        if (src[i] == '\n' && is_hanging_newline(src, i, depth)) {
+            ++i;
             continue;
         }
 
