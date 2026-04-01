@@ -1,11 +1,24 @@
-// trikeshed.h2 — Join, series, strview, char_series
+// trikeshed.h2 — canonical selfhost core IR
+//
+// Canonical core:
+// - join<A,B> product payloads
+// - series<T> lazy indexed collections
+// - series<int> selectors for reindex/remap
+// - strview / char_series for source-facing cursors
+//
+// Everything else in src/selfhost is either a projector into this core or a
+// downstream lowering surface. There is no second competing semantic core.
 //
 // Fundamental lazy collections. Series is LAZY — the function IS the accessor.
-// view is the highest density tool — re-expresses the series through a function.
+// `series >> fn` is the projection surface. `series[selector]` remaps through
+// ints, spans, ranges, and arbitrary lazy index series.
 
 #include <functional>
+#include <initializer_list>
 #include <vector>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 
 // ============================================================================
 // JOIN — product pair
@@ -30,11 +43,151 @@ struct join {
 template<typename T> using twin = join<T, T>;
 
 // ============================================================================
-// SERIES<T> — Lazy indexed collection
-// Series is LAZY. The function IS the element accessor. Nothing materialized.
+// SPAN / RANGE — index selectors for lazy re-numbered slices
+// span  = contiguous [lo, hi)
+// range = stepped [lo, hi) by step
 // ============================================================================
 
-template<typename T> using series = join<int, std::function<T(int)>>;
+struct span {
+    int lo = 0;
+    int hi = 0;
+
+    span() = default;
+    span(int lo_, int hi_) : lo(lo_), hi(hi_) {}
+
+    [[nodiscard]] auto size() const -> int { return hi - lo; }
+};
+
+struct range {
+    int lo = 0;
+    int hi = 0;
+    int step = 1;
+
+    range() = default;
+    range(int lo_, int hi_, int step_ = 1) : lo(lo_), hi(hi_), step(step_) {}
+
+    [[nodiscard]] auto size() const -> int {
+        if (step == 0) return 0;
+        if ((step > 0 && lo >= hi) || (step < 0 && lo <= hi)) return 0;
+        int delta = hi - lo;
+        int abs_delta = delta < 0 ? -delta : delta;
+        int abs_step = step < 0 ? -step : step;
+        return (abs_delta + abs_step - 1) / abs_step;
+    }
+
+    [[nodiscard]] auto at(int i) const -> int {
+        return lo + (i * step);
+    }
+};
+
+// ============================================================================
+// SERIES<T> — Lazy indexed collection
+// Series is LAZY. The function IS the element accessor. Nothing materialized.
+// a = local cardinality. b(i) = local accessor. Selectors re-number offsets.
+// ============================================================================
+
+template<typename T>
+struct series;
+
+template<typename T>
+struct series {
+    int a {};
+    std::function<T(int)> b {};
+
+    series() = default;
+    series(int n, std::function<T(int)> f) : a(n), b(std::move(f)) {}
+    series(const series&) = default;
+    series(series&&) noexcept = default;
+    series& operator=(const series&) = default;
+    series& operator=(series&&) noexcept = default;
+
+    [[nodiscard]] auto size() const -> int { return a; }
+    [[nodiscard]] auto operator[](int i) const -> T { return b(i); }
+
+    [[nodiscard]] auto operator[](span sp) const -> series<T> {
+        return series<T>(sp.size(), [src = *this, sp](int i) -> T {
+            return src.b(sp.lo + i);
+        });
+    }
+
+    [[nodiscard]] auto operator[](range rg) const -> series<T> {
+        return series<T>(rg.size(), [src = *this, rg](int i) -> T {
+            return src.b(rg.at(i));
+        });
+    }
+
+    [[nodiscard]] auto operator[](series<int> idx) const -> series<T> {
+        return series<T>(idx.a, [src = *this, idx](int i) -> T {
+            return src.b(idx.b(i));
+        });
+    }
+
+    [[nodiscard]] auto operator[](std::initializer_list<int> picks) const -> series<T> {
+        std::vector<int> idx(picks);
+        return series<T>(static_cast<int>(idx.size()), [src = *this, idx = std::move(idx)](int i) -> T {
+            return src.b(idx[static_cast<std::size_t>(i)]);
+        });
+    }
+
+    [[nodiscard]] auto operator[](std::vector<int> picks) const -> series<T> {
+        return series<T>(static_cast<int>(picks.size()), [src = *this, picks = std::move(picks)](int i) -> T {
+            return src.b(picks[static_cast<std::size_t>(i)]);
+        });
+    }
+
+    template<typename F>
+    [[nodiscard]] auto operator>>(F f) const {
+        if constexpr (std::is_invocable_v<F, int, T>) {
+            using T2 = std::invoke_result_t<F, int, T>;
+            return series<T2>(a, [src = *this, f = std::move(f)](int i) mutable -> T2 {
+                return f(i, src.b(i));
+            });
+        } else if constexpr (std::is_invocable_v<F, int>) {
+            using T2 = std::invoke_result_t<F, int>;
+            return series<T2>(a, [f = std::move(f)](int i) mutable -> T2 {
+                return f(i);
+            });
+        } else {
+            static_assert(std::is_invocable_v<F, T>, "series >> fn expects fn(int), fn(T), or fn(int,T)");
+            using T2 = std::invoke_result_t<F, T>;
+            return series<T2>(a, [src = *this, f = std::move(f)](int i) mutable -> T2 {
+                return f(src.b(i));
+            });
+        }
+    }
+
+    template<typename F>
+    [[nodiscard]] auto view(F f) const {
+        return (*this) >> std::move(f);
+    }
+};
+
+// ============================================================================
+// SELECTOR INTEROP — span/range as first-class lazy index series
+// Keeps the model self-owned: no std::ranges/range-v3 dependency.
+// ============================================================================
+
+inline auto indices(span sp) -> series<int> {
+    return series<int>(sp.size(), [sp](int i) -> int {
+        return sp.lo + i;
+    });
+}
+
+inline auto indices(range rg) -> series<int> {
+    return series<int>(rg.size(), [rg](int i) -> int {
+        return rg.at(i);
+    });
+}
+
+template<typename F>
+[[nodiscard]] inline auto operator>>(span sp, F f) {
+    return indices(sp) >> std::move(f);
+}
+
+template<typename F>
+[[nodiscard]] inline auto operator>>(range rg, F f) {
+    return indices(rg) >> std::move(f);
+}
 
 // ============================================================================
 // STRVIEW — char series over contiguous storage
@@ -55,24 +208,51 @@ struct char_series {
 
     char_series() = default;
     char_series(strview b) : buf(std::move(b)), pos(0), limit(buf.a), mark(-1) {}
-    char_series(char_series&& o) noexcept : buf(std::move(o.buf)), pos(o.pos), limit(o.limit), mark(o.mark) {}
+    char_series(const char_series&) = default;
+    char_series(char_series&&) noexcept = default;
+    char_series& operator=(const char_series&) = default;
+    char_series& operator=(char_series&&) noexcept = default;
 
-    char get()       { return buf.b(pos); }
-    char peek(int i) { return buf.b(pos + i); }
+    char get()       { return buf[pos]; }
+    char peek(int i) { return buf[pos + i]; }
     bool has_next()  { return pos < limit; }
-    char advance()   { return buf.b(pos++); }
+    char advance()   { return buf[pos++]; }
     void mark_pos()  { mark = pos; }
     void reset()     { if (mark >= 0) pos = mark; }
 
-    // slice — sub-range [lo, hi) as new char_series
+    // slice — selector-driven char_series with local re-numbered offsets
     char_series slice(int lo, int hi) {
-        int n = hi - lo;
-        return char_series(strview(n, [this, lo](int i) -> char { return buf.b(lo + i); }));
+        return char_series(buf[span{lo, hi}]);
     }
 
-    // view — the highest density tool. Re-expresses the series through a function.
-    template<typename T2>
-    series<T2> view(std::function<T2(int)> f) {
-        return series<T2>(buf.a, std::move(f));
+    char_series slice(span sp) {
+        return char_series(buf[sp]);
+    }
+
+    char_series slice(range rg) {
+        return char_series(buf[rg]);
+    }
+
+    char_series slice(series<int> idx) {
+        return char_series(buf[idx]);
+    }
+
+    char_series slice(std::initializer_list<int> picks) {
+        return char_series(buf[picks]);
+    }
+
+    char_series slice(std::vector<int> picks) {
+        return char_series(buf[std::move(picks)]);
+    }
+
+    template<typename F>
+    auto operator>>(F f) const {
+        return buf >> std::move(f);
+    }
+
+    // view — compatibility alias; projection surface is now >>
+    template<typename F>
+    auto view(F f) const {
+        return (*this) >> std::move(f);
     }
 };

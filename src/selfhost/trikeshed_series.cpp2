@@ -1,54 +1,56 @@
-// trikeshed_series.cpp2 — TrikeShed Series<T> port
-// Series<T> = Join<int, (int)->T> — lazy indexed collection
+// trikeshed_series.cpp2 — cpp2 surface for the trikeshed indexed-series core
 //
-// Kotlin spec:
-//   typealias MetaSeries<I,T> = Join<I,(I)->T>
-//   typealias Series<T>       = MetaSeries<Int,T>
-//   val <T> Series<T>.size: Int get() = a
-//   operator fun <T> Series<T>.get(i: Int): T = b(i)
+// Docs checked: docs/cpp2/declarations.md, docs/cpp2/functions.md,
+// docs/cpp2/objects.md, docs/cpp2/types.md.
 //
-// Series is LAZY. The function IS the element accessor. Nothing materialized.
-// C++ abhors lazy but this is the moment.
+// This file is the cpp2-facing surface over the canonical core in trikeshed.h2.
+// The core stays small: join<A,B>, series<T>, selector series<int>, strview,
+// and char_series.
 
 #include "trikeshed.h2"
 
-// ============================================================================
-// SERIES SIZE — .a alias (the count / domain)
-// Kotlin: val <T> Series<T>.size: Int get() = a
-// ============================================================================
+series_of:    <T: type> type == series<T>;
+selectors:              type == series<int>;
+source_series:          type == strview;
+source_cursor:          type == char_series;
 
-s_size: <T: type>(s: series<T>) -> int = s.a;
+s_size: <T: type>(s: series<T>) -> int = s.size();
 
-// ============================================================================
-// SERIES SUBSCRIPT — calls .b(i), the lazy accessor
-// Kotlin: operator fun <T> Series<T>.get(i: Int): T = b(i)
-// ============================================================================
+s_at: <T: type>(s: series<T>, i: int) -> T = s[i];
 
-s_at: <T: type>(s: series<T>, i: int) -> T = s.b(i);
+s_first: <T: type>(s: series<T>) -> T = s[0];
 
-// ============================================================================
-// SERIES CONVENIENCE
-// ============================================================================
+s_last: <T: type>(s: series<T>) -> T = s[s.size() - 1];
 
-s_first: <T: type>(s: series<T>) -> T = s.b(0);
-s_last:  <T: type>(s: series<T>) -> T = s.b(s.a - 1);
+s_slice: <T: type>(s: series<T>, sp: span) -> series<T> = s[sp];
 
-// ============================================================================
-// VIEW — typed projection, re-expresses series through a function
-// Kotlin: IterableSeries<A> — value class wrapping Series<A>
-//         view<T,T2>({int->}) — typed transform
-// view and slice are UNRELATED. slice supports spans. view supports spans.
-// ============================================================================
+s_slice: <T: type>(s: series<T>, rg: range) -> series<T> = s[rg];
 
-s_view: <T: type, T2: type>(s: series<T>, fn: std::function<T2 (int)>) -> series<T2> = {
-    return j(s.a, fn);
-}
+s_slice: <T: type>(s: series<T>, idx: selectors) -> series<T> = s[idx];
 
-// ============================================================================
-// SLICE — sub-range [lo, hi) as new series
-// slice supports spans. slice and view are UNRELATED.
-// ============================================================================
+s_slice: <T: type>(s: series<T>, picks: std::vector<int>) -> series<T> = s[picks];
 
-s_slice: <T: type>(s: series<T>, lo: int, hi: int) -> series<T> = {
-    return j(hi - lo, :(i) -> T = s.b(lo + i));
-}
+s_indices: (sp: span) -> selectors = indices(sp);
+
+s_indices: (rg: range) -> selectors = indices(rg);
+
+s_project: <T: type, T2: type>(
+    s: series<T>,
+    fn: std::function<T2(T)>
+) -> series<T2> = s >> fn;
+
+s_project_i: <T: type, T2: type>(
+    s: series<T>,
+    fn: std::function<T2(int)>
+) -> series<T2> = s >> fn;
+
+s_project_ix: <T: type, T2: type>(
+    s: series<T>,
+    fn: std::function<T2(int, T)>
+) -> series<T2> = s >> fn;
+
+cursor_slice: (cur: source_cursor, sp: span) -> source_cursor = cur.slice(sp);
+
+cursor_slice: (cur: source_cursor, rg: range) -> source_cursor = cur.slice(rg);
+
+cursor_slice: (cur: source_cursor, idx: selectors) -> source_cursor = cur.slice(idx);

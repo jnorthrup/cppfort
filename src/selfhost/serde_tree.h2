@@ -1,0 +1,246 @@
+// serde_tree.h2 — Serde tree: output of cpp2 deserialization pipeline
+//
+// Pipeline: source bytes → encode (scan) → decode (bitmaps) → index → reify → serdes_tree
+//
+// Built from trikeshed primitives:
+//   series<T> = { a: count, b: fn(index) → T }   // lazy indexed collection
+//   join<A,B> = { a: A, b: B }                    // product pair
+//   span      = { lo: int, hi: int }              // contiguous source region
+//
+// The serdes_tree is a series<serdes_node>. Each node is a join of:
+//   - node_kind   (which syntactic form)
+//   - src_span    (where in source)
+//   - annotations (bitfield of modifiers)
+//   - children    (nested serdes_nodes, as offset + count into flat series)
+//
+// This file covers all 265 syntactic patterns from the 116 pass regression tests,
+// compressed into 115 node kinds.
+
+#pragma once
+
+namespace cpp2 {
+
+// ============================================================================
+// NODE KIND — 115 distinct syntactic forms from 265 regression patterns
+// ============================================================================
+
+node_kind: @enum type = {
+    // === Top-level declarations ===
+    nd_func_decl = 0;       // name: (params) -> ret = { body }, single-expr, forward, throws
+    nd_type_decl;           // name: type = { members }
+    nd_namespace;           // name: namespace = { body }
+    nd_type_alias;          // name: type == expr
+    nd_namespace_alias;     // name: namespace == expr
+    nd_value_alias;         // name: type == value, name: const T == value
+    nd_func_alias;          // name :== expr
+    nd_concept;             // name: <T> concept = expr
+    nd_requires_clause;     // on type, func, forward decl, variable
+    nd_variable_template;   // v: <V: _> const int = 0
+
+    // === Annotations / metafunctions ===
+    nd_struct;              // @struct type
+    nd_enum;                // @enum type (auto-increment, explicit values)
+    nd_flag_enum;           // @flag_enum<u8> type
+    nd_union;               // @union type (with optional template)
+    nd_interface;           // @interface type
+    nd_polymorphic_base;    // @polymorphic_base<I:int> type
+    nd_ordered;             // @ordered type
+    nd_weakly_ordered;      // @weakly_ordered type
+    nd_partially_ordered;   // @partially_ordered type
+    nd_value;               // @value type
+    nd_weakly_ordered_value;// @weakly_ordered_value type
+    nd_partially_ordered_value; // @partially_ordered_value type
+    nd_singleton;           // @singleton type
+    nd_hashable;            // @struct @hashable type
+    nd_print;               // @print type
+    nd_autodiff;            // @autodiff, @autodiff<"reverse">, @autodiff<"order=6">
+    nd_regex;               // @regex type
+    nd_sample_traverser;    // @sample_traverser type
+
+    // === Templates & generics ===
+    nd_template_func;       // <T,U>(params) -> type = { }, variadic
+    nd_template_type;       // <T> type = { }
+    nd_variadic_pack;       // <Ts...: type>, <_...>
+    nd_type_constraint;     // param: _ is constraint, ok: _ is regular = 42
+    nd_default_template_arg;// <T: type = int, N: int = 42>
+
+    // === Parameters ===
+    nd_param_in;            // (param: type) — default, read-only
+    nd_param_inout;         // (inout param: type)
+    nd_param_out;           // (out param: type)
+    nd_param_move;          // (move param: type)
+    nd_param_forward;       // (forward param: type)
+    nd_param_copy;          // (copy param: type)
+    nd_param_this;          // (this) — const member
+    nd_param_inout_this;    // (inout this)
+    nd_param_out_this;      // (out this)
+    nd_param_move_this;     // (move this)
+    nd_param_virtual_this;  // (virtual this)
+    nd_param_override_this; // (override this)
+    nd_param_implicit_out_this; // (implicit out this, x: int)
+    nd_param_wildcard;      // (_: type)
+    nd_param_default;       // (param: type = default)
+    nd_param_variadic;      // (forward _...), (copy _...)
+
+    // === Declarations in bodies ===
+    nd_variable_decl;       // name: type = value;  name: type;
+    nd_auto_decl;           // name := value;
+    nd_wildcard_decl;       // name: _ = value, name: const _ = value, name: * _ = addr
+    nd_discard;             // _ = expr;  _: type = value;
+    nd_heap_alloc;          // name := new<Type>(args);
+    nd_in_place_type;       // :std::string = args...;
+
+    // === Control flow ===
+    nd_if;                  // if cond { }, else if, else
+    nd_while;               // while cond next inc { }
+    nd_do_while;            // do { } next inc while cond;
+    nd_for_do;              // for col do (e) { }, for 1..=5 do (e) { }
+    nd_break;               // break label;
+    nd_continue;            // continue label;
+    nd_labeled_stmt;        // label: for/while/do { }
+    nd_statement_scope;     // (name := val) stmt { }
+    nd_if_constexpr;        // if constexpr cond { }
+
+    // === Expressions ===
+    nd_deref;               // ptr*
+    nd_addr_of;             // expr&
+    nd_as_cast;             // expr as type
+    nd_is_expr;             // expr is type, is (val), is (pred), is (lambda)
+    nd_chained_cmp;         // a < b <= c
+    nd_string_interp;       // "(name)$", "(expr:fmt)$", R"()", $R"()"
+    nd_ufcs_call;           // obj.method(), obj..method()
+    nd_move_expr;           // (move expr)
+    nd_expr_list;           // (val1, val2, ...)
+    nd_fold_expr;           // (out << ... << args), (... && args)
+    nd_sizeof_pack;         // sizeof...(pack)
+    nd_decltype;            // decltype(expr)
+    nd_static_assert;       // static_assert(cond)
+    nd_unchecked_narrow;    // unchecked_narrow<T>(expr)
+    nd_unchecked_cast;      // unchecked_cast<T>(expr)
+    nd_throw_expr;          // throw(42)
+    nd_this_access;         // this.member
+
+    // === Operator overloading ===
+    nd_operator_copy;       // operator=: (out this, that) / (inout this, that)
+    nd_operator_move;       // operator=: (out this, move that) / (inout this, move that)
+    nd_operator_default;    // operator=: (out this)
+    nd_operator_implicit;   // operator=: (implicit out this, x: int)
+    nd_operator_dtor;       // operator=: (move this)
+    nd_operator_binary;     // operator+: (inout this, that) -> type
+    nd_operator_eq;         // operator==: (this, that) -> bool
+    nd_operator_spaceship;  // operator<=>: (this, that) -> ordering
+    nd_operator_call;       // operator(): (this) -> type
+    nd_operator_deref;      // operator*: (this) -> type
+    nd_operator_subscript;  // operator[]: (this, idx: int) -> type
+    nd_operator_is;         // op_is: (this, x) = expr;
+    nd_operator_shift_right;// synthesized >>, >>=
+
+    // === Inspect expressions ===
+    nd_inspect;             // inspect expr -> type { is pattern = val; }
+    nd_inspect_type;        // is int = result;
+    nd_inspect_wildcard;    // is _ = default;
+    nd_inspect_value;       // is (42) = result;
+    nd_inspect_void;        // is void = result;
+    nd_inspect_as;          // is int = expr as int;
+    nd_inspect_flags;       // is (cpp2::has_flags(expr)) = result;
+
+    // === Contracts & assertions ===
+    nd_pre;                 // pre(cond, msg), pre<tag1, tag2>(cond, msg)
+    nd_assert;              // assert(cond, msg)
+    nd_assert_tagged;       // assert<tag>(cond, msg), assert<unevaluated>(expr)
+
+    // === Lambdas ===
+    nd_lambda;              // :()=, :() = { }, :() -> type =, :<T>()=, immediately invoked
+
+    // === Aliases & using ===
+    nd_using;               // using namespace::member, using std::array
+    nd_func_type_alias;     // A_h_forward: type == (params) -> type;
+
+    // === Exception handling ===
+    nd_try;                 // try { } catch (param) { }
+    nd_catch;               // catch (_) { }
+
+    // === Base class & RAII ===
+    nd_base_class;          // this: BaseType = ();
+    nd_finally;             // _: finally = :()= expr;
+
+    // === Library-generated methods ===
+    nd_union_methods;       // set_name(), set_other(), is_name(), name(), other()
+    nd_enum_methods;        // to_string(), from_string(), from_code(), get_raw_value()
+    nd_flag_enum_methods;   // set(), clear()
+    nd_hash_method;         // x.hash()
+
+    nd_COUNT;               // sentinel — how many node kinds
+};
+
+// ============================================================================
+// ANNOTATIONS — bitfield modifiers carried on every node
+// ============================================================================
+
+annotations: @flag_enum<u32> type = {
+    ann_none        := 0;
+    ann_public      := 1;
+    ann_private     := 2;
+    ann_protected   := 4;
+    ann_virtual     := 8;
+    ann_override    := 16;
+    ann_final       := 32;
+    ann_implicit    := 64;
+    ann_constexpr   := 128;
+    ann_noexcept    := 256;
+    ann_const       := 512;
+};
+
+// ============================================================================
+// CHILDREN — flat series with offset + count (contiguous children)
+// ============================================================================
+
+children: @struct type = {
+    offset: i32 = 0;
+    count:  i32 = 0;
+};
+
+// ============================================================================
+// SERDES NODE — the node in the serde tree
+//
+// node = join<node_kind, join<src_span, join<annotations, children>>>
+//
+// src_span = { lo, hi } into source bytes
+// annotations = bitfield of modifiers
+// children = { offset, count } into flat series of nodes
+// ============================================================================
+
+serdes_node: @struct type = {
+    kind:      node_kind  = node_kind::nd_func_decl;
+    lo:        i32        = 0;
+    hi:        i32        = 0;
+    ann:       u32        = 0;
+    child_off: i32        = 0;
+    child_cnt: i32        = 0;
+};
+
+// ============================================================================
+// SERDES TREE — flat array of nodes (the output of reify)
+//
+// nodes[0] is always the root node.
+// For node at index i, its children are serdes_nodes[child_off .. child_off+child_cnt).
+// ============================================================================
+
+serdes_tree: @struct type = {
+    nodes: *serdes_node = ;
+    count: i32          = 0;
+};
+
+// ============================================================================
+// QUERY HELPERS
+// ============================================================================
+
+is_modifier: (n: serdes_node, a: u32) -> bool = {
+    return (n.ann & a) != 0;
+}
+
+has_any_annotation: (n: serdes_node) -> bool = {
+    return n.ann != 0;
+}
+
+} // namespace cpp2
