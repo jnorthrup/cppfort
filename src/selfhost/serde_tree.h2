@@ -1,9 +1,8 @@
-// serde_tree.h2 — Algebraic serde tree built from trikeshed primitives
+// serde_tree.h2 — Serde tree with hierarchical spans, pure trikeshed
 //
-// serdes_node = join<node_kind, join<span, series<serdes_node>>>
-//
-// No vectors. No loops. No mutable state.
-// Just join, series, span — the trikeshed algebra.
+// Each node has named spans into source: name_span, type_span, body_span.
+// Children are series<serdes_node> — lazy, algebraic.
+// Built from scan/fold output using trikeshed join/series/span only.
 
 #pragma once
 #include "cpp2.h2"
@@ -12,7 +11,7 @@
 namespace cpp2 {
 
 // ============================================================================
-// NODE KIND — productions from golden_surface_grammar.md CONFIRMED surface
+// NODE KIND — from golden_surface_grammar.md CONFIRMED surface
 // ============================================================================
 
 enum class node_kind : int {
@@ -47,131 +46,136 @@ enum class node_kind : int {
 };
 
 // ============================================================================
-// SERDES NODE — pure trikeshed
+// SERDES NODE — hierarchical spans + lazy children
 //
-// join<node_kind, join<span, series<serdes_node>>>
-//
-// kind: which production
-// src: span into source text
-// children: lazy series of child nodes
+// name_span: where the declaration name is
+// type_span: where the type annotation is
+// body_span: where the body/value is
+// src_span:  full source span of this node
+// children:  series<serdes_node> — nested nodes
 // ============================================================================
 
-using serdes_node = join<node_kind, join<span, series<serdes_node>>>;
+struct serdes_node {
+    node_kind kind = node_kind::translation_unit;
+    span name_span = {0, 0};
+    span type_span = {0, 0};
+    span body_span = {0, 0};
+    span src_span  = {0, 0};
+    series<serdes_node> children = {0, [](int) -> serdes_node { return {}; }};
+};
 
 // ============================================================================
-// CONSTRUCTORS — pure algebraic, no mutable state
+// CONSTRUCTORS
 // ============================================================================
 
-inline auto make_node(node_kind k, span s, series<serdes_node> kids) -> serdes_node {
-    return {k, {s, kids}};
+inline auto make_node(node_kind k, span src, span nm, span ty, span bd, series<serdes_node> kids) -> serdes_node {
+    return {k, nm, ty, bd, src, kids};
 }
 
-inline auto make_leaf(node_kind k, span s) -> serdes_node {
-    return {k, {s, {0, [](int) -> serdes_node { return {}; }}}};
-}
-
-inline auto make_empty() -> serdes_node {
-    return make_leaf(node_kind::translation_unit, {0, 0});
+inline auto make_leaf(node_kind k, span src) -> serdes_node {
+    return {k, {0,0}, {0,0}, {0,0}, src, {0, [](int) -> serdes_node { return {}; }}};
 }
 
 // ============================================================================
-// REIFY — source text → serdes_tree (series<serdes_node>)
+// REIFY — scan/fold → series<serdes_node>
 //
-// scan(src) → marks
-// fold(src, marks) → regions
-// regions → series<serdes_node>
-//
-// The series constructor takes a count + accessor function.
-// The accessor function constructs each node on demand.
-// No vectors. No loops. Pure algebra.
+// For each region, extract hierarchical spans:
+//   name_span: text before ':'
+//   type_span: text between ':' and '='
+//   body_span: text after '='
 // ============================================================================
 
-// Map cpp2::kind to node_kind
 inline auto map_kind(kind k) -> node_kind {
     switch (k) {
     case kind::func_header:  return node_kind::function_declaration;
     case kind::type_alias:   return node_kind::type_declaration;
     case kind::struct_decl:  return node_kind::struct_annotation;
     case kind::pp_include:   return node_kind::bootstrap_tag_decl;
-    case kind::line_comment: return node_kind::line_expr;
-    case kind::code:         return node_kind::line_expr;
     default:                 return node_kind::line_expr;
     }
 }
 
-// Forward: build children for a region
-inline auto build_children(std::string_view src, const std::vector<region>& regs, int parent_lo, int parent_hi, int start_idx) -> series<serdes_node>;
+// Extract hierarchical spans from a region
+inline auto extract_spans(std::string_view src, const region& r)
+    -> join<span, join<span, span>> {
+    auto text = src.substr(r.lo, r.hi - r.lo);
+    auto colon = text.find(':');
+    auto eq    = text.find('=');
+    
+    span nm = {0, 0};
+    span ty = {0, 0};
+    span bd = {0, 0};
+    
+    if (colon != std::string_view::npos) {
+        nm = {r.lo, r.lo + static_cast<int>(colon)};
+        if (eq != std::string_view::npos && eq > colon) {
+            ty = {r.lo + static_cast<int>(colon) + 1, r.lo + static_cast<int>(eq)};
+            bd = {r.lo + static_cast<int>(eq) + 1, r.hi};
+        } else {
+            ty = {r.lo + static_cast<int>(colon) + 1, r.hi};
+        }
+    } else {
+        nm = {r.lo, r.hi};
+    }
+    
+    return {nm, {ty, bd}};
+}
 
-// Build a single node from a region
+// Forward declare
+inline auto build_children(std::string_view src, const std::vector<region>& regs,
+                           int lo, int hi, int start) -> series<serdes_node>;
+
 inline auto build_node(std::string_view src, const std::vector<region>& regs, int idx) -> serdes_node {
     const auto& r = regs[static_cast<std::size_t>(idx)];
     auto k = map_kind(r.k);
-    auto s = span{r.lo, r.hi};
-    
-    // Children are sub-regions within this region's span
+    auto spans = extract_spans(src, r);
     auto kids = build_children(src, regs, r.lo, r.hi, idx + 1);
-    
-    return make_node(k, s, kids);
+    return make_node(k, {r.lo, r.hi}, spans.a, spans.b.a, spans.b.b, kids);
 }
 
-// Build children series: find all regions within [parent_lo, parent_hi)
-inline auto build_children(std::string_view src, const std::vector<region>& regs, int parent_lo, int parent_hi, int start_idx) -> series<serdes_node> {
-    // Count children: regions that start within parent span
-    int child_count = 0;
-    for (int i = start_idx; i < static_cast<int>(regs.size()); ++i) {
-        if (regs[static_cast<std::size_t>(i)].lo >= parent_hi) break;
-        if (regs[static_cast<std::size_t>(i)].lo >= parent_lo) {
-            ++child_count;
-        }
+inline auto build_children(std::string_view src, const std::vector<region>& regs,
+                           int lo, int hi, int start) -> series<serdes_node> {
+    int count = 0;
+    for (int i = start; i < static_cast<int>(regs.size()); ++i) {
+        if (regs[static_cast<std::size_t>(i)].lo >= hi) break;
+        if (regs[static_cast<std::size_t>(i)].lo >= lo) ++count;
     }
-    
-    return series<serdes_node>(child_count, [src, regs, parent_lo, parent_hi, start_idx](int i) -> serdes_node {
-        // Find the i-th child region
+    return series<serdes_node>(count, [src, regs, lo, hi, start](int i) -> serdes_node {
         int found = 0;
-        for (int j = start_idx; j < static_cast<int>(regs.size()); ++j) {
-            if (regs[static_cast<std::size_t>(j)].lo >= parent_hi) break;
-            if (regs[static_cast<std::size_t>(j)].lo >= parent_lo) {
-                if (found == i) {
-                    return build_node(src, regs, j);
-                }
+        for (int j = start; j < static_cast<int>(regs.size()); ++j) {
+            if (regs[static_cast<std::size_t>(j)].lo >= hi) break;
+            if (regs[static_cast<std::size_t>(j)].lo >= lo) {
+                if (found == i) return build_node(src, regs, j);
                 ++found;
             }
         }
-        return make_empty();
+        return make_leaf(node_kind::line_expr, {0,0});
     });
 }
 
-// reify — main entry: source → serdes_tree
 inline auto reify(std::string_view src) -> series<serdes_node> {
     auto marks = scan(src);
     auto regs = fold(src, marks);
-    
     auto n = static_cast<int>(regs.size());
-    if (n == 0) {
-        return series<serdes_node>(1, [](int) -> serdes_node { return make_empty(); });
-    }
-    
-    // Root: translation_unit containing all top-level regions
-    auto root_children = build_children(src, regs, 0, static_cast<int>(src.size()), 0);
-    auto root = make_node(node_kind::translation_unit, {0, static_cast<int>(src.size())}, root_children);
-    
-    return series<serdes_node>(1, [root](int) -> serdes_node { return root; });
+    if (n == 0) return {1, [](int) -> serdes_node { return make_leaf(node_kind::line_expr, {0,0}); }};
+    auto root_kids = build_children(src, regs, 0, static_cast<int>(src.size()), 0);
+    auto root = make_node(node_kind::translation_unit, {0, static_cast<int>(src.size())},
+                          {0,0}, {0,0}, {0,0}, root_kids);
+    return {1, [root](int) -> serdes_node { return root; }};
 }
 
 // ============================================================================
-// QUERY HELPERS
+// QUERY
 // ============================================================================
 
-inline auto node_text(std::string_view src, const serdes_node& n) -> std::string_view {
-    return src.substr(n.b.a.lo, n.b.a.size());
+inline auto name_text(std::string_view src, const serdes_node& n) -> std::string_view {
+    return src.substr(n.name_span.lo, n.name_span.size());
 }
-
-inline auto child_at(const serdes_node& n, int i) -> serdes_node {
-    return n.b.b[i];
+inline auto type_text(std::string_view src, const serdes_node& n) -> std::string_view {
+    return src.substr(n.type_span.lo, n.type_span.size());
 }
-
-inline auto child_count(const serdes_node& n) -> int {
-    return n.b.b.size();
+inline auto body_text(std::string_view src, const serdes_node& n) -> std::string_view {
+    return src.substr(n.body_span.lo, n.body_span.size());
 }
 
 } // namespace cpp2

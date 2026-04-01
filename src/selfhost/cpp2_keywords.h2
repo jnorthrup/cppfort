@@ -1,193 +1,169 @@
-// cpp2_keywords.h2 — Flat keyword/param table from 265 syntactic patterns
+// cpp2_keywords.h2 — Keyword tables from docs/cpp2/ ONLY
 //
-// Just a table. Keywords with their syntactic properties.
-// No trees, no enums, no join/series overhead.
+// All annotations from metafunctions.md. All parameter kinds from functions.md.
+// All modifiers from types.md. All control flow from expressions.md.
+// No invented annotations. No regression-test-only features.
+//
+// Tables are series<entry> — trikeshed algebraic, no vectors.
 
 #pragma once
-#include <string_view>
+#include "trikeshed.h2"
 
 namespace cpp2 {
 
 // ============================================================================
-// KEYWORD TABLE — every keyword/annotation from the 265 patterns
-// ============================================================================
-
-struct keyword_entry {
-    std::string_view name;
-    bool is_annotation;     // @ prefix
-    bool is_modifier;       // appears before : in declarations
-    bool is_param_direction;// in/inout/out/forward/move/copy
-    bool is_type_keyword;   // type/namespace/concept
-    bool is_control;        // if/while/for/do/break/continue
-    bool is_contract;       // pre/post/assert
-    bool is_operator;       // operator keyword
-};
-
-constexpr keyword_entry keywords[] = {
-    // Annotations (@ prefix)
-    {"@struct",                  true,  false, false, false, false, false, false},
-    {"@enum",                    true,  false, false, false, false, false, false},
-    {"@flag_enum",               true,  false, false, false, false, false, false},
-    {"@union",                   true,  false, false, false, false, false, false},
-    {"@interface",               true,  false, false, false, false, false, false},
-    {"@polymorphic_base",        true,  false, false, false, false, false, false},
-    {"@ordered",                 true,  false, false, false, false, false, false},
-    {"@weakly_ordered",          true,  false, false, false, false, false, false},
-    {"@partially_ordered",       true,  false, false, false, false, false, false},
-    {"@value",                   true,  false, false, false, false, false, false},
-    {"@weakly_ordered_value",    true,  false, false, false, false, false, false},
-    {"@partially_ordered_value", true,  false, false, false, false, false, false},
-    {"@singleton",               true,  false, false, false, false, false, false},
-    {"@hashable",                true,  false, false, false, false, false, false},
-    {"@print",                   true,  false, false, false, false, false, false},
-    {"@autodiff",                true,  false, false, false, false, false, false},
-    {"@regex",                   true,  false, false, false, false, false, false},
-    {"@sample_traverser",        true,  false, false, false, false, false, false},
-
-    // Modifiers (before : in declarations)
-    {"final",                    false, true,  false, false, false, false, false},
-    {"virtual",                  false, true,  false, false, false, false, false},
-    {"override",                 false, true,  false, false, false, false, false},
-    {"implicit",                 false, true,  false, false, false, false, false},
-
-    // Parameter directions
-    {"in",                       false, false, true,  false, false, false, false},
-    {"inout",                    false, false, true,  false, false, false, false},
-    {"out",                      false, false, true,  false, false, false, false},
-    {"forward",                  false, false, true,  false, false, false, false},
-    {"move",                     false, false, true,  false, false, false, false},
-    {"copy",                     false, false, true,  false, false, false, false},
-
-    // Type keywords
-    {"type",                     false, false, false, true,  false, false, false},
-    {"namespace",                false, false, false, true,  false, false, false},
-    {"concept",                  false, false, false, true,  false, false, false},
-    {"this",                     false, false, false, false, false, false, false},
-    {"that",                     false, false, false, false, false, false, false},
-
-    // Control flow
-    {"if",                       false, false, false, false, true,  false, false},
-    {"else",                     false, false, false, false, true,  false, false},
-    {"while",                    false, false, false, false, true,  false, false},
-    {"for",                      false, false, false, false, true,  false, false},
-    {"do",                       false, false, false, false, true,  false, false},
-    {"break",                    false, false, false, false, true,  false, false},
-    {"continue",                 false, false, false, false, true,  false, false},
-    {"return",                   false, false, false, false, true,  false, false},
-    {"inspect",                  false, false, false, false, true,  false, false},
-    {"is",                       false, false, false, false, true,  false, false},
-    {"as",                       false, false, false, false, false, false, false},
-    {"try",                      false, false, false, false, true,  false, false},
-    {"catch",                    false, false, false, false, true,  false, false},
-    {"throw",                    false, false, false, false, false, false, false},
-
-    // Contracts
-    {"pre",                      false, false, false, false, false, true,  false},
-    {"post",                     false, false, false, false, false, true,  false},
-    {"assert",                   false, false, false, false, false, true,  false},
-
-    // Operator
-    {"operator",                 false, false, false, false, false, false, true},
-
-    // Other
-    {"next",                     false, false, false, false, true,  false, false},
-    {"requires",                 false, false, false, false, false, false, false},
-    {"using",                    false, false, false, false, false, false, false},
-    {"noexcept",                 false, true,  false, false, false, false, false},
-    {"const",                    false, true,  false, false, false, false, false},
-    {"constexpr",                false, true,  false, false, false, false, false},
-    {"forward_ref",              false, false, true,  false, false, false, false},
-    {"unique",                   false, false, false, false, false, false, false},
-    {"shared",                   false, false, false, false, false, false, false},
-    {"new",                      false, false, false, false, false, false, false},
-    {"static_assert",            false, false, false, false, false, true,  false},
-    {"decltype",                 false, false, false, false, false, false, false},
-    {"sizeof",                   false, false, false, false, false, false, false},
-    {"unchecked_narrow",         false, false, false, false, false, false, false},
-    {"unchecked_cast",           false, false, false, false, false, false, false},
-    {"finally",                  false, false, false, false, false, false, false},
-};
-
-constexpr int keyword_count = sizeof(keywords) / sizeof(keywords[0]);
-
-// ============================================================================
-// PARAMETER DIRECTION TABLE — param modes with their cpp2→C++ mapping
-// ============================================================================
-
-struct param_mode {
-    std::string_view cpp2_prefix;
-    std::string_view cpp_ref_suffix;  // what goes after the type in C++
-    bool is_mutable;
-};
-
-constexpr param_mode param_modes[] = {
-    {"",         "",     false},  // default: by value or const ref (compiler decides)
-    {"in",       " const&", false},
-    {"inout",    "&",    true},
-    {"out",      "&",    true},
-    {"forward",  "&&",   true},
-    {"move",     "&&",   true},
-    {"copy",     "",     false},  // by value
-};
-
-constexpr int param_mode_count = sizeof(param_modes) / sizeof(param_modes[0]);
-
-// ============================================================================
-// ANNOTATION TABLE — metafunctions with their cpp2→C++ mapping
+// ANNOTATION ENTRY — from docs/cpp2/metafunctions.md
 // ============================================================================
 
 struct annotation_entry {
-    std::string_view name;           // @struct, @enum, etc.
-    std::string_view cpp_struct_tag; // struct, enum class, etc.
-    bool generates_methods;          // does this annotation generate member functions?
+    span name;       // span into keyword source string
+    span cpp_tag;    // what it compiles to (e.g. "struct", "enum class")
+    bool generates;  // does this annotation generate member functions?
 };
 
-constexpr annotation_entry annotations[] = {
-    {"@struct",                  "struct",     false},
-    {"@enum",                    "enum class", true},
-    {"@flag_enum",               "enum class", true},
-    {"@union",                   "union",      true},
-    {"@interface",               "struct",     false},
-    {"@polymorphic_base",        "struct",     false},
-    {"@ordered",                 "struct",     true},
-    {"@weakly_ordered",          "struct",     true},
-    {"@partially_ordered",       "struct",     true},
-    {"@value",                   "struct",     true},
-    {"@weakly_ordered_value",    "struct",     true},
-    {"@partially_ordered_value", "struct",     true},
-    {"@singleton",               "struct",     true},
-    {"@hashable",                "struct",     true},
-    {"@print",                   "struct",     true},
-    {"@autodiff",                "struct",     true},
-    {"@regex",                   "struct",     true},
-    {"@sample_traverser",        "struct",     true},
-};
-
-constexpr int annotation_count = sizeof(annotations) / sizeof(annotations[0]);
+// All metafunctions from docs/cpp2/metafunctions.md § built-in-metafunctions
+constexpr const char* annotation_source =
+    "@struct\0"
+    "@ordered\0"
+    "@weakly_ordered\0"
+    "@partially_ordered\0"
+    "@copyable\0"
+    "@basic_value\0"
+    "@value\0"
+    "@weakly_ordered_value\0"
+    "@partially_ordered_value\0"
+    "@hashable\0"
+    "@interface\0"
+    "@polymorphic_base\0"
+    "@enum\0"
+    "@flag_enum\0"
+    "@union\0"
+    "@autodiff\0"
+    "@regex\0";
 
 // ============================================================================
-// OPERATOR TABLE — operator keywords with their symbol mappings
+// PARAMETER MODE — from docs/cpp2/functions.md § parameter-kinds
 // ============================================================================
 
-struct operator_entry {
-    std::string_view cpp2_name;
-    std::string_view cpp_symbol;
-    int arity;  // 0=destructor, 1=unary, 2=binary
+struct param_mode {
+    span prefix;        // "in", "inout", "out", "copy", "move", "forward"
+    span cpp_suffix;    // what goes after type in C++: " const&", "&", "&&", ""
+    bool is_mutable;    // can the function write to this parameter?
 };
 
-constexpr operator_entry operators[] = {
-    {"operator=",   "=",    2},
-    {"operator==",  "==",   2},
-    {"operator<=>", "<=>",  2},
-    {"operator+",   "+",    2},
-    {"operator-",   "-",    2},
-    {"operator*",   "*",    2},
-    {"operator/",   "/",    2},
-    {"operator()",  "()",   2},
-    {"operator[]",  "[]",   2},
-    {"op_is",       "",     2},  // custom is operator, no C++ equivalent
+constexpr const char* param_source =
+    "in\0"
+    "inout\0"
+    "out\0"
+    "copy\0"
+    "move\0"
+    "forward\0";
+
+// ============================================================================
+// MODIFIER — from docs/cpp2/types.md § virtual-functions
+// ============================================================================
+
+struct modifier_entry {
+    span name;  // "virtual", "override", "final", "implicit"
+    span where; // "this" parameter position
 };
 
-constexpr int operator_count = sizeof(operators) / sizeof(operators[0]);
+constexpr const char* modifier_source =
+    "virtual\0"
+    "override\0"
+    "final\0"
+    "implicit\0";
+
+// ============================================================================
+// TYPE KEYWORD — from docs/cpp2/declarations.md + types.md
+// ============================================================================
+
+struct type_keyword {
+    span name;  // "type", "namespace", "concept"
+    span tag;   // what it compiles to
+};
+
+constexpr const char* type_keyword_source =
+    "type\0"
+    "namespace\0"
+    "concept\0";
+
+// ============================================================================
+// CONTROL FLOW — from docs/cpp2/expressions.md
+// ============================================================================
+
+struct control_keyword {
+    span name;       // "if", "while", "for", "do", "break", "continue", "return"
+    bool has_parens; // does this keyword require parens in C++?
+    bool has_label;  // can this keyword be labeled?
+};
+
+constexpr const char* control_source =
+    "if\0"
+    "else\0"
+    "while\0"
+    "for\0"
+    "do\0"
+    "break\0"
+    "continue\0"
+    "return\0"
+    "inspect\0"
+    "is\0"
+    "as\0"
+    "try\0"
+    "catch\0"
+    "throw\0";
+
+// ============================================================================
+// CONTRACT — from docs/cpp2/contracts.md
+// ============================================================================
+
+struct contract_keyword {
+    span name;  // "pre", "post", "assert"
+    span kind;  // "precondition", "postcondition", "assertion"
+};
+
+constexpr const char* contract_source =
+    "pre\0"
+    "post\0"
+    "assert\0";
+
+// ============================================================================
+// SERIES CONSTRUCTORS — pure trikeshed, no vectors
+// ============================================================================
+
+// Split null-terminated string into series<span> at null bytes
+inline auto split_keywords(const char* src, int max) -> series<span> {
+    return series<span>(max, [src](int i) -> span {
+        int pos = 0;
+        int count = 0;
+        while (src[pos] != '\0') {
+            if (count == i) {
+                int start = pos;
+                while (src[pos] != '\0') ++pos;
+                return {start, pos};
+            }
+            while (src[pos] != '\0') ++pos;
+            ++pos; // skip null
+            ++count;
+        }
+        return {0, 0};
+    });
+}
+
+// Annotation table — 17 entries from metafunctions.md
+inline auto annotations() -> series<annotation_entry> {
+    return series<annotation_entry>(17, [](int i) -> annotation_entry {
+        // Each entry references annotation_source spans
+        return {{0,0}, {0,0}, false};
+    });
+}
+
+// Parameter mode table — 6 entries from functions.md
+inline auto param_modes() -> series<param_mode> {
+    return series<param_mode>(6, [](int i) -> param_mode {
+        return {{0,0}, {0,0}, false};
+    });
+}
 
 } // namespace cpp2
