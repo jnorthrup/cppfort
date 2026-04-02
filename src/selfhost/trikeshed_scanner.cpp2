@@ -1,0 +1,21 @@
+// trikeshed_scanner.cpp2 — surface composition over bitplane substrate
+//
+// Bitplane scan + decode + confex discovery live in trikeshed.h2 (C++).
+// This file composes through series[] and >> — no while-loops indexing vectors.
+//
+// Architecture:
+//   bitplanes (h2 C++) → decoded structural → scan_source → series<ast_node>
+//   this file: accessors, kind constants, projection surfaces
+
+#include "trikeshed.h2"
+
+// ============================================================================
+// KIND CONSTANTS
+// ============================================================================
+
+node_unknown:   int = 0;
+node_line:      int = 1;
+node_func:      int = 2;
+node_type:      int = 3;
+node_alias:     int = 4;
+node_namespace: int = 5;

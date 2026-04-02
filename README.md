@@ -99,16 +99,7 @@ Dense Storage (materialized view)
 ✅ **Early normalization**: Surface syntax → canonical operations
 ✅ **Zero-cost abstraction**: Compile-time optimization possible
 
-## Project Structure
 
-- `include/Cpp2SONDialect.td` - MLIR dialect definitions (7 operations)
-- `lib/Dialect/Cpp2SONDialect.cpp` - Dialect implementation
-- `lib/Passes/SoNConstantProp.cpp` - Constant propagation pass
-- `tests/smoke/` - 24 dogfooding smoke tests
-- `docs/manifold-architecture.md` - Detailed architecture documentation
-- `docs/cpp2/golden_surface_grammar.md` - Golden human-readable grammar reference
-- `expanded_cpp2_spec.md` - Kotlin-to-cpp2 mapping
-- `docs/sea-of-nodes/` - SeaOfNodes chapter documentation (01-24)
 
 ## Build System
 

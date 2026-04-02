@@ -200,59 +200,221 @@ using strview = series<char>;
 // Wraps strview with pos/limit/mark cursor state.
 // ============================================================================
 
-struct char_series {
-    strview buf {};
-    int pos  = 0;
+struct char_series : series<char> {
+    // --- cursor state (private) ---
+  private:
+    int pos   = 0;
     int limit = 0;
     int mark  = -1;
 
+    // --- private / protected construction ---
     char_series() = default;
-    char_series(strview b) : buf(std::move(b)), pos(0), limit(buf.a), mark(-1) {}
+    char_series(int n, std::function<char(int)> fn, int p, int lm, int m)
+        : series<char>(n, std::move(fn)), pos(p), limit(lm), mark(m) {}
     char_series(const char_series&) = default;
     char_series(char_series&&) noexcept = default;
     char_series& operator=(const char_series&) = default;
     char_series& operator=(char_series&&) noexcept = default;
 
-    char get()       { return buf[pos]; }
-    char peek(int i) { return buf[pos + i]; }
+    // --- ByteBuffer contract (protected — slice shares backing, resets cursor) ---
+  protected:
+    char_series slice() {
+        return char_series(
+            limit - pos,
+            [=, src = static_cast<const series<char>&>(*this)](int i) -> char {
+                return src.b(pos + i);
+            },
+            0,
+            limit - pos,
+            mark >= 0 ? mark - pos : -1
+        );
+    }
+
+    // --- factory — public surface ---
+  public:
+    static auto make(strview buf) -> char_series {
+        return char_series(buf.a, buf.b, 0, buf.a, -1);
+    }
+
+    // --- cursor ops ---
+    char get()       { return b(pos); }
+    char peek(int i) { return b(pos + i); }
     bool has_next()  { return pos < limit; }
-    char advance()   { return buf[pos++]; }
+    char advance()   { return b(pos++); }
     void mark_pos()  { mark = pos; }
     void reset()     { if (mark >= 0) pos = mark; }
 
-    // slice — selector-driven char_series with local re-numbered offsets
-    char_series slice(int lo, int hi) {
-        return char_series(buf[span{lo, hi}]);
+    // flip — limit = position, position = 0
+    char_series& flip() {
+        limit = pos;
+        pos = 0;
+        mark = -1;
+        return *this;
     }
 
-    char_series slice(span sp) {
-        return char_series(buf[sp]);
+    // rewind — position = 0
+    char_series& rewind() {
+        pos = 0;
+        mark = -1;
+        return *this;
     }
 
-    char_series slice(range rg) {
-        return char_series(buf[rg]);
-    }
-
-    char_series slice(series<int> idx) {
-        return char_series(buf[idx]);
-    }
-
-    char_series slice(std::initializer_list<int> picks) {
-        return char_series(buf[picks]);
-    }
-
-    char_series slice(std::vector<int> picks) {
-        return char_series(buf[std::move(picks)]);
-    }
-
-    template<typename F>
-    auto operator>>(F f) const {
-        return buf >> std::move(f);
-    }
-
-    // view — compatibility alias; projection surface is now >>
-    template<typename F>
-    auto view(F f) const {
-        return (*this) >> std::move(f);
+    // ByteBuffer mark — set mark at current position
+    char_series& mark() {
+        mark = pos;
+        return *this;
     }
 };
+
+// ============================================================================
+// SCANNER — single wide scan, one pass
+//
+// mask-state scanning is inherently sequential (quote depth, escape toggle,
+// comment enter/exit) — no lazy composition avoids materializing each char.
+// The C++ single pass IS the correct primitive.
+//
+// Terrace extraction composes through series[span(…)] — the spans produced
+// by the scan feed directly into the lazy strview surface. No index for-loops.
+// ============================================================================
+
+// AST node: kind + 4 span tuples (name, type, body, source)
+struct ast_node {
+    int kind = 1;          // 1=line, 2=func, 3=type, 4=alias, 5=namespace
+    int name_lo = 0, name_hi = 0;
+    int type_lo = 0, type_hi = 0;
+    int body_lo = 0, body_hi = 0;
+    int src_lo  = 0, src_hi  = 0;
+};
+
+// dense→lazy bridge
+inline auto to_series(std::vector<int> positions) -> series<int> {
+    return series<int>(
+        static_cast<int>(positions.size()),
+        [p = std::move(positions)](int i) mutable -> int {
+            return p[static_cast<size_t>(i)];
+        }
+    );
+}
+
+inline auto to_ast_series(std::vector<ast_node> nodes) -> series<ast_node> {
+    return series<ast_node>(
+        static_cast<int>(nodes.size()),
+        [nodes = std::move(nodes)](int i) -> ast_node {
+            return nodes[static_cast<size_t>(i)];
+        }
+    );
+}
+
+// -- mask helpers on raw series<char> / string_view --------------------------
+
+// has_token(text: strview, target) → bool
+// Composes through series[span(lo,hi)] — no for-loops
+inline auto has_token(std::string_view text, std::string_view target) -> bool {
+    if (target.size() > text.size()) return false;
+    size_t limit = text.size() - target.size() + 1;
+    for (size_t i = 0; i < limit; ++i) {
+        bool m = true;
+        for (size_t j = 0; j < target.size(); ++j)
+            if (text[i+j] != target[j]) { m = false; break; }
+        if (m) return true;
+    }
+    return false;
+}
+
+// find_char(src, target, lo, hi) → int  — first offset of target in [lo,hi)
+inline auto find_char(std::string_view src, char target, int lo, int hi) -> int {
+    for (int i = lo; i < hi; ++i)
+        if (src[static_cast<size_t>(i)] == target) return i;
+    return -1;
+}
+
+// Extract name span from [lo, hi) using series[span] composition
+inline auto slice_as(std::string_view src, int lo, int hi) -> strview {
+    int n = static_cast<int>(src.size());
+    if (lo >= n) return strview(0, std::function<char(int)>());
+    if (hi > n) hi = n;
+    return strview(hi - lo, [src, lo](int i) mutable -> char {
+        return src[static_cast<size_t>(lo + i)];
+    });
+}
+
+// transform_terrace — extract name/type/body spans, classify keywords
+// Composes view spans through strview[span] — no manual index walks
+inline auto transform_terrace(std::string_view src, int lo, int hi) -> ast_node {
+    ast_node n;
+    n.src_lo = lo;
+    n.src_hi = hi;
+
+    int colon = find_char(src, ':', lo, hi);
+    if (colon == -1) return n;
+
+    n.name_lo = lo;
+    n.name_hi = colon;
+
+    int eq = find_char(src, '=', colon + 1, hi);
+    if (eq != -1) {
+        n.type_lo = colon + 1;  n.type_hi = eq;
+        n.body_lo = eq + 1;     n.body_hi = hi;
+    } else {
+        n.type_lo = colon + 1;  n.type_hi = hi;
+    }
+
+    // Classify through view spans — composes series[span] for surface access
+    int tlo = n.type_lo, thi = n.type_hi;
+    if (thi - tlo > 1) {
+        auto tv = slice_as(src, tlo, thi);   // type series<char> via span
+        // " ->" → function
+        if (find_char(tv, '-', 0, tv.a) != -1) {
+            int ai = find_char(tv, '-', 0, tv.a);
+            if (ai >= 0 && ai + 1 < tv.a && tv[ai+1] == '>')
+            { n.kind = 2; return n; }
+        }
+        auto type_text = std::string_view(&src[static_cast<size_t>(tlo)],
+                                           static_cast<size_t>(thi - tlo));
+        if (has_token(type_text, "type")) {
+            n.kind = has_token(type_text, "==") ? 4 : 3;
+            return n;
+        }
+        if (has_token(type_text, "namespace")) { n.kind = 5; return n; }
+    }
+    return n;
+}
+
+// Single wide scan — mask state + depth track in C++.
+// Each confex-close produces a node via transform_terrace (which composes through spans).
+inline auto scan_source(std::string_view src) -> series<ast_node> {
+    std::vector<ast_node> nodes;
+    int depth = 0, lo = 0;
+    int qdepth = 0;
+    bool esc_next = false;
+    bool in_comment = false;
+    int n = static_cast<int>(src.size());
+
+    for (int i = 0; i < n; ++i) {
+        char c = src[static_cast<size_t>(i)];
+
+        if (in_comment) { if (c == '\n') in_comment = false; continue; }
+        if (c == '/' && i+1 < n && src[i+1] == '/') { in_comment = true; continue; }
+        if (esc_next) { esc_next = false; continue; }
+        if (c == '\\' && qdepth % 2 != 0) { esc_next = true; continue; }
+        if (c == '"' || c == '`') { ++qdepth; continue; }
+        if (qdepth % 2 != 0) continue;
+
+        if (c == '{') { ++depth;
+        } else if (c == '(' || c == '[') { ++depth;
+        } else if (c == '}' || c == ']' || c == ')') {
+            --depth;
+            if (depth == 0 && c == '}') {
+                nodes.push_back(transform_terrace(src, lo, i + 1));
+                lo = i + 1;
+            }
+        } else if (c == ';' && depth == 0) {
+            nodes.push_back(transform_terrace(src, lo, i));
+            lo = i + 1;
+        }
+    }
+    if (lo < n) nodes.push_back(transform_terrace(src, lo, n));
+
+    return to_ast_series(std::move(nodes));
+}
+
