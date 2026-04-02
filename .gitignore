@@ -387,3 +387,5 @@ build/
 build-alpha/
 biuld/
 build/
+src/selfhost/cpp2_keywords.h2.dead
+src/selfhost/serde_tree.h2.dead

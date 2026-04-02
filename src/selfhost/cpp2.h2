@@ -612,6 +612,75 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
         pos = buf.find(".ssize()", pos + 7);
     }
 
+    // pre-pass: rewrite "for X do (Y)" -> "for (auto& Y : X)"
+    pos = buf.find("for ");
+    while (pos != std::string::npos) {
+        // find "do" after "for"
+        int do_pos = buf.find(" do ", pos + 4);
+        if (do_pos == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
+        // check it's on same line or next line
+        auto line_end = buf.find('\n', pos);
+        if (line_end != std::string::npos && do_pos > line_end) { pos = buf.find("for ", pos + 1); continue; }
+        // extract iterable
+        int iter_start = pos + 4;
+        while (iter_start < do_pos && buf[iter_start] == ' ') ++iter_start;
+        std::string iter = buf.substr(iter_start, do_pos - iter_start);
+        while (!iter.empty() && iter.back() == ' ') iter.pop_back();
+        // find (var) after "do"
+        int paren_start = buf.find('(', do_pos + 4);
+        if (paren_start == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
+        int paren_end = buf.find(')', paren_start);
+        if (paren_end == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
+        std::string var = buf.substr(paren_start + 1, paren_end - paren_start - 1);
+        while (!var.empty() && var.front() == ' ') var.erase(var.begin());
+        while (!var.empty() && var.back() == ' ') var.pop_back();
+        // replace
+        std::string replacement = "for (auto& " + var + " : " + iter + ")";
+        buf.replace(pos, paren_end - pos + 1, replacement);
+        pos = buf.find("for ", pos + replacement.size());
+    }
+
+    // pre-pass: rewrite "for X next Y do (Z)" -> "for (auto& Z : X) { body; Y; }"
+    // This is complex, skip for now
+
+    // pre-pass: rewrite assert<tag>(cond) -> assert(cond)
+    pos = buf.find("assert<");
+    while (pos != std::string::npos) {
+        // find matching '>'
+        int depth = 0;
+        int p = pos + 7;
+        while (p < static_cast<int>(buf.size()) && depth >= 0) {
+            if (buf[p] == '<') ++depth;
+            if (buf[p] == '>') { --depth; if (depth < 0) break; }
+            ++p;
+        }
+        if (p < static_cast<int>(buf.size())) {
+            // remove the <tag> part
+            buf.erase(pos + 6, p - pos - 5); // keep "assert("
+        }
+        pos = buf.find("assert<", pos + 6);
+    }
+
+    // pre-pass: rewrite assert(cond, msg) -> assert(cond) (drop message)
+    pos = buf.find("assert(");
+    while (pos != std::string::npos) {
+        // find the matching closing paren
+        int depth = 1;
+        int p = pos + 7;
+        int comma_pos = -1;
+        while (p < static_cast<int>(buf.size()) && depth > 0) {
+            if (buf[p] == '(') ++depth;
+            if (buf[p] == ')') --depth;
+            if (buf[p] == ',' && depth == 1 && comma_pos == -1) comma_pos = p;
+            ++p;
+        }
+        // if there's a comma (message), remove it and everything after until closing paren
+        if (comma_pos != -1 && depth == 0) {
+            buf.erase(comma_pos, p - comma_pos - 1); // keep the ')'
+        }
+        pos = buf.find("assert(", pos + 7);
+    }
+
     // pre-pass: rewrite TODO(...) -> // TODO(...)
     pos = buf.find("TODO(");
     while (pos != std::string::npos) {
