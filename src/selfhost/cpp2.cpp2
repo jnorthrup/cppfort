@@ -1,4 +1,483 @@
-// cpp2.cpp2 — STUBBED
+// cpp2.cpp2 — JSON deserializer with modal coordinate scans
 //
-// Bitmap scanner implementation absorbed into bbcursive combinator surface.
-// The separate bitmap strategy is dead. Grammar rules are reader methods in bbcursive.h2.
+// Successor to the 4-bit packed bitmap (JsonBitmap.kt).
+// Multiple independent coordinate scans, each autovec-friendly,
+// compose by merge-walking sorted position vectors.
+//
+// Self-hosting contract: this file must compile itself 4 generations.
+
+#include "cpp2.h2"
+#include "trikeshed.h2"
+#include <string_view>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+
+
+
+
+
+
+// ============================================================================
+// MODAL COORDINATE SCANS — each scan is an independent pass
+//
+// Scan modality constants (int, not enum — emitter-safe)
+// ============================================================================
+
+scan_quote:       constexpr int = 0;
+scan_escape:      constexpr int = 1;
+scan_scope_open:  constexpr int = 2;
+scan_scope_close: constexpr int = 3;
+scan_decl_delim:  constexpr int = 4;
+scan_comment:     constexpr int = 5;
+
+// Scan event: position + modality
+scan_ev_lo:  constexpr int = 0;
+scan_ev_hi:  constexpr int = 1;
+scan_ev_mod: constexpr int = 2;
+
+// --- Quote scan: positions of " and ` ---
+quote_scan: (src: std::string_view) -> std::vector<int> = {
+    out: std::vector<int> = ();
+    i: int = 0;
+    while i < src.size() {
+        c: char = src[i];
+        if c == '"' || c == '`' {
+            out.push_back(i);
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+// --- Escape scan: positions of \ ---
+escape_scan: (src: std::string_view) -> std::vector<int> = {
+    out: std::vector<int> = ();
+    i: int = 0;
+    while i < src.size() {
+        if src[i] == '\\' {
+            out.push_back(i);
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+// --- Structural scan: { } [ ] ( ) ; , ---
+// Returns pairs: (position, modality)
+structural_scan: (src: std::string_view) -> std::vector<int> = {
+    pos_out: std::vector<int> = ();
+    mod_out: std::vector<int> = ();
+    i: int = 0;
+    while i < src.size() {
+        c: char = src[i];
+        if c == '{' || c == '[' || c == '(' {
+            pos_out.push_back(i);
+            mod_out.push_back(scan_scope_open);
+        } else {
+            if c == '}' || c == ']' || c == ')' {
+                pos_out.push_back(i);
+                mod_out.push_back(scan_scope_close);
+            } else {
+                if c == ';' || c == ',' {
+                    pos_out.push_back(i);
+                    mod_out.push_back(scan_decl_delim);
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return pos_out;
+}
+
+// --- Comment scan: positions of // ---
+comment_scan: (src: std::string_view) -> std::vector<int> = {
+    out: std::vector<int> = ();
+    i: int = 0;
+    while i < src.size() - 1 {
+        if src[i] == '/' && src[i + 1] == '/' {
+            out.push_back(i);
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+// ============================================================================
+// MERGE-WALK — merge sorted position vectors into one stream
+// ============================================================================
+
+merge_positions: (vecs: std::vector<std::vector<int>>) -> std::vector<int> = {
+    total: int = 0;
+    vi: int = 0;
+    while vi < vecs.size() {
+        total = total + vecs[vi].size();
+        vi = vi + 1;
+    }
+
+    merged: std::vector<int> = ();
+    merged.reserve(total);
+
+    // k-way merge using index pointers
+    idx: std::vector<int> = ();
+    vi = 0;
+    while vi < vecs.size() {
+        idx.push_back(0);
+        vi = vi + 1;
+    }
+
+    done: bool = false;
+    while !done {
+        best_vec: int = -1;
+        best_pos: int = -1;
+
+        si: int = 0;
+        while si < vecs.size() {
+            if idx[si] < vecs[si].size() {
+                p: int = vecs[si][idx[si]];
+                if best_vec == -1 || p < best_pos {
+                    best_pos = p;
+                    best_vec = si;
+                }
+            }
+            si = si + 1;
+        }
+
+        if best_vec == -1 {
+            done = true;
+        } else {
+            merged.push_back(best_pos);
+            idx[best_vec] = idx[best_vec] + 1;
+        }
+    }
+
+    return merged;
+}
+
+// ============================================================================
+// DECODE — state machine over merged positions
+//
+// Quotes mask structural events. Escapes toggle. Comments mask.
+// ============================================================================
+
+decode_positions: (src: std::string_view, merged: std::vector<int>) -> std::vector<int> = {
+    out: std::vector<int> = ();
+    quote_count: int = 0;
+    escape_next: bool = false;
+    in_comment: bool = false;
+
+    mi: int = 0;
+    while mi < merged.size() {
+        pos: int = merged[mi];
+        c: char = src[pos];
+
+        // Comment start
+        if c == '/' && pos + 1 < src.size() && src[pos + 1] == '/' {
+            in_comment = true;
+            mi = mi + 1;
+            continue;
+        }
+
+        // Inside comment — skip until newline
+        if in_comment {
+            if c == '\n' {
+                in_comment = false;
+            }
+            mi = mi + 1;
+            continue;
+        }
+
+        // Escape inside string
+        if escape_next {
+            escape_next = false;
+            mi = mi + 1;
+            continue;
+        }
+
+        // Backslash inside string
+        if c == '\\' && quote_count % 2 != 0 {
+            escape_next = true;
+            mi = mi + 1;
+            continue;
+        }
+
+        // Quote toggle
+        if c == '"' || c == '`' {
+            quote_count = quote_count + 1;
+            mi = mi + 1;
+            continue;
+        }
+
+        // Structural — only if not inside string
+        if quote_count % 2 == 0 {
+            out.push_back(pos);
+        }
+
+        mi = mi + 1;
+    }
+
+    return out;
+}
+
+// ============================================================================
+// INDEX — walk decoded positions, track depth, emit declaration boundaries
+// ============================================================================
+
+index_decls: (src: std::string_view, positions: std::vector<int>) -> std::vector<int> = {
+    // Output: pairs of (lo, hi) packed as flat vector [lo0, hi0, lo1, hi1, ...]
+    boundaries: std::vector<int> = ();
+    depth: int = 0;
+    lo: int = 0;
+
+    pi: int = 0;
+    while pi < positions.size() {
+        pos: int = positions[pi];
+        c: char = src[pos];
+
+        if c == '{' || c == '[' || c == '(' {
+            depth = depth + 1;
+        } else {
+            if c == '}' || c == ']' || c == ')' {
+                depth = depth - 1;
+                if depth == 0 {
+                    boundaries.push_back(lo);
+                    boundaries.push_back(pos + 1);
+                    lo = pos + 1;
+                }
+            } else {
+                if c == ';' || c == ',' {
+                    if depth == 0 {
+                        boundaries.push_back(lo);
+                        boundaries.push_back(pos);
+                        lo = pos + 1;
+                    }
+                }
+            }
+        }
+
+        pi = pi + 1;
+    }
+
+    n: int = src.size();
+    if lo < n {
+        boundaries.push_back(lo);
+        boundaries.push_back(n);
+    }
+
+    return boundaries;
+}
+
+// ============================================================================
+// REIFY — construct typed nodes from declaration boundaries
+//
+// >> operator surface replaces Kotlin's α (alpha) transform
+// ============================================================================
+
+node_kind_unknown:   constexpr int = 0;
+node_kind_line:      constexpr int = 1;
+node_kind_func:      constexpr int = 2;
+node_kind_type:      constexpr int = 3;
+node_kind_alias:     constexpr int = 4;
+node_kind_namespace: constexpr int = 5;
+
+// AST node: (kind, name_lo, name_hi, type_lo, type_hi, body_lo, body_hi, src_lo, src_hi)
+// Packed as flat vector of 9 ints per node
+
+reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
+    node: std::vector<int> = ();
+    // 9 fields per node
+    node.push_back(node_kind_line); // kind
+    node.push_back(0); // name_lo
+    node.push_back(0); // name_hi
+    node.push_back(0); // type_lo
+    node.push_back(0); // type_hi
+    node.push_back(0); // body_lo
+    node.push_back(0); // body_hi
+    node.push_back(lo); // src_lo
+    node.push_back(hi); // src_hi
+
+    text_len: int = hi - lo;
+
+    // Find colon
+    colon_pos: int = -1;
+    i: int = 0;
+    while i < text_len {
+        if src[lo + i] == ':' {
+            colon_pos = i;
+            i = text_len; // break
+        }
+        i = i + 1;
+    }
+
+    if colon_pos == -1 {
+        return node;
+    }
+
+    // Set name span
+    node[1] = lo;
+    node[2] = lo + colon_pos;
+
+    // Find equals
+    eq_pos: int = -1;
+    i = colon_pos + 1;
+    while i < text_len {
+        if src[lo + i] == '=' {
+            eq_pos = i;
+            i = text_len; // break
+        }
+        i = i + 1;
+    }
+
+    if eq_pos != -1 {
+        node[3] = lo + colon_pos + 1; // type_lo
+        node[4] = lo + eq_pos;         // type_hi
+        node[5] = lo + eq_pos + 1;     // body_lo
+        node[6] = hi;                   // body_hi
+    } else {
+        node[3] = lo + colon_pos + 1; // type_lo
+        node[4] = hi;                  // type_hi
+    }
+
+    // Determine kind from type annotation
+    type_lo: int = node[3];
+    type_hi: int = node[4];
+    type_len: int = type_hi - type_lo;
+
+    // Check for "->" (function)
+    has_arrow: bool = false;
+    i = 0;
+    while i < type_len - 1 {
+        if src[type_lo + i] == '-' && src[type_lo + i + 1] == '>' {
+            has_arrow = true;
+            i = type_len; // break
+        }
+        i = i + 1;
+    }
+    if has_arrow {
+        node[0] = node_kind_func;
+        return node;
+    }
+
+    // Check for "type" keyword
+    has_type: bool = false;
+    i = 0;
+    while i < type_len - 3 {
+        if src[type_lo + i] == 't' && src[type_lo + i + 1] == 'y' &&
+           src[type_lo + i + 2] == 'p' && src[type_lo + i + 3] == 'e' {
+            has_type = true;
+            i = type_len; // break
+        }
+        i = i + 1;
+    }
+    if has_type {
+        // Check for "==" (alias)
+        has_eqeq: bool = false;
+        i = 0;
+        while i < type_len - 1 {
+            if src[type_lo + i] == '=' && src[type_lo + i + 1] == '=' {
+                has_eqeq = true;
+                i = type_len; // break
+            }
+            i = i + 1;
+        }
+        if has_eqeq {
+            node[0] = node_kind_alias;
+        } else {
+            node[0] = node_kind_type;
+        }
+        return node;
+    }
+
+    // Check for "namespace"
+    has_ns: bool = false;
+    if type_len >= 9 {
+        i = 0;
+        while i < type_len - 8 {
+            if src[type_lo + i] == 'n' && src[type_lo + i + 1] == 'a' &&
+               src[type_lo + i + 2] == 'm' && src[type_lo + i + 3] == 'e' &&
+               src[type_lo + i + 4] == 's' && src[type_lo + i + 5] == 'p' &&
+               src[type_lo + i + 6] == 'a' && src[type_lo + i + 7] == 'c' &&
+               src[type_lo + i + 8] == 'e' {
+                has_ns = true;
+                i = type_len; // break
+            }
+            i = i + 1;
+        }
+    }
+    if has_ns {
+        node[0] = node_kind_namespace;
+    }
+
+    return node;
+}
+
+// ============================================================================
+// PARSE — full pipeline: scan -> merge -> decode -> index -> reify
+// ============================================================================
+
+parse: (src: std::string_view) -> std::vector<std::vector<int>> = {
+    // Run all modal scans
+    qs: std::vector<int> = quote_scan(src);
+    es: std::vector<int> = escape_scan(src);
+    ss: std::vector<int> = structural_scan(src);
+    cs: std::vector<int> = comment_scan(src);
+
+    // Merge into single sorted position stream
+    all_scans: std::vector<std::vector<int>> = ();
+    all_scans.push_back(qs);
+    all_scans.push_back(es);
+    all_scans.push_back(ss);
+    all_scans.push_back(cs);
+    merged: std::vector<int> = merge_positions(all_scans);
+
+    // Decode: mask structural events inside strings/comments
+    decoded: std::vector<int> = decode_positions(src, merged);
+
+    // Index: find declaration boundaries
+    boundaries: std::vector<int> = index_decls(src, decoded);
+
+    // Reify: construct AST nodes
+    result: std::vector<std::vector<int>> = ();
+    bi: int = 0;
+    while bi < boundaries.size() {
+        lo: int = boundaries[bi];
+        hi: int = boundaries[bi + 1];
+        node: std::vector<int> = reify_decl(src, lo, hi);
+        result.push_back(node);
+        bi = bi + 2;
+    }
+
+    return result;
+}
+
+// ============================================================================
+// SELF-HOST: main() — read input, transpile to C++
+// ============================================================================
+
+main: (args) -> int = {
+    if args.ssize() < 2 {
+        std::cerr << "Usage: cpp2_bin input.h2\n";
+        return 1;
+    }
+
+    filename: std::string = std::string(args[1]);
+    f: std::ifstream = (filename);
+    if !f.is_open() {
+        std::cerr << "Error: cannot open " << filename << "\n";
+        return 1;
+    }
+
+    buf: std::stringstream = ();
+    buf << f.rdbuf();
+    src: std::string = buf.str();
+
+    // Use existing transpiler pipeline from cpp2.h2
+    regs: std::vector<cpp2::region> = cpp2::regions(src);
+    std::cerr << "regions: " << regs.size() << "\n";
+    cpp2::emit2(src, regs, std::cout);
+
+    return 0;
+}

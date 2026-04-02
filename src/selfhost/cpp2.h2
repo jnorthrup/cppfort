@@ -1,35 +1,26 @@
 // cpp2.h2 — region scanner + emitter for cpp2 -> C++ transpilation
 //
-// scan: source string -> vector<(pos, kind)> seek markers at syntax boundaries
-// fold: markers -> regions (contiguous spans of same kind)
-// emit: walk regions, output C++
-//
-// Depth-scoped bitmaps: each phase can create alternate scope internally.
-// The trailing discriminator on each mark carries the kind.
+// Scanner: bitplane substrate from trikeshed.h2 → series<ast_node> → regions
+// Emitter: walk regions, surface each through its EBNF production
 
 #pragma once
 #include <string_view>
 #include <string>
 #include <vector>
 #include <iostream>
+#include "trikeshed.h2"
 
 namespace cpp2 {
 
+// --- region kind — mirrors ast_node.kind from trikeshed scanner ---
 enum class kind {
     code,
     line_comment,
     pp_include,
-    decl_name,      // name: appearing before : in declarations
-    decl_auto,      // name := auto declarations
-    func_header,    // name: (params) -> ret = {
-    type_alias,     // name: type == expr;
-    struct_decl,    // name: @struct ... type = {
-    if_cond,        // if without parens
-};
-
-struct mark {
-    int pos = 0;
-    kind k = kind::code;
+    func_header,
+    type_alias,
+    struct_decl,
+    if_cond,
 };
 
 struct region {
@@ -37,6 +28,36 @@ struct region {
     int lo = 0;
     int hi = 0;
 };
+
+struct func_info {
+    std::string name;
+    std::string params;
+    std::string ret_type;
+    std::string template_prefix;
+    bool is_main = false;
+};
+
+// --- map astr_node → region (scanner surface → emitter surface) ---
+inline auto to_region(n: ast_node) -> region {
+    if (n.kind == 2) return {kind::func_header, n.src_lo, n.src_hi};
+    if (n.kind == 4) return {kind::type_alias, n.src_lo, n.src_hi};
+    if (n.kind == 3) return {kind::struct_decl, n.src_lo, n.src_hi};
+    return {kind::code, n.src_lo, n.src_hi};
+}
+
+inline auto to_regions(nodes: series<ast_node>) -> std::vector<region> {
+    std::vector<region> out;
+    out.reserve(static_cast<size_t>(nodes.a));
+    for (int i = 0; i < nodes.a; ++i) {
+        out.push_back(to_region(nodes.b(i)));
+    }
+    return out;
+}
+
+// --- scanner surface — delegates to trikeshed bitplane pipeline ---
+inline auto regions(std::string_view src) -> std::vector<region> {
+    return to_regions(scan_source(src));
+}
 
 struct func_info {
     std::string name;
@@ -72,230 +93,7 @@ inline auto is_hanging_newline(std::string_view src, int i, int depth) -> bool {
     return false;
 }
 
-// scan — single forward pass, emit seek markers at syntax boundaries
-inline auto scan(std::string_view src) -> std::vector<mark> {
-    std::vector<mark> out;
-    int i = 0;
-    int n = static_cast<int>(src.size());
-    int depth = 0;  // bracket depth: ()[]{} tracking for hanging lines
-
-    while (i < n) {
-        // skip string literals
-        if (src[i] == '\"') {
-            ++i;
-            while (i < n && src[i] != '\"') {
-                if (src[i] == '\\') ++i; // skip escaped char
-                ++i;
-            }
-            ++i; // closing quote
-            continue;
-        }
-
-        // line comment: //
-        if (src[i] == '/' && i + 1 < n && src[i + 1] == '/') {
-            out.push_back({i, kind::line_comment});
-            while (i < n && src[i] != '\n') ++i;
-            out.push_back({i, kind::code});
-            continue;
-        }
-
-        // track bracket depth
-        if (src[i] == '(' || src[i] == '[' || src[i] == '{') { ++depth; ++i; continue; }
-        if (src[i] == ')' || src[i] == ']' || src[i] == '}') { if (depth > 0) --depth; ++i; continue; }
-
-        // hanging newline: skip it (Kotlin-style semicolon inference)
-        if (src[i] == '\n' && is_hanging_newline(src, i, depth)) {
-            ++i;
-            continue;
-        }
-
-        // #include line
-        if (src[i] == '#') {
-            int j = i + 1;
-            while (j < n && (src[j] == ' ' || src[j] == '\t')) ++j;
-            if (j + 6 < n && src.substr(j, 7) == "include") {
-                out.push_back({i, kind::pp_include});
-                while (i < n && src[i] != '\n') ++i;
-                out.push_back({i, kind::code});
-                continue;
-            }
-        }
-
-        // detect top-level declarations at line start
-        if (i == 0 || src[i - 1] == '\n') {
-            // look for identifier followed by ':'
-            int j = i;
-            while (j < n && ((src[j] >= 'a' && src[j] <= 'z') ||
-                             (src[j] >= 'A' && src[j] <= 'Z') ||
-                             src[j] == '_' ||
-                             (src[j] >= '0' && src[j] <= '9'))) ++j;
-            if (j > i && j < n && src[j] == ':') {
-                int k = j + 1;
-                // skip whitespace after ':' (including newlines for multiline decls)
-                while (k < n && (src[k] == ' ' || src[k] == '\n' || src[k] == '\t')) ++k;
-
-                if (k < n && src[k] == '=' && k + 1 < n && src[k + 1] == '=') {
-                    // name: == expr;  → type alias (name is an alias for expr)
-                    // find end of line
-                    out.push_back({i, kind::type_alias});
-                    while (k < n && src[k] != '\n') {
-                        if (src[k] == '/' && k + 1 < n && src[k + 1] == '/') break;
-                        ++k;
-                    }
-                    out.push_back({k, kind::code});
-                    i = k;
-                    continue;
-                }
-
-                // check for "type ==" pattern: name: type == expr;
-                if (k + 3 < n && src.substr(k, 4) == "type") {
-                    int m = k + 4;
-                    while (m < n && src[m] == ' ') ++m;
-                    if (m + 1 < n && src[m] == '=' && src[m + 1] == '=') {
-                        // name: type == expr; → type alias
-                        out.push_back({i, kind::type_alias});
-                        while (k < n && src[k] != '\n') {
-                            if (src[k] == '/' && k + 1 < n && src[k + 1] == '/') break;
-                            ++k;
-                        }
-                        out.push_back({k, kind::code});
-                        i = k;
-                        continue;
-                    }
-                }
-
-                if (k < n && src[k] == '=') {
-                    // name := — auto declaration, let emit_body handle
-                } else {
-                    // check for @struct
-                    if (k + 6 < n && src.substr(k, 7) == "@struct") {
-                        // name: @struct <T: type> type = {
-                        out.push_back({i, kind::struct_decl});
-                        // find the matching '{'
-                        int depth = 0;
-                        k = i;
-                        while (k < n) {
-                            if (src[k] == '{') { ++depth; if (depth == 1) break; }
-                            if (src[k] == '\"') { ++k; while (k < n && src[k] != '\"') { if (src[k] == '\\') ++k; ++k; } }
-                            ++k;
-                        }
-                        if (k < n) {
-                            out.push_back({k + 1, kind::code}); // after the {
-                            i = k + 1;
-                            continue;
-                        }
-                    }
-
-                    // check for template params: <T: type>
-                    if (k < n && src[k] == '<') {
-                        // could be: name: <T: type>(params) -> ret = {  (generic function)
-                        //     or:    name: <T: type> type == expr;  (template type alias)
-                        int tp = k;
-                        int tdepth = 1;
-                        ++tp;
-                        while (tp < n && tdepth > 0) {
-                            if (src[tp] == '<') ++tdepth;
-                            if (src[tp] == '>') --tdepth;
-                            ++tp;
-                        }
-                        // tp is now past the >
-                        int after_tp = tp;
-                        while (after_tp < n && src[after_tp] == ' ') ++after_tp;
-
-                        // check for type alias: name: <T: type> type == expr;
-                        // look for '==' after the template params
-                        // skip type tokens until we find == or something else
-                        int eq_check = after_tp;
-                        // skip type tokens (identifiers, ::, <>, *, &, etc.)
-                        while (eq_check < n && src[eq_check] != '=' && src[eq_check] != '{' && src[eq_check] != '(' && src[eq_check] != '\n') {
-                            ++eq_check;
-                        }
-                        if (eq_check + 1 < n && src[eq_check] == '=' && src[eq_check + 1] == '=') {
-                            // template type alias: name: <T: type> type == expr;
-                            out.push_back({i, kind::type_alias});
-                            while (k < n && src[k] != '\n') ++k;
-                            out.push_back({k, kind::code});
-                            i = k;
-                            continue;
-                        }
-
-                        // generic function: name: <T: type>(params) -> ret = { or = expr;
-                        if (after_tp < n && src[after_tp] == '(') {
-                            out.push_back({i, kind::func_header});
-                            // find the matching '{' or ';'
-                            int depth = 0;
-                            int m = i;
-                            while (m < n) {
-                                if (src[m] == '{') { ++depth; if (depth == 1) break; }
-                                if (src[m] == ';' && depth == 0) break;
-                                if (src[m] == '"') { ++m; while (m < n && src[m] != '"') { if (src[m] == '\\') ++m; ++m; } }
-                                ++m;
-                            }
-                            // end region after '{' or at ';'+1 (for expression-body)
-                            int end_pos = (m < n && src[m] == '{') ? m + 1 : ((m < n && src[m] == ';') ? m + 1 : m);
-                            out.push_back({end_pos, kind::code});
-                            i = end_pos;
-                            continue;
-                        }
-                    }
-
-                    // check for plain function: name: (params) -> ret = { or = expr;
-                    if (k < n && src[k] == '(') {
-                        out.push_back({i, kind::func_header});
-                        int depth = 0;
-                        while (k < n) {
-                            if (src[k] == '{') { ++depth; if (depth == 1) break; }
-                            if (src[k] == ';' && depth == 0) break;
-                            if (src[k] == '"') { ++k; while (k < n && src[k] != '"') { if (src[k] == '\\') ++k; ++k; } }
-                            ++k;
-                        }
-                        int end_pos = (k < n && src[k] == '{') ? k + 1 : ((k < n && src[k] == ';') ? k + 1 : k);
-                        out.push_back({end_pos, kind::code});
-                        i = end_pos;
-                        continue;
-                    }
-                }
-            }
-        }
-
-        ++i;
-    }
-    return out;
-}
-
-// fold — adjacent same-kind marks -> regions
-inline auto fold(std::string_view src, const std::vector<mark>& marks) -> std::vector<region> {
-    std::vector<region> regions;
-    int n = static_cast<int>(src.size());
-
-    if (marks.empty()) {
-        regions.push_back({kind::code, 0, n});
-        return regions;
-    }
-
-    if (marks[0].pos > 0) {
-        regions.push_back({kind::code, 0, marks[0].pos});
-    }
-
-    for (int i = 0; i < static_cast<int>(marks.size()); i += 2) {
-        int lo = marks[i].pos;
-        int hi = (i + 1 < static_cast<int>(marks.size())) ? marks[i + 1].pos : n;
-        regions.push_back({marks[i].k, lo, hi});
-        if (i + 2 < static_cast<int>(marks.size())) {
-            int gap_lo = hi;
-            int gap_hi = marks[i + 2].pos;
-            if (gap_hi > gap_lo) {
-                regions.push_back({kind::code, gap_lo, gap_hi});
-            }
-        } else if (hi < n) {
-            regions.push_back({kind::code, hi, n});
-        }
-    }
-
-    return regions;
-}
-
-// emit_func_header — transpile "name: (params) -> ret = {" to C++
+// --- emitter surfaces ---
 // transform_params — rewrite cpp2 param syntax to C++
 //   inout s: std::string -> std::string& s
 //   in s: int             -> int const& s  
@@ -773,6 +571,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
         }
 
         // if/while without parens: "if EXPR {" or "while EXPR {"
+        // Also handles single-line: "if EXPR stmt;" without braces
         if ((buf[i] == 'i' && i + 1 < n && buf[i + 1] == 'f' &&
              (i + 2 >= n || buf[i + 2] == ' ' || buf[i + 2] == '!')) ||
             (buf[i] == 'w' && i + 4 < n && buf.compare(i, 5, "while") == 0)) {
@@ -782,11 +581,60 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
             i = kw_end;
             // skip space
             while (i < n && buf[i] == ' ') { out << ' '; ++i; }
-            // collect expr until '{'
+            // collect expr until '{' or end of condition
+            // track parens to handle nested conditions
+            int cond_depth = 0;
             while (i < n && buf[i] != '{') {
+                if (buf[i] == '(') ++cond_depth;
+                if (buf[i] == ')') {
+                    if (cond_depth > 0) { --cond_depth; }
+                    else { break; } // unmatched ) = end of condition without {
+                }
+                if (cond_depth == 0 && (buf[i] == ';' || buf[i] == '\n')) break;
                 out << buf[i++];
             }
-            out << ") ";
+            if (i < n && buf[i] == '{') {
+                // brace form: "if (cond) {"
+                out << ") ";
+                out << buf[i++]; // the '{'
+            } else {
+                // single-line form: "if (cond) stmt;" -> wrap in braces
+                out << ") { ";
+                // collect the statement until ';' or newline
+                while (i < n && buf[i] != ';' && buf[i] != '\n') {
+                    out << buf[i++];
+                }
+                if (i < n && buf[i] == ';') { out << ";"; ++i; }
+                out << " }";
+            }
+            continue;
+        }
+
+        // enum with underlying type: "enum class name : type {"
+        // cpp2 emits "enum class unsigned char {" which is invalid C++
+        // Rewrite to: "enum class name { ... }" dropping the ": type"
+        if (i + 5 < n && buf.compare(i, 5, "enum ") == 0) {
+            // emit "enum"
+            out << "enum";
+            i += 4; // point at the space
+            // emit rest, but skip ": type" after class name
+            while (i < n && buf[i] != '{') {
+                if (buf[i] == ':') {
+                    // check if this is "::" (namespace) or ": type" (underlying)
+                    if (i + 1 < n && buf[i + 1] == ':') {
+                        out << buf[i++]; // first ':'
+                        out << buf[i++]; // second ':'
+                        continue;
+                    }
+                    // skip ": type" until we hit '{'
+                    ++i; // skip ':'
+                    while (i < n && buf[i] == ' ') ++i;
+                    // skip the type name
+                    while (i < n && buf[i] != '{' && buf[i] != ' ') ++i;
+                    continue;
+                }
+                out << buf[i++];
+            }
             if (i < n) out << buf[i++]; // the '{'
             continue;
         }

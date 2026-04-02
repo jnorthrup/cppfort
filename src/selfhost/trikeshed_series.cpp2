@@ -49,8 +49,27 @@ s_project_ix: <T: type, T2: type>(
     fn: std::function<T2(int, T)>
 ) -> series<T2> = s >> fn;
 
-cursor_slice: (cur: source_cursor, sp: span) -> source_cursor = cur.slice(sp);
+// cursor_slice — selector-driven sub-cursor
+// char_series::operator[] (inherited from series<char>) returns the sub-series,
+// which the factory wraps into a new cursor. Slice is protected; the public
+// surface delegates through the inherited [] then calls make().
+cursor_slice: (cur: source_cursor, sp: span) -> source_cursor = {
+    sub: strview = cur[sp];
+    return char_series::make(sub);
+}
 
-cursor_slice: (cur: source_cursor, rg: range) -> source_cursor = cur.slice(rg);
+cursor_slice: (cur: source_cursor, rg: range) -> source_cursor = {
+    sub: strview = cur[rg];
+    return char_series::make(sub);
+}
 
-cursor_slice: (cur: source_cursor, idx: selectors) -> source_cursor = cur.slice(idx);
+cursor_slice: (cur: source_cursor, idx: selectors) -> source_cursor = {
+    sub: strview = cur[idx];
+    return char_series::make(sub);
+}
+
+// cursor_flip / cursor_rewind / cursor_mark — ByteBuffer contract surface
+cursor_flip: (cur: source_cursor) -> source_cursor& = cur.flip();
+cursor_rewind: (cur: source_cursor) -> source_cursor& = cur.rewind();
+cursor_mark_pos: (cur: source_cursor) -> source_cursor& = cur.mark_pos();
+cursor_reset: (cur: source_cursor) -> source_cursor& = cur.reset();

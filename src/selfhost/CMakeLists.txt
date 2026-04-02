@@ -62,6 +62,7 @@ target_sources(cppfort_selfhost_cpp2_inventory INTERFACE
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_series.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_manifold.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_either.cpp2
+  ${CMAKE_SOURCE_DIR}/src/selfhost/trikeshed_scanner.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/cppfort.cpp2
   ${CMAKE_SOURCE_DIR}/src/selfhost/canonical_emitter.cpp2
 )
