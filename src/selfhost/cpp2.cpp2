@@ -20,8 +20,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-// Mmap chunk: raw pointer + size
-using mmap_chunk = std::pair<const char* const, size_t>;
+// Type alias for mmap file handle
+using mmap_chunk = std::pair<char*, size_t>;
+
+// ============================================================================
 
 
 
@@ -76,9 +78,8 @@ escape_scan: (chunk: mmap_chunk) -> std::vector<int> = {
 
 // --- Structural scan: { } [ ] ( ) ; , ---
 // Returns pairs: (position, modality)
-structural_scan: (chunk: mmap_chunk) -> std::vector<int> = {
-    pos_out: std::vector<int> = ();
-    mod_out: std::vector<int> = ();
+bracket_scan: (chunk: mmap_chunk) -> std::vector<int> = {
+    out: std::vector<int> = ();
     i: size_t = 0;
     while i < chunk.second {
         c: char = chunk.first[i];
@@ -269,7 +270,7 @@ index_decls: (chunk: mmap_chunk, positions: std::vector<int>) -> std::vector<int
         pi = pi + 1;
     }
 
-    n: int = chunk.second;
+    n: int = chunk.second as int;
     if lo < n {
         boundaries.push_back(lo);
         boundaries.push_back(n);
@@ -563,14 +564,14 @@ mmap_file: (filename: std::string) -> mmap_chunk = {
         return std::make_pair(nullptr, 0);
     }
 
-    file_stat: stat = ();
-    if fstat(fd, file_stat&) < 0 {
+    // Get file size using lseek (simpler than fstat)
+    size: size_t = lseek(fd, 0, SEEK_END) as size_t;
+    if size < 0 {
         close(fd);
-        std::cerr << "Error: cannot stat " << filename << "\n";
+        std::cerr << "Error: cannot seek " << filename << "\n";
         return std::make_pair(nullptr, 0);
     }
-
-    size: size_t = file_stat.st_size;
+    lseek(fd, 0, SEEK_SET);
     if size == 0 {
         close(fd);
         std::cerr << "Error: empty file " << filename << "\n";
