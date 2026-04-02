@@ -12,8 +12,14 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <sstream>
+#include <utility>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+// Mmap chunk: raw pointer + size
+using mmap_chunk = std::pair<const char* const, size_t>;
 
 
 
@@ -27,24 +33,24 @@
 // Scan modality constants (int, not enum — emitter-safe)
 // ============================================================================
 
-scan_quote:       constexpr int = 0;
-scan_escape:      constexpr int = 1;
-scan_scope_open:  constexpr int = 2;
-scan_scope_close: constexpr int = 3;
-scan_decl_delim:  constexpr int = 4;
-scan_comment:     constexpr int = 5;
+constexpr int scan_quote       = 0;
+constexpr int scan_escape      = 1;
+constexpr int scan_scope_open  = 2;
+constexpr int scan_scope_close = 3;
+constexpr int scan_decl_delim  = 4;
+constexpr int scan_comment     = 5;
 
 // Scan event: position + modality
-scan_ev_lo:  constexpr int = 0;
-scan_ev_hi:  constexpr int = 1;
-scan_ev_mod: constexpr int = 2;
+constexpr int scan_ev_lo  = 0;
+constexpr int scan_ev_hi  = 1;
+constexpr int scan_ev_mod = 2;
 
 // --- Quote scan: positions of " and ` ---
-quote_scan: (src: std::string_view) -> std::vector<int> = {
+quote_scan: (chunk: mmap_chunk) -> std::vector<int> = {
     out: std::vector<int> = ();
-    i: int = 0;
-    while i < src.size() {
-        c: char = src[i];
+    i: size_t = 0;
+    while i < chunk.second {
+        c: char = chunk.first[i];
         if c == '"' || c == '`' {
             out.push_back(i);
         }
@@ -54,11 +60,11 @@ quote_scan: (src: std::string_view) -> std::vector<int> = {
 }
 
 // --- Escape scan: positions of \ ---
-escape_scan: (src: std::string_view) -> std::vector<int> = {
+escape_scan: (chunk: mmap_chunk) -> std::vector<int> = {
     out: std::vector<int> = ();
-    i: int = 0;
-    while i < src.size() {
-        if src[i] == '\\' {
+    i: size_t = 0;
+    while i < chunk.second {
+        if chunk.first[i] == '\\' {
             out.push_back(i);
         }
         i = i + 1;
@@ -68,12 +74,12 @@ escape_scan: (src: std::string_view) -> std::vector<int> = {
 
 // --- Structural scan: { } [ ] ( ) ; , ---
 // Returns pairs: (position, modality)
-structural_scan: (src: std::string_view) -> std::vector<int> = {
+structural_scan: (chunk: mmap_chunk) -> std::vector<int> = {
     pos_out: std::vector<int> = ();
     mod_out: std::vector<int> = ();
-    i: int = 0;
-    while i < src.size() {
-        c: char = src[i];
+    i: size_t = 0;
+    while i < chunk.second {
+        c: char = chunk.first[i];
         if c == '{' || c == '[' || c == '(' {
             pos_out.push_back(i);
             mod_out.push_back(scan_scope_open);
@@ -94,11 +100,11 @@ structural_scan: (src: std::string_view) -> std::vector<int> = {
 }
 
 // --- Comment scan: positions of // ---
-comment_scan: (src: std::string_view) -> std::vector<int> = {
+comment_scan: (chunk: mmap_chunk) -> std::vector<int> = {
     out: std::vector<int> = ();
-    i: int = 0;
-    while i < src.size() - 1 {
-        if src[i] == '/' && src[i + 1] == '/' {
+    i: size_t = 0;
+    while i < chunk.second - 1 {
+        if chunk.first[i] == '/' && chunk.first[i + 1] == '/' {
             out.push_back(i);
         }
         i = i + 1;
@@ -163,7 +169,7 @@ merge_positions: (vecs: std::vector<std::vector<int>>) -> std::vector<int> = {
 // Quotes mask structural events. Escapes toggle. Comments mask.
 // ============================================================================
 
-decode_positions: (src: std::string_view, merged: std::vector<int>) -> std::vector<int> = {
+decode_positions: (chunk: mmap_chunk, merged: std::vector<int>) -> std::vector<int> = {
     out: std::vector<int> = ();
     quote_count: int = 0;
     escape_next: bool = false;
@@ -172,10 +178,10 @@ decode_positions: (src: std::string_view, merged: std::vector<int>) -> std::vect
     mi: int = 0;
     while mi < merged.size() {
         pos: int = merged[mi];
-        c: char = src[pos];
+        c: char = chunk.first[pos];
 
         // Comment start
-        if c == '/' && pos + 1 < src.size() && src[pos + 1] == '/' {
+        if c == '/' && pos + 1 < chunk.second && chunk.first[pos + 1] == '/' {
             in_comment = true;
             mi = mi + 1;
             continue;
@@ -226,7 +232,7 @@ decode_positions: (src: std::string_view, merged: std::vector<int>) -> std::vect
 // INDEX — walk decoded positions, track depth, emit declaration boundaries
 // ============================================================================
 
-index_decls: (src: std::string_view, positions: std::vector<int>) -> std::vector<int> = {
+index_decls: (chunk: mmap_chunk, positions: std::vector<int>) -> std::vector<int> = {
     // Output: pairs of (lo, hi) packed as flat vector [lo0, hi0, lo1, hi1, ...]
     boundaries: std::vector<int> = ();
     depth: int = 0;
@@ -235,7 +241,7 @@ index_decls: (src: std::string_view, positions: std::vector<int>) -> std::vector
     pi: int = 0;
     while pi < positions.size() {
         pos: int = positions[pi];
-        c: char = src[pos];
+        c: char = chunk.first[pos];
 
         if c == '{' || c == '[' || c == '(' {
             depth = depth + 1;
@@ -261,7 +267,7 @@ index_decls: (src: std::string_view, positions: std::vector<int>) -> std::vector
         pi = pi + 1;
     }
 
-    n: int = src.size();
+    n: int = chunk.second;
     if lo < n {
         boundaries.push_back(lo);
         boundaries.push_back(n);
@@ -276,17 +282,17 @@ index_decls: (src: std::string_view, positions: std::vector<int>) -> std::vector
 // >> operator surface replaces Kotlin's α (alpha) transform
 // ============================================================================
 
-node_kind_unknown:   constexpr int = 0;
-node_kind_line:      constexpr int = 1;
-node_kind_func:      constexpr int = 2;
-node_kind_type:      constexpr int = 3;
-node_kind_alias:     constexpr int = 4;
-node_kind_namespace: constexpr int = 5;
+constexpr int node_kind_unknown   = 0;
+constexpr int node_kind_line      = 1;
+constexpr int node_kind_func      = 2;
+constexpr int node_kind_type      = 3;
+constexpr int node_kind_alias     = 4;
+constexpr int node_kind_namespace = 5;
 
 // AST node: (kind, name_lo, name_hi, type_lo, type_hi, body_lo, body_hi, src_lo, src_hi)
 // Packed as flat vector of 9 ints per node
 
-reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
+reify_decl: (chunk: mmap_chunk, lo: int, hi: int) -> std::vector<int> = {
     node: std::vector<int> = ();
     // 9 fields per node
     node.push_back(node_kind_line); // kind
@@ -305,7 +311,7 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
     colon_pos: int = -1;
     i: int = 0;
     while i < text_len {
-        if src[lo + i] == ':' {
+        if chunk.first[lo + i] == ':' {
             colon_pos = i;
             i = text_len; // break
         }
@@ -324,7 +330,7 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
     eq_pos: int = -1;
     i = colon_pos + 1;
     while i < text_len {
-        if src[lo + i] == '=' {
+        if chunk.first[lo + i] == '=' {
             eq_pos = i;
             i = text_len; // break
         }
@@ -350,7 +356,7 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
     has_arrow: bool = false;
     i = 0;
     while i < type_len - 1 {
-        if src[type_lo + i] == '-' && src[type_lo + i + 1] == '>' {
+        if chunk.first[type_lo + i] == '-' && chunk.first[type_lo + i + 1] == '>' {
             has_arrow = true;
             i = type_len; // break
         }
@@ -365,8 +371,8 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
     has_type: bool = false;
     i = 0;
     while i < type_len - 3 {
-        if src[type_lo + i] == 't' && src[type_lo + i + 1] == 'y' &&
-           src[type_lo + i + 2] == 'p' && src[type_lo + i + 3] == 'e' {
+        if chunk.first[type_lo + i] == 't' && chunk.first[type_lo + i + 1] == 'y' &&
+           chunk.first[type_lo + i + 2] == 'p' && chunk.first[type_lo + i + 3] == 'e' {
             has_type = true;
             i = type_len; // break
         }
@@ -377,7 +383,7 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
         has_eqeq: bool = false;
         i = 0;
         while i < type_len - 1 {
-            if src[type_lo + i] == '=' && src[type_lo + i + 1] == '=' {
+            if chunk.first[type_lo + i] == '=' && chunk.first[type_lo + i + 1] == '=' {
                 has_eqeq = true;
                 i = type_len; // break
             }
@@ -396,11 +402,11 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
     if type_len >= 9 {
         i = 0;
         while i < type_len - 8 {
-            if src[type_lo + i] == 'n' && src[type_lo + i + 1] == 'a' &&
-               src[type_lo + i + 2] == 'm' && src[type_lo + i + 3] == 'e' &&
-               src[type_lo + i + 4] == 's' && src[type_lo + i + 5] == 'p' &&
-               src[type_lo + i + 6] == 'a' && src[type_lo + i + 7] == 'c' &&
-               src[type_lo + i + 8] == 'e' {
+            if chunk.first[type_lo + i] == 'n' && chunk.first[type_lo + i + 1] == 'a' &&
+               chunk.first[type_lo + i + 2] == 'm' && chunk.first[type_lo + i + 3] == 'e' &&
+               chunk.first[type_lo + i + 4] == 's' && chunk.first[type_lo + i + 5] == 'p' &&
+               chunk.first[type_lo + i + 6] == 'a' && chunk.first[type_lo + i + 7] == 'c' &&
+               chunk.first[type_lo + i + 8] == 'e' {
                 has_ns = true;
                 i = type_len; // break
             }
@@ -418,12 +424,12 @@ reify_decl: (src: std::string_view, lo: int, hi: int) -> std::vector<int> = {
 // PARSE — full pipeline: scan -> merge -> decode -> index -> reify
 // ============================================================================
 
-parse: (src: std::string_view) -> std::vector<std::vector<int>> = {
+parse: (chunk: mmap_chunk) -> std::vector<std::vector<int>> = {
     // Run all modal scans
-    qs: std::vector<int> = quote_scan(src);
-    es: std::vector<int> = escape_scan(src);
-    ss: std::vector<int> = structural_scan(src);
-    cs: std::vector<int> = comment_scan(src);
+    qs: std::vector<int> = quote_scan(chunk);
+    es: std::vector<int> = escape_scan(chunk);
+    ss: std::vector<int> = structural_scan(chunk);
+    cs: std::vector<int> = comment_scan(chunk);
 
     // Merge into single sorted position stream
     all_scans: std::vector<std::vector<int>> = ();
@@ -434,10 +440,10 @@ parse: (src: std::string_view) -> std::vector<std::vector<int>> = {
     merged: std::vector<int> = merge_positions(all_scans);
 
     // Decode: mask structural events inside strings/comments
-    decoded: std::vector<int> = decode_positions(src, merged);
+    decoded: std::vector<int> = decode_positions(chunk, merged);
 
     // Index: find declaration boundaries
-    boundaries: std::vector<int> = index_decls(src, decoded);
+    boundaries: std::vector<int> = index_decls(chunk, decoded);
 
     // Reify: construct AST nodes
     result: std::vector<std::vector<int>> = ();
@@ -445,12 +451,48 @@ parse: (src: std::string_view) -> std::vector<std::vector<int>> = {
     while bi < boundaries.size() {
         lo: int = boundaries[bi];
         hi: int = boundaries[bi + 1];
-        node: std::vector<int> = reify_decl(src, lo, hi);
+        node: std::vector<int> = reify_decl(chunk, lo, hi);
         result.push_back(node);
         bi = bi + 2;
     }
 
     return result;
+}
+
+// ============================================================================
+// MMAP FILE LOADER — zero-copy file reading
+// ============================================================================
+
+mmap_file: (filename: std::string) -> mmap_chunk = {
+    fd: int = open(filename.c_str(), O_RDONLY);
+    if fd < 0 {
+        std::cerr << "Error: cannot open " << filename << "\n";
+        return std::make_pair(nullptr, 0);
+    }
+
+    file_stat: stat = ();
+    if fstat(fd, file_stat&) < 0 {
+        close(fd);
+        std::cerr << "Error: cannot stat " << filename << "\n";
+        return std::make_pair(nullptr, 0);
+    }
+
+    size: size_t = file_stat.st_size;
+    if size == 0 {
+        close(fd);
+        std::cerr << "Error: empty file " << filename << "\n";
+        return std::make_pair(nullptr, 0);
+    }
+
+    data := mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if data == MAP_FAILED {
+        close(fd);
+        std::cerr << "Error: cannot mmap " << filename << "\n";
+        return std::make_pair(nullptr, 0);
+    }
+
+    close(fd);
+    return std::make_pair(data, size);
 }
 
 // ============================================================================
@@ -464,17 +506,14 @@ main: (args) -> int = {
     }
 
     filename: std::string = std::string(args[1]);
-    f: std::ifstream = (filename);
-    if !f.is_open() {
-        std::cerr << "Error: cannot open " << filename << "\n";
+    chunk: mmap_chunk = mmap_file(filename);
+    if chunk.first == nullptr {
         return 1;
     }
 
-    buf: std::stringstream = ();
-    buf << f.rdbuf();
-    src: std::string = buf.str();
-
     // Use existing transpiler pipeline from cpp2.h2
+    // Convert mmap_chunk to std::string_view for cpp2::regions()
+    src: std::string_view = std::string_view(chunk.first, chunk.second);
     regs: std::vector<cpp2::region> = cpp2::regions(src);
     std::cerr << "regions: " << regs.size() << "\n";
     cpp2::emit2(src, regs, std::cout);
