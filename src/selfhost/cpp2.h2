@@ -3,7 +3,6 @@
 // Scanner: bitplane substrate from trikeshed.h2 → series<ast_node> → regions
 // Emitter: walk regions, surface each through its EBNF production
 
-#pragma once
 #include <string_view>
 #include <string>
 #include <vector>
@@ -38,37 +37,31 @@ struct func_info {
 };
 
 // --- map astr_node → region (scanner surface → emitter surface) ---
-inline auto to_region(n: ast_node) -> region {
-    if (n.kind == 2) return {kind::func_header, n.src_lo, n.src_hi};
-    if (n.kind == 4) return {kind::type_alias, n.src_lo, n.src_hi};
-    if (n.kind == 3) return {kind::struct_decl, n.src_lo, n.src_hi};
+to_region: (n: ast_node) -> region = {
+    if n.kind == 2 { return {kind::func_header, n.src_lo, n.src_hi}; }
+    if n.kind == 4 { return {kind::type_alias, n.src_lo, n.src_hi}; }
+    if n.kind == 3 { return {kind::struct_decl, n.src_lo, n.src_hi}; }
     return {kind::code, n.src_lo, n.src_hi};
 }
 
-inline auto to_regions(nodes: series<ast_node>) -> std::vector<region> {
-    std::vector<region> out;
-    out.reserve(static_cast<size_t>(nodes.a));
-    for (int i = 0; i < nodes.a; ++i) {
+to_regions: (nodes: series<ast_node>) -> std::vector<region> = {
+    out: std::vector<region> = ();
+    out.reserve(nodes.a as size_t);
+    i: int = 0;
+    while i < nodes.a {
         out.push_back(to_region(nodes.b(i)));
+        i = i + 1;
     }
     return out;
 }
 
 // --- scanner surface — delegates to trikeshed bitplane pipeline ---
-inline auto regions(std::string_view src) -> std::vector<region> {
+regions: (src: std::string_view) -> std::vector<region> = {
     return to_regions(scan_source(src));
 }
 
-struct func_info {
-    std::string name;
-    std::string params;    // original cpp2 params
-    std::string ret_type;
-    std::string template_prefix; // e.g. "template<typename T>"
-    bool is_main = false;
-};
-
 // Continuation tokens: if line ends with these, newline doesn't terminate statement
-inline auto is_continuation(char c) -> bool {
+is_continuation: (c: char) -> bool = {
     return c == '=' || c == ',' || c == '(' || c == '[' || c == '{'
         || c == '+' || c == '-' || c == '*' || c == '/' || c == '%'
         || c == '<' || c == '>' || c == '!' || c == '&' || c == '|'
@@ -76,33 +69,34 @@ inline auto is_continuation(char c) -> bool {
 }
 
 // Find last non-whitespace char before position i
-inline auto prev_nonspace(std::string_view src, int i) -> char {
-    int j = i - 1;
-    while (j >= 0 && (src[j] == ' ' || src[j] == '\t')) --j;
-    return (j >= 0) ? src[j] : '\0';
+prev_nonspace: (src: std::string_view, i: int) -> char = {
+    j: int = i - 1;
+    while j >= 0 && (src[j as size_t] == ' ' || src[j as size_t] == '\t') { j = j - 1; }
+    if j >= 0 { return src[j as size_t]; }
+    else { return '\0'; }
 }
 
 // Check if newline at position i is a hanging line (doesn't terminate statement)
 // Also returns true if we're inside unclosed brackets
-inline auto is_hanging_newline(std::string_view src, int i, int depth) -> bool {
-    if (depth > 0) return true;  // inside brackets
-    char c = prev_nonspace(src, i);
-    if (is_continuation(c)) return true;
+is_hanging_newline: (src: std::string_view, i: int, depth: int) -> bool = {
+    if depth > 0 { return true; }  // inside brackets
+    c: char = prev_nonspace(src, i);
+    if is_continuation(c) { return true; }
     // Check for -> (two chars)
-    if (c == '>' && i >= 2 && src[i - 2] == '-') return true;
+    if c == '>' && i >= 2 && src[(i - 2) as size_t] == '-' { return true; }
     return false;
 }
 
 // --- emitter surfaces ---
 // transform_params — rewrite cpp2 param syntax to C++
 //   inout s: std::string -> std::string& s
-//   in s: int             -> int const& s  
+//   in s: int             -> int const& s
 //   out s: int            -> int& s
 //   forward s: T          -> T&& s
 //   s: int                -> int s
-inline auto transform_params(std::string_view params) -> std::string {
-    std::string result;
-    int i = 0;
+transform_params: (params: std::string_view) -> std::string = = {
+    result: std::string = ();
+    i: int = 0;
     int n = static_cast<int>(params.size());
 
     while (i < n) {
@@ -110,7 +104,7 @@ inline auto transform_params(std::string_view params) -> std::string {
         while (i < n && params[i] == ' ') { result += ' '; ++i; }
 
         // collect first identifier — could be direction keyword or param name
-        std::string first_word;
+        first_word: std::string = ();
         while (i < n && ((params[i] >= 'a' && params[i] <= 'z') ||
                          (params[i] >= 'A' && params[i] <= 'Z'))) {
             first_word += params[i++];
@@ -120,8 +114,8 @@ inline auto transform_params(std::string_view params) -> std::string {
         while (i < n && params[i] == ' ') ++i;
 
         // check if this is a direction keyword followed by another identifier
-        bool is_dir = false;
-        std::string pname;
+        is_dir: bool = false;
+        pname: std::string = ();
         if ((first_word == "inout" || first_word == "out" || first_word == "forward" || first_word == "in")
             && i < n && ((params[i] >= 'a' && params[i] <= 'z') ||
                          (params[i] >= 'A' && params[i] <= 'Z') || params[i] == '_')) {
@@ -141,8 +135,8 @@ inline auto transform_params(std::string_view params) -> std::string {
         while (i < n && params[i] == ' ') ++i;
 
         // collect type (up to ',' or end)
-        std::string type;
-        int tdepth = 0;
+        type: std::string = ();
+        tdepth: int = 0;
         while (i < n && (params[i] != ',' || tdepth > 0)) {
             if (params[i] == '<') ++tdepth;
             if (params[i] == '>') --tdepth;
@@ -179,15 +173,15 @@ inline auto transform_params(std::string_view params) -> std::string {
 }
 
 // extract_template_params — parse "<T: type, U: type>" and return "template<typename T, typename U>"
-inline auto extract_template_params(std::string_view params) -> std::string {
-    std::string result = "template<";
-    int i = 0;
+extract_template_params: (params: std::string_view) -> std::string = = {
+    result: std::string = "template<";
+    i: int = 0;
     int n = static_cast<int>(params.size());
-    bool first = true;
+    first: bool = true;
     while (i < n) {
         while (i < n && params[i] == ' ') ++i;
         // collect param name (before ':')
-        std::string pname;
+        pname: std::string = ();
         while (i < n && params[i] != ':' && params[i] != ',' && params[i] != '>') {
             pname += params[i++];
         }
@@ -210,21 +204,21 @@ inline auto extract_template_params(std::string_view params) -> std::string {
     return result;
 }
 
-inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
+emit_func_header: (std: :string_view text, std: :ostream& out) -> void = {
     // find the ':'
-    auto colon = text.find(':');
+    colon: auto = text.find(':');
     if (colon == std::string_view::npos) { out << text; return; }
-    auto name = text.substr(0, colon);
+    name: auto = text.substr(0, colon);
 
     // skip whitespace after ':'
-    auto p = colon + 1;
+    p: auto = colon + 1;
     while (p < text.size() && text[p] == ' ') ++p;
 
     // check for template params: <T: type>
-    std::string template_prefix;
+    template_prefix: std::string = ();
     if (p < text.size() && text[p] == '<') {
-        auto tp_start = p;
-        int tdepth = 1;
+        tp_start: auto = p;
+        tdepth: int = 1;
         ++p;
         while (p < text.size() && tdepth > 0) {
             if (text[p] == '<') ++tdepth;
@@ -232,7 +226,7 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
             ++p;
         }
         // extract "T: type, U: type" from inside < >
-        auto inner = text.substr(tp_start + 1, p - tp_start - 2);
+        inner: auto = text.substr(tp_start + 1, p - tp_start - 2);
         template_prefix = extract_template_params(inner) + "\n";
         while (p < text.size() && text[p] == ' ') ++p;
     }
@@ -242,26 +236,26 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
     ++p; // skip '('
 
     // extract params up to ')'
-    auto params_start = p;
-    int depth = 1;
+    params_start: auto = p;
+    depth: int = 1;
     while (p < text.size() && depth > 0) {
         if (text[p] == '(') ++depth;
         if (text[p] == ')') --depth;
         if (depth > 0) ++p;
     }
-    auto params = text.substr(params_start, p - params_start);
+    params: auto = text.substr(params_start, p - params_start);
     ++p; // skip ')'
 
     // skip whitespace
     while (p < text.size() && text[p] == ' ') ++p;
 
     // expect '->'
-    std::string ret_type = "void";
+    ret_type: std::string = "void";
     if (p + 1 < text.size() && text[p] == '-' && text[p + 1] == '>') {
         p += 2;
         while (p < text.size() && text[p] == ' ') ++p;
-        auto ret_start = p;
-        int tdepth = 0;
+        ret_start: auto = p;
+        tdepth: int = 0;
         while (p < text.size()) {
             if (text[p] == '<') ++tdepth;
             if (text[p] == '>') --tdepth;
@@ -272,29 +266,29 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
     }
 
     // skip to '{' or '=' — but check which comes first
-    auto eq_pos = text.find('=', p);
-    auto brace_pos = text.find('{', p);
+    eq_pos: auto = text.find('=', p);
+    brace_pos: auto = text.find('{', p);
     bool has_brace = (brace_pos != std::string_view::npos);
     bool has_eq = (eq_pos != std::string_view::npos);
 
     // expression-body: name: (params) -> ret = expr; (no { in the rest)
     if (has_eq && (!has_brace || eq_pos < brace_pos)) {
         // verify it's not "= {" pattern (function body with brace)
-        auto after_eq = eq_pos + 1;
+        after_eq: auto = eq_pos + 1;
         while (after_eq < text.size() && text[after_eq] == ' ') ++after_eq;
         if (after_eq >= text.size() || text[after_eq] != '{') {
             // genuine expression-body
             p = eq_pos;
             ++p; // skip '='
             while (p < text.size() && text[p] == ' ') ++p;
-            auto body_start = p;
+            body_start: auto = p;
             // find ';' at end of line
             while (p < text.size() && text[p] != ';' && text[p] != '\n') ++p;
-            auto body_expr = text.substr(body_start, p - body_start);
+            body_expr: auto = text.substr(body_start, p - body_start);
             // trim trailing space from body_expr
             while (!body_expr.empty() && body_expr.back() == ' ') body_expr = body_expr.substr(0, body_expr.size() - 1);
 
-            auto nodiscard = (ret_type != "void") ? "[[nodiscard]] " : "";
+            nodiscard: auto = (ret_type != "void") ? "[[nodiscard]] " : "";
             out << template_prefix << nodiscard << "auto " << name << "(" << transform_params(params) << ") -> " << ret_type << " { return " << body_expr << "; }";
             return;
         }
@@ -305,7 +299,7 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
         out << "int main(int argc, char** argv) {\n"
             << "    std::vector<std::string_view> args(argv, argv + argc);";
     } else {
-        auto nodiscard = (ret_type != "void") ? "[[nodiscard]] " : "";
+        nodiscard: auto = (ret_type != "void") ? "[[nodiscard]] " : "";
         out << template_prefix << nodiscard << "auto " << name << "(" << transform_params(params) << ") -> " << ret_type << " {";
     }
 }
@@ -313,26 +307,26 @@ inline auto emit_func_header(std::string_view text, std::ostream& out) -> void {
 // emit_type_alias — transpile type alias declarations
 //   name: type == expr;         →  using name = expr;
 //   name: <T: type> type == expr; →  template<typename T> using name = expr;
-inline auto emit_type_alias(std::string_view text, std::ostream& out) -> void {
-    auto colon = text.find(':');
+emit_type_alias: (std: :string_view text, std: :ostream& out) -> void = {
+    colon: auto = text.find(':');
     if (colon == std::string_view::npos) { out << text; return; }
-    auto name = text.substr(0, colon);
+    name: auto = text.substr(0, colon);
 
-    auto p = colon + 1;
+    p: auto = colon + 1;
     while (p < text.size() && text[p] == ' ') ++p;
 
     // check for template params
-    std::string template_prefix;
+    template_prefix: std::string = ();
     if (p < text.size() && text[p] == '<') {
-        auto tp_start = p;
-        int tdepth = 1;
+        tp_start: auto = p;
+        tdepth: int = 1;
         ++p;
         while (p < text.size() && tdepth > 0) {
             if (text[p] == '<') ++tdepth;
             if (text[p] == '>') --tdepth;
             ++p;
         }
-        auto inner = text.substr(tp_start + 1, p - tp_start - 2);
+        inner: auto = text.substr(tp_start + 1, p - tp_start - 2);
         template_prefix = extract_template_params(inner) + "\n";
         while (p < text.size() && text[p] == ' ') ++p;
     }
@@ -346,9 +340,9 @@ inline auto emit_type_alias(std::string_view text, std::ostream& out) -> void {
     while (p < text.size() && text[p] == ' ') ++p;
 
     // collect expression up to ';'
-    auto expr_start = p;
+    expr_start: auto = p;
     while (p < text.size() && text[p] != ';' && text[p] != '\n') ++p;
-    auto expr = text.substr(expr_start, p - expr_start);
+    expr: auto = text.substr(expr_start, p - expr_start);
     // trim trailing spaces
     while (!expr.empty() && expr.back() == ' ') expr = expr.substr(0, expr.size() - 1);
 
@@ -358,12 +352,12 @@ inline auto emit_type_alias(std::string_view text, std::ostream& out) -> void {
 // emit_struct_decl — transpile @struct declarations
 //   name: @struct <T: type> type = { fields }
 //   →  template<typename T> struct name { fields };
-inline auto emit_struct_decl(std::string_view text, std::ostream& out) -> void {
-    auto colon = text.find(':');
+emit_struct_decl: (std: :string_view text, std: :ostream& out) -> void = {
+    colon: auto = text.find(':');
     if (colon == std::string_view::npos) { out << text; return; }
-    auto name = text.substr(0, colon);
+    name: auto = text.substr(0, colon);
 
-    auto p = colon + 1;
+    p: auto = colon + 1;
     while (p < text.size() && text[p] == ' ') ++p;
 
     // skip '@struct'
@@ -373,17 +367,17 @@ inline auto emit_struct_decl(std::string_view text, std::ostream& out) -> void {
     }
 
     // check for template params
-    std::string template_prefix;
+    template_prefix: std::string = ();
     if (p < text.size() && text[p] == '<') {
-        auto tp_start = p;
-        int tdepth = 1;
+        tp_start: auto = p;
+        tdepth: int = 1;
         ++p;
         while (p < text.size() && tdepth > 0) {
             if (text[p] == '<') ++tdepth;
             if (text[p] == '>') --tdepth;
             ++p;
         }
-        auto inner = text.substr(tp_start + 1, p - tp_start - 2);
+        inner: auto = text.substr(tp_start + 1, p - tp_start - 2);
         template_prefix = extract_template_params(inner) + "\n";
         while (p < text.size() && text[p] == ' ') ++p;
     }
@@ -398,13 +392,13 @@ inline auto emit_struct_decl(std::string_view text, std::ostream& out) -> void {
 // emit_body — transform cpp2 body syntax to C++
 //    if cond {         ->  if (cond) {
 //    if !expr {        ->  if (!expr) {
-//    name := expr;     ->  auto name = expr;
+//    name := expr;     ->  name: auto = expr;
 //    name: type = (... ->  type name(...  
 //    name: type = ();  ->  type name{};
-inline auto emit_body(std::string_view text, std::ostream& out) -> void {
+emit_body: (std: :string_view text, std: :ostream& out) -> void = {
     // pre-pass: rewrite .ssize() -> .size() (C++ std containers don't have ssize in all impls)
     std::string buf(text);
-    auto pos = buf.find(".ssize()");
+    pos: auto = buf.find(".ssize()");
     while (pos != std::string::npos) {
         buf.replace(pos, 8, ".size()");
         pos = buf.find(".ssize()", pos + 7);
@@ -417,23 +411,23 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
         int do_pos = buf.find(" do ", pos + 4);
         if (do_pos == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
         // check it's on same line or next line
-        auto line_end = buf.find('\n', pos);
+        line_end: auto = buf.find('\n', pos);
         if (line_end != std::string::npos && do_pos > line_end) { pos = buf.find("for ", pos + 1); continue; }
         // extract iterable
         int iter_start = pos + 4;
         while (iter_start < do_pos && buf[iter_start] == ' ') ++iter_start;
-        std::string iter = buf.substr(iter_start, do_pos - iter_start);
+        iter: std::string = buf.substr(iter_start, do_pos - iter_start);
         while (!iter.empty() && iter.back() == ' ') iter.pop_back();
         // find (var) after "do"
         int paren_start = buf.find('(', do_pos + 4);
         if (paren_start == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
         int paren_end = buf.find(')', paren_start);
         if (paren_end == std::string::npos) { pos = buf.find("for ", pos + 1); continue; }
-        std::string var = buf.substr(paren_start + 1, paren_end - paren_start - 1);
+        var: std::string = buf.substr(paren_start + 1, paren_end - paren_start - 1);
         while (!var.empty() && var.front() == ' ') var.erase(var.begin());
         while (!var.empty() && var.back() == ' ') var.pop_back();
         // replace
-        std::string replacement = "for (auto& " + var + " : " + iter + ")";
+        replacement: std::string = "for (auto& " + var + " : " + iter + ")";
         buf.replace(pos, paren_end - pos + 1, replacement);
         pos = buf.find("for ", pos + replacement.size());
     }
@@ -445,7 +439,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
     pos = buf.find("assert<");
     while (pos != std::string::npos) {
         // find matching '>'
-        int depth = 0;
+        depth: int = 0;
         int p = pos + 7;
         while (p < static_cast<int>(buf.size()) && depth >= 0) {
             if (buf[p] == '<') ++depth;
@@ -463,7 +457,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
     pos = buf.find("assert(");
     while (pos != std::string::npos) {
         // find the matching closing paren
-        int depth = 1;
+        depth: int = 1;
         int p = pos + 7;
         int comma_pos = -1;
         while (p < static_cast<int>(buf.size()) && depth > 0) {
@@ -483,7 +477,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
     pos = buf.find("TODO(");
     while (pos != std::string::npos) {
         // check it's not already commented
-        bool in_comment = false;
+        in_comment: bool = false;
         if (pos > 0) {
             int c = static_cast<int>(pos) - 1;
             while (c >= 0 && buf[c] == ' ') --c;
@@ -504,26 +498,26 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
     pos = buf.find(" as ");
     while (pos != std::string::npos) {
         // make sure we're not inside a string or comment
-        bool skip = false;
+        skip: bool = false;
         {
             // simple check: count quotes before pos
-            int qc = 0;
-            for (int c = 0; c < static_cast<int>(pos); ++c) {
+            qc: int = 0;
+            for (c: int = 0; c < static_cast<int>(pos); ++c) {
                 if (buf[c] == '"') { ++qc; if (c > 0 && buf[c-1] == '\\') --qc; }
             }
             if (qc % 2 != 0) skip = true;
             // check for // before this position on same line
-            auto lp = buf.rfind('\n', pos);
-            auto cp = buf.rfind("//", pos);
+            lp: auto = buf.rfind('\n', pos);
+            cp: auto = buf.rfind("//", pos);
             if (cp != std::string::npos && (lp == std::string::npos || cp > lp)) skip = true;
         }
         if (!skip) {
             // find expression before ' as '
-            auto expr_end = pos;
-            auto type_start = pos + 4; // skip " as "
+            expr_end: auto = pos;
+            type_start: auto = pos + 4; // skip " as "
             // collect type: identifier possibly with <...>
             int tp = static_cast<int>(type_start);
-            std::string type_str;
+            type_str: std::string = ();
             while (tp < static_cast<int>(buf.size()) && ((buf[tp] >= 'a' && buf[tp] <= 'z') ||
                      (buf[tp] >= 'A' && buf[tp] <= 'Z') || buf[tp] == '_' ||
                      (buf[tp] >= '0' && buf[tp] <= '9') || buf[tp] == ':' || buf[tp] == '<' || buf[tp] == '>')) {
@@ -539,8 +533,8 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
                     --es;
                 }
                 if (es > 0) ++es;
-                std::string expr_str = buf.substr(es, ee - es);
-                std::string replacement = "static_cast<" + type_str + ">(" + expr_str + ")";
+                expr_str: std::string = buf.substr(es, ee - es);
+                replacement: std::string = "static_cast<" + type_str + ">(" + expr_str + ")";
                 buf.replace(es, tp - es, replacement);
                 pos = buf.find(" as ", es + replacement.size());
                 continue;
@@ -549,7 +543,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
         pos = buf.find(" as ", pos + 4);
     }
 
-    int i = 0;
+    i: int = 0;
     int n = static_cast<int>(buf.size());
 
     while (i < n) {
@@ -583,7 +577,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
             while (i < n && buf[i] == ' ') { out << ' '; ++i; }
             // collect expr until '{' or end of condition
             // track parens to handle nested conditions
-            int cond_depth = 0;
+            cond_depth: int = 0;
             while (i < n && buf[i] != '{') {
                 if (buf[i] == '(') ++cond_depth;
                 if (buf[i] == ')') {
@@ -647,7 +641,7 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
                              (buf[i] >= 'A' && buf[i] <= 'Z') ||
                              buf[i] == '_' ||
                              (buf[i] >= '0' && buf[i] <= '9'))) ++i;
-            auto name = std::string_view(&buf[name_start], i - name_start);
+            name: auto = std::string_view(&buf[name_start], i - name_start);
 
             // skip whitespace
             int ws_start = i;
@@ -676,13 +670,13 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
                 while (i < n && buf[i] == ' ') ++i;
                 // collect type
                 int type_start = i;
-                int depth = 0;
+                depth: int = 0;
                 while (i < n && buf[i] != '=' && (buf[i] != '(' || depth > 0)) {
                     if (buf[i] == '<') ++depth;
                     if (buf[i] == '>') --depth;
                     ++i;
                 }
-                auto type_str = std::string(&buf[type_start], i - type_start);
+                type_str: auto = std::string(&buf[type_start], i - type_start);
                 // trim trailing space from type
                 while (!type_str.empty() && type_str.back() == ' ') {
                     type_str = type_str.substr(0, type_str.size() - 1);
@@ -726,14 +720,14 @@ inline auto emit_body(std::string_view text, std::ostream& out) -> void {
 }
 
 // emit — walk regions, produce C++ output
-inline auto emit(std::string_view src, const std::vector<region>& regions, std::ostream& out) -> void {
+emit: (std: :string_view src, std: :vector<region>& regions const, std: :ostream& out) -> void = {
     for (auto const& r : regions) {
-        auto text = src.substr(r.lo, r.hi - r.lo);
+        text: auto = src.substr(r.lo, r.hi - r.lo);
         switch (r.k) {
         case kind::pp_include:
             {
                 std::string line(text);
-                auto pos = line.find(".h2\"");
+                pos: auto = line.find(".h2\"");
                 if (pos != std::string::npos) {
                     line.erase(pos + 2, 1);
                 }
@@ -756,59 +750,54 @@ inline auto emit(std::string_view src, const std::vector<region>& regions, std::
     }
 }
 
-// convenience
-inline auto regions(std::string_view src) -> std::vector<region> {
-    return fold(src, scan(src));
-}
-
 // collect_func_headers — extract function metadata from regions
-inline auto collect_func_headers(std::string_view src, const std::vector<region>& regions) -> std::vector<func_info> {
+collect_func_headers: (src: std::string_view, regions: const std::vector<region>&) -> std::vector<func_info> = {
     std::vector<func_info> funcs;
     for (auto const& r : regions) {
         if (r.k != kind::func_header) continue;
-        auto text = src.substr(r.lo, r.hi - r.lo);
-        auto colon = text.find(':');
+        text: auto = src.substr(r.lo, r.hi - r.lo);
+        colon: auto = text.find(':');
         if (colon == std::string_view::npos) continue;
-        auto name = std::string(text.substr(0, colon));
+        name: auto = std::string(text.substr(0, colon));
 
         // skip to '(' — may have <T: type> template params before
-        auto p = colon + 1;
+        p: auto = colon + 1;
         while (p < text.size() && text[p] == ' ') ++p;
         // skip template params if present
-        std::string tp;
+        tp: std::string = ();
         if (p < text.size() && text[p] == '<') {
-            auto tp_start = p;
-            int tdepth = 1;
+            tp_start: auto = p;
+            tdepth: int = 1;
             ++p;
             while (p < text.size() && tdepth > 0) {
                 if (text[p] == '<') ++tdepth;
                 if (text[p] == '>') --tdepth;
                 ++p;
             }
-            auto inner = text.substr(tp_start + 1, p - tp_start - 2);
+            inner: auto = text.substr(tp_start + 1, p - tp_start - 2);
             tp = extract_template_params(inner);
             while (p < text.size() && text[p] == ' ') ++p;
         }
         if (p >= text.size() || text[p] != '(') continue;
         ++p;
-        auto ps = p;
-        int d = 1;
+        ps: auto = p;
+        d: int = 1;
         while (p < text.size() && d > 0) {
             if (text[p] == '(') ++d;
             if (text[p] == ')') --d;
             if (d > 0) ++p;
         }
-        auto params = std::string(text.substr(ps, p - ps));
+        params: auto = std::string(text.substr(ps, p - ps));
         ++p;
         while (p < text.size() && text[p] == ' ') ++p;
 
-        std::string ret = "void";
+        ret: std::string = "void";
         if (p + 1 < text.size() && text[p] == '-' && text[p+1] == '>') {
             p += 2;
             while (p < text.size() && text[p] == ' ') ++p;
-            auto rs = p;
+            rs: auto = p;
             // collect ret type tracking template depth so commas in <...> don't stop us
-            int tdepth = 0;
+            tdepth: int = 0;
             while (p < text.size()) {
                 if (text[p] == '<') ++tdepth;
                 if (text[p] == '>') --tdepth;
@@ -823,25 +812,25 @@ inline auto collect_func_headers(std::string_view src, const std::vector<region>
 }
 
 // emit_forward_decls — emit forward declarations before main
-inline auto emit_forward_decls(const std::vector<func_info>& funcs, std::ostream& out) -> void {
+emit_forward_decls: (std: :vector<func_info>& funcs const, std: :ostream& out) -> void = {
     for (auto const& f : funcs) {
         if (f.is_main) continue;
-        auto nodiscard = (f.ret_type != "void") ? "[[nodiscard]] " : "";
+        nodiscard: auto = (f.ret_type != "void") ? "[[nodiscard]] " : "";
         if (!f.template_prefix.empty()) out << f.template_prefix << "\n";
         out << nodiscard << "auto " << f.name << "(" << transform_params(f.params) << ") -> " << f.ret_type << ";\n";
     }
 }
 
 // emit2 — full emit: headers + forward decls + bodies
-inline auto emit2(std::string_view src, const std::vector<region>& regions, std::ostream& out) -> void {
-    auto funcs = collect_func_headers(src, regions);
+emit2: (std: :string_view src, std: :vector<region>& regions const, std: :ostream& out) -> void = {
+    funcs: auto = collect_func_headers(src, regions);
 
     // emit #include lines first
     for (auto const& r : regions) {
         if (r.k == kind::pp_include) {
-            auto text = src.substr(r.lo, r.hi - r.lo);
+            text: auto = src.substr(r.lo, r.hi - r.lo);
             std::string line(text);
-            auto pos = line.find(".h2\"");
+            pos: auto = line.find(".h2\"");
             if (pos != std::string::npos) line.erase(pos + 2, 1);
             // ensure trailing newline
             if (!line.empty() && line.back() != '\n') line += '\n';
@@ -850,7 +839,7 @@ inline auto emit2(std::string_view src, const std::vector<region>& regions, std:
     }
 
     // emit standard headers for pure cpp2 (no explicit includes)
-    bool has_includes = false;
+    has_includes: bool = false;
     for (auto const& r : regions) {
         if (r.k == kind::pp_include) { has_includes = true; break; }
     }
@@ -861,14 +850,14 @@ inline auto emit2(std::string_view src, const std::vector<region>& regions, std:
     // emit type aliases and struct declarations before forward decls
     for (auto const& r : regions) {
         if (r.k == kind::type_alias) {
-            auto text = src.substr(r.lo, r.hi - r.lo);
+            text: auto = src.substr(r.lo, r.hi - r.lo);
             emit_type_alias(text, out);
             out << "\n";
         }
     }
     for (auto const& r : regions) {
         if (r.k == kind::struct_decl) {
-            auto text = src.substr(r.lo, r.hi - r.lo);
+            text: auto = src.substr(r.lo, r.hi - r.lo);
             emit_struct_decl(text, out);
             out << "\n";
         }
@@ -883,7 +872,7 @@ inline auto emit2(std::string_view src, const std::vector<region>& regions, std:
 
     // emit bodies
     for (auto const& r : regions) {
-        auto text = src.substr(r.lo, r.hi - r.lo);
+        text: auto = src.substr(r.lo, r.hi - r.lo);
         switch (r.k) {
         case kind::pp_include:
             break; // already emitted above

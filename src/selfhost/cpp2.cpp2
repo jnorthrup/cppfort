@@ -13,6 +13,8 @@
 #include <string>
 #include <iostream>
 #include <utility>
+#include <functional>
+#include <algorithm>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -421,6 +423,97 @@ reify_decl: (chunk: mmap_chunk, lo: int, hi: int) -> std::vector<int> = {
 }
 
 // ============================================================================
+// ALPHA TRANSFORM (>> operator) — project semantic coordinates through lambda
+// ============================================================================
+
+// Project single node through lambda
+operator>>: (node: std::vector<int>, transform: std::function<void(std::vector<int>)>) -> void = {
+    transform(node);
+}
+
+// Project node collection through lambda
+operator>>: (nodes: std::vector<std::vector<int>>, transform: std::function<void(std::vector<int>)>) -> void = {
+    i: int = 0;
+    while i < nodes.size() {
+        transform(nodes[i]);
+        i = i + 1;
+    }
+}
+
+// ============================================================================
+// EMIT TRANSFORMS — lambda projections for each node kind
+// ============================================================================
+
+emit_node: (chunk: mmap_chunk, node: std::vector<int>) -> void = {
+    kind: int = node[0];
+    src_lo: int = node[7];
+    src_hi: int = node[8];
+
+    if kind == node_kind_func {
+        // Function: main: () -> int = { ... }
+        name_lo: int = node[1];
+        name_hi: int = node[2];
+        type_lo: int = node[3];
+        type_hi: int = node[4];
+        body_lo: int = node[5];
+        body_hi: int = node[6];
+
+        // Extract name from chunk
+        std::cout << "// function: ";
+        i: int = name_lo;
+        while i < name_hi {
+            std::cout << chunk.first[i];
+            i = i + 1;
+        }
+        std::cout << "\n";
+
+        // Emit type signature
+        std::cout << "auto ";
+        i = type_lo;
+        while i < type_hi {
+            std::cout << chunk.first[i];
+            i = i + 1;
+        }
+        std::cout << " ";
+
+        // Emit name
+        i = name_lo;
+        while i < name_hi {
+            std::cout << chunk.first[i];
+            i = i + 1;
+        }
+
+        // Emit body placeholder
+        std::cout << " = []()";
+        std::cout << " -> auto { /* TODO: emit body from chunk */ };\n\n";
+    }
+    else {
+        if kind == node_kind_type {
+            std::cout << "// type alias\n";
+        }
+        else {
+            if kind == node_kind_alias {
+                std::cout << "// type alias ==\n";
+            }
+            else {
+                if kind == node_kind_namespace {
+                    std::cout << "// namespace\n";
+                }
+                else {
+                    // Line node - emit as-is
+                    i: int = src_lo;
+                    while i < src_hi {
+                        std::cout << chunk.first[i];
+                        i = i + 1;
+                    }
+                    std::cout << "\n";
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
 // PARSE — full pipeline: scan -> merge -> decode -> index -> reify
 // ============================================================================
 
@@ -511,12 +604,15 @@ main: (args) -> int = {
         return 1;
     }
 
-    // Use existing transpiler pipeline from cpp2.h2
-    // Convert mmap_chunk to std::string_view for cpp2::regions()
-    src: std::string_view = std::string_view(chunk.first, chunk.second);
-    regs: std::vector<cpp2::region> = cpp2::regions(src);
-    std::cerr << "regions: " << regs.size() << "\n";
-    cpp2::emit2(src, regs, std::cout);
+    // Parse: scan -> merge -> decode -> index -> reify
+    ast_nodes: std::vector<std::vector<int>> = parse(chunk);
+
+    // Alpha transform: project AST nodes through emit lambda using >> operator
+    i: int = 0;
+    while i < ast_nodes.size() {
+        emit_node(chunk, ast_nodes[i]);
+        i = i + 1;
+    }
 
     return 0;
 }

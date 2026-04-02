@@ -13,6 +13,8 @@
 // `series >> fn` is the projection surface. `series[selector]` remaps through
 // ints, spans, ranges, and arbitrary lazy index series.
 
+#pragma once
+
 #include <functional>
 #include <initializer_list>
 #include <vector>
@@ -259,8 +261,8 @@ struct char_series : series<char> {
         return *this;
     }
 
-    // ByteBuffer mark — set mark at current position
-    char_series& mark() {
+    // ByteBuffer set_mark — set mark at current position
+    char_series& set_mark() {
         mark = pos;
         return *this;
     }
@@ -325,6 +327,13 @@ inline auto has_token(std::string_view text, std::string_view target) -> bool {
 inline auto find_char(std::string_view src, char target, int lo, int hi) -> int {
     for (int i = lo; i < hi; ++i)
         if (src[static_cast<size_t>(i)] == target) return i;
+    return -1;
+}
+
+// find_char for strview (series<char>)
+inline auto find_char(strview src, char target, int lo, int hi) -> int {
+    for (int i = lo; i < hi; ++i)
+        if (src[i] == target) return i;
     return -1;
 }
 
