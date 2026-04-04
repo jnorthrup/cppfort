@@ -1,4 +1,0 @@
-// cpp2_main.cpp2 — retired shim surface
-//
-// The permanent selfhost contract moved back to src/selfhost/cpp2.cpp2.
-// Keep this file only as a signpost to stop drift toward a split entrypoint.

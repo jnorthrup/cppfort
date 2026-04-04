@@ -1,6 +1,0 @@
-// bbcursive.cpp2 — STUBBED
-//
-// The previous implementation used ts.ssize(), ts[p], std::vector<tok>,
-// std::string_view on tok.t, and other APIs incompatible with the current
-// alias hierarchy. It needs a full rewrite to use the new
-// series<tok> / series<char> alias hierarchy defined in trikeshed.h2.

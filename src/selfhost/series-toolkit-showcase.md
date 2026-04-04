@@ -1,11 +1,13 @@
 # TrikeShed Algebraic Data Types Showcase
 
 ## Overview
+
 TrikeShed is a comprehensive algebraic data type system implemented in Cpp2 with cppfront transpilation. It provides foundational types for the self-hosting compiler through a layered architecture: cpp2 source files (`.cpp2`) define the surface APIs, cpp2 headers (`.h2`) provide the core abstractions, and cppfront transpiles everything to standard C++ for compilation.
 
 ## Key Features
 
 ### Algebraic Foundation
+
 - **Product Types**: `join<A,B>` for pairs, `twin<T>` for same-type pairs
 - **Sum Types**: `either<L,R>` for discriminated unions
 - **Lazy Collections**: `series<T>` for indexed sequences with deferred evaluation
@@ -13,17 +15,20 @@ TrikeShed is a comprehensive algebraic data type system implemented in Cpp2 with
 - **Character Processing**: `strview` and `char_series` for text handling
 
 ### Functional Programming Surface
+
 - **Projection Operator**: `operator>>` for compact transformations
 - **Indexing Overloads**: Support for spans, ranges, series<int>, vectors, and initializer lists
 - **Lambda Integration**: First-class support for function objects and lambdas
 - **Type Safety**: Compile-time verification of function signatures
 
 ### Minimal Dependencies
+
 - Avoids std:: containers except where necessary
 - Self-contained core with no external library dependencies
 - Designed for compiler bootstrap and embedded use cases
 
 ### Compiler Integration
+
 - Maps to SoN (Sea of Nodes) dialect operations
 - Supports semantic objects and dense lowered views
 - Enables manifold/coordinate systems for advanced transformations
@@ -33,6 +38,7 @@ TrikeShed is a comprehensive algebraic data type system implemented in Cpp2 with
 The Series Toolkit is built around six core components in [`src/selfhost/trikeshed.h2`](../src/selfhost/trikeshed.h2):
 
 ### `join<A,B>` - Product Pair Payloads
+
 ```cpp
 // From src/selfhost/trikeshed.h2 lines 27-37
 template<typename A, typename B>
@@ -49,12 +55,14 @@ struct join {
 ```
 
 ### `twin<T>` - Same-Type Pair (alias for `join<T,T>`)
+
 ```cpp
 // From src/selfhost/trikeshed.h2 line 43
 template<typename T> using twin = join<T, T>;
 ```
 
 ### `span` and `range` - Index Selectors
+
 ```cpp
 // From src/selfhost/trikeshed.h2 lines 51-81
 struct span {
@@ -91,6 +99,7 @@ struct range {
 ```
 
 ### `series<T>` - Lazy Indexed Collections
+
 ```cpp
 // From src/selfhost/trikeshed.h2 lines 89-105
 template<typename T>
@@ -177,12 +186,14 @@ Projection with `operator>>` (supports three function signatures):
 ```
 
 ### `strview` - Character Series (alias for `series<char>`)
+
 ```cpp
 // From src/selfhost/trikeshed.h2 line 196
 using strview = series<char>;
 ```
 
 ### `char_series` - Character Cursor with State
+
 ```cpp
 // From src/selfhost/trikeshed.h2 lines 203-214
 struct char_series {
@@ -253,6 +264,7 @@ Projection:
 ## Usage Examples
 
 ### Basic Series Reading
+
 ```cpp
 #include "series_toolkit.h"
 
@@ -270,6 +282,7 @@ for (auto& chunk : reader) {
 ```
 
 ### Advanced Pipeline Processing
+
 ```cpp
 // Chain operations on series data
 auto processed = series_pipeline(mapped_file)
@@ -277,4 +290,5 @@ auto processed = series_pipeline(mapped_file)
     .transform(normalize_values)
     .aggregate(sum_by_category);
 ```
+
  welcome! Please follow the project's coding standards and ensure all changes are tested with `cargo check --workspace` before submission.

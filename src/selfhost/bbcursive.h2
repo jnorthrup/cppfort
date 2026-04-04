@@ -1,7 +1,0 @@
-// bbcursive.h2 — stub for now
-#pragma once
-#include "cpp2.h2"
-
-namespace cpp2 {
-// placeholder — combinators and lexer will land here
-}

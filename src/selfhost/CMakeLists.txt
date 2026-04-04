@@ -181,8 +181,11 @@ if(CPPFRONT_EXECUTABLE)
       VERBATIM
     )
 
-    add_executable(cpp2_bin "${CPP2_MAIN_CPP}")
-    add_dependencies(cpp2_bin selfhost_bbcursive_cpp)
+add_executable(cpp2_bin 
+ "${CPP2_MAIN_CPP}"
+ "${CMAKE_SOURCE_DIR}/src/selfhost/cpp2_mmap.cpp"
+ )
+ add_dependencies(cpp2_bin selfhost_bbcursive_cpp)
     target_include_directories(cpp2_bin PRIVATE
       ${SELFHOST_DIR}
       ${CPPFRONT_INCLUDE_DIR}
